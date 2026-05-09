@@ -3,17 +3,23 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+// Importing your Waiters (Controllers)
+use App\Http\Controllers\Api\SpaceController;
+use App\Http\Controllers\Api\BookingController;
+use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\FeedbackController;
+
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| API Routes (The Menu)
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
+| Here is where Vue.js will send its HTTP requests!
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+// We use 'apiResource' because it automatically generates all 5 standard URLs 
+// (Create, Read All, Read One, Update, Delete) for each controller in one line!
+
+Route::apiResource('spaces', SpaceController::class);
+Route::apiResource('bookings', BookingController::class);
+Route::apiResource('invoices', InvoiceController::class);
+Route::apiResource('feedbacks', FeedbackController::class);
