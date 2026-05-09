@@ -8,4 +8,18 @@ use Illuminate\Database\Eloquent\Model;
 class Booking extends Model
 {
     use HasFactory;
+
+    protected $fillable = ['user_id', 'space_id', 'booking_date', 'approval_status', 'whatsapp_link'];
+
+    public function user() {
+        return $this->belongsTo(User::class);
+    }
+
+    public function space() {
+        return $this->belongsTo(Space::class);
+    }
+
+    public function invoice() {
+        return $this->hasOne(Invoice::class);
+    }
 }

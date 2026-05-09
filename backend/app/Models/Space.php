@@ -8,4 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class Space extends Model
 {
     use HasFactory;
+
+    protected $fillable = ['space_size', 'price', 'status'];
+
+    public function bookings() {
+        return $this->hasMany(Booking::class);
+    }
 }
