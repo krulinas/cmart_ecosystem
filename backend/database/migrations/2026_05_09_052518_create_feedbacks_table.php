@@ -12,12 +12,15 @@ return new class extends Migration
      * @return void
      */
     public function up()
-    {
-        Schema::create('feedbacks', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
-    }
+{
+    Schema::create('feedbacks', function (Blueprint $table) {
+        $table->id(); // feedback_id Primary Key
+        $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+        $table->text('comments');
+        $table->integer('rating');
+        $table->timestamps();
+    });
+}
 
     /**
      * Reverse the migrations.

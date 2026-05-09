@@ -14,7 +14,10 @@ return new class extends Migration
     public function up()
     {
         Schema::create('spaces', function (Blueprint $table) {
-            $table->id();
+            $table->id(); // space_id Primary Key
+            $table->string('space_size');
+            $table->float('price');
+            $table->enum('status', ['Available', 'Full'])->default('Available');
             $table->timestamps();
         });
     }
