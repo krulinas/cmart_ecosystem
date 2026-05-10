@@ -95,9 +95,27 @@ const fetchBookings = async () => {
 
 const updateStatus = async (id, status) => {
   try {
+    // 1. Send the decision to the Laravel Kitchen
     await axios.put(`http://127.0.0.1:8000/api/bookings/${id}`, { approval_status: status });
     alert(`Booking successfully ${status}!`);
+    
+    // 2. FR2: Trigger WhatsApp Notification
+    // Note: In a fully complete system, we would pull the specific vendor's phone number from the database. 
+    // For now, we use a placeholder Malaysian number for testing.
+    const testPhoneNumber = "60123456789"; 
+    
+    // Construct the dynamic message
+    const waMessage = `Hello from CMART! 🎪\n\nYour Carboot tapak booking (ID: ${id}) has been officially *${status}*.\n\nThank you!`;
+    
+    // Create the special WhatsApp API link
+    const whatsappUrl = `https://wa.me/${testPhoneNumber}?text=${encodeURIComponent(waMessage)}`;
+    
+    // Command the browser to open the WhatsApp link in a new tab
+    window.open(whatsappUrl, '_blank');
+
+    // 3. Refresh the table
     fetchBookings();
+    
   } catch (error) {
     alert('Error updating status.');
   }
