@@ -11,7 +11,6 @@
           <th>Actions</th>
         </tr>
       </thead>
-      
       <tbody>
         <tr v-for="booking in bookings" :key="booking.id">
           <td>{{ booking.id }}</td>
@@ -35,6 +34,38 @@
         </tr>
       </tbody>
     </table>
+
+    <hr style="margin-top: 40px; margin-bottom: 20px;" />
+    
+    <h2>Profitability Calculator (FR4)</h2>
+    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; width: 50%;">
+      
+      <label>Space ID (Tapak Size):</label><br />
+      <input type="number" v-model="calcData.space_id" style="margin-bottom: 10px; padding: 5px;" /><br />
+
+      <label>Number of Spaces Closed:</label><br />
+      <input type="number" v-model="calcData.parking_lots_used" style="margin-bottom: 10px; padding: 5px;" /><br />
+
+      <label>Normal Parking Rate/Hour (RM):</label><br />
+      <input type="number" v-model="calcData.regular_parking_rate" style="margin-bottom: 10px; padding: 5px;" /><br />
+
+      <label>Event Duration (Hours):</label><br />
+      <input type="number" v-model="calcData.hours_occupied" style="margin-bottom: 10px; padding: 5px;" /><br />
+
+      <button @click="calculateProfit" style="background-color: #007BFF; color: white; border: none; padding: 10px 15px; cursor: pointer;">
+        Calculate Profit
+      </button>
+
+     <div v-if="profitResult" style="margin-top: 20px; padding: 15px; background: #e2f0d9; border-left: 5px solid #28a745;">
+        <p><strong>Parking Revenue:</strong> RM {{ profitResult.lost_parking_revenue }}</p>
+        
+        <p><strong>Carboot Revenue:</strong> RM {{ profitResult.event_revenue }}</p>
+        
+        <h3 :style="{ color: profitResult.is_profitable ? 'green' : 'red' }">
+          {{ profitResult.message }} (RM {{ profitResult.net_profit }})
+        </h3>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -44,28 +75,48 @@ import axios from 'axios';
 
 const bookings = ref([]);
 
-// Fetch the list of bookings from the Laravel Kitchen
+// UPDATED: Variable names now perfectly match Laravel's 422 Error demands
+const calcData = ref({
+  space_id: 1,
+  parking_lots_used: 20,
+  regular_parking_rate: 1,
+  hours_occupied: 8
+});
+const profitResult = ref(null);
+
 const fetchBookings = async () => {
   try {
     const response = await axios.get('http://127.0.0.1:8000/api/bookings');
     bookings.value = response.data;
   } catch (error) {
-    alert('Failed to fetch bookings. Is the Laravel server running?');
+    alert('Failed to fetch bookings.');
   }
 };
 
-// Send the Approval/Rejection decision back to the Kitchen
 const updateStatus = async (id, status) => {
   try {
     await axios.put(`http://127.0.0.1:8000/api/bookings/${id}`, { approval_status: status });
     alert(`Booking successfully ${status}!`);
-    fetchBookings(); // Refresh the table instantly
+    fetchBookings();
   } catch (error) {
     alert('Error updating status.');
   }
 };
 
-// Run this automatically when the admin opens the page
+const calculateProfit = async () => {
+  try {
+    const response = await axios.post('http://127.0.0.1:8000/api/profitability', calcData.value);
+    profitResult.value = response.data;
+  } catch (error) {
+    // Pro-Tip: We can make our error alert smarter by showing Laravel's actual message!
+    if (error.response && error.response.data && error.response.data.message) {
+       alert(`Kitchen rejected: ${error.response.data.message}`);
+    } else {
+       alert('Error calculating profit.');
+    }
+  }
+};
+
 onMounted(() => {
   fetchBookings();
 });

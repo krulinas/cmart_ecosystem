@@ -21,5 +21,6 @@ use App\Http\Controllers\Api\FeedbackController;
 
 Route::apiResource('spaces', SpaceController::class);
 Route::apiResource('bookings', BookingController::class);
+Route::post('/profitability', [App\Http\Controllers\Api\BookingController::class, 'checkProfitability']);
 Route::apiResource('invoices', InvoiceController::class);
 Route::apiResource('feedbacks', FeedbackController::class);
