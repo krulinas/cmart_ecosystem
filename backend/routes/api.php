@@ -26,9 +26,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
+    // PDF document download. Controller enforces ownership/role.
+    Route::get('/bookings/{booking}/pdf', [BookingController::class, 'generatePdf']);
+
     Route::middleware('vendor.approved')->group(function () {
         Route::get('/vendor/bookings', [BookingController::class, 'mine']);
         Route::post('/bookings', [BookingController::class, 'store']);
+        Route::patch('/vendor/bookings/{booking}/resubmit', [BookingController::class, 'resubmit']);
     });
 
     Route::middleware('role:cmart_staff,cmart_admin')->group(function () {

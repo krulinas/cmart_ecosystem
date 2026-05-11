@@ -1,11 +1,11 @@
 <template>
   <div class="min-h-screen bg-ink-50 py-12 px-4">
-    <div class="max-w-xl mx-auto">
+    <div class="max-w-6xl mx-auto">
       <router-link to="/" class="inline-flex items-center text-sm text-ink-500 hover:text-brand-600 mb-6">
         <span class="mr-1">←</span> Back to Carboot@CMart
       </router-link>
 
-      <div class="ml-card">
+      <div class="ml-card mb-6">
         <div class="mb-6">
           <span class="ml-badge bg-brand-100 text-brand-700">Vendor Booking</span>
           <h1 class="mt-2 text-2xl font-extrabold text-ink-900 tracking-tight">
@@ -51,12 +51,105 @@
           </p>
         </form>
       </div>
+
+      <div class="ml-card">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+          <div>
+            <h2 class="text-xl font-extrabold text-ink-900">My Bookings</h2>
+            <p class="text-sm text-ink-500">Track your booking through the Carboot@CMart approval pipeline.</p>
+          </div>
+          <button class="ml-btn-ghost" @click="fetchMyBookings" :disabled="loadingBookings">
+            {{ loadingBookings ? 'Refreshing...' : 'Refresh' }}
+          </button>
+        </div>
+
+        <div v-if="!myBookings.length" class="rounded-xl border border-dashed border-ink-300 p-8 text-center text-ink-500">
+          No booking records are currently available.
+        </div>
+
+        <div v-else class="space-y-5">
+          <article
+            v-for="booking in myBookings"
+            :key="booking.id"
+            class="rounded-2xl border border-ink-200 bg-white p-5 shadow-sm"
+          >
+            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-lg font-extrabold text-ink-900">Booking #{{ booking.id }}</h3>
+                  <span :class="statusBadgeClass(booking.approval_status)">
+                    {{ statusLabel(booking.approval_status) }}
+                  </span>
+                </div>
+                <p class="mt-1 text-sm text-ink-500">
+                  {{ booking.space?.space_size || `Space ${booking.space_id}` }} · {{ booking.booking_date }}
+                </p>
+              </div>
+
+              <button class="ml-btn-ghost" @click="viewPdf(booking.id)">
+                View PDF
+              </button>
+            </div>
+
+            <div class="mt-6">
+              <div class="relative">
+                <div class="absolute left-0 right-0 top-4 h-1 rounded-full bg-ink-200"></div>
+                <div
+                  class="absolute left-0 top-4 h-1 rounded-full transition-all duration-700"
+                  :class="progressBarClass(booking.approval_status)"
+                  :style="{ width: progressWidth(booking.approval_status) }"
+                ></div>
+
+                <div class="relative grid grid-cols-3 gap-2">
+                  <div
+                    v-for="step in pipelineSteps"
+                    :key="step.status"
+                    class="flex flex-col items-center text-center"
+                  >
+                    <div
+                      class="h-9 w-9 rounded-full border-4 bg-white flex items-center justify-center text-xs font-extrabold transition-all duration-500"
+                      :class="stepClass(booking.approval_status, step.status)"
+                    >
+                      {{ step.index }}
+                    </div>
+                    <div class="mt-2 text-xs font-semibold text-ink-700">{{ step.label }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-if="booking.approval_status === 'Needs_Revision'"
+              class="mt-6 rounded-xl border border-orange-200 bg-orange-50 p-4"
+            >
+              <h4 class="font-bold text-orange-900">Revision Required</h4>
+              <p class="mt-1 text-sm text-orange-800">
+                {{ booking.revision_comment || '422 Unprocessable Entity: A revision comment was not provided by the reviewer.' }}
+              </p>
+              <div class="mt-4 flex flex-col sm:flex-row gap-3">
+                <input
+                  v-model="resubmitDates[booking.id]"
+                  type="date"
+                  class="ml-input sm:max-w-xs"
+                  :placeholder="booking.booking_date"
+                />
+                <button class="ml-btn-primary" @click="resubmitBooking(booking)">
+                  Resubmit Booking
+                </button>
+              </div>
+              <p class="mt-2 text-xs text-orange-700">
+                Leave the date field blank to retain the existing booking date.
+              </p>
+            </div>
+          </article>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from './services/api';
 import { useAuthStore } from './stores/auth';
@@ -69,6 +162,15 @@ const currentPrice = ref(0);
 const bookingDate = ref('');
 const availableSpaces = ref([]);
 const submitting = ref(false);
+const myBookings = ref([]);
+const loadingBookings = ref(false);
+const resubmitDates = reactive({});
+
+const pipelineSteps = [
+  { index: 1, status: 'Pending_Staff', label: 'Staff Review' },
+  { index: 2, status: 'Pending_Boss', label: 'Boss Review' },
+  { index: 3, status: 'Approved', label: 'Approved' },
+];
 
 onMounted(async () => {
   userName.value = auth.user?.name || '';
@@ -84,6 +186,8 @@ onMounted(async () => {
       { id: 2, space_size: 'Large (2 Parking Lots)',   price: 50.00 },
     ];
   }
+
+  await fetchMyBookings();
 });
 
 const updatePrice = () => {
@@ -103,11 +207,104 @@ const submitBooking = async () => {
     selectedSpace.value = '';
     currentPrice.value = 0;
     bookingDate.value = '';
+    await fetchMyBookings();
   } catch (e) {
     console.error('500 Internal Server Error: Unable to communicate with the API.', e);
     toast.error('500 Internal Server Error: Unable to communicate with the API.');
   } finally {
     submitting.value = false;
   }
+};
+
+const fetchMyBookings = async () => {
+  loadingBookings.value = true;
+  try {
+    const { data } = await api.get('/vendor/bookings');
+    myBookings.value = Array.isArray(data) ? data : (data.data ?? []);
+  } catch (e) {
+    console.error('500 Internal Server Error: Unable to retrieve vendor bookings from the API.', e);
+    toast.error('500 Internal Server Error: Unable to retrieve vendor bookings from the API.');
+  } finally {
+    loadingBookings.value = false;
+  }
+};
+
+const viewPdf = async (bookingId) => {
+  try {
+    const response = await api.get(`/bookings/${bookingId}/pdf`, { responseType: 'blob' });
+    const file = new Blob([response.data], { type: 'application/pdf' });
+    const fileUrl = URL.createObjectURL(file);
+    window.open(fileUrl, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(fileUrl), 60000);
+  } catch (e) {
+    console.error(`500 Internal Server Error: Unable to retrieve PDF for booking #${bookingId}.`, e);
+    toast.error(`500 Internal Server Error: Unable to retrieve PDF for booking #${bookingId}.`);
+  }
+};
+
+const resubmitBooking = async (booking) => {
+  try {
+    const payload = {};
+    if (resubmitDates[booking.id]) payload.booking_date = resubmitDates[booking.id];
+
+    const { data } = await api.patch(`/vendor/bookings/${booking.id}/resubmit`, payload);
+    toast.success(data.message || '200 OK: Booking resubmitted successfully.');
+    resubmitDates[booking.id] = '';
+    await fetchMyBookings();
+  } catch (e) {
+    const message = e.response?.data?.message || '500 Internal Server Error: Unable to resubmit booking.';
+    console.error(message, e);
+    toast.error(message);
+  }
+};
+
+const statusLabel = (status) => ({
+  Pending_Staff: 'Pending Staff Review',
+  Needs_Revision: 'Needs Revision',
+  Pending_Boss: 'Pending Boss Review',
+  Approved: 'Approved',
+  Rejected: 'Rejected',
+}[status] || status);
+
+const statusBadgeClass = (status) => ({
+  Pending_Staff: 'ml-badge bg-blue-100 text-blue-800',
+  Pending_Boss: 'ml-badge bg-purple-100 text-purple-800',
+  Needs_Revision: 'ml-badge bg-orange-100 text-orange-800',
+  Approved: 'ml-badge bg-emerald-100 text-emerald-800',
+  Rejected: 'ml-badge bg-rose-100 text-rose-800',
+}[status] || 'ml-badge bg-ink-100 text-ink-700');
+
+const progressIndex = (status) => {
+  if (status === 'Pending_Staff' || status === 'Needs_Revision' || status === 'Rejected') return 1;
+  if (status === 'Pending_Boss') return 2;
+  if (status === 'Approved') return 3;
+  return 0;
+};
+
+const progressWidth = (status) => {
+  if (status === 'Approved') return '100%';
+  if (status === 'Pending_Boss') return '50%';
+  if (status === 'Pending_Staff' || status === 'Needs_Revision' || status === 'Rejected') return '0%';
+  return '0%';
+};
+
+const progressBarClass = (status) => ({
+  Pending_Staff: 'bg-blue-500',
+  Pending_Boss: 'bg-purple-500',
+  Needs_Revision: 'bg-orange-500',
+  Approved: 'bg-emerald-500',
+  Rejected: 'bg-rose-500',
+}[status] || 'bg-ink-400');
+
+const stepClass = (currentStatus, stepStatus) => {
+  const active = progressIndex(currentStatus) >= progressIndex(stepStatus);
+  if (!active) return 'border-ink-200 text-ink-400';
+  return {
+    Pending_Staff: 'border-blue-500 text-blue-700',
+    Pending_Boss: 'border-purple-500 text-purple-700',
+    Needs_Revision: 'border-orange-500 text-orange-700',
+    Approved: 'border-emerald-500 text-emerald-700',
+    Rejected: 'border-rose-500 text-rose-700',
+  }[currentStatus] || 'border-ink-400 text-ink-700';
 };
 </script>

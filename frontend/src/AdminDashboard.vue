@@ -1,8 +1,8 @@
 <template>
   <WorkspaceShell
     title="CMart Workspace"
-    subtitle="Approve vendor bookings, calculate profitability, and monitor live carboot analytics."
-    workspace-label="CMart · Staff"
+    :subtitle="queueSubtitle"
+    :workspace-label="auth.role === 'cmart_admin' ? 'CMart · Tier 2' : 'CMart · Tier 1'"
     :user-name="auth.user?.name || 'CMart Staff'"
     :user-role-label="auth.role === 'cmart_admin' ? 'CMart Admin' : 'CMart Staff'"
   >
@@ -19,19 +19,19 @@
     <!-- KPI strip -->
     <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
       <div class="ml-card">
-        <div class="text-xs uppercase tracking-wider text-ink-500 font-semibold">Pending</div>
-        <div class="mt-1 text-3xl font-extrabold text-amber-600">{{ kpi.pending }}</div>
-        <div class="mt-1 text-xs text-ink-500">awaiting your approval</div>
+        <div class="text-xs uppercase tracking-wider text-ink-500 font-semibold">Staff Review</div>
+        <div class="mt-1 text-3xl font-extrabold text-blue-600">{{ kpi.pendingStaff }}</div>
+        <div class="mt-1 text-xs text-ink-500">pending Tier 1 review</div>
       </div>
       <div class="ml-card">
-        <div class="text-xs uppercase tracking-wider text-ink-500 font-semibold">Approved</div>
-        <div class="mt-1 text-3xl font-extrabold text-emerald-600">{{ kpi.approved }}</div>
-        <div class="mt-1 text-xs text-ink-500">vendors confirmed</div>
+        <div class="text-xs uppercase tracking-wider text-ink-500 font-semibold">Boss Review</div>
+        <div class="mt-1 text-3xl font-extrabold text-purple-600">{{ kpi.pendingBoss }}</div>
+        <div class="mt-1 text-xs text-ink-500">pending Tier 2 review</div>
       </div>
       <div class="ml-card">
-        <div class="text-xs uppercase tracking-wider text-ink-500 font-semibold">Rejected</div>
-        <div class="mt-1 text-3xl font-extrabold text-rose-600">{{ kpi.rejected }}</div>
-        <div class="mt-1 text-xs text-ink-500">declined applications</div>
+        <div class="text-xs uppercase tracking-wider text-ink-500 font-semibold">Needs Revision</div>
+        <div class="mt-1 text-3xl font-extrabold text-orange-600">{{ kpi.needsRevision }}</div>
+        <div class="mt-1 text-xs text-ink-500">returned for correction</div>
       </div>
     </section>
 
@@ -39,10 +39,10 @@
     <section id="queue" class="ml-card mb-6">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h2 class="text-lg font-extrabold text-ink-900">Admin Approval Queue</h2>
-          <p class="text-sm text-ink-500">Vendor bookings waiting for your decision.</p>
+          <h2 class="text-lg font-extrabold text-ink-900">{{ queueTitle }}</h2>
+          <p class="text-sm text-ink-500">{{ queueDescription }}</p>
         </div>
-        <span class="ml-badge bg-ink-100 text-ink-700">{{ pendingBookings.length }} pending</span>
+        <span class="ml-badge bg-ink-100 text-ink-700">{{ queueBookings.length }} pending</span>
       </div>
 
       <div class="overflow-x-auto -mx-2">
@@ -57,9 +57,9 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-ink-100">
-            <tr v-for="b in pendingBookings" :key="b.id" class="hover:bg-ink-50/60 transition">
+            <tr v-for="b in queueBookings" :key="b.id" class="hover:bg-ink-50/60 transition">
               <td class="px-3 py-3 font-semibold text-ink-900">#{{ b.id }}</td>
-              <td class="px-3 py-3 text-ink-700">Space {{ b.space_id }}</td>
+              <td class="px-3 py-3 text-ink-700">{{ b.space?.space_size || `Space ${b.space_id}` }}</td>
               <td class="px-3 py-3 text-ink-700">{{ b.booking_date }}</td>
               <td class="px-3 py-3">
                 <span :class="badgeClass(b.approval_status)">{{ b.approval_status }}</span>
@@ -67,19 +67,33 @@
               <td class="px-3 py-3">
                 <div class="flex justify-end gap-2">
                   <button
-                    v-if="b.approval_status === 'Pending'"
+                    @click="viewPdf(b.id)"
+                    class="ml-btn-ghost"
+                  >View PDF</button>
+                  <button
+                    v-if="auth.role === 'cmart_staff'"
+                    @click="updateStatus(b.id, 'Pending_Boss')"
+                    class="ml-btn-success"
+                  >Pass to Boss</button>
+                  <button
+                    v-if="auth.role === 'cmart_staff'"
+                    @click="requestRevision(b.id)"
+                    class="ml-btn-danger"
+                  >Request Revision</button>
+                  <button
+                    v-if="auth.role === 'cmart_admin'"
                     @click="updateStatus(b.id, 'Approved')"
                     class="ml-btn-success"
-                  >Approve</button>
+                  >Final Approve</button>
                   <button
-                    v-if="b.approval_status === 'Pending'"
-                    @click="updateStatus(b.id, 'Rejected')"
+                    v-if="auth.role === 'cmart_admin'"
+                    @click="requestRevision(b.id)"
                     class="ml-btn-danger"
-                  >Reject</button>
+                  >Return to Staff/Vendor</button>
                 </div>
               </td>
             </tr>
-            <tr v-if="!pendingBookings.length">
+            <tr v-if="!queueBookings.length">
               <td colspan="5" class="px-3 py-10 text-center text-ink-500">
                 <div class="text-2xl mb-2">🎉</div>
                 <div class="font-semibold text-ink-700">No Pending Records</div>
@@ -202,16 +216,30 @@ const chartCanvas = ref(null);
 let chartInstance = null;
 
 const allBookings = ref([]);
-const pendingBookings = computed(() =>
-  allBookings.value.filter(b => b.approval_status === 'Pending')
+const queueStatus = computed(() => auth.role === 'cmart_admin' ? 'Pending_Boss' : 'Pending_Staff');
+const queueBookings = computed(() =>
+  allBookings.value.filter(b => b.approval_status === queueStatus.value)
+);
+const queueTitle = computed(() =>
+  auth.role === 'cmart_admin' ? 'Tier 2 Boss Approval Queue' : 'Tier 1 Staff Approval Queue'
+);
+const queueSubtitle = computed(() =>
+  auth.role === 'cmart_admin'
+    ? 'Perform final approval for bookings escalated by CMart staff.'
+    : 'Review vendor submissions before escalation to the boss approval tier.'
+);
+const queueDescription = computed(() =>
+  auth.role === 'cmart_admin'
+    ? 'Only bookings with Pending_Boss status are shown.'
+    : 'Only bookings with Pending_Staff status are shown.'
 );
 
 const kpi = computed(() => {
-  const counts = { pending: 0, approved: 0, rejected: 0 };
+  const counts = { pendingStaff: 0, pendingBoss: 0, needsRevision: 0 };
   for (const b of allBookings.value) {
-    if (b.approval_status === 'Pending')  counts.pending++;
-    if (b.approval_status === 'Approved') counts.approved++;
-    if (b.approval_status === 'Rejected') counts.rejected++;
+    if (b.approval_status === 'Pending_Staff')  counts.pendingStaff++;
+    if (b.approval_status === 'Pending_Boss') counts.pendingBoss++;
+    if (b.approval_status === 'Needs_Revision') counts.needsRevision++;
   }
   return counts;
 });
@@ -225,7 +253,9 @@ const calcData = reactive({
 const profitResult = ref(null);
 
 const badgeClass = (status) => {
-  if (status === 'Pending')  return 'ml-badge-pending';
+  if (status === 'Pending_Staff') return 'ml-badge bg-blue-100 text-blue-800';
+  if (status === 'Pending_Boss') return 'ml-badge bg-purple-100 text-purple-800';
+  if (status === 'Needs_Revision') return 'ml-badge bg-orange-100 text-orange-800';
   if (status === 'Approved') return 'ml-badge-approved';
   if (status === 'Rejected') return 'ml-badge-rejected';
   return 'ml-badge bg-ink-100 text-ink-700';
@@ -241,9 +271,12 @@ const fetchBookings = async () => {
   }
 };
 
-const updateStatus = async (id, status) => {
+const updateStatus = async (id, status, revisionComment = null) => {
   try {
-    await api.put(`/bookings/${id}`, { approval_status: status });
+    const payload = { approval_status: status };
+    if (revisionComment) payload.revision_comment = revisionComment;
+
+    await api.put(`/bookings/${id}`, payload);
     const target = allBookings.value.find(b => b.id === id);
     if (target) target.approval_status = status;
     toast.success(`200 OK: Booking #${id} status updated to ${status}.`);
@@ -254,6 +287,29 @@ const updateStatus = async (id, status) => {
   } catch (e) {
     console.error(`500 Internal Server Error: Unable to update booking #${id}.`, e);
     toast.error(`500 Internal Server Error: Unable to update booking #${id}.`);
+  }
+};
+
+const requestRevision = async (id) => {
+  const comment = window.prompt('Enter formal revision instructions for the vendor.');
+  if (!comment || !comment.trim()) {
+    toast.error('400 Bad Request: Revision instructions are required.');
+    return;
+  }
+
+  await updateStatus(id, 'Needs_Revision', comment.trim());
+};
+
+const viewPdf = async (bookingId) => {
+  try {
+    const response = await api.get(`/bookings/${bookingId}/pdf`, { responseType: 'blob' });
+    const file = new Blob([response.data], { type: 'application/pdf' });
+    const fileUrl = URL.createObjectURL(file);
+    window.open(fileUrl, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(fileUrl), 60000);
+  } catch (e) {
+    console.error(`500 Internal Server Error: Unable to retrieve PDF for booking #${bookingId}.`, e);
+    toast.error(`500 Internal Server Error: Unable to retrieve PDF for booking #${bookingId}.`);
   }
 };
 
@@ -288,14 +344,16 @@ const renderChart = (statuses) => {
   chartInstance = new Chart(chartCanvas.value, {
     type: 'doughnut',
     data: {
-      labels: ['Approved', 'Pending', 'Rejected'],
+      labels: ['Staff Review', 'Boss Review', 'Needs Revision', 'Approved', 'Rejected'],
       datasets: [{
         data: [
+          statuses.Pending_Staff || 0,
+          statuses.Pending_Boss || 0,
+          statuses.Needs_Revision || 0,
           statuses.Approved || 0,
-          statuses.Pending  || 0,
           statuses.Rejected || 0,
         ],
-        backgroundColor: ['#10b981', '#f59e0b', '#f43f5e'],
+        backgroundColor: ['#3b82f6', '#8b5cf6', '#f97316', '#10b981', '#f43f5e'],
         borderWidth: 0,
       }],
     },

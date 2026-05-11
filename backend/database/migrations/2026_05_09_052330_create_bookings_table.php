@@ -18,7 +18,14 @@ return new class extends Migration
         $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
         $table->foreignId('space_id')->constrained('spaces')->onDelete('cascade');
         $table->date('booking_date');
-        $table->enum('approval_status', ['Pending', 'Approved', 'Rejected'])->default('Pending');
+        $table->enum('approval_status', [
+            'Pending_Staff',
+            'Needs_Revision',
+            'Pending_Boss',
+            'Approved',
+            'Rejected',
+        ])->default('Pending_Staff');
+        $table->text('revision_comment')->nullable();
         $table->string('whatsapp_link')->nullable();
         $table->timestamps();
     });
