@@ -67,11 +67,18 @@
       </div>
     </div>
   </div>
+  <hr class="my-5">
+    <h2>Advanced Analytics (FR5) 🐍📊</h2>
+    <p>Live data fetched directly from Python Microservice (Port 8001)</p>
+    <div style="width: 400px; height: 400px; margin: auto;">
+        <canvas id="analyticsChart"></canvas>
+    </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import Chart from 'chart.js/auto';
 
 const bookings = ref([]);
 
@@ -83,6 +90,11 @@ const calcData = ref({
   hours_occupied: 8
 });
 const profitResult = ref(null);
+
+const chartData = ref({
+  labels: [],
+  datasets: [{ backgroundColor: [], data: [] }]
+});
 
 const fetchBookings = async () => {
   try {
@@ -135,7 +147,43 @@ const calculateProfit = async () => {
   }
 };
 
+let myChart = null; // Hold the chart in memory
+
+const fetchPythonAnalytics = async () => {
+    try {
+        // The rider goes to the Python Lab (Port 8001)
+        const response = await axios.get('http://localhost:8001/api/analytics/status-summary');
+        const pythonData = response.data.status_breakdown;
+
+        const ctx = document.getElementById('analyticsChart');
+
+        // Destroy the old chart if it exists so we can redraw fresh data!
+        if (myChart != null) {
+            myChart.destroy();
+        }
+
+        // Paint the new Pie Chart!
+        myChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Pending', 'Approved', 'Rejected'],
+                datasets: [{
+                    backgroundColor: ['#f39c12', '#2ecc71', '#e74c3c'],
+                    data: [
+                        pythonData.Pending || 0,   // Orange
+                        pythonData.Approved || 0,  // Green
+                        pythonData.Rejected || 0   // Red
+                    ]
+                }]
+            }
+        });
+    } catch (error) {
+        console.error("Alamak! The Python snake is sleeping:", error);
+    }
+};
+
 onMounted(() => {
   fetchBookings();
+  fetchPythonAnalytics();
 });
 </script>
