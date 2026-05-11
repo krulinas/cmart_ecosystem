@@ -7,10 +7,10 @@
     >
       <div class="px-6 py-5 border-b border-ink-200">
         <router-link to="/" class="flex items-center gap-2 group">
-          <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white font-extrabold">M</span>
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white font-extrabold">C</span>
           <div class="leading-tight">
-            <div class="text-base font-extrabold text-ink-900 tracking-tight">MonaLisa</div>
-            <div class="text-[11px] uppercase tracking-wider text-ink-500">Carboot @ CMart</div>
+            <div class="text-base font-extrabold text-ink-900 tracking-tight">Carboot@CMart</div>
+            <div class="text-[11px] uppercase tracking-wider text-ink-500">Management Portal</div>
           </div>
         </router-link>
       </div>
@@ -66,9 +66,9 @@ defineProps({
   navItems: {
     type: Array,
     default: () => [
-      { to: '/admin', label: 'Approval Queue', icon: '📋' },
-      { to: '/admin#profitability', label: 'Profitability', icon: '💰' },
-      { to: '/admin#analytics', label: 'Analytics', icon: '📊' },
+      { to: '/admin', label: 'Approval Queue', icon: 'A' },
+      { to: '/admin#profitability', label: 'Profitability', icon: 'P' },
+      { to: '/admin#analytics', label: 'Analytics', icon: 'R' },
     ],
   },
 });

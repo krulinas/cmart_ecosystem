@@ -25,16 +25,16 @@ def get_db_connection():
 
 @app.get("/")
 def read_root():
-    return {"message": "Sawa Batik Data Lab is Active! 🐍✨"}
+    return {"message": "200 OK: Carboot@CMart Analytics API is operational."}
 
 @app.get("/api/analytics/status-summary")
 def get_status_summary():
     conn = get_db_connection()
     
-    # Grab all the booking statuses from the Laravel Kitchen's database
+    # Retrieve booking statuses from the Laravel application database.
     query = "SELECT approval_status FROM bookings"
     
-    # Let Pandas do the heavy lifting to read and count the data instantly
+    # Use Pandas to aggregate booking status counts.
     df = pd.read_sql(query, conn)
     conn.close()
     

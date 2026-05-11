@@ -3,11 +3,16 @@
     title="CMart Workspace"
     subtitle="Approve vendor bookings, calculate profitability, and monitor live carboot analytics."
     workspace-label="CMart · Staff"
+    :user-name="auth.user?.name || 'CMart Staff'"
+    :user-role-label="auth.role === 'cmart_admin' ? 'CMart Admin' : 'CMart Staff'"
   >
     <template #actions>
       <button class="ml-btn-ghost" @click="refreshAll" :disabled="loading">
         <span>↻</span>
         <span>{{ loading ? 'Refreshing…' : 'Refresh' }}</span>
+      </button>
+      <button class="ml-btn-ghost" @click="logout">
+        Logout
       </button>
     </template>
 
@@ -77,8 +82,8 @@
             <tr v-if="!pendingBookings.length">
               <td colspan="5" class="px-3 py-10 text-center text-ink-500">
                 <div class="text-2xl mb-2">🎉</div>
-                <div class="font-semibold text-ink-700">All caught up</div>
-                <div class="text-xs">No pending bookings right now.</div>
+                <div class="font-semibold text-ink-700">No Pending Records</div>
+                <div class="text-xs">There are no bookings requiring review.</div>
               </td>
             </tr>
           </tbody>
@@ -95,7 +100,7 @@
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="ml-label">Space ID (Tapak Size)</label>
+            <label class="ml-label">Space ID (Space Size)</label>
             <input type="number" v-model.number="calcData.space_id" class="ml-input" />
           </div>
           <div>
@@ -181,12 +186,16 @@ import { ref, reactive, onMounted, computed, onBeforeUnmount } from 'vue';
 import axios from 'axios';
 import Chart from 'chart.js/auto';
 import { useToast } from 'vue-toastification';
+import { useRouter } from 'vue-router';
 import WorkspaceShell from './layouts/WorkspaceShell.vue';
+import api from './services/api';
+import { useAuthStore } from './stores/auth';
 
-const LARAVEL_API = 'http://127.0.0.1:8000/api';
 const PYTHON_API = 'http://localhost:8001/api';
 
 const toast = useToast();
+const router = useRouter();
+const auth = useAuthStore();
 const loading = ref(false);
 const analyticsOnline = ref(false);
 const chartCanvas = ref(null);
@@ -224,38 +233,38 @@ const badgeClass = (status) => {
 
 const fetchBookings = async () => {
   try {
-    const { data } = await axios.get(`${LARAVEL_API}/bookings`);
+    const { data } = await api.get('/bookings');
     allBookings.value = Array.isArray(data) ? data : (data.data ?? []);
   } catch (e) {
-    console.error('Bookings fetch error:', e);
-    toast.error('Failed to fetch bookings. Is the Laravel server running on :8000?');
+    console.error('500 Internal Server Error: Unable to retrieve booking data from the API.', e);
+    toast.error('500 Internal Server Error: Unable to retrieve booking data from the API.');
   }
 };
 
 const updateStatus = async (id, status) => {
   try {
-    await axios.put(`${LARAVEL_API}/bookings/${id}`, { approval_status: status });
+    await api.put(`/bookings/${id}`, { approval_status: status });
     const target = allBookings.value.find(b => b.id === id);
     if (target) target.approval_status = status;
-    toast.success(`Booking #${id} ${status.toLowerCase()}.`);
+    toast.success(`200 OK: Booking #${id} status updated to ${status}.`);
     fetchPythonAnalytics();
 
-    const message = `Hello from CMART! Your Carboot tapak booking (ID: ${id}) has been officially ${status}. Thank you!`;
+    const message = `Carboot@CMart notification: Your booking (ID: ${id}) has been ${status}.`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   } catch (e) {
-    console.error('Update error:', e);
-    toast.error(`Unable to update booking #${id}.`);
+    console.error(`500 Internal Server Error: Unable to update booking #${id}.`, e);
+    toast.error(`500 Internal Server Error: Unable to update booking #${id}.`);
   }
 };
 
 const calculateProfit = async () => {
   try {
-    const { data } = await axios.post(`${LARAVEL_API}/profitability`, calcData);
+    const { data } = await api.post('/profitability', calcData);
     profitResult.value = data;
-    toast.success('Profitability calculated.');
+    toast.success('200 OK: Profitability calculation completed.');
   } catch (e) {
-    console.error('Profitability error:', e);
-    toast.error('Calculation failed. Please verify your input.');
+    console.error('500 Internal Server Error: Profitability calculation failed.', e);
+    toast.error('500 Internal Server Error: Profitability calculation failed.');
   }
 };
 
@@ -266,7 +275,7 @@ const fetchPythonAnalytics = async () => {
     analyticsOnline.value = true;
     renderChart(statuses);
   } catch (e) {
-    console.warn('Python microservice offline:', e?.message);
+    console.warn('503 Service Unavailable: Analytics API is not available.', e?.message);
     analyticsOnline.value = false;
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
   }
@@ -305,6 +314,12 @@ const refreshAll = async () => {
   loading.value = true;
   await Promise.allSettled([fetchBookings(), fetchPythonAnalytics()]);
   loading.value = false;
+};
+
+const logout = async () => {
+  await auth.logout();
+  toast.success('200 OK: Session terminated successfully.');
+  router.push('/');
 };
 
 onMounted(refreshAll);

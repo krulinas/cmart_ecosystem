@@ -19,9 +19,10 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            // Adding the columns requested in the SDD
+            // Carboot@CMart RBAC: community users can later unlock vendor tools via vendor_status.
             $table->string('phone_number')->nullable();
-            $table->enum('role', ['Vendor', 'Admin', 'Community'])->default('Community');//
+            $table->enum('role', ['community', 'cmart_staff', 'cmart_admin', 'uum'])->default('community');
+            $table->enum('vendor_status', ['none', 'pending', 'approved', 'suspended'])->default('none');
             $table->rememberToken();
             $table->timestamps();
         });

@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // MonaLisa brand palette
+        // Carboot@CMart brand palette
         brand: {
           50:  '#fff7ed',
           100: '#ffedd5',

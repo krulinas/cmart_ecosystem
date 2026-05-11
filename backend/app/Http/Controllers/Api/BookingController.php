@@ -17,7 +17,6 @@ class BookingController extends Controller
     {
         // 1. Validate the incoming data from Vue.js
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
             'space_id' => 'required|exists:spaces,id',
             'booking_date' => 'required|date',
         ]);
@@ -27,7 +26,7 @@ class BookingController extends Controller
 
         // 3. Create the Booking (Default status is 'Pending')
         $booking = Booking::create([
-            'user_id' => $validated['user_id'],
+            'user_id' => $request->user()->id,
             'space_id' => $space->id,
             'booking_date' => $validated['booking_date'],
             'approval_status' => 'Pending',
@@ -43,7 +42,7 @@ class BookingController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Booking submitted successfully! Please join the WhatsApp group. Processing takes 3-5 business days.',
+            'message' => '201 Created: Booking submitted successfully. Processing takes 3-5 business days.',
             'booking' => $booking,
             'invoice' => $invoice
         ], 201);
@@ -65,7 +64,7 @@ class BookingController extends Controller
         // If approved, you would normally trigger an email/WhatsApp API here.
         
         return response()->json([
-            'message' => 'Booking status updated to ' . $validated['approval_status'],
+            'message' => '200 OK: Booking status updated to ' . $validated['approval_status'] . '.',
             'booking' => $booking
         ]);
     }
@@ -97,12 +96,13 @@ class BookingController extends Controller
             'lost_parking_revenue' => $parkingRevenue,
             'is_profitable' => $isProfitable,
             'net_profit' => $profitMargin,
-            'message' => $isProfitable ? 'Approved: Event yields higher profit.' : 'Warning: Regular parking is more profitable.'
+            'message' => $isProfitable ? '200 OK: Event revenue exceeds parking revenue.' : '200 OK: Parking revenue exceeds event revenue.'
         ]);
     }
 
     // Standard methods (index, show, destroy) omitted for brevity but they exist to fetch data!
     public function index() { return Booking::with(['user', 'space', 'invoice'])->get(); }
+    public function mine(Request $request) { return $request->user()->bookings()->with(['space', 'invoice'])->latest()->get(); }
     public function show($id) { return Booking::with(['user', 'space', 'invoice'])->findOrFail($id); }
-    public function destroy($id) { Booking::destroy($id); return response()->json(['message' => 'Deleted']); }
+    public function destroy($id) { Booking::destroy($id); return response()->json(['message' => '200 OK: Booking deleted successfully.']); }
 }

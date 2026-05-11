@@ -3,24 +3,45 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-// Importing your Waiters (Controllers)
 use App\Http\Controllers\Api\SpaceController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\FeedbackController;
+use App\Http\Controllers\Api\AuthController;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes (The Menu)
+| API Routes
 |--------------------------------------------------------------------------
-| Here is where Vue.js will send its HTTP requests!
+| API endpoints consumed by the Vue frontend and protected by Sanctum/RBAC.
 */
 
-// We use 'apiResource' because it automatically generates all 5 standard URLs 
-// (Create, Read All, Read One, Update, Delete) for each controller in one line!
+Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/auth/login', [AuthController::class, 'login']);
 
-Route::apiResource('spaces', SpaceController::class);
-Route::apiResource('bookings', BookingController::class);
-Route::post('/profitability', [App\Http\Controllers\Api\BookingController::class, 'checkProfitability']);
-Route::apiResource('invoices', InvoiceController::class);
-Route::apiResource('feedbacks', FeedbackController::class);
+Route::get('/spaces', [SpaceController::class, 'index']);
+Route::get('/spaces/{space}', [SpaceController::class, 'show']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/auth/me', [AuthController::class, 'me']);
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+
+    Route::middleware('vendor.approved')->group(function () {
+        Route::get('/vendor/bookings', [BookingController::class, 'mine']);
+        Route::post('/bookings', [BookingController::class, 'store']);
+    });
+
+    Route::middleware('role:cmart_staff,cmart_admin')->group(function () {
+        Route::apiResource('bookings', BookingController::class)->except(['store']);
+        Route::post('/profitability', [BookingController::class, 'checkProfitability']);
+        Route::apiResource('invoices', InvoiceController::class);
+        Route::apiResource('feedbacks', FeedbackController::class);
+    });
+
+    Route::middleware('role:cmart_admin')->group(function () {
+        Route::post('/spaces', [SpaceController::class, 'store']);
+        Route::put('/spaces/{space}', [SpaceController::class, 'update']);
+        Route::patch('/spaces/{space}', [SpaceController::class, 'update']);
+        Route::delete('/spaces/{space}', [SpaceController::class, 'destroy']);
+    });
+});
