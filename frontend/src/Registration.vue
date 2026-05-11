@@ -1,84 +1,110 @@
 <template>
-  <div style="font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto;">
-    <h2>Carboot@CMart Registration</h2>
-    <p>Book your tapak quickly and easily!</p>
+  <div class="min-h-screen bg-ink-50 py-12 px-4">
+    <div class="max-w-xl mx-auto">
+      <router-link to="/" class="inline-flex items-center text-sm text-ink-500 hover:text-brand-600 mb-6">
+        <span class="mr-1">←</span> Back to MonaLisa
+      </router-link>
 
-    <form @submit.prevent="submitBooking" style="display: flex; flex-direction: column; gap: 15px;">
-      
-      <div>
-        <label>Your Name:</label><br>
-        <input type="text" v-model="userName" required style="width: 100%; padding: 8px;" />
+      <div class="ml-card">
+        <div class="mb-6">
+          <span class="ml-badge bg-brand-100 text-brand-700">Vendor Booking</span>
+          <h1 class="mt-2 text-2xl font-extrabold text-ink-900 tracking-tight">
+            Book your Carboot tapak
+          </h1>
+          <p class="text-sm text-ink-500 mt-1">
+            Reserve your spot at the next Carboot @ CMart weekend. Approval takes 3–5 working days.
+          </p>
+        </div>
+
+        <form @submit.prevent="submitBooking" class="space-y-4">
+          <div>
+            <label class="ml-label">Your name</label>
+            <input v-model="userName" type="text" required class="ml-input" placeholder="e.g. Ahmad bin Ali" />
+          </div>
+
+          <div>
+            <label class="ml-label">Select tapak size</label>
+            <select v-model="selectedSpace" @change="updatePrice" required class="ml-input">
+              <option disabled value="">Please select one</option>
+              <option v-for="space in availableSpaces" :key="space.id" :value="space.id">
+                {{ space.space_size }} — RM {{ space.price.toFixed(2) }}
+              </option>
+            </select>
+          </div>
+
+          <div class="bg-brand-50 border border-brand-200 rounded-xl p-4 flex items-center justify-between">
+            <span class="text-sm font-semibold text-brand-800">Total price</span>
+            <span class="text-2xl font-extrabold text-brand-700">RM {{ currentPrice.toFixed(2) }}</span>
+          </div>
+
+          <div>
+            <label class="ml-label">Booking date</label>
+            <input v-model="bookingDate" type="date" required class="ml-input" />
+          </div>
+
+          <button type="submit" class="ml-btn-primary w-full" :disabled="submitting">
+            {{ submitting ? 'Submitting…' : 'Submit booking' }}
+          </button>
+
+          <p class="text-xs text-ink-500 text-center">
+            By submitting, you agree to CMart's vendor terms. You'll receive a WhatsApp confirmation once reviewed.
+          </p>
+        </form>
       </div>
-
-      <div>
-        <label>Select Tapak Size:</label><br>
-        <select v-model="selectedSpace" @change="updatePrice" required style="width: 100%; padding: 8px;">
-          <option disabled value="">Please select one</option>
-          <option v-for="space in availableSpaces" :key="space.id" :value="space.id">
-            {{ space.space_size }}
-          </option>
-        </select>
-      </div>
-
-      <div style="background-color: #f0f0f0; padding: 10px; border-radius: 5px;">
-        <strong>Total Price: RM {{ currentPrice }}</strong>
-      </div>
-
-      <div>
-        <label>Booking Date:</label><br>
-        <input type="date" v-model="bookingDate" required style="width: 100%; padding: 8px;" />
-      </div>
-
-      <button type="submit" style="background-color: #4CAF50; color: white; padding: 10px; border: none; cursor: pointer;">
-        Submit Booking
-      </button>
-
-    </form>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { useToast } from 'vue-toastification';
 
-// 1. Setting up our variables (State)
+const toast = useToast();
 const userName = ref('');
 const selectedSpace = ref('');
 const currentPrice = ref(0);
 const bookingDate = ref('');
 const availableSpaces = ref([]);
+const submitting = ref(false);
 
-// 2. Fetch the tapak sizes from our Laravel "Kitchen" when the page loads
-onMounted(() => {
-  // We will temporarily hardcode the options here just to test the UI logic
-  // Later we will fetch this from Laravel using axios.get('/api/spaces')
-  availableSpaces.value = [
-    { id: 1, space_size: 'Standard (1 Parking Lot)', price: 30.00 },
-    { id: 2, space_size: 'Large (2 Parking Lots)', price: 50.00 }
-  ];
+onMounted(async () => {
+  try {
+    const { data } = await axios.get('http://127.0.0.1:8000/api/spaces');
+    const list = Array.isArray(data) ? data : (data.data ?? []);
+    availableSpaces.value = list.map(s => ({ ...s, price: Number(s.price) }));
+  } catch (e) {
+    console.warn('Falling back to hardcoded spaces:', e?.message);
+    availableSpaces.value = [
+      { id: 1, space_size: 'Standard (1 Parking Lot)', price: 30.00 },
+      { id: 2, space_size: 'Large (2 Parking Lots)',   price: 50.00 },
+    ];
+  }
 });
 
-// 3. FR1: Automated Price Calculation Logic
 const updatePrice = () => {
   const space = availableSpaces.value.find(s => s.id === selectedSpace.value);
   currentPrice.value = space ? space.price : 0;
 };
 
-// 4. Submit the order to the Waiter (Laravel Backend)
 const submitBooking = async () => {
+  submitting.value = true;
   try {
-    const response = await axios.post('http://127.0.0.1:8000/api/bookings', {
-      user_id: 1, // Hardcoded user_id for now until we build a login system!
+    const { data } = await axios.post('http://127.0.0.1:8000/api/bookings', {
+      user_id: 1, // TODO(Phase 2): replace with authenticated vendor's user id
       space_id: selectedSpace.value,
-      booking_date: bookingDate.value
+      booking_date: bookingDate.value,
     });
-    
-    // FR3: Alert the user with the exact response from Laravel (3-5 days message)
-    alert(response.data.message);
-    
-  } catch (error) {
-    console.error(error);
-    alert("Oops! The kitchen rejected the order. Is your Laravel server running?");
+    toast.success(data.message || 'Booking submitted! Check WhatsApp for confirmation.');
+    userName.value = '';
+    selectedSpace.value = '';
+    currentPrice.value = 0;
+    bookingDate.value = '';
+  } catch (e) {
+    console.error(e);
+    toast.error('Booking failed. Is the Laravel server running on :8000?');
+  } finally {
+    submitting.value = false;
   }
 };
 </script>

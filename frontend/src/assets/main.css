@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* MonaLisa global base */
+@layer base {
+  html {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-ink-50 text-ink-900;
+  }
+}
+
+/* Reusable building blocks for the ecosystem UI */
+@layer components {
+  .ml-card {
+    @apply bg-white rounded-2xl shadow-sm border border-ink-200 p-6;
+  }
+  .ml-btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm
+           transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .ml-btn-primary {
+    @apply ml-btn bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500;
+  }
+  .ml-btn-success {
+    @apply ml-btn bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500;
+  }
+  .ml-btn-danger {
+    @apply ml-btn bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-500;
+  }
+  .ml-btn-ghost {
+    @apply ml-btn bg-transparent text-ink-700 hover:bg-ink-100 focus:ring-ink-300;
+  }
+  .ml-input {
+    @apply w-full px-3 py-2 rounded-lg border border-ink-200 bg-white text-ink-900
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent;
+  }
+  .ml-label {
+    @apply block text-sm font-medium text-ink-700 mb-1;
+  }
+  .ml-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+  .ml-badge-pending  { @apply ml-badge bg-amber-100   text-amber-800; }
+  .ml-badge-approved { @apply ml-badge bg-emerald-100 text-emerald-800; }
+  .ml-badge-rejected { @apply ml-badge bg-rose-100    text-rose-800; }
+}
