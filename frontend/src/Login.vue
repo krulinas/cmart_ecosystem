@@ -20,7 +20,22 @@
 
           <div>
             <label class="ml-label">Password</label>
-            <input v-model="form.password" type="password" required class="ml-input" placeholder="password123" />
+            <div class="relative w-full">
+              <input 
+                v-model="form.password" 
+                :type="showPassword ? 'text' : 'password'" 
+                required 
+                class="ml-input pr-16" 
+                placeholder="password123" 
+              />
+              <button 
+                type="button" 
+                @click="showPassword = !showPassword" 
+                class="absolute inset-y-0 right-0 px-3 flex items-center text-sm font-semibold text-gray-500 hover:text-brand-600 focus:outline-none"
+              >
+                {{ showPassword ? 'Hide' : 'Show' }}
+              </button>
+            </div>
           </div>
 
           <button type="submit" class="ml-btn-primary w-full" :disabled="auth.loading">
@@ -45,7 +60,7 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue'; // WAJIB ada 'ref' kat sini supaya page tak jadi putih!
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from './stores/auth';
@@ -54,6 +69,9 @@ const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+
+// Variable untuk kawal butang Show/Hide
+const showPassword = ref(false);
 
 const form = reactive({
   email: '',

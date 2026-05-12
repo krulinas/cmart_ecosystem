@@ -33,11 +33,42 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="ml-label">Password</label>
-              <input v-model="form.password" type="password" required minlength="8" class="ml-input" />
+              <div class="relative w-full">
+                <input 
+                  v-model="form.password" 
+                  :type="showPassword ? 'text' : 'password'" 
+                  required 
+                  minlength="8" 
+                  class="ml-input pr-16" 
+                />
+                <button 
+                  type="button" 
+                  @click="showPassword = !showPassword" 
+                  class="absolute inset-y-0 right-0 px-3 flex items-center text-sm font-semibold text-gray-500 hover:text-brand-600 focus:outline-none"
+                >
+                  {{ showPassword ? 'Hide' : 'Show' }}
+                </button>
+              </div>
             </div>
+
             <div>
               <label class="ml-label">Confirm password</label>
-              <input v-model="form.password_confirmation" type="password" required minlength="8" class="ml-input" />
+              <div class="relative w-full">
+                <input 
+                  v-model="form.password_confirmation" 
+                  :type="showPasswordConfirmation ? 'text' : 'password'" 
+                  required 
+                  minlength="8" 
+                  class="ml-input pr-16" 
+                />
+                <button 
+                  type="button" 
+                  @click="showPasswordConfirmation = !showPasswordConfirmation" 
+                  class="absolute inset-y-0 right-0 px-3 flex items-center text-sm font-semibold text-gray-500 hover:text-brand-600 focus:outline-none"
+                >
+                  {{ showPasswordConfirmation ? 'Hide' : 'Show' }}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -56,7 +87,7 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue'; // Saya dah tambah 'ref' kat sini
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from './stores/auth';
@@ -64,6 +95,10 @@ import { useAuthStore } from './stores/auth';
 const auth = useAuthStore();
 const router = useRouter();
 const toast = useToast();
+
+// Saya dah tambah dua variable ni supaya kotak HTML tu tak error
+const showPassword = ref(false);
+const showPasswordConfirmation = ref(false);
 
 const form = reactive({
   name: '',

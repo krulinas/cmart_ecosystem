@@ -25,7 +25,8 @@ class AuthController extends Controller
             'phone_number' => $validated['phone_number'] ?? null,
             'password' => Hash::make($validated['password']),
             'role' => 'community',
-            'vendor_status' => 'none',
+            // UBAH BARIS DI BAWAH INI
+            'vendor_status' => 'approved', // Asalnya 'none'
         ]);
 
         return $this->respondWithToken($user, '201 Created: Account registered successfully.', 201);
