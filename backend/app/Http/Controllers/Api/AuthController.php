@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Laravel\Socialite\Facades\Socialite; // Kena tambah ni untuk Socialite
+use Illuminate\Support\Str; // Kena tambah ni untuk generate password rawak
 
 class AuthController extends Controller
 {
@@ -76,5 +78,42 @@ class AuthController extends Controller
             'token_type' => 'Bearer',
             'user' => $user,
         ], $status);
+    }
+
+    // ==========================================
+    // --- FUNGSI BARU: SIGN IN WITH GOOGLE ---
+    // ==========================================
+
+    public function redirectToGoogle()
+    {
+        // Guna stateless() sebab kita bina API / SPA
+        return Socialite::driver('google')->stateless()->redirect();
+    }
+
+    public function handleGoogleCallback()
+    {
+        try {
+            $googleUser = Socialite::driver('google')->stateless()->user();
+
+            // Check kalau user dah wujud berdasarkan email, kalau tak kita create baru
+            $user = User::updateOrCreate(
+                ['email' => $googleUser->email],
+                [
+                    'name' => $googleUser->name,
+                    'vendor_status' => 'approved', // Terus set approved supaya boleh booking
+                    'role' => 'community', 
+                    'password' => Hash::make(Str::random(16)) // Password rawak sebab dorang login guna Google
+                ]
+            );
+
+            // Guna helper function respondWithToken yang sedia ada supaya format respons seragam
+            return $this->respondWithToken($user, '200 OK: Google authentication successful.');
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => '500 Internal Server Error: Failed to authenticate with Google.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

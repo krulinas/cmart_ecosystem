@@ -5,6 +5,12 @@ import AdminDashboard from './AdminDashboard.vue';
 import Login from './Login.vue';
 import Register from './Register.vue';
 import UumDashboard from './UumDashboard.vue';
+
+// ==========================================
+// 1. IMPORT KOMPONEN KALENDAR BARU AWAK
+// ==========================================
+import EventCalendar from './EventCalendar.vue'; // Pastikan awak dah buat fail EventCalendar.vue ni ya!
+
 import { useAuthStore } from './stores/auth';
 
 const routes = [
@@ -12,6 +18,11 @@ const routes = [
   { path: '/', component: CommunityPortal },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
+  
+  // ==========================================
+  // 2. LALUAN BARU UNTUK KALENDAR
+  // ==========================================
+  { path: '/calendar', component: EventCalendar },
   
   // Zone 2: The Vendor Hub
   {

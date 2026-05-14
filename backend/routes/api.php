@@ -19,6 +19,12 @@ use App\Http\Controllers\Api\AuthController;
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 
+// ==========================================
+// --- LALUAN BARU: GOOGLE SIGN-IN ---
+// ==========================================
+Route::get('/auth/google', [AuthController::class, 'redirectToGoogle']);
+Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
+
 Route::get('/spaces', [SpaceController::class, 'index']);
 Route::get('/spaces/{space}', [SpaceController::class, 'show']);
 
