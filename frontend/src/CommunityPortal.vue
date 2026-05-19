@@ -1,29 +1,85 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <nav class="bg-white shadow-md py-4 px-6 flex flex-col sm:flex-row justify-between items-center sticky top-0 z-50">
-      <div class="text-3xl font-extrabold text-red-600 mb-4 sm:mb-0 tracking-tight">
-        Carboot<span class="text-gray-800">@CMart</span>
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+        <div class="text-3xl font-extrabold text-red-600 tracking-tight">
+          Carboot<span class="text-gray-800">@CMart</span>
+        </div>
+
+        <div class="hidden md:flex items-center space-x-6">
+          <router-link to="/" class="text-gray-600 hover:text-red-600 font-semibold transition">Home</router-link>
+          <router-link to="/vendor-booking" class="text-gray-600 hover:text-red-600 font-semibold transition">Vendor Booking</router-link>
+          
+          <router-link v-if="!auth.isAuthenticated" to="/register" class="text-gray-600 hover:text-red-600 font-semibold transition">Join Community</router-link>
+          
+          <router-link
+            v-if="auth.isAuthenticated"
+            :to="auth.homeForUser()"
+            class="text-gray-600 hover:text-red-600 font-semibold transition"
+          >Workspace</router-link>
+          
+          <router-link
+            v-if="!auth.isAuthenticated"
+            to="/login"
+            class="bg-gray-800 text-white px-5 py-2 rounded-lg shadow hover:bg-gray-700 transition text-sm font-bold"
+          >Login</router-link>
+          
+          <button
+            v-else
+            @click="logout"
+            class="bg-gray-800 text-white px-5 py-2 rounded-lg shadow hover:bg-gray-700 transition text-sm font-bold"
+          >Logout</button>
+        </div>
+
+        <div class="md:hidden flex items-center">
+          <button @click="toggleMobileMenu" class="text-gray-800 hover:text-red-600 focus:outline-none transition">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path v-if="!isMobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
       </div>
-      <div class="space-x-2 sm:space-x-4 flex items-center">
-        <router-link to="/" class="text-gray-600 hover:text-red-600 font-semibold transition">Home</router-link>
-        <router-link to="/vendor-booking" class="text-gray-600 hover:text-red-600 font-semibold transition">Vendor Booking</router-link>
-        <router-link v-if="!auth.isAuthenticated" to="/register" class="text-gray-600 hover:text-red-600 font-semibold transition">Join Community</router-link>
-        <router-link
-          v-if="auth.isAuthenticated"
-          :to="auth.homeForUser()"
-          class="text-gray-600 hover:text-red-600 font-semibold transition"
-        >Workspace</router-link>
-        <router-link
-          v-if="!auth.isAuthenticated"
-          to="/login"
-          class="bg-gray-800 text-white px-4 py-2 rounded-lg shadow-md hover:bg-gray-700 transition text-sm font-bold"
-        >Login</router-link>
-        <button
-          v-else
-          @click="logout"
-          class="bg-gray-800 text-white px-4 py-2 rounded-lg shadow-md hover:bg-gray-700 transition text-sm font-bold"
-        >Logout</button>
-      </div>
+
+      <transition 
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="transform -translate-y-4 opacity-0"
+        enter-to-class="transform translate-y-0 opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="transform translate-y-0 opacity-100"
+        leave-to-class="transform -translate-y-4 opacity-0"
+      >
+        <div v-show="isMobileMenuOpen" class="md:hidden bg-white border-t border-gray-100 absolute w-full shadow-lg">
+          <div class="px-6 py-4 flex flex-col space-y-4">
+            <router-link to="/" @click="isMobileMenuOpen = false" class="text-gray-700 hover:text-red-600 font-semibold text-lg">Home</router-link>
+            <router-link to="/vendor-booking" @click="isMobileMenuOpen = false" class="text-gray-700 hover:text-red-600 font-semibold text-lg">Vendor Booking</router-link>
+            
+            <router-link v-if="!auth.isAuthenticated" to="/register" @click="isMobileMenuOpen = false" class="text-gray-700 hover:text-red-600 font-semibold text-lg">Join Community</router-link>
+            
+            <router-link
+              v-if="auth.isAuthenticated"
+              :to="auth.homeForUser()"
+              @click="isMobileMenuOpen = false"
+              class="text-gray-700 hover:text-red-600 font-semibold text-lg"
+            >Workspace</router-link>
+            
+            <hr class="border-gray-200">
+            
+            <router-link
+              v-if="!auth.isAuthenticated"
+              to="/login"
+              @click="isMobileMenuOpen = false"
+              class="bg-gray-800 text-white px-4 py-3 rounded-lg text-center font-bold shadow"
+            >Login</router-link>
+            
+            <button
+              v-else
+              @click="() => { logout(); isMobileMenuOpen = false; }"
+              class="bg-gray-800 text-white px-4 py-3 rounded-lg text-center font-bold shadow w-full"
+            >Logout</button>
+          </div>
+        </div>
+      </transition>
     </nav>
 
     <header class="bg-gradient-to-br from-red-500 to-orange-400 text-white text-center py-24 px-6 shadow-inner">
@@ -254,5 +310,11 @@ const submitFeedback = async () => {
   } finally {
     isSubmitting.value = false;
   }
+};
+
+const isMobileMenuOpen = ref(false);
+
+const toggleMobileMenu = () => {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value;
 };
 </script>
