@@ -43,6 +43,56 @@
       </div>
     </header>
 
+    <section class="mt-20 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+        <div class="bg-gradient-to-r from-red-500 to-orange-400 p-8 text-center text-white">
+          <h2 class="text-3xl font-extrabold mb-2">Suara Komuniti</h2>
+          <p class="text-lg opacity-90">Bantu kami tingkatkan pengalaman Carboot CMart untuk semua!</p>
+        </div>
+        
+        <div class="p-8 max-w-2xl mx-auto">
+          <form @submit.prevent="submitFeedback" class="space-y-6">
+            <div class="text-center">
+              <label class="block text-gray-700 font-bold mb-4 text-xl">Berapa bintang untuk pengalaman anda? ⭐</label>
+              <div class="flex justify-center space-x-2">
+                <button
+                  v-for="star in 5"
+                  :key="star"
+                  type="button"
+                  @click="feedbackForm.rating = star"
+                  @mouseenter="hoverRating = star"
+                  @mouseleave="hoverRating = 0"
+                  :class="[
+                    'text-5xl focus:outline-none transition-transform transform hover:scale-110', 
+                    (hoverRating || feedbackForm.rating) >= star ? 'text-yellow-400' : 'text-gray-300'
+                  ]"
+                >
+                  ★
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-gray-700 font-bold mb-2">Cadangan / Komen Anda 📝</label>
+              <textarea
+                v-model="feedbackForm.comments"
+                rows="4"
+                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-4 focus:ring-red-100 focus:border-red-500 outline-none transition resize-none"
+                placeholder="Cth: Nak lebih banyak booth makanan... / Perlu tempat letak kereta yang lebih besar..."
+                required
+              ></textarea>
+            </div>
+
+            <button
+              type="submit"
+              :disabled="isSubmitting"
+              class="w-full bg-gray-800 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:bg-gray-700 transition transform hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0"
+            >
+              {{ isSubmitting ? 'Sedang Menghantar...' : 'Hantar Maklum Balas' }}
+            </button>
+          </form>
+        </div>
+      </section>
+
     <main class="py-16 px-6 max-w-7xl mx-auto">
       
       <section ref="calendarSection" class="mb-20 scroll-mt-24">
@@ -102,6 +152,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from './stores/auth';
+import axios from 'axios';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -179,4 +230,29 @@ const latestNews = ref([
     image: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=800&auto=format&fit=crop'
   }
 ]);
+const feedbackForm = ref({
+  rating: 5,
+  comments: ''
+});
+const hoverRating = ref(0);
+const isSubmitting = ref(false);
+
+const submitFeedback = async () => {
+  isSubmitting.value = true;
+  try {
+    // Tembak API ke Laravel Backend
+    await axios.post('http://localhost:8000/api/feedbacks', feedbackForm.value);
+    
+    toast.success('Maklum balas berjaya dihantar! Terima kasih atas sokongan anda.');
+    
+    // Reset form lepas berjaya hantar
+    feedbackForm.value.comments = '';
+    feedbackForm.value.rating = 5;
+  } catch (error) {
+    console.error(error);
+    toast.error('Gagal menghantar maklum balas. Sila cuba sebentar lagi.');
+  } finally {
+    isSubmitting.value = false;
+  }
+};
 </script>

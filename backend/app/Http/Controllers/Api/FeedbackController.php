@@ -14,7 +14,8 @@ class FeedbackController extends Controller
      */
     public function index()
     {
-        //
+        $feedbacks = Feedback::orderBy('created_at', 'desc')->get();
+        return response()->json($feedbacks);
     }
 
     /**
@@ -25,7 +26,21 @@ class FeedbackController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'comments' => 'required|string|max:1000',
+        ]);
+
+        $feedback = Feedback::create([
+            'user_id' => Auth::guard('sanctum')->id(), 
+            'rating' => $validated['rating'],
+            'comments' => $validated['comments'],
+        ]);
+
+        return response()->json([
+            'message' => 'Maklum balas berjaya dihantar. Terima kasih!',
+            'data' => $feedback
+        ], 201);
     }
 
     /**

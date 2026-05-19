@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\AuthController;
 
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/feedbacks', [FeedbackController::class, 'store']);
 
 // ==========================================
 // --- LALUAN BARU: GOOGLE SIGN-IN ---
@@ -45,7 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('bookings', BookingController::class)->except(['store']);
         Route::post('/profitability', [BookingController::class, 'checkProfitability']);
         Route::apiResource('invoices', InvoiceController::class);
-        Route::apiResource('feedbacks', FeedbackController::class);
+        Route::apiResource('feedbacks', FeedbackController::class)->except(['store']);
     });
 
     Route::middleware('role:cmart_admin')->group(function () {
