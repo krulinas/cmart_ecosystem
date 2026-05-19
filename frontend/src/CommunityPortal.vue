@@ -91,24 +91,25 @@
       </p>
       <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
         <router-link to="/calendar" class="bg-white text-orange-500 font-semibold py-2 px-6 rounded-full hover:bg-gray-100 transition duration-300 inline-block text-center">
-  View Event Calendar
-</router-link>
+          View Event Calendar
+        </router-link>
         <router-link to="/vendor-booking" class="w-full sm:w-auto bg-transparent border-2 border-white text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-white hover:text-red-600 transition transform hover:-translate-y-1">
           Book a Space
         </router-link>
       </div>
     </header>
 
-    <section class="mt-20 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+    <section class="mt-20 max-w-4xl mx-auto bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+        
         <div class="bg-gradient-to-r from-red-500 to-orange-400 p-8 text-center text-white">
-          <h2 class="text-3xl font-extrabold mb-2">Suara Komuniti</h2>
-          <p class="text-lg opacity-90">Bantu kami tingkatkan pengalaman Carboot CMart untuk semua!</p>
+          <h2 class="text-3xl font-extrabold mb-2">Community Voice</h2>
+          <p class="text-lg opacity-90">Help us improve the Carboot@CMart experience for everyone!</p>
         </div>
         
-        <div class="p-8 max-w-2xl mx-auto">
+        <div class="p-8 border-b border-gray-100">
           <form @submit.prevent="submitFeedback" class="space-y-6">
             <div class="text-center">
-              <label class="block text-gray-700 font-bold mb-4 text-xl">Berapa bintang untuk pengalaman anda? ⭐</label>
+              <label class="block text-gray-700 font-bold mb-4 text-xl">How many stars would you rate your experience? ⭐</label>
               <div class="flex justify-center space-x-2">
                 <button
                   v-for="star in 5"
@@ -128,12 +129,12 @@
             </div>
 
             <div>
-              <label class="block text-gray-700 font-bold mb-2">Cadangan / Komen Anda 📝</label>
+              <label class="block text-gray-700 font-bold mb-2">Your Suggestions / Comments 📝</label>
               <textarea
                 v-model="feedbackForm.comments"
                 rows="4"
                 class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-4 focus:ring-red-100 focus:border-red-500 outline-none transition resize-none"
-                placeholder="Cth: Nak lebih banyak booth makanan... / Perlu tempat letak kereta yang lebih besar..."
+                placeholder="e.g., Want more food booths... / Need a bigger parking lot..."
                 required
               ></textarea>
             </div>
@@ -143,9 +144,44 @@
               :disabled="isSubmitting"
               class="w-full bg-gray-800 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:bg-gray-700 transition transform hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0"
             >
-              {{ isSubmitting ? 'Sedang Menghantar...' : 'Hantar Maklum Balas' }}
+              {{ isSubmitting ? 'Submitting...' : 'Submit Feedback' }}
             </button>
           </form>
+        </div>
+
+        <div class="p-8 bg-gray-50">
+          <h3 class="text-2xl font-bold text-gray-800 mb-6 text-center">What the Community Says 🗣️</h3>
+          
+          <div v-if="loadingReviews" class="text-center text-gray-500 animate-pulse font-semibold">
+            Loading reviews...
+          </div>
+          
+          <div v-else-if="communityReviews.length === 0" class="text-center text-gray-500 italic">
+            No reviews yet. Be the first!
+          </div>
+          
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div 
+              v-for="review in communityReviews" 
+              :key="review.id" 
+              class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition"
+            >
+              <div class="flex items-center justify-between mb-3">
+                <div class="font-bold text-gray-800 flex items-center space-x-2">
+                  <div class="bg-red-100 text-red-600 rounded-full h-8 w-8 flex items-center justify-center text-sm">
+                    {{ review.user?.name ? review.user.name.charAt(0).toUpperCase() : 'A' }}
+                  </div>
+                  <span>{{ review.user?.name || 'Anonymous' }}</span>
+                </div>
+                <div class="flex text-yellow-400 text-sm">
+                   <span v-for="star in 5" :key="star">
+                     {{ star <= review.rating ? '★' : '☆' }}
+                   </span>
+                </div>
+              </div>
+              <p class="text-gray-600 text-sm italic">"{{ review.comments }}"</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -204,7 +240,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from './stores/auth';
@@ -220,7 +256,7 @@ const logout = async () => {
   router.push('/');
 };
 
-// Logic for Smooth Scrolling to the Calendar
+// Calendar Logic
 const calendarSection = ref(null);
 const scrollToCalendar = () => {
   if (calendarSection.value) {
@@ -228,64 +264,21 @@ const scrollToCalendar = () => {
   }
 };
 
-// Dummy Data for Calendar Events
+// Upcoming Events (Dummy Data)
 const upcomingEvents = ref([
-  {
-    id: 1,
-    day: '16',
-    month: 'May',
-    title: 'CMart Weekly Carboot',
-    time: '8:00 AM - 2:00 PM',
-    status: 'Available',
-    statusClass: 'bg-green-100 text-green-700'
-  },
-  {
-    id: 2,
-    day: '17',
-    month: 'May',
-    title: 'CMart Weekly Carboot',
-    time: '8:00 AM - 2:00 PM',
-    status: 'Almost Full',
-    statusClass: 'bg-orange-100 text-orange-700'
-  },
-  {
-    id: 3,
-    day: '23',
-    month: 'May',
-    title: 'Changlun Mega Carboot',
-    time: '8:00 AM - 6:00 PM',
-    status: 'Registration Open',
-    statusClass: 'bg-blue-100 text-blue-700'
-  }
+  { id: 1, day: '16', month: 'May', title: 'CMart Weekly Carboot', time: '8:00 AM - 2:00 PM', status: 'Available', statusClass: 'bg-green-100 text-green-700' },
+  { id: 2, day: '17', month: 'May', title: 'CMart Weekly Carboot', time: '8:00 AM - 2:00 PM', status: 'Almost Full', statusClass: 'bg-orange-100 text-orange-700' },
+  { id: 3, day: '23', month: 'May', title: 'Changlun Mega Carboot', time: '8:00 AM - 6:00 PM', status: 'Registration Open', statusClass: 'bg-blue-100 text-blue-700' }
 ]);
 
-// Dummy Data for Latest Updates (News)
+// Latest News (Dummy Data)
 const latestNews = ref([
-  {
-    id: 1,
-    category: 'Announcement',
-    date: 'May 12, 2026',
-    title: 'Digital System Introduced with OIB Developers',
-    excerpt: 'CMart proudly launches a new booking portal to simplify invoice management and space registration for all Changlun vendors.',
-    image: 'https://images.unsplash.com/photo-1556761175-5973dc0f32b7?q=80&w=800&auto=format&fit=crop'
-  },
-  {
-    id: 2,
-    category: 'Community',
-    date: 'May 10, 2026',
-    title: 'Pasar Karat Vendors Transition to CMart',
-    excerpt: 'Over 20 vendors from outside sites have joined our ecosystem, promising a variety of goods from food and beverages to preloved clothing.',
-    image: 'https://images.unsplash.com/photo-1472851294608-062f18ce0411?q=80&w=800&auto=format&fit=crop'
-  },
-  {
-    id: 3,
-    category: 'Vendor Tips',
-    date: 'May 05, 2026',
-    title: 'How to Choose the Right Space Size?',
-    excerpt: 'Do you need an M or L sized space? Learn the exact dimensions and pricing to ensure your merchandise fits perfectly.',
-    image: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=800&auto=format&fit=crop'
-  }
+  { id: 1, category: 'Announcement', date: 'May 12, 2026', title: 'Digital System Introduced with OIB Developers', excerpt: 'CMart proudly launches a new booking portal to simplify invoice management...', image: 'https://images.unsplash.com/photo-1556761175-5973dc0f32b7?q=80&w=800&auto=format&fit=crop' },
+  { id: 2, category: 'Community', date: 'May 10, 2026', title: 'Pasar Karat Vendors Transition to CMart', excerpt: 'Over 20 vendors from outside sites have joined our ecosystem...', image: 'https://images.unsplash.com/photo-1472851294608-062f18ce0411?q=80&w=800&auto=format&fit=crop' },
+  { id: 3, category: 'Vendor Tips', date: 'May 05, 2026', title: 'How to Choose the Right Space Size?', excerpt: 'Do you need an M or L sized space? Learn the exact dimensions and pricing...', image: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=800&auto=format&fit=crop' }
 ]);
+
+// --- FEEDBACK & COMMUNITY REVIEW LOGIC ---
 const feedbackForm = ref({
   rating: 5,
   comments: ''
@@ -293,27 +286,51 @@ const feedbackForm = ref({
 const hoverRating = ref(0);
 const isSubmitting = ref(false);
 
+const communityReviews = ref([]);
+const loadingReviews = ref(true);
+
+// 1. Fetch existing reviews from database
+const fetchReviews = async () => {
+  loadingReviews.value = true;
+  try {
+    const response = await axios.get('http://localhost:8000/api/feedbacks');
+    communityReviews.value = response.data.data || response.data; 
+  } catch (error) {
+    console.error("Failed to fetch reviews:", error);
+  } finally {
+    loadingReviews.value = false;
+  }
+};
+
+// 2. Submit new feedback
 const submitFeedback = async () => {
   isSubmitting.value = true;
   try {
-    // Tembak API ke Laravel Backend
     await axios.post('http://localhost:8000/api/feedbacks', feedbackForm.value);
     
-    toast.success('Maklum balas berjaya dihantar! Terima kasih atas sokongan anda.');
+    toast.success('Feedback submitted successfully! Thank you for your support.');
     
-    // Reset form lepas berjaya hantar
+    // Reset form
     feedbackForm.value.comments = '';
     feedbackForm.value.rating = 5;
+
+    // Refresh the reviews list instantly!
+    await fetchReviews();
+
   } catch (error) {
     console.error(error);
-    toast.error('Gagal menghantar maklum balas. Sila cuba sebentar lagi.');
+    toast.error('Failed to submit feedback. Please try again later.');
   } finally {
     isSubmitting.value = false;
   }
 };
 
-const isMobileMenuOpen = ref(false);
+// Fetch reviews automatically when the portal loads
+onMounted(() => {
+  fetchReviews();
+});
 
+const isMobileMenuOpen = ref(false);
 const toggleMobileMenu = () => {
   isMobileMenuOpen.value = !isMobileMenuOpen.value;
 };
