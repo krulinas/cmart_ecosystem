@@ -65,4 +65,27 @@ class FeedbackController extends Controller
             'success' => true
         ], 200);
     }
+
+    /**
+     * Display a listing of the community feedback.
+     */
+    public function index()
+    {
+        $feedbacks = DB::table('feedbacks')
+            ->leftJoin('users', 'feedbacks.user_id', '=', 'users.id')
+            ->select('feedbacks.*', 'users.name as user_name')
+            ->orderBy('feedbacks.created_at', 'desc')
+            ->get()
+            ->map(function ($review) {
+                // Format the user relationship so the Vue frontend doesn't break
+                if ($review->user_name) {
+                    $review->user = ['name' => $review->user_name];
+                } else {
+                    $review->user = null; // Anonymous
+                }
+                return $review;
+            });
+
+        return response()->json($feedbacks, 200);
+    }
 }

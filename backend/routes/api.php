@@ -62,3 +62,12 @@ Route::middleware(['throttle:10,1'])->group(function () {
     Route::post('/feedback/submit', [App\Http\Controllers\CommunityFeedbackController::class, 'store']);
     Route::patch('/feedback/{id}/helpful', [App\Http\Controllers\CommunityFeedbackController::class, 'markHelpful']);
 });
+
+// Fetch all reviews for the community feed
+Route::get('/feedbacks', [App\Http\Controllers\Api\FeedbackController::class, 'index']);
+
+// Our existing submission routes
+Route::middleware(['throttle:10,1'])->group(function () {
+    Route::post('/feedback/submit', [App\Http\Controllers\Api\FeedbackController::class, 'store']);
+    Route::patch('/feedback/{id}/helpful', [App\Http\Controllers\Api\FeedbackController::class, 'markHelpful']);
+});
