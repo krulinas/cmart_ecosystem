@@ -20,7 +20,7 @@
     <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
       <div class="ml-card">
         <div class="text-xs uppercase tracking-wider text-ink-500 font-semibold">Staff Review</div>
-        <div class="mt-1 text-3xl font-extrabold text-blue-600">{{ kpi.pendingStaff }}</div>
+        <div class="mt-1 text-3xl font-extrabold text-brand-600">{{ kpi.pendingStaff }}</div>
         <div class="mt-1 text-xs text-ink-500">pending Tier 1 review</div>
       </div>
       <div class="ml-card">
@@ -30,7 +30,7 @@
       </div>
       <div class="ml-card">
         <div class="text-xs uppercase tracking-wider text-ink-500 font-semibold">Needs Revision</div>
-        <div class="mt-1 text-3xl font-extrabold text-orange-600">{{ kpi.needsRevision }}</div>
+        <div class="mt-1 text-3xl font-extrabold text-brand-600">{{ kpi.needsRevision }}</div>
         <div class="mt-1 text-xs text-ink-500">returned for correction</div>
       </div>
     </section>
@@ -253,9 +253,9 @@ const calcData = reactive({
 const profitResult = ref(null);
 
 const badgeClass = (status) => {
-  if (status === 'Pending_Staff') return 'ml-badge bg-blue-100 text-blue-800';
+  if (status === 'Pending_Staff') return 'ml-badge bg-brand-100 text-brand-800';
   if (status === 'Pending_Boss') return 'ml-badge bg-purple-100 text-purple-800';
-  if (status === 'Needs_Revision') return 'ml-badge bg-orange-100 text-orange-800';
+  if (status === 'Needs_Revision') return 'ml-badge bg-brand-100 text-brand-800';
   if (status === 'Approved') return 'ml-badge-approved';
   if (status === 'Rejected') return 'ml-badge-rejected';
   return 'ml-badge bg-ink-100 text-ink-700';
@@ -353,7 +353,7 @@ const renderChart = (statuses) => {
           statuses.Approved || 0,
           statuses.Rejected || 0,
         ],
-        backgroundColor: ['#3b82f6', '#8b5cf6', '#f97316', '#10b981', '#f43f5e'],
+        backgroundColor: ['#29B6F6', '#8b5cf6', '#0277BD', '#10b981', '#f43f5e'],
         borderWidth: 0,
       }],
     },

@@ -7,25 +7,31 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Carboot@CMart brand palette
+        // CMart Brand Blue palette
         brand: {
-          50:  '#fff7ed',
-          100: '#ffedd5',
-          200: '#fed7aa',
-          300: '#fdba74',
-          400: '#fb923c',
-          500: '#f97316', // primary orange (market warmth)
-          600: '#ea580c',
-          700: '#c2410c',
-          800: '#9a3412',
-          900: '#7c2d12',
+          50:  '#e1f5fe',
+          100: '#b3e5fc',
+          200: '#81d4fa',
+          300: '#4fc3f7',
+          400: '#29B6F6',
+          500: '#29B6F6', // Primary — buttons, highlights, main brand
+          600: '#0277BD', // Secondary — hover, active, accents
+          700: '#0269a8',
+          800: '#015a91',
+          900: '#014a7a',
+        },
+        cmart: {
+          primary:   '#29B6F6',
+          secondary: '#0277BD',
+          accent:    '#000000',
+          muted:     '#757575',
         },
         ink: {
           50:  '#f8fafc',
           100: '#f1f5f9',
           200: '#e2e8f0',
           300: '#cbd5e1',
-          500: '#64748b',
+          500: '#757575', // aligned with CMart muted text
           700: '#334155',
           900: '#0f172a',
         },

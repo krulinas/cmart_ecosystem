@@ -4,6 +4,13 @@
 
 /* Carboot@CMart global base */
 @layer base {
+  :root {
+    --cmart-primary: #29B6F6;
+    --cmart-secondary: #0277BD;
+    --cmart-accent: #000000;
+    --cmart-muted: #757575;
+  }
+
   html {
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -23,7 +30,7 @@
            transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .ml-btn-primary {
-    @apply ml-btn bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500;
+    @apply ml-btn bg-brand-500 text-white hover:bg-brand-600 focus:ring-brand-500;
   }
   .ml-btn-success {
     @apply ml-btn bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500;

@@ -7,7 +7,7 @@
     >
       <div class="px-6 py-5 border-b border-ink-200">
         <router-link to="/" class="flex items-center gap-2 group">
-          <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white font-extrabold">C</span>
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 text-white font-extrabold">C</span>
           <div class="leading-tight">
             <div class="text-base font-extrabold text-ink-900 tracking-tight">Carboot@CMart</div>
             <div class="text-[11px] uppercase tracking-wider text-ink-500">Management Portal</div>

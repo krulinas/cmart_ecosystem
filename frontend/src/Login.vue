@@ -7,7 +7,7 @@
 
       <div class="ml-card">
         <div class="text-center mb-6">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-white font-extrabold text-xl">C</span>
+          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 text-white font-extrabold text-xl">C</span>
           <h1 class="mt-4 text-2xl font-extrabold text-ink-900">Welcome back</h1>
           <p class="mt-1 text-sm text-ink-500">Log in to your Carboot@CMart workspace.</p>
         </div>

@@ -120,10 +120,10 @@
 
             <div
               v-if="booking.approval_status === 'Needs_Revision'"
-              class="mt-6 rounded-xl border border-orange-200 bg-orange-50 p-4"
+              class="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-4"
             >
-              <h4 class="font-bold text-orange-900">Revision Required</h4>
-              <p class="mt-1 text-sm text-orange-800">
+              <h4 class="font-bold text-brand-900">Revision Required</h4>
+              <p class="mt-1 text-sm text-brand-800">
                 {{ booking.revision_comment || '422 Unprocessable Entity: A revision comment was not provided by the reviewer.' }}
               </p>
               <div class="mt-4 flex flex-col sm:flex-row gap-3">
@@ -137,7 +137,7 @@
                   Resubmit Booking
                 </button>
               </div>
-              <p class="mt-2 text-xs text-orange-700">
+              <p class="mt-2 text-xs text-brand-700">
                 Leave the date field blank to retain the existing booking date.
               </p>
             </div>
@@ -267,9 +267,9 @@ const statusLabel = (status) => ({
 }[status] || status);
 
 const statusBadgeClass = (status) => ({
-  Pending_Staff: 'ml-badge bg-blue-100 text-blue-800',
+  Pending_Staff: 'ml-badge bg-brand-100 text-brand-800',
   Pending_Boss: 'ml-badge bg-purple-100 text-purple-800',
-  Needs_Revision: 'ml-badge bg-orange-100 text-orange-800',
+  Needs_Revision: 'ml-badge bg-brand-100 text-brand-800',
   Approved: 'ml-badge bg-emerald-100 text-emerald-800',
   Rejected: 'ml-badge bg-rose-100 text-rose-800',
 }[status] || 'ml-badge bg-ink-100 text-ink-700');
@@ -289,9 +289,9 @@ const progressWidth = (status) => {
 };
 
 const progressBarClass = (status) => ({
-  Pending_Staff: 'bg-blue-500',
+  Pending_Staff: 'bg-brand-500',
   Pending_Boss: 'bg-purple-500',
-  Needs_Revision: 'bg-orange-500',
+  Needs_Revision: 'bg-brand-600',
   Approved: 'bg-emerald-500',
   Rejected: 'bg-rose-500',
 }[status] || 'bg-ink-400');
@@ -300,9 +300,9 @@ const stepClass = (currentStatus, stepStatus) => {
   const active = progressIndex(currentStatus) >= progressIndex(stepStatus);
   if (!active) return 'border-ink-200 text-ink-400';
   return {
-    Pending_Staff: 'border-blue-500 text-blue-700',
+    Pending_Staff: 'border-brand-500 text-brand-700',
     Pending_Boss: 'border-purple-500 text-purple-700',
-    Needs_Revision: 'border-orange-500 text-orange-700',
+    Needs_Revision: 'border-brand-600 text-brand-700',
     Approved: 'border-emerald-500 text-emerald-700',
     Rejected: 'border-rose-500 text-rose-700',
   }[currentStatus] || 'border-ink-400 text-ink-700';
