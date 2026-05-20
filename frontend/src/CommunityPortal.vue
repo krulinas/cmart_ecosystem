@@ -107,46 +107,7 @@
         </div>
         
         <div class="p-8 border-b border-gray-100">
-          <form @submit.prevent="submitFeedback" class="space-y-6">
-            <div class="text-center">
-              <label class="block text-gray-700 font-bold mb-4 text-xl">How many stars would you rate your experience?</label>
-              <div class="flex justify-center space-x-2">
-                <button
-                  v-for="star in 5"
-                  :key="star"
-                  type="button"
-                  @click="feedbackForm.rating = star"
-                  @mouseenter="hoverRating = star"
-                  @mouseleave="hoverRating = 0"
-                  :class="[
-                    'text-5xl focus:outline-none transition-transform transform hover:scale-110', 
-                    (hoverRating || feedbackForm.rating) >= star ? 'text-yellow-400' : 'text-gray-300'
-                  ]"
-                >
-                  ★
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-gray-700 font-bold mb-2">Your Suggestions / Comments</label>
-              <textarea
-                v-model="feedbackForm.comments"
-                rows="4"
-                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-4 focus:ring-brand-100 focus:border-brand-600 outline-none transition resize-none"
-                placeholder="e.g., Want more food booths... / Need a bigger parking lot..."
-                required
-              ></textarea>
-            </div>
-
-            <button
-              type="submit"
-              :disabled="isSubmitting"
-              class="w-full bg-brand-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:bg-brand-600 transition transform hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0"
-            >
-              {{ isSubmitting ? 'Submitting...' : 'Submit Feedback' }}
-            </button>
-          </form>
+          <CommunityFeedback @submitted="onFeedbackSubmitted" />
         </div>
 
         <div class="p-8 bg-gray-50">
@@ -173,13 +134,18 @@
                   </div>
                   <span>{{ review.user?.name || 'Anonymous' }}</span>
                 </div>
-                <div class="flex text-yellow-400 text-sm">
-                   <span v-for="star in 5" :key="star">
-                     {{ star <= review.rating ? '★' : '☆' }}
-                   </span>
+                <div class="text-right text-xs text-ink-500 space-y-0.5">
+                  <div class="text-brand-500">
+                    Service:
+                    <span v-for="star in 5" :key="'s-' + star">{{ star <= (review.service_rating || 0) ? '★' : '☆' }}</span>
+                  </div>
+                  <div class="text-brand-600">
+                    Value:
+                    <span v-for="star in 5" :key="'v-' + star">{{ star <= (review.value_rating || 0) ? '★' : '☆' }}</span>
+                  </div>
                 </div>
               </div>
-              <p class="text-gray-600 text-sm italic">"{{ review.comments }}"</p>
+              <p v-if="review.comments" class="text-gray-600 text-sm italic mt-2">"{{ review.comments }}"</p>
             </div>
           </div>
         </div>
@@ -244,7 +210,8 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from './stores/auth';
-import axios from 'axios';
+import CommunityFeedback from './CommunityFeedback.vue';
+import api from './services/api';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -279,50 +246,24 @@ const latestNews = ref([
 ]);
 
 // --- FEEDBACK & COMMUNITY REVIEW LOGIC ---
-const feedbackForm = ref({
-  rating: 5,
-  comments: ''
-});
-const hoverRating = ref(0);
-const isSubmitting = ref(false);
-
 const communityReviews = ref([]);
 const loadingReviews = ref(true);
 
-// 1. Fetch existing reviews from database
 const fetchReviews = async () => {
   loadingReviews.value = true;
   try {
-    const response = await axios.get('http://localhost:8000/api/feedbacks');
-    communityReviews.value = response.data.data || response.data; 
+    const response = await api.get('/feedbacks');
+    communityReviews.value = response.data.data || response.data;
   } catch (error) {
-    console.error("Failed to fetch reviews:", error);
+    console.error('Failed to fetch reviews:', error);
   } finally {
     loadingReviews.value = false;
   }
 };
 
-// 2. Submit new feedback
-const submitFeedback = async () => {
-  isSubmitting.value = true;
-  try {
-    await axios.post('http://localhost:8000/api/feedbacks', feedbackForm.value);
-    
-    toast.success('Feedback submitted successfully! Thank you for your support.');
-    
-    // Reset form
-    feedbackForm.value.comments = '';
-    feedbackForm.value.rating = 5;
-
-    // Refresh the reviews list instantly!
-    await fetchReviews();
-
-  } catch (error) {
-    console.error(error);
-    toast.error('Failed to submit feedback. Please try again later.');
-  } finally {
-    isSubmitting.value = false;
-  }
+const onFeedbackSubmitted = async () => {
+  toast.success('Feedback submitted successfully! Thank you for your support.');
+  await fetchReviews();
 };
 
 // Fetch reviews automatically when the portal loads

@@ -1,20 +1,19 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
-class FeedbackController extends Controller
+class CommunityFeedbackController extends Controller
 {
     /**
-     * Store a newly created resource in storage.
+     * Handle the incoming feedback submission.
      */
     public function store(Request $request)
     {
-        // 1. Strict Validation matching our Vue frontend
+        // 1. Strict Validation to protect your server
         $validated = $request->validate([
             'service_rating' => 'required|integer|min:1|max:5',
             'value_rating' => 'required|integer|min:1|max:5',
@@ -26,15 +25,15 @@ class FeedbackController extends Controller
         // 2. Handle the optional media upload safely
         $mediaPath = null;
         if ($request->hasFile('media')) {
+            // Stores in storage/app/public/feedback_media
             $mediaPath = $request->file('media')->store('feedback_media', 'public');
         }
 
         // 3. Determine the User ID (Null if anonymous)
-        $userId = ($request->is_anonymous || !Auth::guard('sanctum')->check()) 
-                    ? null 
-                    : Auth::guard('sanctum')->id();
+        // Assuming you are using Laravel's default auth for logged-in users
+        $userId = ($request->is_anonymous || !auth()->check()) ? null : auth()->id();
 
-        // 4. Save to your database using the Query Builder (No Model required!)
+        // 4. Save to your database (Replace 'feedback' with your actual table name!)
         DB::table('feedbacks')->insert([
             'user_id' => $userId,
             'rating' => (int) round(($validated['service_rating'] + $validated['value_rating']) / 2),
@@ -48,7 +47,7 @@ class FeedbackController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Maklum balas berjaya dihantar. Terima kasih!',
+            'message' => 'Feedback submitted successfully!',
             'success' => true
         ], 201);
     }
@@ -58,6 +57,7 @@ class FeedbackController extends Controller
      */
     public function markHelpful($id)
     {
+        // Replace 'feedback' with your actual table name
         DB::table('feedbacks')->where('id', $id)->increment('helpful_count');
 
         return response()->json([

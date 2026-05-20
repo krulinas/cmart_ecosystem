@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\CommunityFeedbackController;
 
 /*
 |--------------------------------------------------------------------------
@@ -55,4 +56,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/spaces/{space}', [SpaceController::class, 'update']);
         Route::delete('/spaces/{space}', [SpaceController::class, 'destroy']);
     });
+});
+
+Route::middleware(['throttle:10,1'])->group(function () {
+    Route::post('/feedback/submit', [App\Http\Controllers\CommunityFeedbackController::class, 'store']);
+    Route::patch('/feedback/{id}/helpful', [App\Http\Controllers\CommunityFeedbackController::class, 'markHelpful']);
 });
