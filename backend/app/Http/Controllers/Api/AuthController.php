@@ -7,8 +7,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use Laravel\Socialite\Facades\Socialite; // Kena tambah ni untuk Socialite
-use Illuminate\Support\Str; // Kena tambah ni untuk generate password rawak
+use Laravel\Socialite\Facades\Socialite;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -27,8 +27,7 @@ class AuthController extends Controller
             'phone_number' => $validated['phone_number'] ?? null,
             'password' => Hash::make($validated['password']),
             'role' => 'community',
-            // UBAH BARIS DI BAWAH INI
-            'vendor_status' => 'approved', // Asalnya 'none'
+            'vendor_status' => 'approved', // Default was 'none'; set to 'approved' for demo/testing
         ]);
 
         return $this->respondWithToken($user, '201 Created: Account registered successfully.', 201);
@@ -81,12 +80,12 @@ class AuthController extends Controller
     }
 
     // ==========================================
-    // --- FUNGSI BARU: SIGN IN WITH GOOGLE ---
+    // --- SIGN IN WITH GOOGLE ---
     // ==========================================
 
     public function redirectToGoogle()
     {
-        // Guna stateless() sebab kita bina API / SPA
+        // Use stateless() because this API serves a SPA frontend
         return Socialite::driver('google')->stateless()->redirect();
     }
 
@@ -95,18 +94,18 @@ class AuthController extends Controller
         try {
             $googleUser = Socialite::driver('google')->stateless()->user();
 
-            // Check kalau user dah wujud berdasarkan email, kalau tak kita create baru
+            // Find user by email, or create a new account if none exists
             $user = User::updateOrCreate(
                 ['email' => $googleUser->email],
                 [
                     'name' => $googleUser->name,
-                    'vendor_status' => 'approved', // Terus set approved supaya boleh booking
+                    'vendor_status' => 'approved', // Auto-approve so Google users can book immediately
                     'role' => 'community', 
-                    'password' => Hash::make(Str::random(16)) // Password rawak sebab dorang login guna Google
+                    'password' => Hash::make(Str::random(16)) // Random password; users sign in via Google OAuth
                 ]
             );
 
-            // Guna helper function respondWithToken yang sedia ada supaya format respons seragam
+            // Reuse respondWithToken() for a consistent JSON response shape
             return $this->respondWithToken($user, '200 OK: Google authentication successful.');
 
         } catch (\Exception $e) {

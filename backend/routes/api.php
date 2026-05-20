@@ -18,16 +18,18 @@ use App\Http\Controllers\Api\AuthController;
 
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
-Route::post('/feedbacks', [FeedbackController::class, 'store']);
 
 // ==========================================
-// --- LALUAN BARU: GOOGLE SIGN-IN ---
+// --- NEW ROUTE: GOOGLE SIGN-IN ---
 // ==========================================
 Route::get('/auth/google', [AuthController::class, 'redirectToGoogle']);
 Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback']);
 
 Route::get('/spaces', [SpaceController::class, 'index']);
 Route::get('/spaces/{space}', [SpaceController::class, 'show']);
+
+Route::get('/feedbacks', [FeedbackController::class, 'index']);
+Route::post('/feedback/{id}/helpful', [FeedbackController::class, 'markHelpful']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -46,7 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('bookings', BookingController::class)->except(['store']);
         Route::post('/profitability', [BookingController::class, 'checkProfitability']);
         Route::apiResource('invoices', InvoiceController::class);
-        Route::apiResource('feedbacks', FeedbackController::class)->except(['store']);
+        Route::apiResource('feedbacks', FeedbackController::class)->except(['store', 'index']);
     });
 
     Route::middleware('role:cmart_admin')->group(function () {
@@ -55,13 +57,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/spaces/{space}', [SpaceController::class, 'update']);
         Route::delete('/spaces/{space}', [SpaceController::class, 'destroy']);
     });
+
+    Route::post('/feedback/submit', [FeedbackController::class, 'store'])->middleware('throttle:10,1');
 });
 
-// Fetch all reviews for the community feed
-Route::get('/feedbacks', [App\Http\Controllers\Api\FeedbackController::class, 'index']);
-
-// Our existing submission routes
-Route::middleware(['throttle:10,1'])->group(function () {
-    Route::post('/feedback/submit', [App\Http\Controllers\Api\FeedbackController::class, 'store']);
-    Route::patch('/feedback/{id}/helpful', [App\Http\Controllers\Api\FeedbackController::class, 'markHelpful']);
-});

@@ -127,12 +127,21 @@
               :key="review.id" 
               class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition"
             >
-              <div class="flex items-center justify-between mb-3">
-                <div class="font-bold text-gray-800 flex items-center space-x-2">
-                  <div class="bg-brand-100 text-brand-600 rounded-full h-8 w-8 flex items-center justify-center text-sm">
-                    {{ review.user?.name ? review.user.name.charAt(0).toUpperCase() : 'A' }}
+              <div class="flex items-center justify-between mb-3 gap-3">
+                <div class="font-bold text-gray-800 flex items-center flex-wrap gap-2 min-w-0">
+                  <div class="flex items-center space-x-2 min-w-0">
+                    <div class="bg-brand-100 text-brand-600 rounded-full h-8 w-8 shrink-0 flex items-center justify-center text-sm">
+                      {{ displayReviewerName(review).charAt(0).toUpperCase() }}
+                    </div>
+                    <span class="truncate">{{ displayReviewerName(review) }}</span>
                   </div>
-                  <span>{{ review.user?.name || 'Anonymous' }}</span>
+                  <span
+                    v-if="review.reviewer_role"
+                    class="text-xs font-semibold px-2.5 py-0.5 rounded-full border shrink-0"
+                    :class="roleBadgeClass(review.reviewer_role)"
+                  >
+                    {{ review.reviewer_role }}
+                  </span>
                 </div>
                 <div class="text-right text-xs text-ink-500 space-y-0.5">
                   <div class="text-brand-500">
@@ -241,13 +250,25 @@ const upcomingEvents = ref([
 // Latest News (Dummy Data)
 const latestNews = ref([
   { id: 1, category: 'Announcement', date: 'May 12, 2026', title: 'Digital System Introduced with OIB Developers', excerpt: 'CMart proudly launches a new booking portal to simplify invoice management...', image: 'https://images.unsplash.com/photo-1556761175-5973dc0f32b7?q=80&w=800&auto=format&fit=crop' },
-  { id: 2, category: 'Community', date: 'May 10, 2026', title: 'Pasar Karat Vendors Transition to CMart', excerpt: 'Over 20 vendors from outside sites have joined our ecosystem...', image: 'https://images.unsplash.com/photo-1472851294608-062f18ce0411?q=80&w=800&auto=format&fit=crop' },
+  { id: 2, category: 'Community', date: 'May 10, 2026', title: 'Flea Market Vendors Transition to CMart', excerpt: 'Over 20 vendors from outside sites have joined our ecosystem...', image: 'https://images.unsplash.com/photo-1472851294608-062f18ce0411?q=80&w=800&auto=format&fit=crop' },
   { id: 3, category: 'Vendor Tips', date: 'May 05, 2026', title: 'How to Choose the Right Space Size?', excerpt: 'Do you need an M or L sized space? Learn the exact dimensions and pricing...', image: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=800&auto=format&fit=crop' }
 ]);
 
 // --- FEEDBACK & COMMUNITY REVIEW LOGIC ---
 const communityReviews = ref([]);
 const loadingReviews = ref(true);
+
+const displayReviewerName = (review) => review.user?.name || 'Community Member';
+
+const roleBadgeClass = (role) => {
+  const styles = {
+    Shopper: 'bg-sky-100 text-sky-800 border-sky-200',
+    Vendor: 'bg-amber-100 text-amber-800 border-amber-200',
+    'UUM Student': 'bg-violet-100 text-violet-800 border-violet-200',
+    'Local Resident': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  };
+  return styles[role] || 'bg-gray-100 text-gray-700 border-gray-200';
+};
 
 const fetchReviews = async () => {
   loadingReviews.value = true;

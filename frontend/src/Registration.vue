@@ -23,8 +23,18 @@
           </div>
 
           <div>
+            <label class="ml-label">Product category</label>
+            <select v-model="bookingForm.product_category" required class="ml-input">
+              <option disabled value="">Select a category</option>
+              <option v-for="category in PRODUCT_CATEGORIES" :key="category" :value="category">
+                {{ category }}
+              </option>
+            </select>
+          </div>
+
+          <div>
             <label class="ml-label">Select space size</label>
-            <select v-model="selectedSpace" @change="updatePrice" required class="ml-input">
+            <select v-model="bookingForm.space_id" @change="updatePrice" required class="ml-input">
               <option disabled value="">Please select one</option>
               <option v-for="space in availableSpaces" :key="space.id" :value="space.id">
                 {{ space.space_size }} — RM {{ space.price.toFixed(2) }}
@@ -39,7 +49,7 @@
 
           <div>
             <label class="ml-label">Booking date</label>
-            <input v-model="bookingDate" type="date" required class="ml-input" />
+            <input v-model="bookingForm.booking_date" type="date" required class="ml-input" />
           </div>
 
           <button type="submit" class="ml-btn-primary w-full" :disabled="submitting">
@@ -82,7 +92,9 @@
                   </span>
                 </div>
                 <p class="mt-1 text-sm text-ink-500">
-                  {{ booking.space?.space_size || `Space ${booking.space_id}` }} · {{ booking.booking_date }}
+                  {{ booking.space?.space_size || `Space ${booking.space_id}` }}
+                  · {{ booking.product_category || 'Others' }}
+                  · {{ booking.booking_date }}
                 </p>
               </div>
 
@@ -156,10 +168,23 @@ import { useAuthStore } from './stores/auth';
 
 const toast = useToast();
 const auth = useAuthStore();
+const PRODUCT_CATEGORIES = [
+  'Pre-loved / Thrift',
+  'Food & Beverages',
+  'Clothing & Apparel',
+  'Handicrafts & Art',
+  'Electronics & Gadgets',
+  'Others',
+];
+
+const bookingForm = reactive({
+  space_id: '',
+  booking_date: '',
+  product_category: '',
+});
+
 const userName = ref('');
-const selectedSpace = ref('');
 const currentPrice = ref(0);
-const bookingDate = ref('');
 const availableSpaces = ref([]);
 const submitting = ref(false);
 const myBookings = ref([]);
@@ -191,22 +216,28 @@ onMounted(async () => {
 });
 
 const updatePrice = () => {
-  const space = availableSpaces.value.find(s => s.id === selectedSpace.value);
+  const space = availableSpaces.value.find(s => s.id === bookingForm.space_id);
   currentPrice.value = space ? space.price : 0;
+};
+
+const resetBookingForm = () => {
+  bookingForm.space_id = '';
+  bookingForm.booking_date = '';
+  bookingForm.product_category = '';
+  currentPrice.value = 0;
 };
 
 const submitBooking = async () => {
   submitting.value = true;
   try {
     const { data } = await api.post('/bookings', {
-      space_id: selectedSpace.value,
-      booking_date: bookingDate.value,
+      space_id: bookingForm.space_id,
+      booking_date: bookingForm.booking_date,
+      product_category: bookingForm.product_category,
     });
     toast.success(data.message || '201 Created: Booking submitted successfully.');
     userName.value = '';
-    selectedSpace.value = '';
-    currentPrice.value = 0;
-    bookingDate.value = '';
+    resetBookingForm();
     await fetchMyBookings();
   } catch (e) {
     console.error('500 Internal Server Error: Unable to communicate with the API.', e);

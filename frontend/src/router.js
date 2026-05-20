@@ -7,9 +7,9 @@ import Register from './Register.vue';
 import UumDashboard from './UumDashboard.vue';
 
 // ==========================================
-// 1. IMPORT KOMPONEN KALENDAR BARU AWAK
+// 1. Import the Event Calendar component
 // ==========================================
-import EventCalendar from './EventCalendar.vue'; // Pastikan awak dah buat fail EventCalendar.vue ni ya!
+import EventCalendar from './EventCalendar.vue';
 
 import { useAuthStore } from './stores/auth';
 
@@ -20,7 +20,7 @@ const routes = [
   { path: '/register', component: Register },
   
   // ==========================================
-  // 2. LALUAN BARU UNTUK KALENDAR
+  // 2. New route for the event calendar
   // ==========================================
   { path: '/calendar', component: EventCalendar },
   

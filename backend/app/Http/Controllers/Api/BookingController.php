@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\Space;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class BookingController extends Controller
 {
@@ -34,6 +35,18 @@ class BookingController extends Controller
         $validated = $request->validate([
             'space_id' => 'required|exists:spaces,id',
             'booking_date' => 'required|date',
+            'product_category' => [
+                'required',
+                'string',
+                Rule::in([
+                    'Pre-loved / Thrift',
+                    'Food & Beverages',
+                    'Clothing & Apparel',
+                    'Handicrafts & Art',
+                    'Electronics & Gadgets',
+                    'Others',
+                ]),
+            ],
         ]);
 
         $space = Space::findOrFail($validated['space_id']);
@@ -42,6 +55,7 @@ class BookingController extends Controller
             'user_id' => $request->user()->id,
             'space_id' => $space->id,
             'booking_date' => $validated['booking_date'],
+            'product_category' => $validated['product_category'],
             'approval_status' => 'Pending_Staff',
             'revision_comment' => null,
             'whatsapp_link' => 'https://chat.whatsapp.com/CMART_OFFICIAL_GROUP_INVITE',

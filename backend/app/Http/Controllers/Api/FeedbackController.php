@@ -5,23 +5,33 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class FeedbackController extends Controller
 {
     /**
      * Store a newly created feedback submission.
-     * Handles both authenticated users and anonymous submissions.
+     * Strict Sanctum auth required. No anonymous submissions.
      */
     public function store(Request $request)
     {
-        // 1. Strict Validation matching our Vue frontend
+        // 1. Strict Validation matching our members-only policy
         $validated = $request->validate([
             'service_rating' => 'required|integer|min:1|max:5',
             'value_rating' => 'required|integer|min:1|max:5',
-            'comments' => 'nullable|string|max:1000',
+            'reviewer_role' => ['required', Rule::in(['Shopper', 'Vendor', 'UUM Student', 'Local Resident'])],
+            'comments' => [
+            'required',
+            'string',
+            'max:2000',
+            function ($attribute, $value, $fail) {
+                // PHP word count logic (must NOT exceed 50 words)
+                if (str_word_count(trim($value)) > 50) {
+                    $fail('Please limit your feedback to a maximum of 50 words.'); 
+                }
+            },
+        ],
             'media' => 'nullable|file|mimes:jpeg,png,jpg,mp4|max:5120', // Max 5MB
-            'is_anonymous' => 'boolean',
         ]);
 
         // 2. Handle the optional media upload safely
@@ -30,16 +40,12 @@ class FeedbackController extends Controller
             $mediaPath = $request->file('media')->store('feedback_media', 'public');
         }
 
-        // 3. Determine the User ID via Sanctum (Null if anonymous or not logged in)
-        $userId = ($request->is_anonymous || !Auth::guard('sanctum')->check()) 
-                    ? null 
-                    : Auth::guard('sanctum')->id();
-
-        // 4. Save to your database using the Query Builder
+        // 3. Save to database using the secure authenticated User ID
         DB::table('feedbacks')->insert([
-            'user_id' => $userId,
+            'user_id' => $request->user()->id, 
+            'reviewer_role' => $validated['reviewer_role'],
             'rating' => (int) round(($validated['service_rating'] + $validated['value_rating']) / 2),
-            'comments' => $validated['comments'] ?? null,
+            'comments' => $validated['comments'],
             'service_rating' => $validated['service_rating'],
             'value_rating' => $validated['value_rating'],
             'media_path' => $mediaPath,
@@ -49,7 +55,7 @@ class FeedbackController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Maklum balas berjaya dihantar. Terima kasih!',
+            'message' => 'Feedback submitted successfully. Thank you!',
             'success' => true
         ], 201);
     }
@@ -69,6 +75,7 @@ class FeedbackController extends Controller
 
     /**
      * Display a listing of the community feedback for the Vue frontend.
+     * (Publicly accessible so anyone can READ reviews)
      */
     public function index()
     {
@@ -78,11 +85,11 @@ class FeedbackController extends Controller
             ->orderBy('feedbacks.created_at', 'desc')
             ->get()
             ->map(function ($review) {
-                // Format the user relationship so the Vue frontend doesn't break
+                // Format the user relationship
                 if ($review->user_name) {
                     $review->user = ['name' => $review->user_name];
                 } else {
-                    $review->user = null; // Anonymous
+                    $review->user = ['name' => 'Community Member']; // Fallback for legacy rows without a linked user
                 }
                 return $review;
             });

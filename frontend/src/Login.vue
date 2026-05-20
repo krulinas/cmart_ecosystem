@@ -108,7 +108,7 @@ const submit = async () => {
 };
 
 const loginWithGoogle = () => {
-  // Pastikan port 8000 ni sama dengan port backend Laravel awak
+  // Ensure port 8000 matches your Laravel backend port
   window.location.href = 'http://localhost:8000/api/auth/google';
 };
 </script>
