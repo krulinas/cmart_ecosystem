@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Auth;
 class FeedbackController extends Controller
 {
     /**
-     * Store a newly created resource in storage.
+     * Store a newly created feedback submission.
+     * Handles both authenticated users and anonymous submissions.
      */
     public function store(Request $request)
     {
@@ -29,12 +30,12 @@ class FeedbackController extends Controller
             $mediaPath = $request->file('media')->store('feedback_media', 'public');
         }
 
-        // 3. Determine the User ID (Null if anonymous)
+        // 3. Determine the User ID via Sanctum (Null if anonymous or not logged in)
         $userId = ($request->is_anonymous || !Auth::guard('sanctum')->check()) 
                     ? null 
                     : Auth::guard('sanctum')->id();
 
-        // 4. Save to your database using the Query Builder (No Model required!)
+        // 4. Save to your database using the Query Builder
         DB::table('feedbacks')->insert([
             'user_id' => $userId,
             'rating' => (int) round(($validated['service_rating'] + $validated['value_rating']) / 2),
@@ -54,7 +55,7 @@ class FeedbackController extends Controller
     }
 
     /**
-     * Increment the helpful thumbs-up counter.
+     * Increment the helpful thumbs-up counter for a specific feedback.
      */
     public function markHelpful($id)
     {
@@ -67,7 +68,7 @@ class FeedbackController extends Controller
     }
 
     /**
-     * Display a listing of the community feedback.
+     * Display a listing of the community feedback for the Vue frontend.
      */
     public function index()
     {

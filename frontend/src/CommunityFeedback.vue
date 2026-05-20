@@ -88,6 +88,8 @@
 
 <script setup>
 import { ref } from 'vue';
+// 1. We import your Smart Courier (Axios) here
+import api from './services/api'; 
 
 const emit = defineEmits(['submitted']);
 
@@ -148,36 +150,29 @@ const submitFeedback = async () => {
     formData.append('media', mediaFile.value);
   }
 
-  const headers = { Accept: 'application/json' };
-  const token = localStorage.getItem('carboot_cmart_token');
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
   try {
-    const response = await fetch('/api/feedback/submit', {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
+    // 2. Look how clean this is! No manual headers, no local storage digging. 
+    // The courier just takes the formData and goes.
+    const response = await api.post('/feedback/submit', formData);
+    
+    isSuccess.value = true;
+    message.value = response.data.message || 'Feedback submitted successfully!';
+    resetForm();
+    emit('submitted');
 
-    const data = await response.json().catch(() => ({}));
-
-    if (response.ok) {
-      isSuccess.value = true;
-      message.value = data.message || 'Feedback submitted successfully!';
-      resetForm();
-      emit('submitted');
-    } else {
-      isSuccess.value = false;
-      const validationMsg = data.errors
-        ? Object.values(data.errors).flat().join(' ')
+  } catch (error) {
+    isSuccess.value = false;
+    
+    // 3. Axios automatically packages errors cleanly inside error.response
+    if (error.response && error.response.data) {
+      const data = error.response.data;
+      const validationMsg = data.errors 
+        ? Object.values(data.errors).flat().join(' ') 
         : null;
       message.value = validationMsg || data.message || 'Could not submit feedback. Please try again.';
+    } else {
+      message.value = 'Failed to connect to the server. Is the backend running?';
     }
-  } catch {
-    isSuccess.value = false;
-    message.value = 'Failed to connect to the server. Is the backend running?';
   } finally {
     isSubmitting.value = false;
   }
