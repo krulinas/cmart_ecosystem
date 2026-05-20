@@ -1,59 +1,52 @@
 <template>
   <div class="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-6xl mx-auto bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
-      
       <div class="flex flex-col sm:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-100">
         <h1 class="text-3xl font-extrabold text-black mb-4 sm:mb-0">CMart Carboot Schedule</h1>
         <router-link to="/" class="flex items-center text-[#757575] hover:text-[#0277BD] font-medium transition-colors duration-200">
-          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
           Go Back
         </router-link>
       </div>
-
+      <p v-if="auth.isCmartWorker" class="text-sm text-brand-700 mb-4 font-medium">
+        Staff mode: select a date range to create a new carboot event (saved to the server).
+      </p>
       <div class="event-calendar-root">
         <FullCalendar :options="calendarOptions" />
       </div>
     </div>
 
-    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-black bg-opacity-60 backdrop-blur-sm transition-opacity">
-      <div class="relative p-4 w-full max-w-md max-h-full">
+    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+      <div class="relative p-4 w-full max-w-md">
         <div class="relative bg-white rounded-2xl shadow-2xl overflow-hidden">
-          
           <div class="flex items-center justify-between p-5 bg-black">
-            <h3 class="text-xl font-bold text-white">
-              {{ modalData.title }}
-            </h3>
-            <button @click="closeModal" type="button" class="text-gray-400 bg-transparent hover:bg-gray-800 hover:text-white rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center transition">
-              <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
-              </svg>
-            </button>
+            <h3 class="text-xl font-bold text-white">{{ modalData.title }}</h3>
+            <button @click="closeModal" type="button" class="text-gray-400 hover:text-white rounded-lg text-sm w-8 h-8">×</button>
           </div>
-
           <div class="p-6">
-            <div class="mb-6 bg-sky-50 p-4 rounded-xl border border-sky-100">
-              <div class="flex items-center text-sm text-gray-700 mb-3">
-                <svg class="w-5 h-5 mr-3 text-[#29B6F6]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <span class="font-bold mr-2 text-black">Start:</span> {{ formatDateTime(modalData.start) }}
+            <div class="mb-4 bg-sky-50 p-4 rounded-xl border border-sky-100 text-sm">
+              <div><strong>Start:</strong> {{ formatDateTime(modalData.start) }}</div>
+              <div v-if="modalData.end"><strong>End:</strong> {{ formatDateTime(modalData.end) }}</div>
+              <div v-if="modalData.status"><strong>Status:</strong> {{ modalData.status }}</div>
+            </div>
+            <div v-if="modalData.isNew && auth.isCmartWorker" class="mt-4 space-y-3">
+              <div>
+                <label class="block text-sm font-semibold mb-1">Event title</label>
+                <input v-model="newEventTitle" class="w-full border rounded-lg p-3 border-gray-300" placeholder="CMart Weekly Carboot" />
               </div>
-              <div v-if="modalData.end" class="flex items-center text-sm text-gray-700">
-                <svg class="w-5 h-5 mr-3 text-[#0277BD]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                <span class="font-bold mr-2 text-black">End:</span> {{ formatDateTime(modalData.end) }}
+              <div>
+                <label class="block text-sm font-semibold mb-1">Status</label>
+                <select v-model="newEventStatus" class="w-full border rounded-lg p-3 border-gray-300">
+                  <option>Available</option>
+                  <option>Almost Full</option>
+                  <option>Closed</option>
+                </select>
               </div>
             </div>
-
-            <div v-if="modalData.isNew" class="mt-4">
-              <label class="block text-sm font-semibold text-black mb-2">Event Name / Booth Booking</label>
-              <input type="text" v-model="newEventTitle" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-[#29B6F6] focus:border-[#29B6F6] transition" placeholder="Example: Preloved Clothes Booth">
-            </div>
-
-            <div class="mt-8 flex justify-end space-x-3">
-              <button @click="closeModal" class="text-[#757575] bg-white hover:bg-gray-50 border border-gray-200 font-semibold rounded-lg text-sm px-6 py-2.5 transition">
-                Cancel
-              </button>
-              <button @click="handleAction" class="text-white bg-[#29B6F6] hover:bg-[#0277BD] shadow-lg shadow-blue-200 font-bold rounded-lg text-sm px-6 py-2.5 text-center transition-all duration-200">
-                {{ modalData.isNew ? 'Create Event' : 'Book Now' }}
-              </button>
+            <div class="mt-6 flex justify-end gap-3">
+              <button @click="closeModal" class="text-gray-600 border px-4 py-2 rounded-lg">Cancel</button>
+              <button v-if="modalData.isNew && auth.isCmartWorker" @click="createEvent" class="text-white bg-[#29B6F6] px-4 py-2 rounded-lg font-bold">Create Event</button>
+              <router-link v-else-if="!modalData.isNew" to="/vendor-booking" class="text-white bg-[#29B6F6] px-4 py-2 rounded-lg font-bold">Book a Space</router-link>
             </div>
           </div>
         </div>
@@ -63,167 +56,138 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import FullCalendar from '@fullcalendar/vue3'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
-import listPlugin from '@fullcalendar/list'
-import interactionPlugin from '@fullcalendar/interaction'
+import { ref, reactive, onMounted } from 'vue';
+import FullCalendar from '@fullcalendar/vue3';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import listPlugin from '@fullcalendar/list';
+import interactionPlugin from '@fullcalendar/interaction';
+import api from './services/api';
+import { useAuthStore } from './stores/auth';
 
-// --- MODAL STATE ---
-const showModal = ref(false)
-const newEventTitle = ref('')
+const auth = useAuthStore();
+const showModal = ref(false);
+const newEventTitle = ref('');
+const newEventStatus = ref('Available');
+const apiEvents = ref([]);
+
 const modalData = reactive({
   title: '',
   start: '',
   end: '',
+  status: '',
   isNew: false,
-  calendarApi: null,
-  selectInfo: null
-})
+  selectInfo: null,
+});
 
-// --- HELPER FUNCTION ---
 const formatDateTime = (dateStr) => {
   if (!dateStr) return '';
-  const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' };
-  return new Date(dateStr).toLocaleDateString('en-US', options);
-}
+  return new Date(dateStr).toLocaleString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+};
 
-// --- ACTIONS ---
+const eventColor = (status) => {
+  if (status === 'Almost Full') return '#0277BD';
+  if (status === 'Closed') return '#757575';
+  return '#29B6F6';
+};
+
+const mapToCalendarEvents = (list) =>
+  list.map((ev) => ({
+    id: String(ev.id),
+    title: ev.title,
+    start: ev.starts_at,
+    end: ev.ends_at,
+    color: eventColor(ev.status),
+    extendedProps: { status: ev.status },
+  }));
+
+const loadEvents = async () => {
+  try {
+    const { data } = await api.get('/events');
+    apiEvents.value = Array.isArray(data) ? data : [];
+    calendarOptions.events = mapToCalendarEvents(apiEvents.value);
+  } catch (e) {
+    console.error('Failed to load calendar events:', e);
+  }
+};
+
 const handleEventClick = (clickInfo) => {
-  modalData.title = clickInfo.event.title
-  modalData.start = clickInfo.event.startStr
-  modalData.end = clickInfo.event.endStr
-  modalData.isNew = false
-  showModal.value = true
-}
+  modalData.title = clickInfo.event.title;
+  modalData.start = clickInfo.event.startStr;
+  modalData.end = clickInfo.event.endStr;
+  modalData.status = clickInfo.event.extendedProps?.status || '';
+  modalData.isNew = false;
+  showModal.value = true;
+};
 
 const handleDateSelect = (selectInfo) => {
-  modalData.title = 'New Space Booking'
-  modalData.start = selectInfo.startStr
-  modalData.end = selectInfo.endStr
-  modalData.isNew = true
-  modalData.calendarApi = selectInfo.view.calendar
-  modalData.selectInfo = selectInfo
-  newEventTitle.value = ''
-  showModal.value = true
-}
+  if (!auth.isCmartWorker) {
+    selectInfo.view.calendar.unselect();
+    return;
+  }
+  modalData.title = 'New Carboot Event';
+  modalData.start = selectInfo.startStr;
+  modalData.end = selectInfo.endStr;
+  modalData.isNew = true;
+  modalData.selectInfo = selectInfo;
+  newEventTitle.value = '';
+  newEventStatus.value = 'Available';
+  showModal.value = true;
+};
 
 const closeModal = () => {
-  showModal.value = false
-}
+  showModal.value = false;
+};
 
-const handleAction = () => {
-  if (modalData.isNew && newEventTitle.value) {
-    modalData.calendarApi.addEvent({
-      title: newEventTitle.value,
-      start: modalData.selectInfo.startStr,
-      end: modalData.selectInfo.endStr,
-      allDay: modalData.selectInfo.allDay,
-      color: '#0277BD' // Brand secondary blue for new bookings
-    })
-  } else if (!modalData.isNew) {
-    alert('Redirecting vendor to Laravel Booking System page...')
+const createEvent = async () => {
+  if (!newEventTitle.value.trim() || !modalData.selectInfo) return;
+  try {
+    await api.post('/carboot-events', {
+      title: newEventTitle.value.trim(),
+      starts_at: modalData.selectInfo.startStr,
+      ends_at: modalData.selectInfo.endStr,
+      status: newEventStatus.value,
+    });
+    modalData.selectInfo.view.calendar.unselect();
+    closeModal();
+    await loadEvents();
+  } catch (e) {
+    console.error('Failed to create event:', e);
+    alert('Could not create event. Ensure you are logged in as CMart staff.');
   }
-  closeModal()
-}
+};
 
-// --- CALENDAR CONFIGURATION ---
 const calendarOptions = reactive({
   plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
   initialView: 'dayGridMonth',
-  initialDate: '2026-05-01', 
+  initialDate: '2026-05-01',
   headerToolbar: {
     left: 'prev,next today',
     center: 'title',
-    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
   },
-  editable: true,
-  selectable: true,
+  editable: false,
+  selectable: auth.isCmartWorker,
   selectMirror: true,
   dayMaxEvents: true,
   weekends: true,
   select: handleDateSelect,
   eventClick: handleEventClick,
-  events: [
-    { title: 'CMart Weekly Carboot', start: '2026-05-16T08:00:00', end: '2026-05-16T14:00:00', color: '#29B6F6' },
-    { title: 'CMart Weekly Carboot (Almost Full)', start: '2026-05-17T08:00:00', end: '2026-05-17T14:00:00', color: '#0277BD' },
-    { title: 'Changlun Mega Carboot', start: '2026-05-23T08:00:00', end: '2026-05-23T18:00:00', color: '#29B6F6' }
-  ]
-})
+  events: [],
+});
+
+onMounted(loadEvents);
 </script>
 
 <style scoped>
-.event-calendar-root :deep(.fc) {
-  font-family: inherit;
-}
-
-/* Base Buttons */
+.event-calendar-root :deep(.fc) { font-family: inherit; }
 .event-calendar-root :deep(.fc .fc-button-primary) {
-  background-color: #29B6F6;
-  border-color: #29B6F6;
-  color: #ffffff;
-  font-weight: 600;
-  text-transform: capitalize;
-  border-radius: 6px;
-  padding: 0.4rem 1rem;
-  transition: all 0.2s ease-in-out;
+  background-color: #29B6F6; border-color: #29B6F6; color: #fff; font-weight: 600;
+  border-radius: 6px; padding: 0.4rem 1rem;
 }
-
-/* Button Hover State */
-.event-calendar-root :deep(.fc .fc-button-primary:hover) {
-  background-color: #0277BD;
-  border-color: #0277BD;
-}
-
-/* Active Button State */
-.event-calendar-root :deep(.fc .fc-button-primary:not(:disabled).fc-button-active),
-.event-calendar-root :deep(.fc .fc-button-primary:not(:disabled):active) {
-  background-color: #000000 !important;
-  border-color: #000000 !important;
-  box-shadow: none !important;
-}
-
-/* Title */
-.event-calendar-root :deep(.fc-toolbar-title) {
-  font-size: 1.5rem !important;
-  font-weight: 800;
-  color: #000000;
-}
-
-/* Today's Highlight */
-.event-calendar-root :deep(.fc-day-today) {
-  background-color: rgba(41, 182, 246, 0.08) !important;
-}
-
-/* Event Pills Redesign */
-.event-calendar-root :deep(.fc-event) {
-  border: none;
-  border-radius: 6px;
-  padding: 3px 6px;
-  margin-bottom: 2px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-  transition: transform 0.1s ease;
-}
-
-.event-calendar-root :deep(.fc-event:hover) {
-  transform: scale(1.02);
-  cursor: pointer;
-}
-
-/* Event Text Wrapping */
-.event-calendar-root :deep(.fc-event-title) {
-  white-space: normal !important;
-  text-overflow: clip;
-  overflow: visible;
-  font-weight: 600;
-  font-size: 0.85em;
-  line-height: 1.2;
-}
-
-.event-calendar-root :deep(.fc-event-time) {
-  font-weight: 400;
-  font-size: 0.8em;
-  opacity: 0.9;
-}
+.event-calendar-root :deep(.fc .fc-button-primary:hover) { background-color: #0277BD; border-color: #0277BD; }
+.event-calendar-root :deep(.fc-toolbar-title) { font-size: 1.5rem !important; font-weight: 800; color: #000; }
+.event-calendar-root :deep(.fc-day-today) { background-color: rgba(41, 182, 246, 0.08) !important; }
 </style>

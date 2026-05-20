@@ -20,10 +20,10 @@ class BookingController extends Controller
      */
     private const STATE_TRANSITIONS = [
         'cmart_staff' => [
-            'Pending_Staff' => ['Pending_Boss', 'Needs_Revision'],
+            'Pending_Staff' => ['Pending_Boss', 'Needs_Revision', 'Rejected'],
         ],
         'cmart_admin' => [
-            'Pending_Boss' => ['Approved', 'Needs_Revision'],
+            'Pending_Boss' => ['Approved', 'Needs_Revision', 'Rejected'],
         ],
     ];
 
@@ -84,7 +84,7 @@ class BookingController extends Controller
     public function update(Request $request, Booking $booking)
     {
         $validated = $request->validate([
-            'approval_status' => 'required|in:Pending_Boss,Needs_Revision,Approved',
+            'approval_status' => 'required|in:Pending_Boss,Needs_Revision,Approved,Rejected',
             'revision_comment' => 'required_if:approval_status,Needs_Revision|nullable|string|max:2000',
         ]);
 

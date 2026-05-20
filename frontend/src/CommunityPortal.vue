@@ -240,19 +240,61 @@ const scrollToCalendar = () => {
   }
 };
 
-// Upcoming Events (Dummy Data)
-const upcomingEvents = ref([
-  { id: 1, day: '16', month: 'May', title: 'CMart Weekly Carboot', time: '8:00 AM - 2:00 PM', status: 'Available', statusClass: 'bg-green-100 text-green-700' },
-  { id: 2, day: '17', month: 'May', title: 'CMart Weekly Carboot', time: '8:00 AM - 2:00 PM', status: 'Almost Full', statusClass: 'bg-brand-100 text-brand-600' },
-  { id: 3, day: '23', month: 'May', title: 'Changlun Mega Carboot', time: '8:00 AM - 6:00 PM', status: 'Registration Open', statusClass: 'bg-brand-100 text-brand-600' }
-]);
+const upcomingEvents = ref([]);
+const latestNews = ref([]);
 
-// Latest News (Dummy Data)
-const latestNews = ref([
-  { id: 1, category: 'Announcement', date: 'May 12, 2026', title: 'Digital System Introduced with OIB Developers', excerpt: 'CMart proudly launches a new booking portal to simplify invoice management...', image: 'https://images.unsplash.com/photo-1556761175-5973dc0f32b7?q=80&w=800&auto=format&fit=crop' },
-  { id: 2, category: 'Community', date: 'May 10, 2026', title: 'Flea Market Vendors Transition to CMart', excerpt: 'Over 20 vendors from outside sites have joined our ecosystem...', image: 'https://images.unsplash.com/photo-1472851294608-062f18ce0411?q=80&w=800&auto=format&fit=crop' },
-  { id: 3, category: 'Vendor Tips', date: 'May 05, 2026', title: 'How to Choose the Right Space Size?', excerpt: 'Do you need an M or L sized space? Learn the exact dimensions and pricing...', image: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=800&auto=format&fit=crop' }
-]);
+const statusClassForEvent = (status) => {
+  if (status === 'Available') return 'bg-green-100 text-green-700';
+  if (status === 'Almost Full') return 'bg-brand-100 text-brand-600';
+  return 'bg-ink-100 text-ink-700';
+};
+
+const formatEventTime = (startsAt, endsAt) => {
+  const start = new Date(startsAt);
+  const end = new Date(endsAt);
+  const opts = { hour: 'numeric', minute: '2-digit' };
+  return `${start.toLocaleTimeString('en-GB', opts)} - ${end.toLocaleTimeString('en-GB', opts)}`;
+};
+
+const mapApiEventToCard = (ev) => {
+  const start = new Date(ev.starts_at);
+  return {
+    id: ev.id,
+    day: String(start.getDate()),
+    month: start.toLocaleString('en-GB', { month: 'short' }),
+    title: ev.title,
+    time: formatEventTime(ev.starts_at, ev.ends_at),
+    status: ev.status,
+    statusClass: statusClassForEvent(ev.status),
+  };
+};
+
+const formatNewsDate = (iso) => {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const fetchPortalContent = async () => {
+  try {
+    const [eventsRes, newsRes] = await Promise.all([
+      api.get('/events'),
+      api.get('/news'),
+    ]);
+    const events = Array.isArray(eventsRes.data) ? eventsRes.data : [];
+    const news = Array.isArray(newsRes.data) ? newsRes.data : [];
+    upcomingEvents.value = events.slice(0, 6).map(mapApiEventToCard);
+    latestNews.value = news.slice(0, 6).map((n) => ({
+      id: n.id,
+      category: n.category,
+      date: formatNewsDate(n.published_at || n.created_at),
+      title: n.title,
+      excerpt: n.excerpt,
+      image: n.image_url || 'https://images.unsplash.com/photo-1556761175-5973dc0f32b7?q=80&w=800&auto=format&fit=crop',
+    }));
+  } catch (error) {
+    console.error('Failed to load portal events/news:', error);
+  }
+};
 
 // --- FEEDBACK & COMMUNITY REVIEW LOGIC ---
 const communityReviews = ref([]);
@@ -287,9 +329,9 @@ const onFeedbackSubmitted = async () => {
   await fetchReviews();
 };
 
-// Fetch reviews automatically when the portal loads
 onMounted(() => {
   fetchReviews();
+  fetchPortalContent();
 });
 
 const isMobileMenuOpen = ref(false);

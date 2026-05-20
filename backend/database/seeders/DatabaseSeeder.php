@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Space;
+use App\Models\CarbootEvent;
+use App\Models\NewsPost;
 
 class DatabaseSeeder extends Seeder
 {
@@ -47,5 +49,79 @@ class DatabaseSeeder extends Seeder
             'price' => 50.00,
             'status' => 'Available'
         ]);
+
+        CarbootEvent::updateOrCreate(
+            ['title' => 'CMart Weekly Carboot'],
+            [
+                'starts_at' => '2026-05-16 08:00:00',
+                'ends_at' => '2026-05-16 14:00:00',
+                'status' => 'Available',
+                'description' => 'Standard weekend carboot at CMart Changlun.',
+                'max_slots' => 120,
+            ]
+        );
+
+        CarbootEvent::updateOrCreate(
+            ['title' => 'CMart Weekly Carboot (Almost Full)'],
+            [
+                'starts_at' => '2026-05-17 08:00:00',
+                'ends_at' => '2026-05-17 14:00:00',
+                'status' => 'Almost Full',
+                'description' => 'Limited slots remaining for Sunday carboot.',
+                'max_slots' => 120,
+            ]
+        );
+
+        CarbootEvent::updateOrCreate(
+            ['title' => 'Changlun Mega Carboot'],
+            [
+                'starts_at' => '2026-05-23 08:00:00',
+                'ends_at' => '2026-05-23 18:00:00',
+                'status' => 'Available',
+                'description' => 'Extended hours mega carboot event.',
+                'max_slots' => 200,
+            ]
+        );
+
+        $admin = User::where('email', 'admin@cmart.com')->first();
+
+        NewsPost::updateOrCreate(
+            ['title' => 'Digital System Introduced with OIB Developers'],
+            [
+                'excerpt' => 'CMart proudly launches a new booking portal to simplify invoice management...',
+                'body' => 'The new Carboot@CMart digital ecosystem is now live for vendors and community members.',
+                'category' => 'Announcement',
+                'image_url' => 'https://images.unsplash.com/photo-1556761175-5973dc0f32b7?q=80&w=800&auto=format&fit=crop',
+                'published_at' => '2026-05-12 09:00:00',
+                'is_published' => true,
+                'author_id' => $admin?->id,
+            ]
+        );
+
+        NewsPost::updateOrCreate(
+            ['title' => 'Flea Market Vendors Transition to CMart'],
+            [
+                'excerpt' => 'Over 20 vendors from outside sites have joined our ecosystem...',
+                'body' => 'CMart welcomes flea market vendors into the unified booking and approval pipeline.',
+                'category' => 'Community',
+                'image_url' => 'https://images.unsplash.com/photo-1472851294608-062f18ce0411?q=80&w=800&auto=format&fit=crop',
+                'published_at' => '2026-05-10 09:00:00',
+                'is_published' => true,
+                'author_id' => $admin?->id,
+            ]
+        );
+
+        NewsPost::updateOrCreate(
+            ['title' => 'How to Choose the Right Space Size?'],
+            [
+                'excerpt' => 'Do you need an M or L sized space? Learn the exact dimensions and pricing...',
+                'body' => 'Compare Standard and Large parking-lot spaces before you submit your vendor booking.',
+                'category' => 'Vendor Tips',
+                'image_url' => 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=800&auto=format&fit=crop',
+                'published_at' => '2026-05-05 09:00:00',
+                'is_published' => true,
+                'author_id' => $admin?->id,
+            ]
+        );
     }
 }

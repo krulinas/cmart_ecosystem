@@ -9,9 +9,30 @@ class Feedback extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'comments', 'rating'];
+    protected $table = 'feedbacks';
 
-    public function user() {
+    protected $fillable = [
+        'user_id',
+        'reviewer_role',
+        'comments',
+        'rating',
+        'service_rating',
+        'value_rating',
+        'media_path',
+        'helpful_count',
+        'is_hidden',
+    ];
+
+    protected $casts = [
+        'is_hidden' => 'boolean',
+        'helpful_count' => 'integer',
+        'service_rating' => 'integer',
+        'value_rating' => 'integer',
+        'rating' => 'integer',
+    ];
+
+    public function user()
+    {
         return $this->belongsTo(User::class);
     }
 }

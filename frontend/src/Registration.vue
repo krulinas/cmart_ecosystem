@@ -165,17 +165,10 @@ import { ref, reactive, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from './services/api';
 import { useAuthStore } from './stores/auth';
+import { PRODUCT_CATEGORIES } from './constants/productCategories';
 
 const toast = useToast();
 const auth = useAuthStore();
-const PRODUCT_CATEGORIES = [
-  'Pre-loved / Thrift',
-  'Food & Beverages',
-  'Clothing & Apparel',
-  'Handicrafts & Art',
-  'Electronics & Gadgets',
-  'Others',
-];
 
 const bookingForm = reactive({
   space_id: '',

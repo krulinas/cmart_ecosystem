@@ -3,46 +3,38 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Feedback;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class FeedbackController extends Controller
 {
-    /**
-     * Store a newly created feedback submission.
-     * Strict Sanctum auth required. No anonymous submissions.
-     */
     public function store(Request $request)
     {
-        // 1. Strict Validation matching our members-only policy
         $validated = $request->validate([
             'service_rating' => 'required|integer|min:1|max:5',
             'value_rating' => 'required|integer|min:1|max:5',
             'reviewer_role' => ['required', Rule::in(['Shopper', 'Vendor', 'UUM Student', 'Local Resident'])],
             'comments' => [
-            'required',
-            'string',
-            'max:2000',
-            function ($attribute, $value, $fail) {
-                // PHP word count logic (must NOT exceed 50 words)
-                if (str_word_count(trim($value)) > 50) {
-                    $fail('Please limit your feedback to a maximum of 50 words.'); 
-                }
-            },
-        ],
-            'media' => 'nullable|file|mimes:jpeg,png,jpg,mp4|max:5120', // Max 5MB
+                'required',
+                'string',
+                'max:2000',
+                function ($attribute, $value, $fail) {
+                    if (str_word_count(trim($value)) > 50) {
+                        $fail('Please limit your feedback to a maximum of 50 words.');
+                    }
+                },
+            ],
+            'media' => 'nullable|file|mimes:jpeg,png,jpg,mp4|max:5120',
         ]);
 
-        // 2. Handle the optional media upload safely
         $mediaPath = null;
         if ($request->hasFile('media')) {
             $mediaPath = $request->file('media')->store('feedback_media', 'public');
         }
 
-        // 3. Save to database using the secure authenticated User ID
-        DB::table('feedbacks')->insert([
-            'user_id' => $request->user()->id, 
+        $feedback = Feedback::create([
+            'user_id' => $request->user()->id,
             'reviewer_role' => $validated['reviewer_role'],
             'rating' => (int) round(($validated['service_rating'] + $validated['value_rating']) / 2),
             'comments' => $validated['comments'],
@@ -50,50 +42,85 @@ class FeedbackController extends Controller
             'value_rating' => $validated['value_rating'],
             'media_path' => $mediaPath,
             'helpful_count' => 0,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'is_hidden' => false,
         ]);
 
         return response()->json([
             'message' => 'Feedback submitted successfully. Thank you!',
-            'success' => true
+            'success' => true,
+            'feedback' => $this->formatFeedback($feedback->load('user')),
         ], 201);
     }
 
-    /**
-     * Increment the helpful thumbs-up counter for a specific feedback.
-     */
     public function markHelpful($id)
     {
-        DB::table('feedbacks')->where('id', $id)->increment('helpful_count');
+        $feedback = Feedback::findOrFail($id);
+        $feedback->increment('helpful_count');
 
         return response()->json([
             'message' => 'Feedback marked as helpful!',
-            'success' => true
+            'success' => true,
         ], 200);
     }
 
-    /**
-     * Display a listing of the community feedback for the Vue frontend.
-     * (Publicly accessible so anyone can READ reviews)
-     */
+    /** Public listing — visible reviews only. */
     public function index()
     {
-        $feedbacks = DB::table('feedbacks')
-            ->leftJoin('users', 'feedbacks.user_id', '=', 'users.id')
-            ->select('feedbacks.*', 'users.name as user_name')
-            ->orderBy('feedbacks.created_at', 'desc')
+        $feedbacks = Feedback::with('user')
+            ->where('is_hidden', false)
+            ->orderByDesc('created_at')
             ->get()
-            ->map(function ($review) {
-                // Format the user relationship
-                if ($review->user_name) {
-                    $review->user = ['name' => $review->user_name];
-                } else {
-                    $review->user = ['name' => 'Community Member']; // Fallback for legacy rows without a linked user
-                }
-                return $review;
-            });
+            ->map(fn ($review) => $this->formatFeedback($review));
 
         return response()->json($feedbacks, 200);
+    }
+
+    /** Staff listing — includes hidden reviews. */
+    public function staffIndex()
+    {
+        $feedbacks = Feedback::with('user')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($review) => $this->formatFeedback($review));
+
+        return response()->json($feedbacks, 200);
+    }
+
+    public function show(Feedback $feedback)
+    {
+        return response()->json($this->formatFeedback($feedback->load('user')), 200);
+    }
+
+    public function update(Request $request, Feedback $feedback)
+    {
+        $validated = $request->validate([
+            'is_hidden' => 'sometimes|boolean',
+        ]);
+
+        $feedback->update($validated);
+
+        return response()->json([
+            'message' => '200 OK: Feedback updated successfully.',
+            'feedback' => $this->formatFeedback($feedback->fresh('user')),
+        ], 200);
+    }
+
+    public function destroy(Feedback $feedback)
+    {
+        $feedback->delete();
+
+        return response()->json([
+            'message' => '200 OK: Feedback deleted successfully.',
+            'success' => true,
+        ], 200);
+    }
+
+    private function formatFeedback(Feedback $review): Feedback
+    {
+        $review->setAttribute('user', [
+            'name' => $review->user?->name ?? 'Community Member',
+        ]);
+
+        return $review;
     }
 }

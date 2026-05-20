@@ -106,6 +106,7 @@
                     <h3>Booking</h3>
                     <div class="field"><span class="label">Booking ID:</span> <span class="value">#{{ $booking->id }}</span></div>
                     <div class="field"><span class="label">Booking Date:</span> <span class="value">{{ \Carbon\Carbon::parse($booking->booking_date)->format('d M Y') }}</span></div>
+                    <div class="field"><span class="label">Product Category:</span> <span class="value">{{ $booking->product_category ?? 'Others' }}</span></div>
                     <div class="field"><span class="label">Submitted:</span> <span class="value">{{ optional($booking->created_at)->format('d M Y, H:i') ?? '—' }}</span></div>
                     <div class="field">
                         <span class="label">Status:</span>

@@ -141,7 +141,6 @@
 import { ref, computed } from 'vue';
 import { useAuthStore } from './stores/auth';
 import api from './services/api';
-
 const emit = defineEmits(['submitted']);
 
 const auth = useAuthStore();
