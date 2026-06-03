@@ -24,6 +24,7 @@
             <tr class="text-left text-xs uppercase tracking-wider text-ink-500 border-b border-ink-200">
               <th class="px-3 py-2">ID</th>
               <th class="px-3 py-2">Category</th>
+              <th class="px-3 py-2">Product Details</th>
               <th class="px-3 py-2">Space</th>
               <th class="px-3 py-2">Date</th>
               <th class="px-3 py-2">Status</th>
@@ -34,6 +35,7 @@
             <tr v-for="b in queueBookings" :key="'q-' + b.id">
               <td class="px-3 py-3 font-semibold">#{{ b.id }}</td>
               <td class="px-3 py-3 text-ink-700">{{ b.product_category || 'Others' }}</td>
+              <td class="px-3 py-3 text-ink-700">{{ b.product_details || '—' }}</td>
               <td class="px-3 py-3">{{ b.space?.space_size || b.space_id }}</td>
               <td class="px-3 py-3">{{ b.booking_date }}</td>
               <td class="px-3 py-3"><span :class="badgeClass(b.approval_status)">{{ b.approval_status }}</span></td>
@@ -50,7 +52,7 @@
               </td>
             </tr>
             <tr v-if="!queueBookings.length">
-              <td colspan="6" class="px-3 py-8 text-center text-ink-500">No bookings in this queue.</td>
+              <td colspan="7" class="px-3 py-8 text-center text-ink-500">No bookings in this queue.</td>
             </tr>
           </tbody>
         </table>
@@ -66,6 +68,7 @@
               <th class="px-3 py-2">ID</th>
               <th class="px-3 py-2">Vendor</th>
               <th class="px-3 py-2">Category</th>
+              <th class="px-3 py-2">Product Details</th>
               <th class="px-3 py-2">Space</th>
               <th class="px-3 py-2">Date</th>
               <th class="px-3 py-2">Status</th>
@@ -77,6 +80,7 @@
               <td class="px-3 py-3 font-semibold">#{{ b.id }}</td>
               <td class="px-3 py-3">{{ b.user?.name || '—' }}</td>
               <td class="px-3 py-3">{{ b.product_category || 'Others' }}</td>
+              <td class="px-3 py-3">{{ b.product_details || '—' }}</td>
               <td class="px-3 py-3">{{ b.space?.space_size || b.space_id }}</td>
               <td class="px-3 py-3">{{ b.booking_date }}</td>
               <td class="px-3 py-3"><span :class="badgeClass(b.approval_status)">{{ b.approval_status }}</span></td>

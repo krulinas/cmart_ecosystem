@@ -14,6 +14,7 @@ class Booking extends Model
         'space_id',
         'booking_date',
         'product_category',
+        'product_details',
         'approval_status',
         'revision_comment',
         'whatsapp_link',

@@ -84,7 +84,7 @@
 
     <header class="bg-gradient-to-br from-brand-600 to-brand-500 text-white text-center py-24 px-6 shadow-inner">
       <h1 class="text-4xl sm:text-6xl font-extrabold mb-6 drop-shadow-md">
-        Changlun Weekend Market
+        Carboot CMART Community Page
       </h1>
       <p class="text-lg sm:text-2xl mb-10 font-medium max-w-2xl mx-auto text-white/90">
         Join our community, find amazing deals, or start your micro-business this weekend.

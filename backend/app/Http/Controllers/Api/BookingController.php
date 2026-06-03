@@ -47,6 +47,7 @@ class BookingController extends Controller
                     'Others',
                 ]),
             ],
+            'product_details' => 'required|string|max:5000',
         ]);
 
         $space = Space::findOrFail($validated['space_id']);
@@ -56,6 +57,7 @@ class BookingController extends Controller
             'space_id' => $space->id,
             'booking_date' => $validated['booking_date'],
             'product_category' => $validated['product_category'],
+            'product_details' => $validated['product_details'],
             'approval_status' => 'Pending_Staff',
             'revision_comment' => null,
             'whatsapp_link' => 'https://chat.whatsapp.com/CMART_OFFICIAL_GROUP_INVITE',

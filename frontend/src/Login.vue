@@ -45,7 +45,7 @@
 
         <div class="mt-6 flex items-center justify-between">
             <span class="w-1/5 border-b lg:w-1/4"></span>
-            <span class="text-xs text-center text-gray-500 uppercase">ATAU</span>
+            <span class="text-xs text-center text-gray-500 uppercase">OR</span>
             <span class="w-1/5 border-b lg:w-1/4"></span>
         </div>
 

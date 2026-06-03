@@ -33,6 +33,35 @@
           </div>
 
           <div>
+            <div class="flex items-center gap-2 mb-1">
+              <label class="ml-label !mb-0">Specific products you will sell</label>
+              
+              <div class="group relative flex flex-col items-center">
+                <button type="button" class="flex h-5 w-5 items-center justify-center rounded-full bg-ink-200 text-xs font-bold text-ink-600 hover:bg-brand-100 hover:text-brand-700 focus:outline-none">
+                  i
+                </button>
+                
+                <div class="absolute bottom-full mb-2 hidden w-56 flex-col items-center group-hover:flex group-focus:flex group-focus-within:flex">
+                  <span class="relative z-10 rounded-lg bg-ink-900 p-2.5 text-xs leading-relaxed text-white shadow-lg text-center">
+                    e.g., Ayam Gunting, Bundle T-shirt, Ramen. 
+                    <br/><br/>
+                    Please be specific to help us process your approval faster!
+                  </span>
+                  <div class="-mt-2 h-3 w-3 rotate-45 bg-ink-900"></div>
+                </div>
+              </div>
+            </div>
+
+            <input
+              v-model="bookingForm.product_details"
+              type="text"
+              required
+              class="ml-input"
+              placeholder="e.g., Ayam Gunting, Bundle T-shirt..."
+            />
+          </div>
+
+          <div>
             <label class="ml-label">Select space size</label>
             <select v-model="bookingForm.space_id" @change="updatePrice" required class="ml-input">
               <option disabled value="">Please select one</option>
@@ -174,6 +203,7 @@ const bookingForm = reactive({
   space_id: '',
   booking_date: '',
   product_category: '',
+  product_details: '',
 });
 
 const userName = ref('');
@@ -217,6 +247,7 @@ const resetBookingForm = () => {
   bookingForm.space_id = '';
   bookingForm.booking_date = '';
   bookingForm.product_category = '';
+  bookingForm.product_details = '';
   currentPrice.value = 0;
 };
 
@@ -227,6 +258,7 @@ const submitBooking = async () => {
       space_id: bookingForm.space_id,
       booking_date: bookingForm.booking_date,
       product_category: bookingForm.product_category,
+      product_details: bookingForm.product_details,
     });
     toast.success(data.message || '201 Created: Booking submitted successfully.');
     userName.value = '';
