@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CarbootEventController;
 use App\Http\Controllers\Api\NewsPostController;
+use App\Http\Controllers\Api\BossAnalyticsController;
+use App\Http\Controllers\Api\AuditLogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -51,14 +53,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:cmart_staff,cmart_admin')->group(function () {
         Route::get('/staff/feedbacks', [FeedbackController::class, 'staffIndex']);
         Route::apiResource('bookings', BookingController::class)->except(['store']);
-        Route::post('/profitability', [BookingController::class, 'checkProfitability']);
         Route::apiResource('invoices', InvoiceController::class)->only(['index', 'show', 'update']);
         Route::apiResource('feedbacks', FeedbackController::class)->except(['store', 'index']);
         Route::apiResource('carboot-events', CarbootEventController::class);
         Route::apiResource('news-posts', NewsPostController::class);
     });
 
-    Route::middleware('role:cmart_admin')->group(function () {
+    Route::middleware('boss')->group(function () {
+        Route::post('/profitability', [BookingController::class, 'checkProfitability']);
+        Route::get('/boss/analytics/revenue', [BossAnalyticsController::class, 'revenue']);
+        Route::get('/boss/audit-logs', [AuditLogController::class, 'index']);
         Route::post('/spaces', [SpaceController::class, 'store']);
         Route::put('/spaces/{space}', [SpaceController::class, 'update']);
         Route::patch('/spaces/{space}', [SpaceController::class, 'update']);

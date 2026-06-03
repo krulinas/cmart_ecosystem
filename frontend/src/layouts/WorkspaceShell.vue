@@ -50,6 +50,7 @@
       </header>
 
       <main class="flex-1 p-6 overflow-x-hidden">
+        <slot name="previewBanner" />
         <slot />
       </main>
     </div>

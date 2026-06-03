@@ -20,6 +20,8 @@ export const useAuthStore = defineStore('auth', () => {
   const vendorStatus = computed(() => user.value?.vendor_status || 'none');
   const isApprovedVendor = computed(() => role.value === 'community' && vendorStatus.value === 'approved');
   const isCmartWorker = computed(() => ['cmart_staff', 'cmart_admin'].includes(role.value));
+  const isBoss = computed(() => role.value === 'cmart_admin');
+  const isStaff = computed(() => role.value === 'cmart_staff');
 
   const persistSession = (payload) => {
     token.value = payload.token;
@@ -95,6 +97,8 @@ export const useAuthStore = defineStore('auth', () => {
     vendorStatus,
     isApprovedVendor,
     isCmartWorker,
+    isBoss,
+    isStaff,
     register,
     login,
     fetchMe,

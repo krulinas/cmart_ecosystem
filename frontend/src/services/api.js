@@ -25,6 +25,10 @@ api.interceptors.response.use(
       localStorage.removeItem('carboot_cmart_user');
     }
 
+    if (error.response?.status === 403 && error.response?.data?.message) {
+      error.forbiddenMessage = error.response.data.message;
+    }
+
     return Promise.reject(error);
   },
 );

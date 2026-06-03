@@ -2,12 +2,32 @@
   <WorkspaceShell
     title="CMart Workspace"
     :subtitle="sectionSubtitle"
-    :workspace-label="auth.role === 'cmart_admin' ? 'CMart · Tier 2' : 'CMart · Tier 1'"
+    :workspace-label="workspaceLabel"
     :user-name="auth.user?.name || 'CMart Staff'"
-    :user-role-label="auth.role === 'cmart_admin' ? 'CMart Admin' : 'CMart Staff'"
-    :nav-items="navItems"
+    :user-role-label="userRoleLabel"
+    :nav-items="filteredNavItems"
   >
+    <template #previewBanner>
+      <div
+        v-if="auth.isBoss && bossPreview.viewAsStaff"
+        class="mb-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900 flex items-center justify-between gap-3"
+      >
+        <span><strong>God Mode:</strong> You are previewing the workspace as a Staff member.</span>
+        <button type="button" class="ml-btn-ghost text-sm shrink-0" @click="bossPreview.toggle()">Exit preview</button>
+      </div>
+    </template>
+
     <template #actions>
+      <button
+        v-if="auth.isBoss"
+        type="button"
+        class="ml-btn-ghost"
+        :class="bossPreview.viewAsStaff ? 'ring-2 ring-brand-400' : ''"
+        @click="bossPreview.toggle()"
+        :title="bossPreview.viewAsStaff ? 'Return to Boss view' : 'Preview as Staff'"
+      >
+        {{ bossPreview.viewAsStaff ? 'Boss view' : 'View as Staff' }}
+      </button>
       <button class="ml-btn-ghost" @click="refreshAll" :disabled="loading">
         <span>↻</span>
         <span>{{ loading ? 'Refreshing…' : 'Refresh' }}</span>
@@ -20,6 +40,8 @@
     <StaffEventsPanel v-show="activeSection === 'events'" ref="eventsPanel" />
     <StaffNewsPanel v-show="activeSection === 'news'" ref="newsPanel" />
     <StaffToolsPanel v-show="activeSection === 'tools'" ref="toolsPanel" />
+    <BossRevenuePanel v-show="activeSection === 'revenue' && bossPreview.isBossView" ref="revenuePanel" />
+    <BossAuditLogsPanel v-show="activeSection === 'audit' && bossPreview.isBossView" ref="auditPanel" />
   </WorkspaceShell>
 </template>
 
@@ -33,12 +55,19 @@ import StaffFeedbackPanel from './views/staff/StaffFeedbackPanel.vue';
 import StaffEventsPanel from './views/staff/StaffEventsPanel.vue';
 import StaffNewsPanel from './views/staff/StaffNewsPanel.vue';
 import StaffToolsPanel from './views/staff/StaffToolsPanel.vue';
+import BossRevenuePanel from './views/boss/BossRevenuePanel.vue';
+import BossAuditLogsPanel from './views/boss/BossAuditLogsPanel.vue';
 import { useAuthStore } from './stores/auth';
+import { useBossPreviewStore } from './stores/bossPreview';
+import { useWorkspaceNav } from './composables/useWorkspaceNav';
+import { ALL_WORKSPACE_HASHES, SECTION_SUBTITLES } from './config/workspaceNav';
 
 const toast = useToast();
 const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
+const bossPreview = useBossPreviewStore();
+const { filteredNavItems, canAccessHash } = useWorkspaceNav();
 
 const loading = ref(false);
 const activeSection = ref('bookings');
@@ -48,55 +77,69 @@ const feedbackPanel = ref(null);
 const eventsPanel = ref(null);
 const newsPanel = ref(null);
 const toolsPanel = ref(null);
+const revenuePanel = ref(null);
+const auditPanel = ref(null);
 
-const navItems = [
-  { to: '/admin#bookings', label: 'Bookings', icon: 'B' },
-  { to: '/admin#feedback', label: 'Feedback', icon: 'F' },
-  { to: '/admin#events', label: 'Events', icon: 'E' },
-  { to: '/admin#news', label: 'News', icon: 'N' },
-  { to: '/admin#tools', label: 'Tools', icon: 'T' },
-];
-
-const sectionSubtitle = computed(() => {
-  const map = {
-    bookings: 'Approve, reject, and monitor vendor slot bookings.',
-    feedback: 'Moderate community reviews and hide inappropriate content.',
-    events: 'Manage carboot dates shown on the calendar and portal.',
-    news: 'Publish announcements on the community portal.',
-    tools: 'Profitability calculator and Python analytics.',
-  };
-  return map[activeSection.value] || map.bookings;
+const workspaceLabel = computed(() => {
+  if (auth.isBoss && bossPreview.viewAsStaff) return 'CMart · Staff preview';
+  if (auth.isBoss) return 'CMart · Tier 2';
+  return 'CMart · Tier 1';
 });
+
+const userRoleLabel = computed(() => {
+  if (auth.isBoss && bossPreview.viewAsStaff) return 'Boss (previewing Staff)';
+  if (auth.isBoss) return 'CMart Admin';
+  return 'CMart Staff';
+});
+
+const sectionSubtitle = computed(() => SECTION_SUBTITLES[activeSection.value] || SECTION_SUBTITLES.bookings);
 
 const syncSectionFromHash = () => {
   const hash = (route.hash || '#bookings').replace('#', '');
-  const allowed = ['bookings', 'feedback', 'events', 'news', 'tools'];
-  activeSection.value = allowed.includes(hash) ? hash : 'bookings';
+  if (!canAccessHash(hash)) {
+    activeSection.value = 'bookings';
+    if (route.hash && route.hash !== '#bookings') {
+      router.replace({ path: '/admin', hash: '#bookings' });
+    }
+    return;
+  }
+  activeSection.value = ALL_WORKSPACE_HASHES.includes(hash) ? hash : 'bookings';
 };
 
 const refreshAll = async () => {
   loading.value = true;
-  await Promise.allSettled([
+  const tasks = [
     bookingsPanel.value?.fetchBookings?.(),
     feedbackPanel.value?.load?.(),
     eventsPanel.value?.load?.(),
     newsPanel.value?.load?.(),
     toolsPanel.value?.refresh?.(),
-  ]);
+  ];
+  if (bossPreview.isBossView) {
+    tasks.push(revenuePanel.value?.load?.());
+    tasks.push(auditPanel.value?.load?.());
+  }
+  await Promise.allSettled(tasks);
   loading.value = false;
 };
 
 const onBookingsRefreshed = () => {
-  toolsPanel.value?.refresh?.();
+  if (bossPreview.isBossView) {
+    revenuePanel.value?.load?.();
+  }
 };
 
 const logout = async () => {
+  bossPreview.reset();
   await auth.logout();
   toast.success('200 OK: Session terminated successfully.');
   router.push('/');
 };
 
 watch(() => route.hash, syncSectionFromHash);
+watch(() => bossPreview.viewAsStaff, () => {
+  syncSectionFromHash();
+});
 
 onMounted(() => {
   syncSectionFromHash();

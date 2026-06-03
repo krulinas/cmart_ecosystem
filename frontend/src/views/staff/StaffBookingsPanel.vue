@@ -42,12 +42,12 @@
               <td class="px-3 py-3">
                 <div class="flex justify-end gap-2 flex-wrap">
                   <button class="ml-btn-ghost" @click="viewPdf(b.id)">PDF</button>
-                  <button v-if="auth.role === 'cmart_staff'" class="ml-btn-success" @click="updateStatus(b.id, 'Pending_Boss')">Pass to Boss</button>
-                  <button v-if="auth.role === 'cmart_staff'" class="ml-btn-danger" @click="updateStatus(b.id, 'Rejected')">Reject</button>
-                  <button v-if="auth.role === 'cmart_staff'" class="ml-btn-danger" @click="requestRevision(b.id)">Revision</button>
-                  <button v-if="auth.role === 'cmart_admin'" class="ml-btn-success" @click="updateStatus(b.id, 'Approved')">Approve</button>
-                  <button v-if="auth.role === 'cmart_admin'" class="ml-btn-danger" @click="updateStatus(b.id, 'Rejected')">Reject</button>
-                  <button v-if="auth.role === 'cmart_admin'" class="ml-btn-danger" @click="requestRevision(b.id)">Revision</button>
+                  <button v-if="effectiveRole === 'cmart_staff'" class="ml-btn-success" @click="updateStatus(b.id, 'Pending_Boss')">Pass to Boss</button>
+                  <button v-if="effectiveRole === 'cmart_staff'" class="ml-btn-danger" @click="updateStatus(b.id, 'Rejected')">Reject</button>
+                  <button v-if="effectiveRole === 'cmart_staff'" class="ml-btn-danger" @click="requestRevision(b.id)">Revision</button>
+                  <button v-if="effectiveRole === 'cmart_admin'" class="ml-btn-success" @click="updateStatus(b.id, 'Approved')">Approve</button>
+                  <button v-if="effectiveRole === 'cmart_admin'" class="ml-btn-danger" @click="updateStatus(b.id, 'Rejected')">Reject</button>
+                  <button v-if="effectiveRole === 'cmart_admin'" class="ml-btn-danger" @click="requestRevision(b.id)">Revision</button>
                 </div>
               </td>
             </tr>
@@ -99,21 +99,23 @@
 import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '../../services/api';
-import { useAuthStore } from '../../stores/auth';
+import { useBossPreviewStore } from '../../stores/bossPreview';
 
 const emit = defineEmits(['refreshed']);
 
 const toast = useToast();
-const auth = useAuthStore();
+const bossPreview = useBossPreviewStore();
 const allBookings = ref([]);
 
-const queueStatus = computed(() => (auth.role === 'cmart_admin' ? 'Pending_Boss' : 'Pending_Staff'));
+const effectiveRole = computed(() => bossPreview.effectiveRole);
+
+const queueStatus = computed(() => (effectiveRole.value === 'cmart_admin' ? 'Pending_Boss' : 'Pending_Staff'));
 const queueBookings = computed(() => allBookings.value.filter((b) => b.approval_status === queueStatus.value));
 const queueTitle = computed(() =>
-  auth.role === 'cmart_admin' ? 'Tier 2 Boss Approval Queue' : 'Tier 1 Staff Approval Queue',
+  effectiveRole.value === 'cmart_admin' ? 'Tier 2 Boss Approval Queue' : 'Tier 1 Staff Approval Queue',
 );
 const queueDescription = computed(() =>
-  auth.role === 'cmart_admin'
+  effectiveRole.value === 'cmart_admin'
     ? 'Only bookings with Pending_Boss status are shown.'
     : 'Only bookings with Pending_Staff status are shown.',
 );
@@ -146,9 +148,13 @@ const fetchBookings = async () => {
 const updateStatus = async (id, status, revisionComment = null) => {
   const payload = { approval_status: status };
   if (revisionComment) payload.revision_comment = revisionComment;
-  await api.put(`/bookings/${id}`, payload);
-  toast.success(`Booking #${id} updated to ${status}.`);
-  await fetchBookings();
+  try {
+    await api.put(`/bookings/${id}`, payload);
+    toast.success(`Booking #${id} updated to ${status}.`);
+    await fetchBookings();
+  } catch (e) {
+    toast.error(e.forbiddenMessage || e.response?.data?.message || 'Unable to update booking.');
+  }
 };
 
 const requestRevision = async (id) => {

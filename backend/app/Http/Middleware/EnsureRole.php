@@ -12,9 +12,11 @@ class EnsureRole
         $user = $request->user();
 
         if (!$user || !in_array($user->role, $roles, true)) {
-            return response()->json([
-                'message' => '403 Forbidden: The authenticated user does not have permission to access this resource.',
-            ], 403);
+            $message = count($roles) === 1 && $roles[0] === 'cmart_admin'
+                ? '403 Forbidden: Boss access required.'
+                : '403 Forbidden: The authenticated user does not have permission to access this resource.';
+
+            return response()->json(['message' => $message], 403);
         }
 
         return $next($request);

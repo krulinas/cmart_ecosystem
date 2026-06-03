@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Invoice;
 use App\Models\Space;
+use App\Services\BookingAuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -116,6 +117,15 @@ class BookingController extends Controller
                 ? $validated['revision_comment']
                 : null,
         ]);
+
+        BookingAuditLogger::log(
+            $booking,
+            $user,
+            $current,
+            $target,
+            $target === 'Needs_Revision' ? ($validated['revision_comment'] ?? null) : null,
+            $request,
+        );
 
         return response()->json([
             'message' => '200 OK: Booking status updated to ' . $target . '.',

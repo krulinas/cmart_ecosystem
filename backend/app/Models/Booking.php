@@ -31,4 +31,8 @@ class Booking extends Model
     public function invoice() {
         return $this->hasOne(Invoice::class);
     }
+
+    public function auditLogs() {
+        return $this->hasMany(BookingAuditLog::class);
+    }
 }

@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Models\Space;
 use App\Models\CarbootEvent;
 use App\Models\NewsPost;
+use App\Models\Booking;
+use App\Models\Invoice;
 
 class DatabaseSeeder extends Seeder
 {
@@ -123,5 +125,33 @@ class DatabaseSeeder extends Seeder
                 'author_id' => $admin?->id,
             ]
         );
+
+        $vendor = User::where('email', 'vendor@cmart.com')->first();
+        $standardSpace = Space::where('space_size', 'Standard (1 Parking Lot)')->first();
+
+        if ($vendor && $standardSpace) {
+            $demoBooking = Booking::updateOrCreate(
+                [
+                    'user_id' => $vendor->id,
+                    'booking_date' => '2026-05-16',
+                ],
+                [
+                    'space_id' => $standardSpace->id,
+                    'product_category' => 'Food & Beverages',
+                    'product_details' => 'Ayam Gunting, Ramen',
+                    'approval_status' => 'Approved',
+                    'revision_comment' => null,
+                    'whatsapp_link' => 'https://chat.whatsapp.com/CMART_OFFICIAL_GROUP_INVITE',
+                ]
+            );
+
+            Invoice::updateOrCreate(
+                ['booking_id' => $demoBooking->id],
+                [
+                    'amount' => $standardSpace->price,
+                    'payment_status' => 'Paid',
+                ]
+            );
+        }
     }
 }
