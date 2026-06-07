@@ -5,6 +5,7 @@ export const WORKSPACE_NAV_ITEMS = [
   { id: 'news', hash: 'news', label: 'News', icon: 'N', bossOnly: false },
   { id: 'tools', hash: 'tools', label: 'Tools', icon: 'T', bossOnly: false },
   { id: 'revenue', hash: 'revenue', label: 'Revenue', icon: 'R', bossOnly: true },
+  { id: 'analytics', hash: 'analytics', label: 'Word Cloud', icon: 'W', bossOnly: true },
   { id: 'audit', hash: 'audit', label: 'Audit Log', icon: 'A', bossOnly: true },
 ];
 
@@ -19,5 +20,6 @@ export const SECTION_SUBTITLES = {
   news: 'Publish announcements on the community portal.',
   tools: 'Workspace utilities for CMart operations.',
   revenue: 'F&B and space quotas, earnings, and payment breakdown (Boss only).',
+  analytics: 'Text analytics — word clouds from community feedback and vendor products (Boss only).',
   audit: 'Review staff approval and rejection actions on vendor bookings.',
 };

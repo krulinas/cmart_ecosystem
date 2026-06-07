@@ -37,4 +37,9 @@ return [
     'redirect' => env('GOOGLE_REDIRECT_URI'),
 ],
 
+    'analytics' => [
+        'url' => env('ANALYTICS_SERVICE_URL', 'http://127.0.0.1:8001'),
+        'api_key' => env('ANALYTICS_API_KEY'),
+    ],
+
 ];

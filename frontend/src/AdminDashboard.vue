@@ -41,6 +41,7 @@
     <StaffNewsPanel v-show="activeSection === 'news'" ref="newsPanel" />
     <StaffToolsPanel v-show="activeSection === 'tools'" ref="toolsPanel" />
     <BossRevenuePanel v-show="activeSection === 'revenue' && bossPreview.isBossView" ref="revenuePanel" />
+    <BossWordCloudPanel v-show="activeSection === 'analytics' && bossPreview.isBossView" ref="wordCloudPanel" />
     <BossAuditLogsPanel v-show="activeSection === 'audit' && bossPreview.isBossView" ref="auditPanel" />
   </WorkspaceShell>
 </template>
@@ -56,6 +57,7 @@ import StaffEventsPanel from './views/staff/StaffEventsPanel.vue';
 import StaffNewsPanel from './views/staff/StaffNewsPanel.vue';
 import StaffToolsPanel from './views/staff/StaffToolsPanel.vue';
 import BossRevenuePanel from './views/boss/BossRevenuePanel.vue';
+import BossWordCloudPanel from './views/boss/BossWordCloudPanel.vue';
 import BossAuditLogsPanel from './views/boss/BossAuditLogsPanel.vue';
 import { useAuthStore } from './stores/auth';
 import { useBossPreviewStore } from './stores/bossPreview';
@@ -78,6 +80,7 @@ const eventsPanel = ref(null);
 const newsPanel = ref(null);
 const toolsPanel = ref(null);
 const revenuePanel = ref(null);
+const wordCloudPanel = ref(null);
 const auditPanel = ref(null);
 
 const workspaceLabel = computed(() => {
@@ -117,6 +120,7 @@ const refreshAll = async () => {
   ];
   if (bossPreview.isBossView) {
     tasks.push(revenuePanel.value?.load?.());
+    tasks.push(wordCloudPanel.value?.load?.());
     tasks.push(auditPanel.value?.load?.());
   }
   await Promise.allSettled(tasks);

@@ -7,9 +7,38 @@ use App\Models\Booking;
 use App\Models\CarbootEvent;
 use App\Models\Invoice;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class BossAnalyticsController extends Controller
 {
+    public function wordcloud(string $source)
+    {
+        if (! in_array($source, ['feedback', 'products'], true)) {
+            return response()->json(['message' => 'Invalid word cloud source.'], 404);
+        }
+
+        $baseUrl = rtrim(config('services.analytics.url'), '/');
+        $apiKey = config('services.analytics.api_key');
+
+        try {
+            $response = Http::timeout(15)
+                ->withHeaders($apiKey ? ['X-Analytics-Key' => $apiKey] : [])
+                ->get("{$baseUrl}/api/analytics/wordcloud/{$source}");
+        } catch (\Throwable) {
+            return response()->json([
+                'message' => 'Analytics service is unavailable. Ensure the Python service is running on port 8001.',
+            ], 502);
+        }
+
+        if (! $response->successful()) {
+            return response()->json([
+                'message' => $response->json('detail') ?? 'Analytics service returned an error.',
+            ], $response->status() === 401 ? 502 : $response->status());
+        }
+
+        return response()->json($response->json());
+    }
+
     public function revenue()
     {
         $invoices = Invoice::query()

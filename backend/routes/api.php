@@ -62,6 +62,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('boss')->group(function () {
         Route::post('/profitability', [BookingController::class, 'checkProfitability']);
         Route::get('/boss/analytics/revenue', [BossAnalyticsController::class, 'revenue']);
+        Route::get('/boss/analytics/wordcloud/{source}', [BossAnalyticsController::class, 'wordcloud']);
         Route::get('/boss/audit-logs', [AuditLogController::class, 'index']);
         Route::post('/spaces', [SpaceController::class, 'store']);
         Route::put('/spaces/{space}', [SpaceController::class, 'update']);
