@@ -5,6 +5,7 @@ import AdminDashboard from './AdminDashboard.vue';
 import Login from './Login.vue';
 import Register from './Register.vue';
 import UumDashboard from './UumDashboard.vue';
+import VendorDashboard from './VendorDashboard.vue';
 
 // ==========================================
 // 1. Import the Event Calendar component
@@ -27,6 +28,11 @@ const routes = [
   { path: '/calendar', component: EventCalendar },
   
   // Zone 2: The Vendor Hub
+  {
+    path: '/dashboard',
+    component: VendorDashboard,
+    meta: { requiresAuth: true, roles: ['community'] },
+  },
   {
     path: '/vendor-booking',
     component: Registration,

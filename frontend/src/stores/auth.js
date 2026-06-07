@@ -84,7 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
   const homeForUser = () => {
     if (role.value === 'cmart_admin' || role.value === 'cmart_staff') return '/admin';
     if (role.value === 'uum') return '/uum';
-    if (isApprovedVendor.value) return '/vendor-booking';
+    if (role.value === 'community') return '/dashboard';
     return '/';
   };
 

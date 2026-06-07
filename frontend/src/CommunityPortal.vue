@@ -15,7 +15,7 @@
             v-if="auth.isAuthenticated"
             :to="auth.homeForUser()"
             class="text-gray-600 hover:text-brand-600 font-semibold transition"
-          >Workspace</router-link>
+          >My Dashboard</router-link>
 
           <router-link
             v-if="!auth.isAuthenticated"
@@ -58,7 +58,7 @@
               :to="auth.homeForUser()"
               @click="isMobileMenuOpen = false"
               class="text-gray-700 hover:text-brand-600 font-semibold text-lg"
-            >Workspace</router-link>
+            >My Dashboard</router-link>
 
             <hr class="border-gray-200">
 
@@ -95,14 +95,36 @@
         <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black mb-6 drop-shadow-2xl leading-tight tracking-tight">
           Carboot@CMart
         </h1>
-        <p class="text-lg sm:text-xl lg:text-2xl mb-10 font-medium max-w-2xl mx-auto text-white/95 leading-relaxed drop-shadow">
+        <p
+          v-if="auth.isAuthenticated"
+          class="text-lg sm:text-xl lg:text-2xl mb-10 font-medium max-w-2xl mx-auto text-white/95 leading-relaxed drop-shadow"
+        >
+          Welcome back, {{ userDisplayName }}! Ready to secure your spot for this weekend?
+        </p>
+        <p
+          v-else
+          class="text-lg sm:text-xl lg:text-2xl mb-10 font-medium max-w-2xl mx-auto text-white/95 leading-relaxed drop-shadow"
+        >
           Discover weekend deals, join the vibrant community, or launch your micro-business at Malaysia's favorite carboot market.
         </p>
-        <div class="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6">
-          <router-link to="/vendor-booking" class="w-full sm:w-auto bg-brand-500 text-white font-extrabold py-4 px-10 rounded-full hover:bg-brand-400 hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(var(--color-brand-500),0.4)] text-center text-lg">
+        <div
+          :class="auth.isAuthenticated
+            ? 'flex justify-center'
+            : 'flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6'"
+        >
+          <router-link
+            to="/vendor-booking"
+            :class="auth.isAuthenticated
+              ? 'inline-flex items-center justify-center w-full sm:w-auto min-w-[280px] sm:min-w-[320px] bg-brand-500 text-white font-black py-5 px-14 rounded-full hover:bg-brand-400 hover:scale-[1.04] active:scale-[0.98] transition-all duration-300 shadow-[0_0_40px_rgba(var(--color-brand-500),0.55),0_8px_32px_rgba(0,0,0,0.25)] ring-2 ring-white/20 text-center text-xl sm:text-2xl tracking-tight'
+              : 'w-full sm:w-auto bg-brand-500 text-white font-extrabold py-4 px-10 rounded-full hover:bg-brand-400 hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(var(--color-brand-500),0.4)] text-center text-lg'"
+          >
             Book a Space Now
           </router-link>
-          <router-link to="/register" class="w-full sm:w-auto bg-white/10 backdrop-blur-md border border-white/30 text-white font-bold py-4 px-10 rounded-full shadow-lg hover:bg-white/20 transition-all duration-300 text-center text-lg">
+          <router-link
+            v-if="!auth.isAuthenticated"
+            to="/register"
+            class="w-full sm:w-auto bg-white/10 backdrop-blur-md border border-white/30 text-white font-bold py-4 px-10 rounded-full shadow-lg hover:bg-white/20 transition-all duration-300 text-center text-lg"
+          >
             Explore Community
           </router-link>
         </div>
@@ -137,7 +159,7 @@
         </div>
         
         <div class="relative -mx-4 sm:mx-0">
-          <div ref="newsScrollContainer" class="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 px-4 sm:px-0 hide-scrollbar scroll-smooth">
+          <div ref="newsScrollContainer" @mouseenter="pauseAutoSlide" @mouseleave="resumeAutoSlide" @touchstart="pauseAutoSlide" @touchend="resumeAutoSlide" class="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 px-4 sm:px-0 hide-scrollbar scroll-smooth">
             <div
               v-for="(item, index) in latestNews"
               :key="item.id"
@@ -291,7 +313,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from './stores/auth';
@@ -303,6 +325,8 @@ import { useHeroParallax } from './composables/useHeroParallax';
 const auth = useAuthStore();
 const router = useRouter();
 const toast = useToast();
+
+const userDisplayName = computed(() => auth.user?.name || 'Member');
 
 const heroVideoRef = ref(null);
 const { contentStyle, videoStyle } = useHeroParallax();
@@ -344,6 +368,34 @@ const scrollNews = (direction) => {
     const scrollAmount = direction * (window.innerWidth < 640 ? window.innerWidth * 0.85 : 424); 
     newsScrollContainer.value.scrollBy({ left: scrollAmount, behavior: 'smooth' });
   }
+};
+
+// --- Auto-Slide Logic ---
+let autoSlideInterval = null;
+
+const startAutoSlide = () => {
+  // Slides every 3500 milliseconds (3.5 seconds)
+  autoSlideInterval = setInterval(() => {
+    if (!newsScrollContainer.value) return;
+    const container = newsScrollContainer.value;
+    
+    // Check if we reached the end of the scroll
+    if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 10) {
+      // Loop smoothly back to the beginning
+      container.scrollTo({ left: 0, behavior: 'smooth' }); 
+    } else {
+      // Otherwise, keep scrolling right
+      scrollNews(1);
+    }
+  }, 3500); 
+};
+
+const pauseAutoSlide = () => {
+  if (autoSlideInterval) clearInterval(autoSlideInterval);
+};
+
+const resumeAutoSlide = () => {
+  startAutoSlide();
 };
 
 const logout = async () => {
@@ -395,14 +447,13 @@ const fetchPortalContent = async () => {
     const events = Array.isArray(eventsRes.data) ? eventsRes.data : [];
     const news = Array.isArray(newsRes.data) ? newsRes.data : [];
     upcomingEvents.value = events.slice(0, 6).map(mapApiEventToCard);
-    latestNews.value = news.slice(0, 6).map((n) => ({
-      id: n.id,
-      category: n.category,
-      date: formatNewsDate(n.published_at || n.created_at),
-      title: n.title,
-      excerpt: n.excerpt,
-      image: n.image_url || 'https://images.unsplash.com/photo-1556761175-5973dc0f32b7?q=80&w=800&auto=format&fit=crop',
-    }));
+    latestNews.value = [
+   { id: 1, category: 'Promo', date: 'Today', title: 'Poster Placeholder 1', excerpt: 'Testing Canva Slide 1.', image: '/carousels/1.png' },
+   { id: 2, category: 'Event', date: 'Today', title: 'Poster Placeholder 2', excerpt: 'Testing Canva Slide 2.', image: '/carousels/2.png' },
+   { id: 3, category: 'News', date: 'Today', title: 'Poster Placeholder 3', excerpt: 'Testing Canva Slide 3.', image: '/carousels/3.png' },
+   { id: 4, category: 'Update', date: 'Today', title: 'Poster Placeholder 4', excerpt: 'Testing Canva Slide 4.', image: '/carousels/4.png' },
+   { id: 5, category: 'Alert', date: 'Today', title: 'Poster Placeholder 5', excerpt: 'Testing Canva Slide 5.', image: '/carousels/5.png' }
+ ];
   } catch (error) {
     console.error('Failed to load portal events/news:', error);
   }
@@ -440,9 +491,18 @@ const onFeedbackSubmitted = async () => {
   await fetchReviews();
 };
 
-onMounted(() => {
+onMounted(async () => {
+  if (auth.token) {
+    try {
+      await auth.fetchMe();
+    } catch {
+      // Router guard handles redirect on protected routes; public page keeps fallback name
+    }
+  }
+
   fetchReviews();
   fetchPortalContent();
+  startAutoSlide();
 
   const video = heroVideoRef.value;
   if (video) {
@@ -450,6 +510,10 @@ onMounted(() => {
       // Autoplay blocked — poster gradient still provides a polished fallback
     });
   }
+});
+
+onUnmounted(() => {
+  pauseAutoSlide();
 });
 
 const isMobileMenuOpen = ref(false);
