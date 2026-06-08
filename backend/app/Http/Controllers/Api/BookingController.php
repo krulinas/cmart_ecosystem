@@ -34,7 +34,8 @@ class BookingController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'space_id' => 'required|exists:spaces,id',
+            'tapak_quantity' => 'required|integer|min:1',
+            'total_price' => 'required|numeric|min:20',
             'booking_date' => 'required|date',
             'product_category' => [
                 'required',
@@ -51,7 +52,16 @@ class BookingController extends Controller
             'product_details' => 'required|string|max:5000',
         ]);
 
-        $space = Space::findOrFail($validated['space_id']);
+        $expectedTotal = $validated['tapak_quantity'] * 20;
+        if ((float) $validated['total_price'] !== (float) $expectedTotal) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Total price must equal tapak quantity × RM 20.',
+            ], 422);
+        }
+
+        $space = Space::query()
+            ->where('space_size', 'Standard (1 Parking Lot)')
+            ->firstOrFail();
 
         $booking = Booking::create([
             'user_id' => $request->user()->id,
@@ -66,7 +76,7 @@ class BookingController extends Controller
 
         $invoice = Invoice::create([
             'booking_id' => $booking->id,
-            'amount' => $space->price,
+            'amount' => $validated['total_price'],
             'payment_status' => 'Unpaid',
         ]);
 

@@ -62,18 +62,37 @@
           </div>
 
           <div>
-            <label class="ml-label">Select space size</label>
-            <select v-model="bookingForm.space_id" @change="updatePrice" required class="ml-input">
-              <option disabled value="">Please select one</option>
-              <option v-for="space in availableSpaces" :key="space.id" :value="space.id">
-                {{ space.space_size }} — RM {{ space.price.toFixed(2) }}
-              </option>
-            </select>
-          </div>
+            <label class="ml-label">Number of Tapak (Parking Lots)</label>
+            <p class="text-xs text-ink-500 mb-2">1 Tapak = RM 20.00</p>
 
-          <div class="bg-brand-50 border border-brand-200 rounded-xl p-4 flex items-center justify-between">
-            <span class="text-sm font-semibold text-brand-800">Total price</span>
-            <span class="text-2xl font-extrabold text-brand-700">RM {{ currentPrice.toFixed(2) }}</span>
+            <div class="flex items-center justify-center gap-3 sm:gap-4 w-full max-w-xs mx-auto sm:mx-0">
+              <button
+                type="button"
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink-200 bg-white text-xl font-bold text-ink-700 shadow-sm transition hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="tapakQuantity <= 1"
+                aria-label="Decrease tapak quantity"
+                @click="decreaseTapak"
+              >
+                −
+              </button>
+
+              <div class="flex min-w-[4.5rem] flex-1 items-center justify-center rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5">
+                <span class="text-2xl font-extrabold text-brand-800 tabular-nums">{{ tapakQuantity }}</span>
+              </div>
+
+              <button
+                type="button"
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink-200 bg-white text-xl font-bold text-ink-700 shadow-sm transition hover:bg-ink-50"
+                aria-label="Increase tapak quantity"
+                @click="increaseTapak"
+              >
+                +
+              </button>
+            </div>
+
+            <p class="mt-4 text-lg sm:text-xl font-extrabold text-brand-700 text-center sm:text-left">
+              Total Price: RM {{ totalPrice }}.00
+            </p>
           </div>
 
           <div>
@@ -95,73 +114,68 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import api from './services/api';
 import { useAuthStore } from './stores/auth';
 import { PRODUCT_CATEGORIES } from './constants/productCategories';
 
+const TAPAK_UNIT_PRICE = 20;
+
 const toast = useToast();
 const auth = useAuthStore();
 const router = useRouter();
 
 const bookingForm = reactive({
-  space_id: '',
   booking_date: '',
   product_category: '',
   product_details: '',
 });
 
-const userName = ref('');
-const currentPrice = ref(0);
-const availableSpaces = ref([]);
+const userName = ref(auth.user?.name || '');
+const tapakQuantity = ref(1);
 const submitting = ref(false);
 
-onMounted(async () => {
-  userName.value = auth.user?.name || '';
+const totalPrice = computed(() => tapakQuantity.value * TAPAK_UNIT_PRICE);
 
-  try {
-    const { data } = await api.get('/spaces');
-    const list = Array.isArray(data) ? data : (data.data ?? []);
-    availableSpaces.value = list.map(s => ({ ...s, price: Number(s.price) }));
-  } catch (e) {
-    console.warn('503 Service Unavailable: Unable to retrieve space data from the API.', e?.message);
-    availableSpaces.value = [
-      { id: 1, space_size: 'Standard (1 Parking Lot)', price: 30.00 },
-      { id: 2, space_size: 'Large (2 Parking Lots)',   price: 50.00 },
-    ];
-  }
+onMounted(() => {
+  userName.value = auth.user?.name || '';
 });
 
-const updatePrice = () => {
-  const space = availableSpaces.value.find(s => s.id === bookingForm.space_id);
-  currentPrice.value = space ? space.price : 0;
+const decreaseTapak = () => {
+  if (tapakQuantity.value > 1) {
+    tapakQuantity.value -= 1;
+  }
+};
+
+const increaseTapak = () => {
+  tapakQuantity.value += 1;
 };
 
 const resetBookingForm = () => {
-  bookingForm.space_id = '';
   bookingForm.booking_date = '';
   bookingForm.product_category = '';
   bookingForm.product_details = '';
-  currentPrice.value = 0;
+  tapakQuantity.value = 1;
 };
 
 const submitBooking = async () => {
   submitting.value = true;
   try {
     const { data } = await api.post('/bookings', {
-      space_id: bookingForm.space_id,
       booking_date: bookingForm.booking_date,
       product_category: bookingForm.product_category,
       product_details: bookingForm.product_details,
+      tapak_quantity: tapakQuantity.value,
+      total_price: totalPrice.value,
     });
     toast.success(data.message || '201 Created: Booking submitted successfully.');
     resetBookingForm();
     router.push('/dashboard');
   } catch (e) {
     console.error('500 Internal Server Error: Unable to communicate with the API.', e);
-    toast.error('500 Internal Server Error: Unable to communicate with the API.');
+    toast.error(e.response?.data?.message || '500 Internal Server Error: Unable to communicate with the API.');
   } finally {
     submitting.value = false;
   }
