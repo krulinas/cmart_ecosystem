@@ -92,7 +92,7 @@
 import { ref, reactive, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import Chart from 'chart.js/auto';
 import { useToast } from 'vue-toastification';
-import api from '../../services/api';
+import api from '../../../services/api';
 
 const toast = useToast();
 const loading = ref(false);

@@ -107,7 +107,7 @@
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
-import { useAuthStore } from './stores/auth';
+import { useAuthStore } from '../../stores/auth';
 
 const auth = useAuthStore();
 const router = useRouter();

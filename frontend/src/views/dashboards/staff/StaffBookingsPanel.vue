@@ -98,8 +98,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
-import api from '../../services/api';
-import { useBossPreviewStore } from '../../stores/bossPreview';
+import api from '../../../services/api';
+import { useBossPreviewStore } from '../../../stores/bossPreview';
 
 const emit = defineEmits(['refreshed']);
 

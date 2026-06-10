@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnalyticsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,4 +16,14 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+Route::prefix('admin')->group(function () {
+    Route::get('/analytics', [AnalyticsController::class, 'index']);
+});
+
+Route::prefix('api/proxy/analytics')->group(function () {
+    Route::get('/summary', [AnalyticsController::class, 'getStatusSummary']);
+    Route::get('/feedback', [AnalyticsController::class, 'getFeedbackCloud']);
+    Route::get('/products', [AnalyticsController::class, 'getProductCloud']);
 });

@@ -19,7 +19,7 @@
 </template>
 
 <script setup>
-import WorkspaceShell from './layouts/WorkspaceShell.vue';
+import WorkspaceShell from '../../layouts/WorkspaceShell.vue';
 
 const navItems = [
   { to: '/uum', label: 'Reports', icon: 'R' },

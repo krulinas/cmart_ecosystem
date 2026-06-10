@@ -62,8 +62,8 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
-import api from './services/api';
-import { useAuthStore } from './stores/auth';
+import api from '../services/api';
+import { useAuthStore } from '../stores/auth';
 
 const auth = useAuthStore();
 const showModal = ref(false);

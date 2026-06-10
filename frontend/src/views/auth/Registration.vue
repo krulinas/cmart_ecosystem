@@ -117,9 +117,9 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
-import api from './services/api';
-import { useAuthStore } from './stores/auth';
-import { PRODUCT_CATEGORIES } from './constants/productCategories';
+import api from '../../services/api';
+import { useAuthStore } from '../../stores/auth';
+import { PRODUCT_CATEGORIES } from '../../constants/productCategories';
 
 const TAPAK_UNIT_PRICE = 20;
 

@@ -248,8 +248,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
-import api from './services/api';
-import { useAuthStore } from './stores/auth';
+import api from '../../services/api';
+import { useAuthStore } from '../../stores/auth';
 
 const toast = useToast();
 const auth = useAuthStore();
