@@ -84,7 +84,7 @@
         
         <div class="relative -mx-4 sm:mx-0">
           <div ref="newsScrollContainer" @mouseenter="pauseAutoSlide" @mouseleave="resumeAutoSlide" @touchstart="pauseAutoSlide" @touchend="resumeAutoSlide" class="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 px-4 sm:px-0 hide-scrollbar scroll-smooth">
-            <div v-for="(item, index) in latestNews" :key="item.id" class="min-w-[85vw] sm:min-w-[350px] md:min-w-[400px] snap-center bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-500 ease-out group cursor-pointer" :class="staggerCardClass(newsCardsVisible, index)" :style="staggerCardStyle(newsCardsVisible, index)">
+            <div v-for="(item, index) in latestNews" :key="item.id" class="min-w-[85vw] sm:min-w-[350px] md:min-w-[400px] snap-center bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:scale-105 hover:-translate-y-2 hover:shadow-2xl transition-all duration-300 ease-in-out will-change-transform group cursor-pointer" :class="staggerCardClass(newsCardsVisible, index)" :style="staggerCardStyle(newsCardsVisible, index)">
               <div class="h-56 bg-gray-200 relative overflow-hidden">
                 <img :src="item.image" alt="News cover" class="w-full h-full object-cover group-hover:scale-110 transition duration-700" loading="lazy" />
                 <div class="absolute inset-0 bg-gradient-to-t from-gray-900/80 to-transparent opacity-60"></div>
@@ -155,7 +155,20 @@
           </div>
 
           <div class="p-8 md:p-12 bg-gray-50/50">
-            <h3 class="text-2xl font-bold text-gray-900 mb-8 text-center">Recent Experiences</h3>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 pb-4 border-b border-gray-200">
+              <h3 class="text-xl sm:text-2xl font-bold text-gray-900">
+                Community Reviews
+                <span class="text-brand-600">({{ communityReviews.length }})</span>
+              </h3>
+              <button
+                v-if="communityReviews.length > REVIEWS_PER_PAGE && !showAllReviews"
+                type="button"
+                class="inline-flex items-center self-start sm:self-auto text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors duration-200"
+                @click="viewAllReviews"
+              >
+              </button>
+            </div>
+
             <div v-if="loadingReviews" class="flex justify-center py-10">
               <div class="animate-pulse flex flex-col items-center">
                 <div class="h-10 w-10 bg-brand-200 rounded-full mb-4"></div>
@@ -163,38 +176,91 @@
                 <div class="h-3 w-24 bg-gray-200 rounded"></div>
               </div>
             </div>
+
             <div v-else-if="communityReviews.length === 0" class="text-center text-gray-500 italic py-8">
               No reviews yet. Be the first to shape the community!
             </div>
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div v-for="review in communityReviews" :key="review.id" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative">
-                <div class="absolute top-4 right-6 text-gray-100">
-                  <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 32 32"><path d="M10 8c-3.3 0-6 2.7-6 6v10h10V14H10c0-1.1.9-2 2-2V8zm16 0c-3.3 0-6 2.7-6 6v10h10V14H20c0-1.1.9-2 2-2V8z"></path></svg>
+
+            <template v-else>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                <div
+                  v-for="review in displayedReviews"
+                  :key="review.id"
+                  class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 ease-in-out relative"
+                >
+                  <div class="absolute top-4 right-6 text-gray-100 pointer-events-none">
+                    <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 32 32"><path d="M10 8c-3.3 0-6 2.7-6 6v10h10V14H10c0-1.1.9-2 2-2V8zm16 0c-3.3 0-6 2.7-6 6v10h10V14H20c0-1.1.9-2 2-2V8z"></path></svg>
+                  </div>
+                  <div class="flex items-center space-x-3 mb-4 relative z-10">
+                    <div class="bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 rounded-full h-12 w-12 shrink-0 flex items-center justify-center font-black text-lg border border-brand-200">
+                      {{ displayReviewerName(review).charAt(0).toUpperCase() }}
+                    </div>
+                    <div>
+                      <div class="font-bold text-gray-900">{{ displayReviewerName(review) }}</div>
+                      <span v-if="review.reviewer_role" class="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-md inline-block mt-1" :class="roleBadgeClass(review.reviewer_role)">
+                        {{ review.reviewer_role }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-gray-500 relative z-10">
+                    <div class="flex items-center">
+                      <span class="mr-1">Service:</span>
+                      <span class="text-amber-400 text-sm tracking-tighter"><span v-for="star in 5" :key="'s-' + review.id + star">{{ star <= (review.service_rating || 0) ? '★' : '☆' }}</span></span>
+                    </div>
+                    <div class="flex items-center">
+                      <span class="mr-1">Value:</span>
+                      <span class="text-amber-400 text-sm tracking-tighter"><span v-for="star in 5" :key="'v-' + review.id + star">{{ star <= (review.value_rating || 0) ? '★' : '☆' }}</span></span>
+                    </div>
+                  </div>
+                  <p v-if="review.comments" class="text-gray-600 text-sm leading-relaxed relative z-10 line-clamp-4">"{{ review.comments }}"</p>
                 </div>
-                <div class="flex items-center space-x-3 mb-4 relative z-10">
-                  <div class="bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 rounded-full h-12 w-12 shrink-0 flex items-center justify-center font-black text-lg border border-brand-200">
-                    {{ displayReviewerName(review).charAt(0).toUpperCase() }}
-                  </div>
-                  <div>
-                    <div class="font-bold text-gray-900">{{ displayReviewerName(review) }}</div>
-                    <span v-if="review.reviewer_role" class="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-md inline-block mt-1" :class="roleBadgeClass(review.reviewer_role)">
-                      {{ review.reviewer_role }}
-                    </span>
-                  </div>
-                </div>
-                <div class="mb-4 flex space-x-4 text-xs font-bold text-gray-500 relative z-10">
-                  <div class="flex items-center">
-                    <span class="mr-1">Service:</span>
-                    <span class="text-amber-400 text-sm tracking-tighter"><span v-for="star in 5" :key="'s-' + star">{{ star <= (review.service_rating || 0) ? '★' : '☆' }}</span></span>
-                  </div>
-                  <div class="flex items-center">
-                    <span class="mr-1">Value:</span>
-                    <span class="text-amber-400 text-sm tracking-tighter"><span v-for="star in 5" :key="'v-' + star">{{ star <= (review.value_rating || 0) ? '★' : '☆' }}</span></span>
-                  </div>
-                </div>
-                <p v-if="review.comments" class="text-gray-600 text-sm leading-relaxed relative z-10">"{{ review.comments }}"</p>
               </div>
-            </div>
+
+              <nav
+                v-if="!showAllReviews && totalPages > 1"
+                class="flex flex-wrap items-center justify-center gap-2 mt-8"
+                aria-label="Reviews pagination"
+              >
+                <button
+                  type="button"
+                  class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  :class="currentPage === 1 ? 'border-gray-200 text-gray-400 bg-white' : 'border-gray-200 text-gray-700 bg-white hover:border-brand-300 hover:text-brand-600'"
+                  :disabled="currentPage === 1"
+                  @click="goToPage(currentPage - 1)"
+                >
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Previous
+                </button>
+
+                <button
+                  v-for="page in paginationPages"
+                  :key="page"
+                  type="button"
+                  class="min-w-[2.5rem] h-10 rounded-lg text-sm font-bold border transition-all duration-200"
+                  :class="page === currentPage
+                    ? 'bg-brand-500 border-brand-500 text-white shadow-md'
+                    : 'bg-white border-gray-200 text-gray-700 hover:border-brand-300 hover:text-brand-600'"
+                  @click="goToPage(page)"
+                >
+                  {{ page }}
+                </button>
+
+                <button
+                  type="button"
+                  class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  :class="currentPage === totalPages ? 'border-gray-200 text-gray-400 bg-white' : 'border-gray-200 text-gray-700 bg-white hover:border-brand-300 hover:text-brand-600'"
+                  :disabled="currentPage === totalPages"
+                  @click="goToPage(currentPage + 1)"
+                >
+                  Next
+                  <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </nav>
+            </template>
           </div>
         </div>
       </section>
@@ -203,16 +269,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useToast } from 'vue-toastification';
 
-// Fixed import paths (stepping out of views/public to reach components, services, composables)
 import CommunityFeedback from '../../components/CommunityFeedback.vue';
 import api from '../../services/api';
 import { useScrollReveal } from '../../composables/useScrollReveal';
 import { useHeroParallax } from '../../composables/useHeroParallax';
 
 const toast = useToast();
+
+const REVIEWS_PER_PAGE = 4;
+const currentPage = ref(1);
+const showAllReviews = ref(false);
 const heroVideoRef = ref(null);
 const { contentStyle, videoStyle } = useHeroParallax();
 
@@ -299,6 +368,40 @@ const fetchPortalContent = async () => {
 
 const communityReviews = ref([]);
 const loadingReviews = ref(true);
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(communityReviews.value.length / REVIEWS_PER_PAGE)),
+);
+
+const paginationPages = computed(() =>
+  Array.from({ length: totalPages.value }, (_, index) => index + 1),
+);
+
+const displayedReviews = computed(() => {
+  if (showAllReviews.value) {
+    return communityReviews.value;
+  }
+
+  const start = (currentPage.value - 1) * REVIEWS_PER_PAGE;
+  return communityReviews.value.slice(start, start + REVIEWS_PER_PAGE);
+});
+
+const goToPage = (page) => {
+  if (page < 1 || page > totalPages.value) {
+    return;
+  }
+
+  currentPage.value = page;
+};
+
+const viewAllReviews = () => {
+  showAllReviews.value = true;
+};
+
+watch(communityReviews, () => {
+  currentPage.value = 1;
+  showAllReviews.value = false;
+});
 
 const displayReviewerName = (review) => review.user?.name || 'Community Member';
 
