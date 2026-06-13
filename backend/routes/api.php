@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CarbootEventController;
+use App\Http\Controllers\Api\EventRegistrationController;
 use App\Http\Controllers\Api\NewsPostController;
 use App\Http\Controllers\Api\BossAnalyticsController;
 use App\Http\Controllers\Api\AuditLogController;
@@ -41,6 +42,9 @@ Route::get('/news', [NewsPostController::class, 'publicIndex']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+
+    // Community event RSVP — pessimistic locking prevents overbooking under concurrency.
+    Route::post('/events/{carboot_event}/register', [EventRegistrationController::class, 'register']);
 
     Route::get('/bookings/{booking}/pdf', [BookingController::class, 'generatePdf']);
 

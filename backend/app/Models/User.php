@@ -52,4 +52,14 @@ class User extends Authenticatable
     public function feedbacks() {
         return $this->hasMany(Feedback::class);
     }
+
+    /**
+     * Carboot events this user has registered for (event_user pivot).
+     */
+    public function registeredEvents()
+    {
+        return $this->belongsToMany(CarbootEvent::class, 'event_user')
+            ->withPivot('registered_at')
+            ->withTimestamps();
+    }
 }

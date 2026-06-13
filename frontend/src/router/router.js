@@ -1,15 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
-// ==========================================
-// 1. The Architectural Split (Guest vs Auth)
-// ==========================================
 import PublicLanding from '../views/public/PublicLanding.vue';
+import CommunityPortal from '../views/public/CommunityPortal.vue';
 import Registration from '../views/auth/Registration.vue';
 import AdminDashboard from '../views/dashboards/AdminDashboard.vue';
 import Login from '../views/auth/Login.vue';
 import Register from '../views/auth/Register.vue';
 import UumDashboard from '../views/dashboards/UumDashboard.vue';
 import VendorDashboard from '../views/dashboards/VendorDashboard.vue';
+import VendorProfile from '../views/vendor/VendorProfile.vue';
 import EventCalendar from '../components/EventCalendar.vue';
 
 import { useAuthStore } from '../stores/auth';
@@ -17,81 +16,125 @@ import { useBossPreviewStore } from '../stores/bossPreview';
 import { ALL_WORKSPACE_HASHES, BOSS_ONLY_HASHES } from '../config/workspaceNav';
 
 const routes = [
-  // Zone 1: The Public Face
-  { path: '/', component: PublicLanding }, // Guests land here
-  { path: '/login', component: Login },
-  { path: '/register', component: Register },
-  { path: '/calendar', component: EventCalendar },
-  
-  // Zone 2: The Vendor Hub
+  // Zone 1: Public face
+  {
+    path: '/',
+    name: 'home',
+    component: PublicLanding,
+    meta: { public: true, redirectIfAuthenticated: true },
+  },
+  {
+    path: '/community',
+    name: 'community',
+    component: CommunityPortal,
+    meta: { public: true },
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: Login,
+    meta: { guestOnly: true },
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: Register,
+    meta: { guestOnly: true },
+  },
+  {
+    path: '/calendar',
+    name: 'calendar',
+    component: EventCalendar,
+    meta: { public: true },
+  },
+
+  // Zone 2: Vendor hub
   {
     path: '/dashboard',
+    name: 'vendor-dashboard',
     component: VendorDashboard,
     meta: { requiresAuth: true, roles: ['community'] },
   },
   {
-    path: '/vendor-booking',
-    component: Registration,
-    meta: { requiresAuth: true, vendorApproved: true },
+    path: '/profile',
+    name: 'vendor-profile',
+    component: VendorProfile,
+    meta: { requiresAuth: true, roles: ['community'] },
   },
-  
-  // Zone 3: The CMart back-office
+  {
+    path: '/vendor-booking',
+    name: 'vendor-booking',
+    component: Registration,
+    meta: { requiresAuth: true, roles: ['community'], vendorApproved: true },
+  },
+
+  // Zone 3: CMart back-office
   {
     path: '/admin',
+    name: 'admin',
     component: AdminDashboard,
     meta: { requiresAuth: true, roles: ['cmart_staff', 'cmart_admin'] },
   },
 
-  // Zone 4: UUM Oversight
+  // Zone 4: UUM oversight
   {
     path: '/uum',
+    name: 'uum',
     component: UumDashboard,
     meta: { requiresAuth: true, roles: ['uum'] },
+  },
+
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    redirect: '/',
   },
 ];
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(to, _from, savedPosition) {
+    if (savedPosition) return savedPosition;
+    if (to.hash) return { el: to.hash, behavior: 'smooth' };
+    return { top: 0 };
+  },
 });
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
 
-  // Rehydrate user session if they have a token but no user data loaded
   if (auth.token && !auth.user) {
     try {
       await auth.fetchMe();
     } catch {
-      return { path: '/login', query: { redirect: to.fullPath } };
+      auth.clearSession();
+      if (to.meta.requiresAuth) {
+        return { path: '/login', query: { redirect: to.fullPath } };
+      }
     }
   }
 
-  // Guard: Must be authenticated
+  if (to.meta.redirectIfAuthenticated && auth.isAuthenticated) {
+    return auth.homeForUser();
+  }
+
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { path: '/login', query: { redirect: to.fullPath } };
   }
 
-  // Guard: Must have correct role
   if (to.meta.roles && !auth.hasAnyRole(to.meta.roles)) {
     return auth.isAuthenticated ? auth.homeForUser() : '/login';
   }
 
-  // Guard: Vendor approval check
   if (to.meta.vendorApproved && !auth.isApprovedVendor) {
     return auth.isAuthenticated ? auth.homeForUser() : '/login';
   }
 
-  // ==========================================
-  // 2. The Guest-Only Guard
-  // ==========================================
-  // If an authenticated user tries to view the public landing page or login/register,
-  // redirect them instantly to their respective dashboard.
-  if ((to.path === '/' || to.path === '/login' || to.path === '/register') && auth.isAuthenticated) {
+  if (to.meta.guestOnly && auth.isAuthenticated) {
     return auth.homeForUser();
   }
 
-  // Guard: Admin sub-view permissions
   if (to.path === '/admin') {
     const bossPreview = useBossPreviewStore();
     const hash = (to.hash || '#bookings').replace('#', '');

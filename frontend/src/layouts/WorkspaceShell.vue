@@ -6,7 +6,7 @@
       aria-label="Sidebar"
     >
       <div class="px-6 py-5 border-b border-ink-200">
-        <router-link to="/" class="flex items-center gap-2 group">
+        <router-link :to="homeLink" class="flex items-center gap-2 group">
           <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 text-white font-extrabold">C</span>
           <div class="leading-tight">
             <div class="text-base font-extrabold text-ink-900 tracking-tight">Carboot@CMart</div>
@@ -58,6 +58,12 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
+import { useAuthStore } from '../stores/auth';
+
+const auth = useAuthStore();
+const homeLink = computed(() => auth.homeForUser());
+
 defineProps({
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },

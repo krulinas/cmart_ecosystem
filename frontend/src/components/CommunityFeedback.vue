@@ -2,7 +2,7 @@
   <div>
     <!-- Guests: login / register CTA -->
     <div
-      v-if="!auth.isAuthenticated"
+      v-if="!auth.isAuthenticated && !hideGuestGate"
       class="rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-gray-50 p-8 sm:p-10 text-center shadow-sm"
     >
       <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-brand-600">
@@ -38,7 +38,7 @@
     </div>
 
     <!-- Members: feedback form -->
-    <form v-else @submit.prevent="submitFeedback" class="space-y-6">
+    <form v-else-if="auth.isAuthenticated" @submit.prevent="submitFeedback" class="space-y-6">
       <div>
         <label class="block text-gray-700 font-bold mb-3">Vendor Service</label>
         <div class="flex justify-center sm:justify-start gap-2">
@@ -142,6 +142,10 @@ import { ref, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import api from '../services/api';
 const emit = defineEmits(['submitted']);
+
+defineProps({
+  hideGuestGate: { type: Boolean, default: false },
+});
 
 const auth = useAuthStore();
 

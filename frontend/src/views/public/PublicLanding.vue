@@ -1,327 +1,427 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <nav class="bg-white/95 backdrop-blur-md shadow-md sticky top-0 z-50">
-      <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-        <router-link to="/" class="flex items-center">
-          <img src="/cmart_logo.png" alt="Carboot@CMart Logo" class="h-12 sm:h-14 w-auto object-contain hover:opacity-90 transition-opacity" />
-        </router-link>
+  <div class="min-h-screen bg-white">
+    <AppNavbar variant="public" />
 
-        <div class="hidden md:flex items-center space-x-6">
-          <router-link to="/" class="text-gray-600 hover:text-brand-600 font-semibold transition">Home</router-link>
-          <router-link to="/calendar" class="text-gray-600 hover:text-brand-600 font-semibold transition">Our Calendar</router-link>
-          <router-link
-            to="/login"
-            class="bg-brand-500 text-white px-5 py-2 rounded-lg shadow hover:bg-brand-600 transition text-sm font-bold"
-          >Vendor Login</router-link>
-        </div>
-
-        <div class="md:hidden flex items-center">
-          <button @click="toggleMobileMenu" class="text-gray-800 hover:text-brand-600 focus:outline-none transition">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path v-if="!isMobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>
+    <!-- Hero -->
+    <header class="relative min-h-[85vh] sm:min-h-[72vh] flex items-center justify-center overflow-hidden">
+      <div
+        class="absolute inset-0 w-full h-full will-change-transform motion-reduce:transform-none"
+        :style="videoStyle()"
+        aria-hidden="true"
+      >
+        <div class="absolute inset-0 bg-gradient-to-br from-brand-900/92 via-brand-800/85 to-brand-600/75"></div>
+        <div class="absolute inset-0 bg-black/25"></div>
       </div>
 
-      <transition enter-active-class="transition duration-200 ease-out" enter-from-class="transform -translate-y-4 opacity-0" enter-to-class="transform translate-y-0 opacity-100" leave-active-class="transition duration-150 ease-in" leave-from-class="transform translate-y-0 opacity-100" leave-to-class="transform -translate-y-4 opacity-0">
-        <div v-show="isMobileMenuOpen" class="md:hidden bg-white border-t border-gray-100 absolute w-full shadow-lg">
-          <div class="px-6 py-4 flex flex-col space-y-4">
-            <router-link to="/" @click="isMobileMenuOpen = false" class="text-gray-700 hover:text-brand-600 font-semibold text-lg">Home</router-link>
-            <router-link to="/calendar" @click="isMobileMenuOpen = false" class="text-gray-700 hover:text-brand-600 font-semibold text-lg">Our Calendar</router-link>
-            <hr class="border-gray-200">
-            <router-link to="/login" @click="isMobileMenuOpen = false" class="bg-brand-500 text-white px-4 py-3 rounded-lg text-center font-bold shadow hover:bg-brand-600 transition">Vendor Portal / Login</router-link>
-          </div>
-        </div>
-      </transition>
-    </nav>
-
-    <header class="relative min-h-[88vh] sm:min-h-[50vh] flex items-center justify-center overflow-hidden">
-      <div class="absolute inset-0 w-full h-full will-change-transform motion-reduce:transform-none" :style="videoStyle()" aria-hidden="true">
-        <div class="absolute inset-0 bg-gradient-to-br from-brand-900/90 via-brand-800/80 to-brand-600/70"></div>
-        <div class="absolute inset-0 bg-black/30"></div>
-      </div>
-
-      <div class="relative z-10 text-center text-white px-6 py-20 max-w-4xl mx-auto will-change-transform motion-reduce:transform-none" :style="contentStyle()">
+      <div
+        class="relative z-10 text-center text-white px-6 py-20 max-w-4xl mx-auto will-change-transform motion-reduce:transform-none"
+        :style="contentStyle()"
+      >
         <p class="text-sm sm:text-base uppercase tracking-[0.2em] font-bold text-brand-200 mb-4 drop-shadow-md">
-          CMART Kompleks Changlun
+          CMart Kompleks Changlun
         </p>
         <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black mb-6 drop-shadow-2xl leading-tight tracking-tight">
           Carboot@CMart
         </h1>
-        <p class="text-lg sm:text-xl lg:text-2xl mb-10 font-medium max-w-2xl mx-auto text-white/95 leading-relaxed drop-shadow">
-          Discover amazing deals, join the vibrant community, or launch your micro-business at Malaysia's favorite carboot market.
+        <p class="text-lg sm:text-xl mb-10 font-medium max-w-2xl mx-auto text-white/95 leading-relaxed drop-shadow">
+          Malaysia's favourite weekend carboot market — browse preloved finds, support local vendors, and enjoy community events at CMart Kompleks Changlun.
         </p>
-        <div class="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-6">
-          <router-link to="/vendor-booking" class="w-full sm:w-auto bg-brand-500 text-white font-extrabold py-4 px-10 rounded-full hover:bg-brand-400 hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(var(--color-brand-500),0.4)] text-center text-lg">
-            Book a Space Now
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+          <router-link
+            to="/#events"
+            class="w-full sm:w-auto bg-brand-500 text-white font-extrabold py-4 px-10 rounded-full hover:bg-brand-400 hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(var(--color-brand-500),0.4)] text-center text-lg"
+          >
+            View Upcoming Events
           </router-link>
-          <router-link to="/register" class="w-full sm:w-auto bg-white/10 backdrop-blur-md border border-white/30 text-white font-bold py-4 px-10 rounded-full shadow-lg hover:bg-white/20 transition-all duration-300 text-center text-lg">
-            Explore Community
+          <router-link
+            :to="bookingCtaLink"
+            class="w-full sm:w-auto bg-white/10 backdrop-blur border-2 border-white/40 text-white font-bold py-4 px-10 rounded-full hover:bg-white/20 hover:scale-105 transition-all duration-300 text-center text-lg"
+          >
+            Book a Vendor Space
           </router-link>
         </div>
       </div>
     </header>
 
-    <main class="py-16 px-4 sm:px-6 max-w-7xl mx-auto space-y-24">
-      
-      <section ref="newsSectionRef">
-        <div class="flex justify-between items-end mb-8" :class="newsHeaderRevealClass('fade')">
-          <div>
-            <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">What's Trending</span>
-            <h2 class="text-4xl font-extrabold text-gray-900 tracking-tight">Latest Updates</h2>
+    <main>
+      <!-- Upcoming Events -->
+      <section id="events" ref="eventsSectionRef" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6 bg-gray-50">
+        <div class="max-w-7xl mx-auto">
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-10" :class="eventsHeaderClass('fade')">
+            <div>
+              <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">What's On</span>
+              <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Upcoming Carboot Events</h2>
+              <p class="mt-2 text-gray-600 max-w-xl">Plan your visit — browse dates, times, and book a vendor space before slots fill up.</p>
+            </div>
+            <router-link
+              to="/calendar"
+              class="inline-flex items-center self-start text-sm font-bold text-brand-600 hover:text-brand-700 transition"
+            >
+              Full Calendar
+              <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </router-link>
           </div>
-          <div class="hidden md:flex space-x-3">
-            <button @click="scrollNews(-1)" class="p-3 rounded-full bg-white shadow-md text-brand-600 hover:bg-brand-50 hover:scale-110 transition-all focus:outline-none border border-gray-100">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
-            </button>
-            <button @click="scrollNews(1)" class="p-3 rounded-full bg-white shadow-md text-brand-600 hover:bg-brand-50 hover:scale-110 transition-all focus:outline-none border border-gray-100">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
-            </button>
+
+          <div v-if="loadingEvents" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div v-for="n in 3" :key="n" class="bg-white rounded-2xl border border-gray-100 p-6 animate-pulse h-52"></div>
           </div>
-        </div>
-        
-        <div class="relative -mx-4 sm:mx-0">
-          <div ref="newsScrollContainer" @mouseenter="pauseAutoSlide" @mouseleave="resumeAutoSlide" @touchstart="pauseAutoSlide" @touchend="resumeAutoSlide" class="flex overflow-x-auto snap-x snap-mandatory gap-6 pb-8 px-4 sm:px-0 hide-scrollbar scroll-smooth">
-            <div v-for="(item, index) in latestNews" :key="item.id" class="min-w-[85vw] sm:min-w-[350px] md:min-w-[400px] snap-center bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:scale-105 hover:-translate-y-2 hover:shadow-2xl transition-all duration-300 ease-in-out will-change-transform group cursor-pointer" :class="staggerCardClass(newsCardsVisible, index)" :style="staggerCardStyle(newsCardsVisible, index)">
-              <div class="h-56 bg-gray-200 relative overflow-hidden">
-                <img :src="item.image" alt="News cover" class="w-full h-full object-cover group-hover:scale-110 transition duration-700" loading="lazy" />
-                <div class="absolute inset-0 bg-gradient-to-t from-gray-900/80 to-transparent opacity-60"></div>
-                <div class="absolute top-4 left-4 bg-brand-500 text-white text-xs font-black px-3 py-1.5 rounded-full uppercase tracking-wide shadow-lg">{{ item.category }}</div>
-                <div class="absolute bottom-4 left-4 text-white">
-                  <p class="text-xs font-semibold text-gray-200 mb-1 flex items-center"><svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> {{ item.date }}</p>
+
+          <div v-else-if="!upcomingEvents.length" class="text-center py-16 bg-white rounded-2xl border border-gray-100">
+            <p class="text-gray-500 text-lg">No upcoming events scheduled right now.</p>
+            <p class="text-gray-400 text-sm mt-2">Check back soon or follow our news for the next market date.</p>
+          </div>
+
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <article
+              v-for="(event, index) in upcomingEvents"
+              :key="event.id"
+              class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 ease-out relative overflow-hidden group flex flex-col"
+              :class="staggerCardClass(eventsVisible, index)"
+              :style="staggerCardStyle(eventsVisible, index)"
+            >
+              <div class="absolute top-0 left-0 w-full h-1 bg-brand-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <div class="flex items-start space-x-4 mb-4">
+                <div class="bg-brand-50 text-brand-600 rounded-xl p-3 text-center min-w-[70px] border border-brand-100 group-hover:bg-brand-500 group-hover:text-white transition-colors duration-300">
+                  <span class="block text-3xl font-black leading-none mb-1">{{ event.day }}</span>
+                  <span class="block text-xs uppercase font-bold tracking-widest">{{ event.month }}</span>
+                </div>
+                <div class="pt-1 min-w-0">
+                  <h3 class="text-xl font-bold text-gray-900 mb-1">{{ event.title }}</h3>
+                  <p class="text-sm text-gray-500 flex items-center font-medium mb-1">
+                    <svg class="w-4 h-4 mr-1 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {{ event.time }}
+                  </p>
+                  <p class="text-sm text-gray-500 flex items-start font-medium">
+                    <svg class="w-4 h-4 mr-1 mt-0.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {{ event.location }}
+                  </p>
                 </div>
               </div>
-              <div class="p-6">
-                <h3 class="text-xl font-bold text-gray-900 mb-3 group-hover:text-brand-600 transition duration-300 leading-tight">{{ item.title }}</h3>
-                <p class="text-gray-600 text-sm line-clamp-2 leading-relaxed">{{ item.excerpt }}</p>
-                <div class="mt-5 flex items-center text-brand-600 font-bold text-sm group-hover:translate-x-2 transition-transform duration-300">Read Full Story <span class="ml-2">→</span></div>
+              <p v-if="event.description" class="text-sm text-gray-600 leading-relaxed mb-5 line-clamp-3 flex-grow">
+                {{ event.description }}
+              </p>
+              <div class="flex justify-between items-center mt-auto pt-5 border-t border-gray-100/80">
+                <span :class="['text-xs font-bold px-4 py-1.5 rounded-full', event.statusClass]">{{ event.status }}</span>
+                <router-link
+                  :to="bookingCtaLink"
+                  class="inline-flex items-center text-sm font-bold text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-4 py-1.5 rounded-full transition-colors"
+                >
+                  Book Space <span class="ml-1">→</span>
+                </router-link>
               </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Why Visit -->
+      <section id="why-visit" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6">
+        <div class="max-w-7xl mx-auto">
+          <div class="text-center max-w-2xl mx-auto mb-12">
+            <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">Why Visit</span>
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Carboot@CMart Is For Everyone</h2>
+            <p class="mt-3 text-gray-600">A relaxed weekend market where shoppers, families, and local entrepreneurs come together.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div
+              v-for="benefit in visitBenefits"
+              :key="benefit.title"
+              class="bg-gray-50 rounded-2xl border border-gray-100 p-6 text-center hover:border-brand-200 hover:shadow-md transition-all duration-300"
+            >
+              <div :class="['w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4', benefit.iconBg]">
+                <component :is="benefit.icon" />
+              </div>
+              <h3 class="text-lg font-bold text-gray-900 mb-2">{{ benefit.title }}</h3>
+              <p class="text-sm text-gray-600 leading-relaxed">{{ benefit.description }}</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section ref="calendarSectionRef" class="scroll-mt-24">
-        <div class="flex justify-between items-end mb-8" :class="calendarHeaderRevealClass('fade')">
-          <div>
-            <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">Join The Action</span>
-            <h2 class="text-4xl font-extrabold text-gray-900 tracking-tight">Upcoming Dates</h2>
-          </div>
-          <router-link to="/calendar" class="hidden sm:inline-flex items-center text-sm font-bold text-brand-600 hover:text-brand-700 transition">
-            View Full Calendar <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-          </router-link>
-        </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div v-for="(event, index) in upcomingEvents" :key="event.id" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 ease-out relative overflow-hidden group" :class="staggerCardClass(calendarCardsVisible, index)" :style="staggerCardStyle(calendarCardsVisible, index)">
-            <div class="absolute top-0 left-0 w-full h-1 bg-brand-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div class="flex items-start space-x-4 mb-5">
-              <div class="bg-brand-50 text-brand-600 rounded-xl p-3 text-center min-w-[70px] border border-brand-100 group-hover:bg-brand-500 group-hover:text-white transition-colors duration-300">
-                <span class="block text-3xl font-black leading-none mb-1">{{ event.day }}</span>
-                <span class="block text-xs uppercase font-bold tracking-widest">{{ event.month }}</span>
-              </div>
-              <div class="pt-1">
-                <h3 class="text-xl font-bold text-gray-900 mb-1">{{ event.title }}</h3>
-                <p class="text-sm text-gray-500 flex items-center font-medium">
-                  <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                  {{ event.time }}
-                </p>
-              </div>
-            </div>
-            <div class="flex justify-between items-center mt-6 pt-5 border-t border-gray-100/80">
-              <span :class="['text-xs font-bold px-4 py-1.5 rounded-full', event.statusClass]">{{ event.status }}</span>
-              <router-link to="/vendor-booking" class="inline-flex items-center text-sm font-bold text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-4 py-1.5 rounded-full transition-colors">
-                Book Space <span class="ml-1">→</span>
+      <!-- Become a Vendor -->
+      <section id="vendor" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6 bg-brand-600">
+        <div class="max-w-7xl mx-auto">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            <div class="text-white">
+              <span class="text-brand-200 font-bold uppercase tracking-wider text-sm mb-2 block">For Vendors</span>
+              <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">Become a Carboot Vendor</h2>
+              <p class="text-brand-100 text-lg leading-relaxed mb-6">
+                Turn your preloved items or small business into weekend income. Carboot@CMart offers affordable booth spaces, a steady flow of visitors, and a supportive community marketplace at CMart Kompleks Changlun.
+              </p>
+              <ul class="space-y-3 mb-8">
+                <li v-for="point in vendorBenefits" :key="point" class="flex items-start gap-3 text-brand-50">
+                  <svg class="w-5 h-5 text-brand-200 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>{{ point }}</span>
+                </li>
+              </ul>
+              <router-link
+                :to="bookingCtaLink"
+                class="inline-flex items-center bg-white text-brand-600 font-extrabold py-3.5 px-8 rounded-xl shadow-lg hover:bg-brand-50 hover:-translate-y-0.5 transition-all duration-300"
+              >
+                Book a Space
+                <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
               </router-link>
             </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div
+                v-for="card in vendorCards"
+                :key="card.title"
+                class="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-6 text-white"
+              >
+                <div class="text-3xl mb-3">{{ card.emoji }}</div>
+                <h3 class="font-bold text-lg mb-1">{{ card.title }}</h3>
+                <p class="text-sm text-brand-100">{{ card.description }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section ref="feedbackSectionRef" class="max-w-5xl mx-auto" :class="feedbackRevealClass('fade')">
-        <div class="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden relative">
-          <div class="absolute top-0 left-0 w-full h-48 bg-gradient-to-br from-brand-600 to-brand-400"></div>
-          <svg class="absolute top-0 right-0 opacity-10 w-64 h-64 transform translate-x-1/3 -translate-y-1/4" fill="currentColor" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50"></circle></svg>
-          
-          <div class="relative pt-12 pb-8 px-8 text-center text-white z-10">
-            <h2 class="text-4xl font-extrabold mb-3 tracking-tight">The Community Voice</h2>
-            <p class="text-lg opacity-90 font-medium max-w-2xl mx-auto">See what others are saying, or help us improve the Carboot@CMart experience.</p>
+      <!-- News & Updates -->
+      <section id="news" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6 bg-gray-50">
+        <div class="max-w-7xl mx-auto">
+          <div class="mb-10">
+            <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">Stay Informed</span>
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">News &amp; Updates</h2>
+            <p class="mt-2 text-gray-600 max-w-xl">Announcements, promotions, event updates, and community highlights from Carboot@CMart.</p>
           </div>
 
-          <div class="relative bg-white z-20 rounded-t-[2.5rem] -mt-6 p-8 border-b border-gray-100 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
-            <CommunityFeedback @submitted="onFeedbackSubmitted" />
-          </div>
-
-          <div class="p-8 md:p-12 bg-gray-50/50">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 pb-4 border-b border-gray-200">
-              <h3 class="text-xl sm:text-2xl font-bold text-gray-900">
-                Community Reviews
-                <span class="text-brand-600">({{ communityReviews.length }})</span>
-              </h3>
-              <button
-                v-if="communityReviews.length > REVIEWS_PER_PAGE && !showAllReviews"
-                type="button"
-                class="inline-flex items-center self-start sm:self-auto text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors duration-200"
-                @click="viewAllReviews"
-              >
-              </button>
-            </div>
-
-            <div v-if="loadingReviews" class="flex justify-center py-10">
-              <div class="animate-pulse flex flex-col items-center">
-                <div class="h-10 w-10 bg-brand-200 rounded-full mb-4"></div>
-                <div class="h-4 w-32 bg-gray-200 rounded mb-2"></div>
-                <div class="h-3 w-24 bg-gray-200 rounded"></div>
+          <div v-if="loadingNews" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div v-for="n in 3" :key="n" class="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
+              <div class="h-44 bg-gray-200"></div>
+              <div class="p-6 space-y-3">
+                <div class="h-4 w-24 bg-gray-200 rounded"></div>
+                <div class="h-6 w-full bg-gray-200 rounded"></div>
+                <div class="h-4 w-full bg-gray-100 rounded"></div>
               </div>
             </div>
+          </div>
 
-            <div v-else-if="communityReviews.length === 0" class="text-center text-gray-500 italic py-8">
-              No reviews yet. Be the first to shape the community!
-            </div>
+          <div v-else-if="!newsPosts.length" class="text-center py-16 bg-white rounded-2xl border border-gray-100">
+            <p class="text-gray-500">No news posts yet. Check back for announcements and updates.</p>
+          </div>
 
-            <template v-else>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-                <div
-                  v-for="review in displayedReviews"
-                  :key="review.id"
-                  class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 ease-in-out relative"
-                >
-                  <div class="absolute top-4 right-6 text-gray-100 pointer-events-none">
-                    <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 32 32"><path d="M10 8c-3.3 0-6 2.7-6 6v10h10V14H10c0-1.1.9-2 2-2V8zm16 0c-3.3 0-6 2.7-6 6v10h10V14H20c0-1.1.9-2 2-2V8z"></path></svg>
-                  </div>
-                  <div class="flex items-center space-x-3 mb-4 relative z-10">
-                    <div class="bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 rounded-full h-12 w-12 shrink-0 flex items-center justify-center font-black text-lg border border-brand-200">
-                      {{ displayReviewerName(review).charAt(0).toUpperCase() }}
-                    </div>
-                    <div>
-                      <div class="font-bold text-gray-900">{{ displayReviewerName(review) }}</div>
-                      <span v-if="review.reviewer_role" class="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-md inline-block mt-1" :class="roleBadgeClass(review.reviewer_role)">
-                        {{ review.reviewer_role }}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-gray-500 relative z-10">
-                    <div class="flex items-center">
-                      <span class="mr-1">Service:</span>
-                      <span class="text-amber-400 text-sm tracking-tighter"><span v-for="star in 5" :key="'s-' + review.id + star">{{ star <= (review.service_rating || 0) ? '★' : '☆' }}</span></span>
-                    </div>
-                    <div class="flex items-center">
-                      <span class="mr-1">Value:</span>
-                      <span class="text-amber-400 text-sm tracking-tighter"><span v-for="star in 5" :key="'v-' + review.id + star">{{ star <= (review.value_rating || 0) ? '★' : '☆' }}</span></span>
-                    </div>
-                  </div>
-                  <p v-if="review.comments" class="text-gray-600 text-sm leading-relaxed relative z-10 line-clamp-4">"{{ review.comments }}"</p>
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <article
+              v-for="post in newsPosts.slice(0, 6)"
+              :key="post.id"
+              class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col"
+            >
+              <div v-if="post.image_url" class="h-44 overflow-hidden bg-gray-100">
+                <img :src="post.image_url" :alt="post.title" class="w-full h-full object-cover" loading="lazy" />
+              </div>
+              <div v-else class="h-44 bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center">
+                <span class="text-brand-400 font-black text-4xl">@</span>
+              </div>
+              <div class="p-6 flex flex-col flex-grow">
+                <div class="flex items-center justify-between gap-2 mb-3">
+                  <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-full">
+                    {{ post.category }}
+                  </span>
+                  <time v-if="post.published_at" class="text-xs text-gray-400 font-medium">{{ formatNewsDate(post.published_at) }}</time>
                 </div>
+                <h3 class="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{{ post.title }}</h3>
+                <p class="text-sm text-gray-600 leading-relaxed line-clamp-3 flex-grow">{{ post.excerpt }}</p>
               </div>
+            </article>
+          </div>
+        </div>
+      </section>
 
-              <nav
-                v-if="!showAllReviews && totalPages > 1"
-                class="flex flex-wrap items-center justify-center gap-2 mt-8"
-                aria-label="Reviews pagination"
+      <!-- About -->
+      <section id="about" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6">
+        <div class="max-w-7xl mx-auto">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">About Us</span>
+              <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-4">Carboot@CMart &amp; CMart Kompleks Changlun</h2>
+              <p class="text-gray-600 leading-relaxed mb-4">
+                Carboot@CMart is a community-driven weekend carboot market held at CMart Kompleks Changlun in Changlun, Kedah. We bring together local vendors, shoppers, students, and families for a vibrant marketplace experience every weekend.
+              </p>
+              <p class="text-gray-600 leading-relaxed mb-6">
+                Whether you are hunting for preloved bargains, supporting micro-entrepreneurs, or looking for a fun family outing, Carboot@CMart offers an welcoming space to connect, shop, and sell.
+              </p>
+              <router-link
+                to="/community"
+                class="inline-flex items-center text-brand-600 font-bold hover:text-brand-700 transition"
               >
-                <button
-                  type="button"
-                  class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                  :class="currentPage === 1 ? 'border-gray-200 text-gray-400 bg-white' : 'border-gray-200 text-gray-700 bg-white hover:border-brand-300 hover:text-brand-600'"
-                  :disabled="currentPage === 1"
-                  @click="goToPage(currentPage - 1)"
-                >
-                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Previous
-                </button>
-
-                <button
-                  v-for="page in paginationPages"
-                  :key="page"
-                  type="button"
-                  class="min-w-[2.5rem] h-10 rounded-lg text-sm font-bold border transition-all duration-200"
-                  :class="page === currentPage
-                    ? 'bg-brand-500 border-brand-500 text-white shadow-md'
-                    : 'bg-white border-gray-200 text-gray-700 hover:border-brand-300 hover:text-brand-600'"
-                  @click="goToPage(page)"
-                >
-                  {{ page }}
-                </button>
-
-                <button
-                  type="button"
-                  class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold border transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                  :class="currentPage === totalPages ? 'border-gray-200 text-gray-400 bg-white' : 'border-gray-200 text-gray-700 bg-white hover:border-brand-300 hover:text-brand-600'"
-                  :disabled="currentPage === totalPages"
-                  @click="goToPage(currentPage + 1)"
-                >
-                  Next
-                  <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </nav>
-            </template>
+                Explore the Community Portal
+                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </router-link>
+            </div>
+            <div class="bg-gray-50 rounded-3xl border border-gray-100 p-8 sm:p-10">
+              <h3 class="text-xl font-bold text-gray-900 mb-6">Visit Information</h3>
+              <dl class="space-y-5">
+                <div>
+                  <dt class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Location</dt>
+                  <dd class="text-gray-800 font-medium">CMart Kompleks Changlun, Changlun, Kedah</dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Market Days</dt>
+                  <dd class="text-gray-800 font-medium">Weekend carboot events — see calendar for dates</dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">For Vendors</dt>
+                  <dd class="text-gray-800 font-medium">Register an account, get approved, then book your booth space online</dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">Contact</dt>
+                  <dd class="text-gray-800 font-medium">enquiries@cmart.com.my</dd>
+                </div>
+              </dl>
+            </div>
           </div>
         </div>
       </section>
     </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-300">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-14">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+          <div>
+            <img src="/cmart_logo.png" alt="Carboot@CMart" class="h-12 w-auto mb-4 brightness-0 invert opacity-90" />
+            <p class="text-sm leading-relaxed text-gray-400">
+              Carboot@CMart — a community carboot market at CMart Kompleks Changlun. Events, vendors, and weekend fun for everyone.
+            </p>
+          </div>
+
+          <div>
+            <h3 class="text-white font-bold mb-4">Quick Links</h3>
+            <ul class="space-y-2 text-sm">
+              <li v-for="link in footerLinks" :key="link.to">
+                <router-link :to="link.to" class="hover:text-brand-400 transition">{{ link.label }}</router-link>
+              </li>
+              <li>
+                <router-link to="/calendar" class="hover:text-brand-400 transition">Event Calendar</router-link>
+              </li>
+              <li>
+                <router-link to="/login" class="hover:text-brand-400 transition">Vendor Login</router-link>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="text-white font-bold mb-4">Contact</h3>
+            <ul class="space-y-2 text-sm text-gray-400">
+              <li>CMart Kompleks Changlun</li>
+              <li>Changlun, Kedah, Malaysia</li>
+              <li>
+                <a href="mailto:enquiries@cmart.com.my" class="hover:text-brand-400 transition">enquiries@cmart.com.my</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="mt-12 pt-8 border-t border-gray-800 text-center text-xs text-gray-500">
+          &copy; {{ currentYear }} Carboot@CMart · CMart Kompleks Changlun. All rights reserved.
+        </div>
+      </div>
+    </footer>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { useToast } from 'vue-toastification';
-
-import CommunityFeedback from '../../components/CommunityFeedback.vue';
+import { ref, computed, h, onMounted } from 'vue';
+import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import api from '../../services/api';
+import { useAuthStore } from '../../stores/auth';
+import { PUBLIC_LINKS } from '../../config/navigation';
 import { useScrollReveal } from '../../composables/useScrollReveal';
 import { useHeroParallax } from '../../composables/useHeroParallax';
 
-const toast = useToast();
-
-const REVIEWS_PER_PAGE = 4;
-const currentPage = ref(1);
-const showAllReviews = ref(false);
-const heroVideoRef = ref(null);
+const auth = useAuthStore();
 const { contentStyle, videoStyle } = useHeroParallax();
 
-const { targetRef: feedbackSectionRef, revealClass: feedbackRevealClass } = useScrollReveal({ threshold: 0.1 });
-const { targetRef: calendarSectionRef, isVisible: calendarCardsVisible, revealClass: calendarHeaderRevealClass } = useScrollReveal({ threshold: 0.08 });
-const { targetRef: newsSectionRef, isVisible: newsCardsVisible, revealClass: newsHeaderRevealClass } = useScrollReveal({ threshold: 0.08 });
+const bookingCtaLink = computed(() => {
+  if (auth.isApprovedVendor) return '/vendor-booking';
+  return '/login?redirect=/vendor-booking';
+});
+
+const currentYear = new Date().getFullYear();
+const footerLinks = PUBLIC_LINKS.filter((link) => link.label !== 'Home');
+
+const DEFAULT_LOCATION = 'CMart Kompleks Changlun, Changlun';
+
+const upcomingEvents = ref([]);
+const newsPosts = ref([]);
+const loadingEvents = ref(true);
+const loadingNews = ref(true);
+
+const { targetRef: eventsSectionRef, isVisible: eventsVisible, revealClass: eventsHeaderClass } = useScrollReveal({ threshold: 0.08 });
 
 const staggerCardClass = (visible, index) => {
   const motionSafe = 'motion-reduce:opacity-100 motion-reduce:translate-y-0';
   return visible ? `opacity-100 translate-y-0 ${motionSafe}` : `opacity-0 translate-y-8 ${motionSafe}`;
 };
 
-const staggerCardStyle = (visible, index) => ({ transitionDelay: visible ? `${Math.min(index * 75, 400)}ms` : '0ms' });
+const staggerCardStyle = (visible, index) => ({
+  transitionDelay: visible ? `${Math.min(index * 75, 400)}ms` : '0ms',
+});
 
-const newsScrollContainer = ref(null);
-const scrollNews = (direction) => {
-  if (newsScrollContainer.value) {
-    const scrollAmount = direction * (window.innerWidth < 640 ? window.innerWidth * 0.85 : 424); 
-    newsScrollContainer.value.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-  }
-};
+const visitBenefits = [
+  {
+    title: 'Shop Preloved Items',
+    description: 'Discover unique bargains, vintage finds, and everyday essentials at friendly prices.',
+    iconBg: 'bg-brand-50 text-brand-600',
+    icon: () => h('svg', { class: 'w-7 h-7', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z' }),
+    ]),
+  },
+  {
+    title: 'Support Local Sellers',
+    description: 'Every purchase helps micro-entrepreneurs and weekend traders in the Changlun community.',
+    iconBg: 'bg-emerald-50 text-emerald-600',
+    icon: () => h('svg', { class: 'w-7 h-7', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z' }),
+    ]),
+  },
+  {
+    title: 'Enjoy Weekend Activities',
+    description: 'Bring the family for a relaxed market atmosphere with food, fun, and community spirit.',
+    iconBg: 'bg-amber-50 text-amber-600',
+    icon: () => h('svg', { class: 'w-7 h-7', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' }),
+    ]),
+  },
+  {
+    title: 'Promote Sustainable Living',
+    description: 'Give preloved goods a second life and reduce waste through reuse and resale.',
+    iconBg: 'bg-violet-50 text-violet-600',
+    icon: () => h('svg', { class: 'w-7 h-7', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
+      h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '2', d: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z' }),
+    ]),
+  },
+];
 
-let autoSlideInterval = null;
-const startAutoSlide = () => {
-  autoSlideInterval = setInterval(() => {
-    if (!newsScrollContainer.value) return;
-    const container = newsScrollContainer.value;
-    if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 10) {
-      container.scrollTo({ left: 0, behavior: 'smooth' }); 
-    } else {
-      scrollNews(1);
-    }
-  }, 3500); 
-};
+const vendorBenefits = [
+  'Affordable booth spaces with flexible sizing options',
+  'Steady weekend foot traffic from shoppers and locals',
+  'Simple online booking and approval process',
+  'Join a growing community of micro-entrepreneurs',
+];
 
-const pauseAutoSlide = () => { if (autoSlideInterval) clearInterval(autoSlideInterval); };
-const resumeAutoSlide = () => { startAutoSlide(); };
-
-const upcomingEvents = ref([]);
-const latestNews = ref([]);
+const vendorCards = [
+  { emoji: '🛒', title: 'Easy Setup', description: 'Book online, get approved, and set up your booth on event day.' },
+  { emoji: '📈', title: 'Grow Your Brand', description: 'Reach new customers every weekend at a well-known location.' },
+  { emoji: '🤝', title: 'Community Support', description: 'Connect with fellow vendors and regular market visitors.' },
+  { emoji: '♻️', title: 'Circular Economy', description: 'Sell preloved goods and contribute to sustainable trade.' },
+];
 
 const statusClassForEvent = (status) => {
   if (status === 'Available') return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
@@ -333,7 +433,7 @@ const formatEventTime = (startsAt, endsAt) => {
   const start = new Date(startsAt);
   const end = new Date(endsAt);
   const opts = { hour: 'numeric', minute: '2-digit' };
-  return `${start.toLocaleTimeString('en-GB', opts)} - ${end.toLocaleTimeString('en-GB', opts)}`;
+  return `${start.toLocaleTimeString('en-GB', opts)} – ${end.toLocaleTimeString('en-GB', opts)}`;
 };
 
 const mapApiEventToCard = (ev) => {
@@ -344,112 +444,45 @@ const mapApiEventToCard = (ev) => {
     month: start.toLocaleString('en-GB', { month: 'short' }),
     title: ev.title,
     time: formatEventTime(ev.starts_at, ev.ends_at),
+    location: DEFAULT_LOCATION,
+    description: ev.description || 'Join us for a weekend of bargains, local vendors, and community fun.',
     status: ev.status,
     statusClass: statusClassForEvent(ev.status),
   };
 };
 
-const fetchPortalContent = async () => {
+const formatNewsDate = (dateStr) => {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+const fetchEvents = async () => {
+  loadingEvents.value = true;
   try {
-    const [eventsRes, newsRes] = await Promise.all([api.get('/events'), api.get('/news')]);
-    const events = Array.isArray(eventsRes.data) ? eventsRes.data : [];
+    const { data } = await api.get('/events');
+    const events = Array.isArray(data) ? data : [];
     upcomingEvents.value = events.slice(0, 6).map(mapApiEventToCard);
-    latestNews.value = [
-      { id: 1, category: 'Promo', date: 'Today', title: 'Poster Placeholder 1', excerpt: 'Testing Canva Slide 1.', image: '/carousels/1.png' },
-      { id: 2, category: 'Event', date: 'Today', title: 'Poster Placeholder 2', excerpt: 'Testing Canva Slide 2.', image: '/carousels/2.png' },
-      { id: 3, category: 'News', date: 'Today', title: 'Poster Placeholder 3', excerpt: 'Testing Canva Slide 3.', image: '/carousels/3.png' },
-      { id: 4, category: 'Update', date: 'Today', title: 'Poster Placeholder 4', excerpt: 'Testing Canva Slide 4.', image: '/carousels/4.png' },
-      { id: 5, category: 'Alert', date: 'Today', title: 'Poster Placeholder 5', excerpt: 'Testing Canva Slide 5.', image: '/carousels/5.png' }
-    ];
   } catch (error) {
-    console.error('Failed to load portal events/news:', error);
-  }
-};
-
-const communityReviews = ref([]);
-const loadingReviews = ref(true);
-
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(communityReviews.value.length / REVIEWS_PER_PAGE)),
-);
-
-const paginationPages = computed(() =>
-  Array.from({ length: totalPages.value }, (_, index) => index + 1),
-);
-
-const displayedReviews = computed(() => {
-  if (showAllReviews.value) {
-    return communityReviews.value;
-  }
-
-  const start = (currentPage.value - 1) * REVIEWS_PER_PAGE;
-  return communityReviews.value.slice(start, start + REVIEWS_PER_PAGE);
-});
-
-const goToPage = (page) => {
-  if (page < 1 || page > totalPages.value) {
-    return;
-  }
-
-  currentPage.value = page;
-};
-
-const viewAllReviews = () => {
-  showAllReviews.value = true;
-};
-
-watch(communityReviews, () => {
-  currentPage.value = 1;
-  showAllReviews.value = false;
-});
-
-const displayReviewerName = (review) => review.user?.name || 'Community Member';
-
-const roleBadgeClass = (role) => {
-  const styles = {
-    Shopper: 'bg-sky-100 text-sky-800 border border-sky-200',
-    Vendor: 'bg-amber-100 text-amber-800 border border-amber-200',
-    'UUM Student': 'bg-violet-100 text-violet-800 border border-violet-200',
-    'Local Resident': 'bg-emerald-100 text-emerald-800 border border-emerald-200',
-  };
-  return styles[role] || 'bg-gray-100 text-gray-700 border border-gray-200';
-};
-
-const fetchReviews = async () => {
-  loadingReviews.value = true;
-  try {
-    const response = await api.get('/feedbacks');
-    communityReviews.value = response.data.data || response.data;
-  } catch (error) {
-    console.error('Failed to fetch reviews:', error);
+    console.error('Failed to load events:', error);
   } finally {
-    loadingReviews.value = false;
+    loadingEvents.value = false;
   }
 };
 
-const onFeedbackSubmitted = async () => {
-  toast.success('Feedback submitted successfully! Thank you for your support.');
-  await fetchReviews();
+const fetchNews = async () => {
+  loadingNews.value = true;
+  try {
+    const { data } = await api.get('/news');
+    newsPosts.value = Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Failed to load news:', error);
+  } finally {
+    loadingNews.value = false;
+  }
 };
 
-onMounted(async () => {
-  fetchReviews();
-  fetchPortalContent();
-  startAutoSlide();
-  if (heroVideoRef.value) {
-    heroVideoRef.value.play().catch(() => {});
-  }
+onMounted(() => {
+  fetchEvents();
+  fetchNews();
 });
-
-onUnmounted(() => {
-  pauseAutoSlide();
-});
-
-const isMobileMenuOpen = ref(false);
-const toggleMobileMenu = () => { isMobileMenuOpen.value = !isMobileMenuOpen.value; };
 </script>
-
-<style>
-.hide-scrollbar::-webkit-scrollbar { display: none; }
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-</style>

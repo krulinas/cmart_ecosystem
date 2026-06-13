@@ -1,24 +1,25 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-ink-50 via-brand-50/30 to-ink-50 py-10 px-4 sm:px-6">
-    <div class="max-w-6xl mx-auto space-y-8">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <router-link to="/" class="inline-flex items-center text-sm text-ink-500 hover:text-brand-600 transition">
-          <span class="mr-1">←</span> Back to Carboot@CMart
-        </router-link>
-        <router-link
-          to="/vendor-booking"
-          class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-500/25 hover:bg-brand-600 transition"
-        >
-          Book a Space
-        </router-link>
-      </div>
+  <div class="min-h-screen bg-gradient-to-br from-ink-50 via-brand-50/30 to-ink-50">
+    <AppNavbar variant="vendor" />
 
+    <div class="max-w-6xl mx-auto py-10 px-4 sm:px-6 space-y-8">
       <header class="rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
-        <span class="ml-badge bg-brand-100 text-brand-700">Vendor Hub</span>
-        <h1 class="mt-2 text-3xl font-black text-ink-900 tracking-tight">My Dashboard</h1>
-        <p class="mt-1 text-sm text-ink-500">
-          Welcome back, {{ userDisplayName }}. Track approvals, booth details, and your vendor history in one place.
-        </p>
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <span class="ml-badge bg-brand-100 text-brand-700">Vendor Hub</span>
+            <h1 class="mt-2 text-3xl font-black text-ink-900 tracking-tight">My Dashboard</h1>
+            <p class="mt-1 text-sm text-ink-500">
+              Welcome back, {{ userDisplayName }}. Track approvals, booth details, and your vendor history in one place.
+            </p>
+          </div>
+          <router-link
+            v-if="auth.isApprovedVendor"
+            to="/vendor-booking"
+            class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-500/25 hover:bg-brand-600 transition shrink-0"
+          >
+            Book a Space
+          </router-link>
+        </div>
       </header>
 
       <!-- Top Row: Status Tracker -->
@@ -206,6 +207,14 @@
         </aside>
       </div>
 
+      <ImpactDashboard
+        :reused-items="impactMetrics.reusedItems"
+        :economic-value-rm="impactMetrics.economicValueRm"
+        :active-vendors="impactMetrics.activeVendors"
+        :active-students="impactMetrics.activeStudents"
+        class="rounded-3xl overflow-hidden border border-white/60 shadow-xl shadow-brand-900/5"
+      />
+
       <!-- Bottom Row: History & Receipts -->
       <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5 overflow-hidden">
         <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
@@ -248,11 +257,20 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
+import AppNavbar from '../../components/navigation/AppNavbar.vue';
+import ImpactDashboard from '../../components/ImpactDashboard.vue';
 import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 
 const toast = useToast();
 const auth = useAuthStore();
+
+const impactMetrics = {
+  reusedItems: 12450,
+  economicValueRm: 892000,
+  activeVendors: 156,
+  activeStudents: 89,
+};
 
 const myBookings = ref([]);
 const loadingBookings = ref(false);

@@ -1,11 +1,13 @@
 <template>
-  <div class="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+  <div class="min-h-screen bg-gray-50">
+    <AppNavbar :variant="auth.isCommunityMember ? 'vendor' : 'public'" />
+    <div class="py-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-6xl mx-auto bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
       <div class="flex flex-col sm:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-100">
         <h1 class="text-3xl font-extrabold text-black mb-4 sm:mb-0">CMart Carboot Schedule</h1>
-        <router-link to="/" class="flex items-center text-[#757575] hover:text-[#0277BD] font-medium transition-colors duration-200">
+        <router-link :to="backLink" class="flex items-center text-[#757575] hover:text-[#0277BD] font-medium transition-colors duration-200">
           <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-          Go Back
+          {{ backLabel }}
         </router-link>
       </div>
       <p v-if="auth.isCmartWorker" class="text-sm text-brand-700 mb-4 font-medium">
@@ -52,11 +54,13 @@
         </div>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
+import AppNavbar from './navigation/AppNavbar.vue';
 import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -66,6 +70,10 @@ import api from '../services/api';
 import { useAuthStore } from '../stores/auth';
 
 const auth = useAuthStore();
+
+const backLink = computed(() => (auth.isAuthenticated ? auth.homeForUser() : '/'));
+const backLabel = computed(() => (auth.isAuthenticated ? 'Back to Dashboard' : 'Back to Home'));
+
 const showModal = ref(false);
 const newEventTitle = ref('');
 const newEventStatus = ref('Available');

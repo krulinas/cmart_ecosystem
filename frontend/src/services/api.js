@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '../stores/auth';
 
 const api = axios.create({
   baseURL: 'http://127.0.0.1:8000/api',
@@ -21,8 +22,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('carboot_cmart_token');
-      localStorage.removeItem('carboot_cmart_user');
+      try {
+        useAuthStore().clearSession();
+      } catch {
+        localStorage.removeItem('carboot_cmart_token');
+        localStorage.removeItem('carboot_cmart_user');
+      }
     }
 
     if (error.response?.status === 403 && error.response?.data?.message) {

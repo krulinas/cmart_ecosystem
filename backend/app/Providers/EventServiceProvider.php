@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Events\CarbootEventCancelled;
+use App\Events\CarbootEventUpdated;
+use App\Listeners\DispatchEventCancellationNotifications;
+use App\Listeners\DispatchEventUpdateNotifications;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -17,6 +21,16 @@ class EventServiceProvider extends ServiceProvider
     protected $listen = [
         Registered::class => [
             SendEmailVerificationNotification::class,
+        ],
+
+        // Staff updates an event → queue emails to every registered user.
+        CarbootEventUpdated::class => [
+            DispatchEventUpdateNotifications::class,
+        ],
+
+        // Staff cancels / closes / deletes an event → queue cancellation emails.
+        CarbootEventCancelled::class => [
+            DispatchEventCancellationNotifications::class,
         ],
     ];
 

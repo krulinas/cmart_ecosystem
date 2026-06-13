@@ -1,5 +1,7 @@
 <template>
-  <div class="min-h-screen bg-ink-50 py-12 px-4">
+  <div class="min-h-screen bg-ink-50">
+    <AppNavbar variant="vendor" />
+    <div class="py-12 px-4">
     <div class="max-w-2xl mx-auto">
       <router-link to="/dashboard" class="inline-flex items-center text-sm text-ink-500 hover:text-brand-600 mb-6">
         <span class="mr-1">←</span> Back to My Dashboard
@@ -110,6 +112,7 @@
         </form>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -117,6 +120,7 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
+import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 import { PRODUCT_CATEGORIES } from '../../constants/productCategories';

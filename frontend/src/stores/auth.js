@@ -79,6 +79,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
+  const isCommunityMember = computed(() => role.value === 'community');
+
   const hasAnyRole = (roles = []) => roles.includes(role.value);
 
   const homeForUser = () => {
@@ -86,6 +88,12 @@ export const useAuthStore = defineStore('auth', () => {
     if (role.value === 'uum') return '/uum';
     if (role.value === 'community') return '/dashboard';
     return '/';
+  };
+
+  const bookingPathForUser = () => {
+    if (isApprovedVendor.value) return '/vendor-booking';
+    if (isAuthenticated.value) return '/login';
+    return '/login?redirect=/vendor-booking';
   };
 
   return {
@@ -96,6 +104,7 @@ export const useAuthStore = defineStore('auth', () => {
     role,
     vendorStatus,
     isApprovedVendor,
+    isCommunityMember,
     isCmartWorker,
     isBoss,
     isStaff,
@@ -103,7 +112,10 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     fetchMe,
     logout,
+    clearSession,
+    persistSession,
     hasAnyRole,
     homeForUser,
+    bookingPathForUser,
   };
 });
