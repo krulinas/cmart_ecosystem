@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CarbootEvent;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class CarbootEventController extends Controller
@@ -32,6 +33,7 @@ class CarbootEventController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validateEvent($request);
+        $validated['image_path'] = $this->storePoster($request);
 
         $event = CarbootEvent::create($validated);
 
@@ -49,6 +51,12 @@ class CarbootEventController extends Controller
     public function update(Request $request, CarbootEvent $carboot_event)
     {
         $validated = $this->validateEvent($request, true);
+        $imagePath = $this->resolvePosterPath($request, $carboot_event);
+
+        if ($request->hasFile('poster') || $request->boolean('remove_poster')) {
+            $validated['image_path'] = $imagePath;
+        }
+
         $carboot_event->update($validated);
 
         return response()->json([
@@ -59,6 +67,7 @@ class CarbootEventController extends Controller
 
     public function destroy(CarbootEvent $carboot_event)
     {
+        $this->deletePosterFile($carboot_event->image_path);
         $carboot_event->delete();
 
         return response()->json([
@@ -75,12 +84,55 @@ class CarbootEventController extends Controller
             'status' => ['sometimes', 'required', Rule::in(self::STATUSES)],
             'description' => 'nullable|string|max:5000',
             'max_slots' => 'nullable|integer|min:1',
+            'poster' => 'nullable|file|mimes:jpeg,jpg,png,webp|max:5120',
+            'remove_poster' => 'nullable|boolean',
         ];
 
         if (!$partial) {
             $rules['status'] = ['required', Rule::in(self::STATUSES)];
         }
 
-        return $request->validate($rules);
+        $validated = $request->validate($rules);
+
+        unset($validated['poster'], $validated['remove_poster']);
+
+        if (array_key_exists('max_slots', $validated) && $validated['max_slots'] === '') {
+            $validated['max_slots'] = null;
+        }
+
+        return $validated;
+    }
+
+    private function storePoster(Request $request): ?string
+    {
+        if (!$request->hasFile('poster')) {
+            return null;
+        }
+
+        return $request->file('poster')->store('carboot_event_posters', 'public');
+    }
+
+    private function resolvePosterPath(Request $request, CarbootEvent $event): ?string
+    {
+        if ($request->boolean('remove_poster')) {
+            $this->deletePosterFile($event->image_path);
+
+            return null;
+        }
+
+        if ($request->hasFile('poster')) {
+            $this->deletePosterFile($event->image_path);
+
+            return $request->file('poster')->store('carboot_event_posters', 'public');
+        }
+
+        return $event->image_path;
+    }
+
+    private function deletePosterFile(?string $path): void
+    {
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
     }
 }

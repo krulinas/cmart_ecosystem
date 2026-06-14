@@ -28,7 +28,7 @@ class CarbootEventObserver
             return;
         }
 
-        $registeredUserIds = $event->registeredUsers()->pluck('id')->all();
+        $registeredUserIds = $event->registeredUsers()->pluck('users.id')->all();
 
         /*
          * Treat a status change to "Closed" as a cancellation (not a generic update)
@@ -48,7 +48,7 @@ class CarbootEventObserver
      */
     public function deleting(CarbootEvent $event): void
     {
-        $registeredUserIds = $event->registeredUsers()->pluck('id')->all();
+        $registeredUserIds = $event->registeredUsers()->pluck('users.id')->all();
 
         event(new CarbootEventCancelled($event, $registeredUserIds));
     }

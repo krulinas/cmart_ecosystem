@@ -81,7 +81,13 @@
             :key="event.id"
             class="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-brand-50/50 transition group"
           >
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 min-w-0">
+              <img
+                v-if="event.posterUrl"
+                :src="event.posterUrl"
+                :alt="`${event.title} poster`"
+                class="w-14 h-14 rounded-lg object-cover border border-gray-100 shrink-0"
+              />
               <div class="bg-gray-100 text-gray-700 rounded-lg p-2 text-center min-w-[60px] group-hover:bg-brand-500 group-hover:text-white transition">
                 <span class="block text-2xl font-black leading-none">{{ event.day }}</span>
                 <span class="block text-[10px] uppercase font-bold">{{ event.month }}</span>
@@ -202,11 +208,17 @@ const fetchEvents = async () => {
       return {
         id: ev.id,
         day: String(start.getDate()),
-        month: start.toLocaleString('en-GB', { month: 'short' }),
+        month: start.toLocaleString('en-GB', { month: 'short', timeZone: 'Asia/Kuala_Lumpur' }),
         title: ev.title,
-        time: start.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' }),
+        time: start.toLocaleTimeString('en-GB', {
+          timeZone: 'Asia/Kuala_Lumpur',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        }),
         status: ev.status,
         statusClass: statusClassForEvent(ev.status),
+        posterUrl: ev.poster_url || null,
       };
     });
   } catch (error) {

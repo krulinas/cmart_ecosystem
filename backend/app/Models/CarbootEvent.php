@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Storage;
 
 class CarbootEvent extends Model
 {
@@ -17,6 +18,11 @@ class CarbootEvent extends Model
         'status',
         'description',
         'max_slots',
+        'image_path',
+    ];
+
+    protected $appends = [
+        'poster_url',
     ];
 
     protected $casts = [
@@ -24,6 +30,15 @@ class CarbootEvent extends Model
         'ends_at' => 'datetime',
         'max_slots' => 'integer',
     ];
+
+    public function getPosterUrlAttribute(): ?string
+    {
+        if (! $this->image_path) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->image_path);
+    }
 
     /**
      * Community users who registered for this event (event_user pivot).

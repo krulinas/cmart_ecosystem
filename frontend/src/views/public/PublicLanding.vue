@@ -9,15 +9,15 @@
         :style="videoStyle()"
         aria-hidden="true"
       >
-        <div class="absolute inset-0 bg-gradient-to-br from-brand-900/92 via-brand-800/85 to-brand-600/75"></div>
-        <div class="absolute inset-0 bg-black/25"></div>
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-900/90 via-blue-800/85 to-cyan-600/80"></div>
+        <div class="absolute inset-0 bg-black/20"></div>
       </div>
 
       <div
         class="relative z-10 text-center text-white px-6 py-20 max-w-4xl mx-auto will-change-transform motion-reduce:transform-none"
         :style="contentStyle()"
       >
-        <p class="text-sm sm:text-base uppercase tracking-[0.2em] font-bold text-brand-200 mb-4 drop-shadow-md">
+        <p class="text-sm sm:text-base uppercase tracking-[0.2em] font-bold text-cyan-200 mb-4 drop-shadow-md">
           CMart Kompleks Changlun
         </p>
         <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black mb-6 drop-shadow-2xl leading-tight tracking-tight">
@@ -29,7 +29,7 @@
         <div class="flex flex-col sm:flex-row justify-center gap-4">
           <router-link
             to="/#events"
-            class="w-full sm:w-auto bg-brand-500 text-white font-extrabold py-4 px-10 rounded-full hover:bg-brand-400 hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(var(--color-brand-500),0.4)] text-center text-lg"
+            class="w-full sm:w-auto bg-cyan-500 text-white font-extrabold py-4 px-10 rounded-full hover:bg-cyan-400 hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(6,182,212,0.4)] text-center text-lg"
           >
             View Upcoming Events
           </router-link>
@@ -82,6 +82,12 @@
               :style="staggerCardStyle(eventsVisible, index)"
             >
               <div class="absolute top-0 left-0 w-full h-1 bg-brand-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <img
+                v-if="event.posterUrl"
+                :src="event.posterUrl"
+                :alt="`${event.title} poster`"
+                class="w-full h-36 object-cover rounded-xl mb-4 border border-gray-100"
+              />
               <div class="flex items-start space-x-4 mb-4">
                 <div class="bg-brand-50 text-brand-600 rounded-xl p-3 text-center min-w-[70px] border border-brand-100 group-hover:bg-brand-500 group-hover:text-white transition-colors duration-300">
                   <span class="block text-3xl font-black leading-none mb-1">{{ event.day }}</span>
@@ -220,8 +226,8 @@
               :key="post.id"
               class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col"
             >
-              <div v-if="post.image_url" class="h-44 overflow-hidden bg-gray-100">
-                <img :src="post.image_url" :alt="post.title" class="w-full h-full object-cover" loading="lazy" />
+              <div v-if="post.banner_url || post.image_url" class="h-44 overflow-hidden bg-gray-100">
+                <img :src="post.banner_url || post.image_url" :alt="post.title" class="w-full h-full object-cover" loading="lazy" />
               </div>
               <div v-else class="h-44 bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center">
                 <span class="text-brand-400 font-black text-4xl">@</span>
@@ -430,9 +436,14 @@ const statusClassForEvent = (status) => {
 };
 
 const formatEventTime = (startsAt, endsAt) => {
+  const opts = {
+    timeZone: 'Asia/Kuala_Lumpur',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  };
   const start = new Date(startsAt);
   const end = new Date(endsAt);
-  const opts = { hour: 'numeric', minute: '2-digit' };
   return `${start.toLocaleTimeString('en-GB', opts)} – ${end.toLocaleTimeString('en-GB', opts)}`;
 };
 
@@ -441,13 +452,14 @@ const mapApiEventToCard = (ev) => {
   return {
     id: ev.id,
     day: String(start.getDate()),
-    month: start.toLocaleString('en-GB', { month: 'short' }),
+    month: start.toLocaleString('en-GB', { month: 'short', timeZone: 'Asia/Kuala_Lumpur' }),
     title: ev.title,
     time: formatEventTime(ev.starts_at, ev.ends_at),
     location: DEFAULT_LOCATION,
     description: ev.description || 'Join us for a weekend of bargains, local vendors, and community fun.',
     status: ev.status,
     statusClass: statusClassForEvent(ev.status),
+    posterUrl: ev.poster_url || null,
   };
 };
 
