@@ -77,18 +77,24 @@
             <article
               v-for="(event, index) in upcomingEvents"
               :key="event.id"
-              class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 ease-out relative overflow-hidden group flex flex-col"
+              tabindex="0"
+              role="button"
+              :aria-label="`View details for ${event.title}`"
+              class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 hover:border-brand-200 hover:ring-2 hover:ring-brand-500/15 transition-all duration-300 ease-out relative overflow-hidden group flex flex-col cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               :class="staggerCardClass(eventsVisible, index)"
               :style="staggerCardStyle(eventsVisible, index)"
+              @click="openEventDetails(event)"
+              @keydown.enter.prevent="openEventDetails(event)"
+              @keydown.space.prevent="openEventDetails(event)"
             >
               <div class="absolute top-0 left-0 w-full h-1 bg-brand-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <img
                 v-if="event.posterUrl"
                 :src="event.posterUrl"
-                :alt="`${event.title} poster`"
-                class="w-full h-36 object-cover rounded-xl mb-4 border border-gray-100"
+                :alt="`${event.title} poster preview`"
+                class="w-full h-[140px] object-cover object-top rounded-xl mb-4 border border-gray-100 pointer-events-none"
               />
-              <div class="flex items-start space-x-4 mb-4">
+              <div class="flex items-start space-x-4 mb-4 pointer-events-none">
                 <div class="bg-brand-50 text-brand-600 rounded-xl p-3 text-center min-w-[70px] border border-brand-100 group-hover:bg-brand-500 group-hover:text-white transition-colors duration-300">
                   <span class="block text-3xl font-black leading-none mb-1">{{ event.day }}</span>
                   <span class="block text-xs uppercase font-bold tracking-widest">{{ event.month }}</span>
@@ -110,14 +116,18 @@
                   </p>
                 </div>
               </div>
-              <p v-if="event.description" class="text-sm text-gray-600 leading-relaxed mb-5 line-clamp-3 flex-grow">
+              <p v-if="event.description" class="text-sm text-gray-600 leading-relaxed mb-5 line-clamp-3 flex-grow pointer-events-none">
                 {{ event.description }}
               </p>
-              <div class="flex justify-between items-center mt-auto pt-5 border-t border-gray-100/80">
-                <span :class="['text-xs font-bold px-4 py-1.5 rounded-full', event.statusClass]">{{ event.status }}</span>
+              <p class="text-xs text-brand-600 font-semibold mb-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                Click to view full poster and details
+              </p>
+              <div class="flex justify-between items-center mt-auto pt-5 border-t border-gray-100/80" @click.stop>
+                <span :class="['text-xs font-bold px-4 py-1.5 rounded-full pointer-events-none', event.statusClass]">{{ event.status }}</span>
                 <router-link
                   :to="bookingCtaLink"
                   class="inline-flex items-center text-sm font-bold text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-4 py-1.5 rounded-full transition-colors"
+                  @click.stop
                 >
                   Book Space <span class="ml-1">→</span>
                 </router-link>
@@ -224,23 +234,37 @@
             <article
               v-for="post in newsPosts.slice(0, 6)"
               :key="post.id"
-              class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col"
+              tabindex="0"
+              role="button"
+              :aria-label="`View news: ${post.title}`"
+              class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-brand-200 hover:ring-2 hover:ring-brand-500/15 transition-all duration-300 flex flex-col cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 group"
+              @click="openNewsDetails(post)"
+              @keydown.enter.prevent="openNewsDetails(post)"
+              @keydown.space.prevent="openNewsDetails(post)"
             >
-              <div v-if="post.banner_url || post.image_url" class="h-44 overflow-hidden bg-gray-100">
-                <img :src="post.banner_url || post.image_url" :alt="post.title" class="w-full h-full object-cover" loading="lazy" />
+              <div v-if="post.bannerUrl" class="h-[140px] overflow-hidden bg-gray-100 pointer-events-none">
+                <img
+                  :src="post.bannerUrl"
+                  :alt="`${post.title} banner preview`"
+                  class="w-full h-full object-cover object-top"
+                  loading="lazy"
+                />
               </div>
-              <div v-else class="h-44 bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center">
+              <div v-else class="h-[140px] bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center pointer-events-none">
                 <span class="text-brand-400 font-black text-4xl">@</span>
               </div>
-              <div class="p-6 flex flex-col flex-grow">
+              <div class="p-6 flex flex-col flex-grow pointer-events-none">
                 <div class="flex items-center justify-between gap-2 mb-3">
                   <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-full">
                     {{ post.category }}
                   </span>
-                  <time v-if="post.published_at" class="text-xs text-gray-400 font-medium">{{ formatNewsDate(post.published_at) }}</time>
+                  <time v-if="post.publishedDateShort" class="text-xs text-gray-400 font-medium">{{ post.publishedDateShort }}</time>
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{{ post.title }}</h3>
                 <p class="text-sm text-gray-600 leading-relaxed line-clamp-3 flex-grow">{{ post.excerpt }}</p>
+                <p class="text-xs text-brand-600 font-semibold mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Click to read full article
+                </p>
               </div>
             </article>
           </div>
@@ -339,13 +363,29 @@
         </div>
       </div>
     </footer>
+
+    <EventDetailsModal
+      v-model="showEventModal"
+      :event="selectedEvent"
+      :booking-link="bookingCtaLink"
+      booking-label="Book Space"
+    />
+
+    <NewsDetailsModal
+      v-model="showNewsModal"
+      :post="selectedNews"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, h, onMounted } from 'vue';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
+import EventDetailsModal from '../../components/EventDetailsModal.vue';
+import NewsDetailsModal from '../../components/NewsDetailsModal.vue';
 import api from '../../services/api';
+import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
+import { mapApiNewsToCard } from '../../utils/newsDisplay';
 import { useAuthStore } from '../../stores/auth';
 import { PUBLIC_LINKS } from '../../config/navigation';
 import { useScrollReveal } from '../../composables/useScrollReveal';
@@ -362,10 +402,14 @@ const bookingCtaLink = computed(() => {
 const currentYear = new Date().getFullYear();
 const footerLinks = PUBLIC_LINKS.filter((link) => link.label !== 'Home');
 
-const DEFAULT_LOCATION = 'CMart Kompleks Changlun, Changlun';
+const DEFAULT_LOCATION = DEFAULT_EVENT_LOCATION;
 
 const upcomingEvents = ref([]);
 const newsPosts = ref([]);
+const selectedEvent = ref(null);
+const showEventModal = ref(false);
+const selectedNews = ref(null);
+const showNewsModal = ref(false);
 const loadingEvents = ref(true);
 const loadingNews = ref(true);
 
@@ -379,6 +423,16 @@ const staggerCardClass = (visible, index) => {
 const staggerCardStyle = (visible, index) => ({
   transitionDelay: visible ? `${Math.min(index * 75, 400)}ms` : '0ms',
 });
+
+const openEventDetails = (event) => {
+  selectedEvent.value = event;
+  showEventModal.value = true;
+};
+
+const openNewsDetails = (post) => {
+  selectedNews.value = post;
+  showNewsModal.value = true;
+};
 
 const visitBenefits = [
   {
@@ -429,51 +483,12 @@ const vendorCards = [
   { emoji: '♻️', title: 'Circular Economy', description: 'Sell preloved goods and contribute to sustainable trade.' },
 ];
 
-const statusClassForEvent = (status) => {
-  if (status === 'Available') return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
-  if (status === 'Almost Full') return 'bg-amber-100 text-amber-800 border border-amber-200';
-  return 'bg-gray-100 text-gray-700 border border-gray-200';
-};
-
-const formatEventTime = (startsAt, endsAt) => {
-  const opts = {
-    timeZone: 'Asia/Kuala_Lumpur',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  };
-  const start = new Date(startsAt);
-  const end = new Date(endsAt);
-  return `${start.toLocaleTimeString('en-GB', opts)} – ${end.toLocaleTimeString('en-GB', opts)}`;
-};
-
-const mapApiEventToCard = (ev) => {
-  const start = new Date(ev.starts_at);
-  return {
-    id: ev.id,
-    day: String(start.getDate()),
-    month: start.toLocaleString('en-GB', { month: 'short', timeZone: 'Asia/Kuala_Lumpur' }),
-    title: ev.title,
-    time: formatEventTime(ev.starts_at, ev.ends_at),
-    location: DEFAULT_LOCATION,
-    description: ev.description || 'Join us for a weekend of bargains, local vendors, and community fun.',
-    status: ev.status,
-    statusClass: statusClassForEvent(ev.status),
-    posterUrl: ev.poster_url || null,
-  };
-};
-
-const formatNewsDate = (dateStr) => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-};
-
 const fetchEvents = async () => {
   loadingEvents.value = true;
   try {
     const { data } = await api.get('/events');
     const events = Array.isArray(data) ? data : [];
-    upcomingEvents.value = events.slice(0, 6).map(mapApiEventToCard);
+    upcomingEvents.value = events.slice(0, 6).map((ev) => mapApiEventToCard(ev, DEFAULT_LOCATION));
   } catch (error) {
     console.error('Failed to load events:', error);
   } finally {
@@ -485,7 +500,8 @@ const fetchNews = async () => {
   loadingNews.value = true;
   try {
     const { data } = await api.get('/news');
-    newsPosts.value = Array.isArray(data) ? data : [];
+    const posts = Array.isArray(data) ? data : [];
+    newsPosts.value = posts.map(mapApiNewsToCard);
   } catch (error) {
     console.error('Failed to load news:', error);
   } finally {

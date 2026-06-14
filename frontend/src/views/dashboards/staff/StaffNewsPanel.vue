@@ -61,25 +61,38 @@
       <div v-if="loading" class="text-ink-500 text-sm">Loading news posts…</div>
       <div v-else-if="!posts.length" class="text-ink-500 text-sm">No news posts yet.</div>
       <ul v-else class="space-y-3">
-        <li v-for="post in posts" :key="post.id" class="rounded-lg border border-ink-200 p-3">
+        <li
+          v-for="post in posts"
+          :key="post.id"
+          tabindex="0"
+          role="button"
+          :aria-label="`View news post: ${post.title}`"
+          class="rounded-lg border border-ink-200 p-3 cursor-pointer hover:border-brand-300 hover:bg-brand-50/30 hover:ring-2 hover:ring-brand-500/10 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 group"
+          @click="openNewsDetails(post)"
+          @keydown.enter.prevent="openNewsDetails(post)"
+          @keydown.space.prevent="openNewsDetails(post)"
+        >
           <div class="flex justify-between gap-3">
-            <div class="flex gap-3 min-w-0">
+            <div class="flex gap-3 min-w-0 pointer-events-none">
               <img
-                v-if="post.banner_url"
-                :src="post.banner_url"
-                :alt="`${post.title} banner`"
-                class="w-16 h-16 rounded-lg object-cover border border-ink-200 shrink-0"
+                v-if="post.bannerUrl"
+                :src="post.bannerUrl"
+                :alt="`${post.title} banner preview`"
+                class="w-16 h-16 rounded-lg object-cover object-top border border-ink-200 shrink-0"
               />
               <div class="min-w-0">
                 <div class="font-bold text-ink-900">{{ post.title }}</div>
                 <div class="text-xs text-ink-500">
-                  {{ post.category }} · {{ post.is_published ? 'Published' : 'Draft' }}
-                  <span v-if="post.published_at"> · {{ formatDateTime(post.published_at) }}</span>
+                  {{ post.category }} · {{ post.statusLabel }}
+                  <span v-if="post.publishedDateShort"> · {{ post.publishedDateShort }}</span>
                 </div>
                 <p v-if="post.excerpt" class="text-xs text-ink-500 mt-1 line-clamp-2">{{ post.excerpt }}</p>
+                <p class="text-xs text-brand-600 font-semibold mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Click to preview full post
+                </p>
               </div>
             </div>
-            <div class="flex flex-col gap-1 shrink-0">
+            <div class="flex flex-col gap-1 shrink-0" @click.stop>
               <button class="ml-btn-ghost text-sm" @click="edit(post)">Edit</button>
               <button class="ml-btn-ghost text-sm text-rose-600" :disabled="deletingId === post.id" @click="remove(post.id)">
                 {{ deletingId === post.id ? 'Deleting…' : 'Delete' }}
@@ -89,21 +102,30 @@
         </li>
       </ul>
     </section>
+
+    <NewsDetailsModal
+      v-model="showNewsModal"
+      :post="selectedNews"
+      show-status
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
+import NewsDetailsModal from '../../../components/NewsDetailsModal.vue';
 import api from '../../../services/api';
+import { mapApiNewsToCard } from '../../../utils/newsDisplay';
 
 const toast = useToast();
-const MY_TZ = 'Asia/Kuala_Lumpur';
 const posts = ref([]);
 const loading = ref(false);
 const saving = ref(false);
 const deletingId = ref(null);
 const editingId = ref(null);
+const selectedNews = ref(null);
+const showNewsModal = ref(false);
 const bannerInput = ref(null);
 const bannerFile = ref(null);
 const bannerPreviewUrl = ref('');
@@ -121,19 +143,6 @@ const emptyForm = () => ({
 });
 
 const form = reactive(emptyForm());
-
-const formatDateTime = (iso) => {
-  if (!iso) return '';
-  return new Date(iso).toLocaleString('en-GB', {
-    timeZone: MY_TZ,
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-};
 
 const toLocalInput = (iso) => {
   if (!iso) return '';
@@ -198,11 +207,16 @@ const buildFormData = () => {
   return fd;
 };
 
+const openNewsDetails = (post) => {
+  selectedNews.value = post;
+  showNewsModal.value = true;
+};
+
 const load = async () => {
   loading.value = true;
   try {
     const { data } = await api.get('/news-posts');
-    posts.value = Array.isArray(data) ? data : [];
+    posts.value = (Array.isArray(data) ? data : []).map(mapApiNewsToCard);
   } catch (error) {
     console.error('Failed to load news posts:', error);
     toast.error(extractApiError(error));
@@ -228,14 +242,14 @@ const edit = (post) => {
   form.image_url = post.image_url || '';
   form.published_at = toLocalInput(post.published_at);
   form.is_published = Boolean(post.is_published);
-  existingBannerUrl.value = post.image_path ? post.banner_url : '';
+  existingBannerUrl.value = post.bannerUrl || '';
   removeBanner.value = false;
   bannerFile.value = null;
   if (bannerInput.value) {
     bannerInput.value.value = '';
   }
   revokeBannerPreview();
-  bannerPreviewUrl.value = post.image_path ? post.banner_url : '';
+  bannerPreviewUrl.value = post.bannerUrl || '';
 };
 
 const save = async () => {

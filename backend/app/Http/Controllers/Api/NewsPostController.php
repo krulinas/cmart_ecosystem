@@ -100,7 +100,7 @@ class NewsPostController extends Controller
             return null;
         }
 
-        return $request->file('banner')->store('news_banners', 'public');
+        return $request->file('banner')->store('images/news', 'public');
     }
 
     private function resolveBannerPath(Request $request, NewsPost $post): ?string
@@ -114,7 +114,7 @@ class NewsPostController extends Controller
         if ($request->hasFile('banner')) {
             $this->deleteBannerFile($post->image_path);
 
-            return $request->file('banner')->store('news_banners', 'public');
+            return $request->file('banner')->store('images/news', 'public');
         }
 
         return $post->image_path;

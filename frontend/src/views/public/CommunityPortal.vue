@@ -76,37 +76,46 @@
           No upcoming events scheduled. Check back soon!
         </div>
         <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div
+          <article
             v-for="event in upcomingEvents.slice(0, 4)"
             :key="event.id"
-            class="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-brand-50/50 transition group"
+            tabindex="0"
+            role="button"
+            :aria-label="`View details for ${event.title}`"
+            class="rounded-xl border border-gray-100 overflow-hidden hover:border-brand-200 hover:shadow-md hover:ring-2 hover:ring-brand-500/10 transition group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 bg-white"
+            @click="openEventDetails(event)"
+            @keydown.enter.prevent="openEventDetails(event)"
+            @keydown.space.prevent="openEventDetails(event)"
           >
-            <div class="flex items-center gap-4 min-w-0">
-              <img
-                v-if="event.posterUrl"
-                :src="event.posterUrl"
-                :alt="`${event.title} poster`"
-                class="w-14 h-14 rounded-lg object-cover border border-gray-100 shrink-0"
-              />
-              <div class="bg-gray-100 text-gray-700 rounded-lg p-2 text-center min-w-[60px] group-hover:bg-brand-500 group-hover:text-white transition">
-                <span class="block text-2xl font-black leading-none">{{ event.day }}</span>
-                <span class="block text-[10px] uppercase font-bold">{{ event.month }}</span>
+            <img
+              v-if="event.posterUrl"
+              :src="event.posterUrl"
+              :alt="`${event.title} poster preview`"
+              class="w-full h-[140px] object-cover object-top border-b border-gray-100 pointer-events-none"
+            />
+            <div class="flex items-center justify-between p-4 gap-3">
+              <div class="flex items-center gap-4 min-w-0 pointer-events-none">
+                <div class="bg-gray-100 text-gray-700 rounded-lg p-2 text-center min-w-[60px] group-hover:bg-brand-500 group-hover:text-white transition">
+                  <span class="block text-2xl font-black leading-none">{{ event.day }}</span>
+                  <span class="block text-[10px] uppercase font-bold">{{ event.month }}</span>
+                </div>
+                <div class="min-w-0">
+                  <h3 class="font-bold text-gray-900 truncate">{{ event.title }}</h3>
+                  <p class="text-xs text-gray-500">{{ event.time }}</p>
+                  <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 inline-block', event.statusClass]">
+                    {{ event.status }}
+                  </span>
+                </div>
               </div>
-              <div>
-                <h3 class="font-bold text-gray-900">{{ event.title }}</h3>
-                <p class="text-xs text-gray-500">{{ event.time }}</p>
-                <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 inline-block', event.statusClass]">
-                  {{ event.status }}
-                </span>
-              </div>
+              <router-link
+                :to="bookingLink"
+                class="text-sm font-bold bg-brand-100 text-brand-700 px-4 py-2 rounded-lg hover:bg-brand-200 transition shrink-0"
+                @click.stop
+              >
+                {{ auth.isApprovedVendor ? 'Book' : 'Learn More' }}
+              </router-link>
             </div>
-            <router-link
-              :to="bookingLink"
-              class="text-sm font-bold bg-brand-100 text-brand-700 px-4 py-2 rounded-lg hover:bg-brand-200 transition shrink-0"
-            >
-              {{ auth.isApprovedVendor ? 'Book' : 'Learn More' }}
-            </router-link>
-          </div>
+          </article>
         </div>
       </section>
 
@@ -167,6 +176,13 @@
         </div>
       </section>
     </main>
+
+    <EventDetailsModal
+      v-model="showEventModal"
+      :event="selectedEvent"
+      :booking-link="bookingLink"
+      :booking-label="auth.isApprovedVendor ? 'Book Space' : 'Learn More'"
+    />
   </div>
 </template>
 
@@ -175,14 +191,18 @@ import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import CommunityFeedback from '../../components/CommunityFeedback.vue';
+import EventDetailsModal from '../../components/EventDetailsModal.vue';
 import { useAuthStore } from '../../stores/auth';
 import api from '../../services/api';
+import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
 
 const auth = useAuthStore();
 const toast = useToast();
 
 const upcomingEvents = ref([]);
 const communityReviews = ref([]);
+const selectedEvent = ref(null);
+const showEventModal = ref(false);
 const loadingEvents = ref(true);
 const loadingReviews = ref(true);
 
@@ -192,10 +212,9 @@ const bookingLink = computed(() => {
   return '/login?redirect=/vendor-booking';
 });
 
-const statusClassForEvent = (status) => {
-  if (status === 'Available') return 'bg-emerald-100 text-emerald-800';
-  if (status === 'Almost Full') return 'bg-amber-100 text-amber-800';
-  return 'bg-gray-100 text-gray-700';
+const openEventDetails = (event) => {
+  selectedEvent.value = event;
+  showEventModal.value = true;
 };
 
 const fetchEvents = async () => {
@@ -203,24 +222,7 @@ const fetchEvents = async () => {
   try {
     const { data } = await api.get('/events');
     const events = Array.isArray(data) ? data : [];
-    upcomingEvents.value = events.map((ev) => {
-      const start = new Date(ev.starts_at);
-      return {
-        id: ev.id,
-        day: String(start.getDate()),
-        month: start.toLocaleString('en-GB', { month: 'short', timeZone: 'Asia/Kuala_Lumpur' }),
-        title: ev.title,
-        time: start.toLocaleTimeString('en-GB', {
-          timeZone: 'Asia/Kuala_Lumpur',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        }),
-        status: ev.status,
-        statusClass: statusClassForEvent(ev.status),
-        posterUrl: ev.poster_url || null,
-      };
-    });
+    upcomingEvents.value = events.map((ev) => mapApiEventToCard(ev, DEFAULT_EVENT_LOCATION));
   } catch (error) {
     console.error('Failed to load community events:', error);
   } finally {

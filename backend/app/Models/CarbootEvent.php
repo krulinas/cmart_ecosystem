@@ -23,6 +23,7 @@ class CarbootEvent extends Model
 
     protected $appends = [
         'poster_url',
+        'image_url',
     ];
 
     protected $casts = [
@@ -38,6 +39,12 @@ class CarbootEvent extends Model
         }
 
         return Storage::disk('public')->url($this->image_path);
+    }
+
+    /** Alias for API consumers expecting image_url. */
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->poster_url;
     }
 
     /**

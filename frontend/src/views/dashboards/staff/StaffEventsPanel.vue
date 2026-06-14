@@ -67,8 +67,8 @@
         <li v-for="ev in events" :key="ev.id" class="rounded-lg border border-ink-200 p-3 flex justify-between gap-3">
           <div class="flex gap-3 min-w-0">
             <img
-              v-if="ev.poster_url"
-              :src="ev.poster_url"
+              v-if="resolveEventImageUrl(ev)"
+              :src="resolveEventImageUrl(ev)"
               :alt="`${ev.title} poster`"
               class="w-16 h-16 rounded-lg object-cover border border-ink-200 shrink-0"
             />
@@ -95,6 +95,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
+import { resolveEventImageUrl } from '../../../utils/imageUrl';
 
 const toast = useToast();
 const MY_TZ = 'Asia/Kuala_Lumpur';
@@ -223,14 +224,14 @@ const edit = (ev) => {
   form.status = ev.status;
   form.description = ev.description || '';
   form.max_slots = ev.max_slots;
-  existingPosterUrl.value = ev.poster_url || '';
+  existingPosterUrl.value = resolveEventImageUrl(ev) || '';
   removePoster.value = false;
   posterFile.value = null;
   if (posterInput.value) {
     posterInput.value.value = '';
   }
   revokePosterPreview();
-  posterPreviewUrl.value = ev.poster_url || '';
+  posterPreviewUrl.value = resolveEventImageUrl(ev) || '';
 };
 
 const save = async () => {

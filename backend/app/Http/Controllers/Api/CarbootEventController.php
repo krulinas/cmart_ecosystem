@@ -109,7 +109,7 @@ class CarbootEventController extends Controller
             return null;
         }
 
-        return $request->file('poster')->store('carboot_event_posters', 'public');
+        return $request->file('poster')->store('images/events', 'public');
     }
 
     private function resolvePosterPath(Request $request, CarbootEvent $event): ?string
@@ -123,7 +123,7 @@ class CarbootEventController extends Controller
         if ($request->hasFile('poster')) {
             $this->deletePosterFile($event->image_path);
 
-            return $request->file('poster')->store('carboot_event_posters', 'public');
+            return $request->file('poster')->store('images/events', 'public');
         }
 
         return $event->image_path;
