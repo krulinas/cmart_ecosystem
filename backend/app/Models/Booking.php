@@ -17,8 +17,20 @@ class Booking extends Model
         'product_details',
         'approval_status',
         'revision_comment',
+        'vendor_request_type',
+        'vendor_request_note',
         'whatsapp_link',
     ];
+
+    protected $casts = [
+        'booking_date' => 'date',
+    ];
+
+    /** Exclude invalid legacy/test dates from vendor-facing lists. */
+    public function scopeWithValidBookingDate($query)
+    {
+        return $query->where('booking_date', '>', '1970-01-01');
+    }
 
     public function user() {
         return $this->belongsTo(User::class);

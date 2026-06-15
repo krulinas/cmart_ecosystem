@@ -214,12 +214,8 @@ class BookingController extends Controller
      */
     public function resubmit(Request $request, Booking $booking)
     {
-        $user = $request->user();
-
-        if ($booking->user_id !== $user->id) {
-            return response()->json([
-                'message' => '403 Forbidden: The authenticated user does not have permission to modify this booking.',
-            ], 403);
+        if ($denied = $this->authorizeVendorBooking($request, $booking)) {
+            return $denied;
         }
 
         if ($booking->approval_status !== 'Needs_Revision') {
@@ -254,9 +250,194 @@ class BookingController extends Controller
     {
         return $request->user()
             ->bookings()
+            ->withValidBookingDate()
             ->with(['space', 'invoice'])
             ->latest()
             ->get();
+    }
+
+    public function vendorShow(Request $request, Booking $booking)
+    {
+        if ($denied = $this->authorizeVendorBooking($request, $booking)) {
+            return $denied;
+        }
+
+        if (!$this->hasValidBookingDate($booking)) {
+            return response()->json(['message' => '404 Not Found: Booking record is unavailable.'], 404);
+        }
+
+        return response()->json(
+            $booking->load(['space', 'invoice', 'auditLogs.actor'])
+        );
+    }
+
+    public function vendorUpdate(Request $request, Booking $booking)
+    {
+        if ($denied = $this->authorizeVendorBooking($request, $booking)) {
+            return $denied;
+        }
+
+        if (!in_array($booking->approval_status, ['Pending_Staff', 'Needs_Revision'], true)) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Only pending bookings can be edited by vendors.',
+                'current_status' => $booking->approval_status,
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'booking_date' => 'sometimes|required|date|after_or_equal:today',
+            'product_category' => [
+                'sometimes',
+                'required',
+                'string',
+                Rule::in([
+                    'Pre-loved / Thrift',
+                    'Food & Beverages',
+                    'Clothing & Apparel',
+                    'Handicrafts & Art',
+                    'Electronics & Gadgets',
+                    'Others',
+                ]),
+            ],
+            'product_details' => 'sometimes|required|string|max:5000',
+        ]);
+
+        $booking->update($validated);
+
+        return response()->json([
+            'message' => '200 OK: Booking updated successfully.',
+            'booking' => $booking->fresh(['space', 'invoice']),
+        ]);
+    }
+
+    public function vendorCancel(Request $request, Booking $booking)
+    {
+        if ($denied = $this->authorizeVendorBooking($request, $booking)) {
+            return $denied;
+        }
+
+        $cancellable = ['Pending_Staff', 'Pending_Boss', 'Needs_Revision'];
+        if (!in_array($booking->approval_status, $cancellable, true)) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Only pending bookings can be withdrawn by vendors.',
+                'current_status' => $booking->approval_status,
+            ], 422);
+        }
+
+        $previous = $booking->approval_status;
+        $booking->update([
+            'approval_status' => 'Cancelled',
+            'revision_comment' => null,
+        ]);
+
+        BookingAuditLogger::log(
+            $booking,
+            $request->user(),
+            $previous,
+            'Cancelled',
+            'Withdrawn by vendor.',
+            $request,
+            'vendor_cancel',
+        );
+
+        return response()->json([
+            'message' => '200 OK: Booking withdrawn successfully.',
+            'booking' => $booking->fresh(['space', 'invoice']),
+        ]);
+    }
+
+    public function vendorRequestChange(Request $request, Booking $booking)
+    {
+        if ($denied = $this->authorizeVendorBooking($request, $booking)) {
+            return $denied;
+        }
+
+        if ($booking->approval_status !== 'Approved') {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Change requests are only available for approved bookings.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'note' => 'required|string|max:2000',
+        ]);
+
+        $booking->update([
+            'vendor_request_type' => 'change',
+            'vendor_request_note' => $validated['note'],
+        ]);
+
+        BookingAuditLogger::log(
+            $booking,
+            $request->user(),
+            'Approved',
+            'Approved',
+            $validated['note'],
+            $request,
+            'vendor_request_change',
+        );
+
+        return response()->json([
+            'message' => '200 OK: Change request submitted. CMart staff will review your request.',
+            'booking' => $booking->fresh(['space', 'invoice']),
+        ]);
+    }
+
+    public function vendorRequestCancellation(Request $request, Booking $booking)
+    {
+        if ($denied = $this->authorizeVendorBooking($request, $booking)) {
+            return $denied;
+        }
+
+        if ($booking->approval_status !== 'Approved') {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Cancellation requests are only available for approved bookings.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'note' => 'required|string|max:2000',
+        ]);
+
+        $booking->update([
+            'vendor_request_type' => 'cancellation',
+            'vendor_request_note' => $validated['note'],
+        ]);
+
+        BookingAuditLogger::log(
+            $booking,
+            $request->user(),
+            'Approved',
+            'Approved',
+            $validated['note'],
+            $request,
+            'vendor_request_cancellation',
+        );
+
+        return response()->json([
+            'message' => '200 OK: Cancellation request submitted. CMart staff will review your request.',
+            'booking' => $booking->fresh(['space', 'invoice']),
+        ]);
+    }
+
+    private function authorizeVendorBooking(Request $request, Booking $booking): ?\Illuminate\Http\JsonResponse
+    {
+        if ($booking->user_id !== $request->user()->id) {
+            return response()->json([
+                'message' => '403 Forbidden: The authenticated user does not have permission to access this booking.',
+            ], 403);
+        }
+
+        return null;
+    }
+
+    private function hasValidBookingDate(Booking $booking): bool
+    {
+        if (!$booking->booking_date) {
+            return false;
+        }
+
+        return $booking->booking_date->format('Y-m-d') > '1970-01-01';
     }
 
     public function show(Booking $booking)

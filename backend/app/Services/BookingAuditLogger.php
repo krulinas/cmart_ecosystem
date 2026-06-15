@@ -16,11 +16,12 @@ class BookingAuditLogger
         string $toStatus,
         ?string $revisionComment = null,
         ?Request $request = null,
+        string $action = 'status_change',
     ): BookingAuditLog {
         return BookingAuditLog::create([
             'booking_id' => $booking->id,
             'actor_user_id' => $actor->id,
-            'action' => 'status_change',
+            'action' => $action,
             'from_status' => $fromStatus,
             'to_status' => $toStatus,
             'revision_comment' => $revisionComment,

@@ -50,8 +50,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('vendor.approved')->group(function () {
         Route::get('/vendor/bookings', [BookingController::class, 'mine']);
-        Route::post('/bookings', [BookingController::class, 'store']);
+        Route::get('/vendor/bookings/{booking}', [BookingController::class, 'vendorShow']);
+        Route::patch('/vendor/bookings/{booking}', [BookingController::class, 'vendorUpdate']);
         Route::patch('/vendor/bookings/{booking}/resubmit', [BookingController::class, 'resubmit']);
+        Route::post('/vendor/bookings/{booking}/cancel', [BookingController::class, 'vendorCancel']);
+        Route::post('/vendor/bookings/{booking}/request-change', [BookingController::class, 'vendorRequestChange']);
+        Route::post('/vendor/bookings/{booking}/request-cancellation', [BookingController::class, 'vendorRequestCancellation']);
+        Route::post('/bookings', [BookingController::class, 'store']);
     });
 
     Route::middleware('role:cmart_staff,cmart_admin')->group(function () {
