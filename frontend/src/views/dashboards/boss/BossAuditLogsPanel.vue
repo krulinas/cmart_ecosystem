@@ -62,7 +62,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
 
@@ -93,15 +93,15 @@ const load = async (page = 1) => {
     pagination.current_page = data.current_page ?? 1;
     pagination.last_page = data.last_page ?? 1;
   } catch (e) {
-    toast.error(e.forbiddenMessage || e.response?.data?.message || 'Unable to load audit logs.');
+    if (!e.forbiddenMessage) {
+      toast.error(e.response?.data?.message || 'Unable to load audit logs.');
+    }
   } finally {
     loading.value = false;
   }
 };
 
 const goPage = (page) => load(page);
-
-onMounted(() => load());
 
 defineExpose({ load });
 </script>

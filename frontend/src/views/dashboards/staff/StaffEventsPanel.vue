@@ -61,8 +61,8 @@
 
     <section class="ml-card">
       <h2 class="text-lg font-extrabold text-ink-900 mb-4">Scheduled Events</h2>
-      <div v-if="loading" class="text-ink-500 text-sm">Loading events…</div>
-      <div v-else-if="!events.length" class="text-ink-500 text-sm">No events yet.</div>
+      <div v-if="loading && !hasLoaded" class="text-ink-500 text-sm">Loading events…</div>
+      <div v-else-if="hasLoaded && !events.length" class="text-ink-500 text-sm">No events yet.</div>
       <ul v-else class="space-y-3">
         <li v-for="ev in events" :key="ev.id" class="rounded-lg border border-ink-200 p-3 flex justify-between gap-3">
           <div class="flex gap-3 min-w-0">
@@ -92,7 +92,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
 import { resolveEventImageUrl } from '../../../utils/imageUrl';
@@ -102,6 +102,7 @@ const MY_TZ = 'Asia/Kuala_Lumpur';
 const statuses = ['Available', 'Almost Full', 'Closed'];
 const events = ref([]);
 const loading = ref(false);
+const hasLoaded = ref(false);
 const saving = ref(false);
 const deletingId = ref(null);
 const editingId = ref(null);
@@ -200,9 +201,11 @@ const load = async () => {
   try {
     const { data } = await api.get('/carboot-events');
     events.value = Array.isArray(data) ? data : [];
+    hasLoaded.value = true;
   } catch (error) {
     console.error('Failed to load events:', error);
     toast.error(extractApiError(error));
+    throw error;
   } finally {
     loading.value = false;
   }
@@ -297,8 +300,6 @@ const remove = async (id) => {
     deletingId.value = null;
   }
 };
-
-onMounted(load);
 
 defineExpose({ load });
 </script>

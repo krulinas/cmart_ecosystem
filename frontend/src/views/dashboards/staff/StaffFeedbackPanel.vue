@@ -8,7 +8,11 @@
       <button class="ml-btn-ghost" @click="load" :disabled="loading">{{ loading ? 'Loading…' : 'Refresh' }}</button>
     </div>
 
-    <div v-if="!items.length" class="text-center text-ink-500 py-10">No feedback records found.</div>
+    <div v-if="loading && !hasLoaded" class="text-center text-ink-500 py-10">Loading feedback…</div>
+    <div v-else-if="loadError" class="rounded-xl border border-rose-200 bg-rose-50/60 px-4 py-8 text-center text-sm text-rose-800">
+      {{ loadError }}
+    </div>
+    <div v-else-if="!items.length" class="text-center text-ink-500 py-10">No feedback records found.</div>
 
     <div v-else class="space-y-4">
       <article
@@ -38,23 +42,31 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
 
 const toast = useToast();
 const items = ref([]);
 const loading = ref(false);
+const hasLoaded = ref(false);
+const loadError = ref(null);
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-GB') : '');
 
 const load = async () => {
   loading.value = true;
+  loadError.value = null;
   try {
     const { data } = await api.get('/staff/feedbacks');
     items.value = Array.isArray(data) ? data : [];
-  } catch {
-    toast.error('Unable to load feedback for moderation.');
+    hasLoaded.value = true;
+  } catch (e) {
+    loadError.value = e.forbiddenMessage || e.response?.data?.message || 'Unable to load feedback for moderation.';
+    if (!e.forbiddenMessage) {
+      toast.error(loadError.value);
+    }
+    throw e;
   } finally {
     loading.value = false;
   }
@@ -72,8 +84,6 @@ const remove = async (id) => {
   toast.success('Review deleted.');
   await load();
 };
-
-onMounted(load);
 
 defineExpose({ load });
 </script>

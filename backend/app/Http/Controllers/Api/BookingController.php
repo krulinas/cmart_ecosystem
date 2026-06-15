@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Invoice;
 use App\Models\Space;
+use App\Support\ManagementRole;
 use App\Services\BookingAuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -20,10 +21,10 @@ class BookingController extends Controller
      * is rejected with HTTP 422 Unprocessable Entity.
      */
     private const STATE_TRANSITIONS = [
-        'cmart_staff' => [
+        'staff' => [
             'Pending_Staff' => ['Pending_Boss', 'Needs_Revision', 'Rejected'],
         ],
-        'cmart_admin' => [
+        'manager' => [
             'Pending_Boss' => ['Approved', 'Needs_Revision', 'Rejected'],
         ],
     ];
@@ -91,8 +92,8 @@ class BookingController extends Controller
      * Tier-aware status update. Enforces the corporate approval pipeline.
      *
      * Permitted transitions:
-     *   cmart_staff:  Pending_Staff -> Pending_Boss | Needs_Revision
-     *   cmart_admin:  Pending_Boss  -> Approved     | Needs_Revision
+     *   staff:   Pending_Staff -> Pending_Boss | Needs_Revision | Rejected
+     *   manager: Pending_Boss  -> Approved     | Needs_Revision | Rejected
      */
     public function update(Request $request, Booking $booking)
     {
@@ -105,7 +106,8 @@ class BookingController extends Controller
         $current = $booking->approval_status;
         $target = $validated['approval_status'];
 
-        $allowedTargets = self::STATE_TRANSITIONS[$user->role][$current] ?? [];
+        $workflowRole = ManagementRole::workflowRoleKey($user->role);
+        $allowedTargets = self::STATE_TRANSITIONS[$workflowRole][$current] ?? [];
 
         if (!in_array($target, $allowedTargets, true)) {
             return response()->json([
@@ -189,7 +191,7 @@ class BookingController extends Controller
             && $user->role === 'community'
             && $user->vendor_status === 'approved';
 
-        $isCmartWorker = in_array($user->role, ['cmart_staff', 'cmart_admin'], true);
+        $isCmartWorker = ManagementRole::isCmartWorker($user->role);
 
         if (!$isOwner && !$isCmartWorker) {
             return response()->json([
@@ -241,9 +243,35 @@ class BookingController extends Controller
         ]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        return Booking::with(['user', 'space', 'invoice'])->latest()->get();
+        return response()->json([
+            'data' => $this->bookingListQuery()->get(),
+            'access' => 'full',
+        ]);
+    }
+
+    /**
+     * Staff-safe read-only booking registry and queue data source.
+     * Tier 1 staff use this endpoint instead of manager-only actions.
+     */
+    public function staffRegistry(Request $request)
+    {
+        if (!ManagementRole::isCmartWorker($request->user()->role)) {
+            return response()->json([
+                'message' => '403 Forbidden: The authenticated user does not have permission to access this resource.',
+            ], 403);
+        }
+
+        return response()->json([
+            'data' => $this->bookingListQuery()->get(),
+            'access' => ManagementRole::isStaffRole($request->user()->role) ? 'read_only' : 'full',
+        ]);
+    }
+
+    private function bookingListQuery()
+    {
+        return Booking::with(['user', 'space', 'invoice'])->latest();
     }
 
     public function mine(Request $request)
@@ -447,6 +475,14 @@ class BookingController extends Controller
 
     public function destroy(Booking $booking)
     {
+        $user = request()->user();
+
+        if (!$user || !ManagementRole::canAccessManagerRoutes($user->role)) {
+            return response()->json([
+                'message' => '403 Forbidden: Manager access required.',
+            ], 403);
+        }
+
         $booking->delete();
 
         return response()->json([

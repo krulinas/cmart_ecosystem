@@ -110,7 +110,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
 
@@ -145,15 +145,10 @@ const load = async () => {
     productsData.value = productsRes.data;
   } catch (e) {
     error.value = e.forbiddenMessage || e.response?.data?.message || 'Unable to load text analytics.';
-    if (e.response?.status === 403) {
-      toast.error(error.value);
-    }
   } finally {
     loading.value = false;
   }
 };
 
 defineExpose({ load });
-
-onMounted(load);
 </script>

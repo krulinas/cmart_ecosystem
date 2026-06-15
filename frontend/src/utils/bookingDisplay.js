@@ -2,7 +2,7 @@ const MY_TZ = 'Asia/Kuala_Lumpur';
 
 export const PIPELINE_STEPS = [
   { index: 1, status: 'Pending_Staff', label: 'Staff Review' },
-  { index: 2, status: 'Pending_Boss', label: 'Boss Review' },
+  { index: 2, status: 'Pending_Boss', label: 'Manager Review' },
   { index: 3, status: 'Approved', label: 'Approved' },
 ];
 

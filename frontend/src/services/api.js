@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useToast } from 'vue-toastification';
 import { useAuthStore } from '../stores/auth';
 
 const api = axios.create({
@@ -7,6 +8,28 @@ const api = axios.create({
     Accept: 'application/json',
   },
 });
+
+const forbiddenToastState = {
+  message: null,
+  shownAt: 0,
+};
+
+const FORBIDDEN_DEDUPE_MS = 4000;
+
+const maybeShowForbiddenToast = (message) => {
+  if (!message) return;
+
+  const toast = useToast();
+  const now = Date.now();
+
+  if (forbiddenToastState.message === message && now - forbiddenToastState.shownAt < FORBIDDEN_DEDUPE_MS) {
+    return;
+  }
+
+  forbiddenToastState.message = message;
+  forbiddenToastState.shownAt = now;
+  toast.error(message);
+};
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('carboot_cmart_token');
@@ -32,6 +55,7 @@ api.interceptors.response.use(
 
     if (error.response?.status === 403 && error.response?.data?.message) {
       error.forbiddenMessage = error.response.data.message;
+      maybeShowForbiddenToast(error.forbiddenMessage);
     }
 
     return Promise.reject(error);

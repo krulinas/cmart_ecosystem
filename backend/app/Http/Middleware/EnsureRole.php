@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\ManagementRole;
 use Closure;
 use Illuminate\Http\Request;
 
@@ -11,9 +12,12 @@ class EnsureRole
     {
         $user = $request->user();
 
-        if (!$user || !in_array($user->role, $roles, true)) {
-            $message = count($roles) === 1 && $roles[0] === 'cmart_admin'
-                ? '403 Forbidden: Boss access required.'
+        if (!$user || !ManagementRole::userHasAnyRole($user->role, $roles)) {
+            $managerRoles = ['manager', 'cmart_admin', 'boss', 'super_admin', ManagementRole::LEGACY_MANAGER];
+            $requiresManager = !empty(array_intersect($roles, $managerRoles));
+
+            $message = $requiresManager && ManagementRole::isStaffRole($user?->role)
+                ? '403 Forbidden: Manager access required.'
                 : '403 Forbidden: The authenticated user does not have permission to access this resource.';
 
             return response()->json(['message' => $message], 403);

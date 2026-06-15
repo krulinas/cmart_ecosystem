@@ -89,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+import { ref, reactive, onBeforeUnmount, watch, nextTick } from 'vue';
 import Chart from 'chart.js/auto';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
@@ -175,9 +175,6 @@ const load = async () => {
     renderCharts();
   } catch (e) {
     error.value = e.forbiddenMessage || e.response?.data?.message || 'Unable to load revenue analytics.';
-    if (e.response?.status === 403) {
-      toast.error(error.value);
-    }
   } finally {
     loading.value = false;
   }
@@ -189,7 +186,9 @@ const calculateProfit = async () => {
     const { data: res } = await api.post('/profitability', calcData);
     profitResult.value = res;
   } catch (e) {
-    toast.error(e.forbiddenMessage || e.response?.data?.message || 'Profitability calculation failed.');
+    if (!e.forbiddenMessage) {
+      toast.error(e.response?.data?.message || 'Profitability calculation failed.');
+    }
   } finally {
     calcLoading.value = false;
   }
@@ -200,7 +199,6 @@ watch(data, async () => {
   renderCharts();
 });
 
-onMounted(load);
 onBeforeUnmount(destroyCharts);
 
 defineExpose({ load });

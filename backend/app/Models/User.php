@@ -22,6 +22,10 @@ class User extends Authenticatable
         'email',
         'phone_number',
         'role',
+        /**
+         * Vendor approval state for community users only.
+         * TODO: Move to vendor_business_profiles or a dedicated vendor status field.
+         */
         'vendor_status',
         'password',
     ];
@@ -66,6 +70,11 @@ class User extends Authenticatable
     public function businessProfile()
     {
         return $this->hasOne(VendorBusinessProfile::class);
+    }
+
+    public function managementProfile()
+    {
+        return $this->hasOne(ManagementProfile::class);
     }
 
     public function vendorItems()

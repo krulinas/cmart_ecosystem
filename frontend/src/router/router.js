@@ -14,7 +14,8 @@ import EventCalendar from '../components/EventCalendar.vue';
 
 import { useAuthStore } from '../stores/auth';
 import { useBossPreviewStore } from '../stores/bossPreview';
-import { ALL_WORKSPACE_HASHES, BOSS_ONLY_HASHES } from '../config/workspaceNav';
+import { ALL_WORKSPACE_HASHES, MANAGER_ONLY_HASHES } from '../config/workspaceNav';
+import { isManagerOrAbove, normalizeRole, ROLES, workflowRoleKey } from '../utils/managementRoles';
 
 const routes = [
   // Zone 1: Public face
@@ -80,7 +81,7 @@ const routes = [
     path: '/admin',
     name: 'admin',
     component: AdminDashboard,
-    meta: { requiresAuth: true, roles: ['cmart_staff', 'cmart_admin'] },
+    meta: { requiresAuth: true, roles: ['staff', 'manager', 'super_admin', 'cmart_staff', 'cmart_admin', 'boss'] },
   },
 
   // Zone 4: UUM oversight
@@ -146,9 +147,11 @@ router.beforeEach(async (to) => {
     const bossPreview = useBossPreviewStore();
     const hash = (to.hash || '#bookings').replace('#', '');
     const effectiveRole =
-      auth.role === 'cmart_admin' && bossPreview.viewAsStaff ? 'cmart_staff' : auth.role;
+      isManagerOrAbove(auth.role) && bossPreview.viewAsStaff
+        ? ROLES.STAFF
+        : normalizeRole(auth.role);
 
-    if (BOSS_ONLY_HASHES.includes(hash) && effectiveRole !== 'cmart_admin') {
+    if (MANAGER_ONLY_HASHES.includes(hash) && workflowRoleKey(effectiveRole) !== ROLES.MANAGER) {
       return { path: '/admin', hash: '#bookings' };
     }
 

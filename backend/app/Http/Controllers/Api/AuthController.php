@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\UserAuthPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -54,7 +55,7 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return response()->json([
-            'user' => $request->user(),
+            'user' => UserAuthPresenter::present($request->user()),
         ]);
     }
 
@@ -75,7 +76,7 @@ class AuthController extends Controller
             'message' => $message,
             'token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user,
+            'user' => UserAuthPresenter::present($user),
         ], $status);
     }
 

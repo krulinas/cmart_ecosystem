@@ -159,7 +159,7 @@
         <h3>Approval Pipeline</h3>
         <div class="field" style="color: #64748b;">
             Tier 1 (CMart Staff) reviews submissions in <span class="value">Pending_Staff</span>.
-            Cleared submissions move to <span class="value">Pending_Boss</span> for Tier 2 (CMart Admin) approval.
+            Cleared submissions move to manager review for Tier 2 (CMart Manager) final approval.
             Rejected submissions are returned as <span class="value">Needs_Revision</span>.
         </div>
     </div>

@@ -9,6 +9,7 @@ use App\Models\CarbootEvent;
 use App\Models\NewsPost;
 use App\Models\Booking;
 use App\Models\Invoice;
+use App\Models\ManagementProfile;
 
 class DatabaseSeeder extends Seeder
 {
@@ -24,10 +25,10 @@ class DatabaseSeeder extends Seeder
         ]);
 
         User::updateOrCreate(['email' => 'admin@cmart.com'], [
-            'name' => 'CMart Admin',
+            'name' => 'CMart Manager',
             'password' => bcrypt('password123'),
             'phone_number' => '0111111111',
-            'role' => 'cmart_admin',
+            'role' => 'manager',
             'vendor_status' => 'none',
         ]);
 
@@ -35,9 +36,62 @@ class DatabaseSeeder extends Seeder
             'name' => 'CMart Staff',
             'password' => bcrypt('password123'),
             'phone_number' => '0122222222',
-            'role' => 'cmart_staff',
+            'role' => 'staff',
             'vendor_status' => 'none',
         ]);
+
+        User::updateOrCreate(['email' => 'hq@cmart.com'], [
+            'name' => 'CMart HQ Admin',
+            'password' => bcrypt('password123'),
+            'phone_number' => '0133333333',
+            'role' => 'super_admin',
+            'vendor_status' => 'none',
+        ]);
+
+        $staff = User::where('email', 'staff@cmart.com')->first();
+        if ($staff) {
+            ManagementProfile::updateOrCreate(
+                ['user_id' => $staff->id],
+                [
+                    'staff_code' => 'CM-STF-001',
+                    'tier' => 1,
+                    'position_title' => 'Operations Staff',
+                    'department' => 'Operations',
+                    'branch_name' => 'CMart Main Branch',
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        $manager = User::where('email', 'admin@cmart.com')->first();
+        if ($manager) {
+            ManagementProfile::updateOrCreate(
+                ['user_id' => $manager->id],
+                [
+                    'staff_code' => 'CM-MGR-001',
+                    'tier' => 2,
+                    'position_title' => 'Branch Manager',
+                    'department' => 'Management',
+                    'branch_name' => 'CMart Main Branch',
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        $hqAdmin = User::where('email', 'hq@cmart.com')->first();
+        if ($hqAdmin) {
+            ManagementProfile::updateOrCreate(
+                ['user_id' => $hqAdmin->id],
+                [
+                    'staff_code' => 'CM-HQ-001',
+                    'tier' => 3,
+                    'position_title' => 'HQ Administrator',
+                    'department' => 'Headquarters',
+                    'branch_name' => 'HQ',
+                    'is_active' => true,
+                ]
+            );
+        }
 
         // Create default rentable spaces.
         Space::updateOrCreate(['space_size' => 'Standard (1 Parking Lot)'], [

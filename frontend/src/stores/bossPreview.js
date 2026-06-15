@@ -1,23 +1,27 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useAuthStore } from './auth';
+import { isManagerOrAbove, normalizeRole, ROLES, workflowRoleKey } from '../utils/managementRoles';
 
 export const useBossPreviewStore = defineStore('bossPreview', () => {
   const viewAsStaff = ref(false);
 
   const effectiveRole = computed(() => {
     const auth = useAuthStore();
-    if (auth.role === 'cmart_admin' && viewAsStaff.value) {
-      return 'cmart_staff';
+    if (isManagerOrAbove(auth.role) && viewAsStaff.value) {
+      return ROLES.STAFF;
     }
-    return auth.role;
+    return normalizeRole(auth.role);
   });
 
-  const isBossView = computed(() => effectiveRole.value === 'cmart_admin');
+  const isManagerView = computed(() => workflowRoleKey(effectiveRole.value) === ROLES.MANAGER);
+
+  /** @deprecated Use isManagerView */
+  const isBossView = isManagerView;
 
   const toggle = () => {
     const auth = useAuthStore();
-    if (auth.role === 'cmart_admin') {
+    if (isManagerOrAbove(auth.role)) {
       viewAsStaff.value = !viewAsStaff.value;
     }
   };
@@ -29,6 +33,7 @@ export const useBossPreviewStore = defineStore('bossPreview', () => {
   return {
     viewAsStaff,
     effectiveRole,
+    isManagerView,
     isBossView,
     toggle,
     reset,

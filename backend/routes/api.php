@@ -83,9 +83,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/bookings', [BookingController::class, 'store']);
     });
 
-    Route::middleware('role:cmart_staff,cmart_admin')->group(function () {
+    Route::middleware('role:staff,manager,super_admin,cmart_staff,cmart_admin,boss')->group(function () {
         Route::get('/staff/feedbacks', [FeedbackController::class, 'staffIndex']);
-        Route::apiResource('bookings', BookingController::class)->except(['store']);
+        Route::get('/staff/bookings', [BookingController::class, 'staffRegistry']);
+
+        Route::get('/bookings', [BookingController::class, 'index']);
+        Route::get('/bookings/{booking}', [BookingController::class, 'show']);
+        Route::put('/bookings/{booking}', [BookingController::class, 'update']);
+        Route::patch('/bookings/{booking}', [BookingController::class, 'update']);
+
         Route::apiResource('invoices', InvoiceController::class)->only(['index', 'show', 'update']);
         Route::apiResource('feedbacks', FeedbackController::class)->except(['store', 'index']);
         Route::apiResource('carboot-events', CarbootEventController::class);
@@ -93,6 +99,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('boss')->group(function () {
+        Route::delete('/bookings/{booking}', [BookingController::class, 'destroy']);
         Route::post('/profitability', [BookingController::class, 'checkProfitability']);
         Route::get('/boss/analytics/revenue', [BossAnalyticsController::class, 'revenue']);
         Route::get('/boss/analytics/wordcloud/{source}', [BossAnalyticsController::class, 'wordcloud']);
