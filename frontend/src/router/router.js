@@ -9,6 +9,7 @@ import Register from '../views/auth/Register.vue';
 import UumDashboard from '../views/dashboards/UumDashboard.vue';
 import VendorDashboard from '../views/dashboards/VendorDashboard.vue';
 import VendorProfile from '../views/vendor/VendorProfile.vue';
+import ReuseMarketplace from '../views/public/ReuseMarketplace.vue';
 import EventCalendar from '../components/EventCalendar.vue';
 
 import { useAuthStore } from '../stores/auth';
@@ -40,6 +41,12 @@ const routes = [
     name: 'register',
     component: Register,
     meta: { guestOnly: true },
+  },
+  {
+    path: '/marketplace',
+    name: 'marketplace',
+    component: ReuseMarketplace,
+    meta: { public: true },
   },
   {
     path: '/calendar',

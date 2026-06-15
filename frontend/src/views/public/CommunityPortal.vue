@@ -50,6 +50,9 @@
           </div>
           <h2 class="text-lg font-black text-gray-900 mb-2">Vendor Marketplace</h2>
           <p class="text-sm text-gray-600">Browse unique finds from approved micro-businesses and weekend traders.</p>
+          <router-link to="/marketplace" class="inline-block mt-4 text-sm font-bold text-brand-600 hover:underline">
+            Browse Reuse Marketplace →
+          </router-link>
         </div>
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
           <div class="bg-amber-50 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 text-amber-600">

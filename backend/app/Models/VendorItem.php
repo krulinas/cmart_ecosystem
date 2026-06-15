@@ -31,6 +31,11 @@ class VendorItem extends Model
         'price' => 'decimal:2',
     ];
 
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

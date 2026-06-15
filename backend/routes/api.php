@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\VendorAnalyticsController;
 use App\Http\Controllers\Api\VendorHistoryController;
 use App\Http\Controllers\Api\VendorBusinessProfileController;
 use App\Http\Controllers\Api\VendorItemController;
+use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\AuditLogController;
 
 /*
@@ -42,6 +43,9 @@ Route::post('/feedback/{id}/helpful', [FeedbackController::class, 'markHelpful']
 
 Route::get('/events', [CarbootEventController::class, 'publicIndex']);
 Route::get('/news', [NewsPostController::class, 'publicIndex']);
+
+Route::get('/marketplace/items', [MarketplaceController::class, 'index']);
+Route::get('/marketplace/items/{vendor_item}', [MarketplaceController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);

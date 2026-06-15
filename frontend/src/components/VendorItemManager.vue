@@ -96,6 +96,13 @@
               </span>
             </div>
 
+            <p
+              class="mt-2 text-[11px] font-semibold"
+              :class="item.status === 'active' ? 'text-brand-700' : 'text-ink-500'"
+            >
+              {{ marketplaceVisibilityLabel(item.status) }}
+            </p>
+
             <p class="mt-3 text-sm font-semibold text-brand-700">{{ formatItemPrice(item) }}</p>
             <p v-if="item.description" class="mt-2 text-xs text-ink-500 line-clamp-2">{{ item.description }}</p>
 
@@ -139,7 +146,7 @@ import VendorItemDetailsModal from './VendorItemDetailsModal.vue';
 import api from '../services/api';
 import { extractApiError } from '../utils/apiErrors';
 import { filterTabClass } from '../utils/bookingDisplay';
-import { formatItemPrice, ITEM_STATUS_TABS } from '../utils/vendorCatalog';
+import { formatItemPrice, ITEM_STATUS_TABS, marketplaceVisibilityLabel } from '../utils/vendorCatalog';
 
 const emit = defineEmits(['changed']);
 
