@@ -43,14 +43,23 @@
           </div>
         </div>
 
+        <div class="mb-4">
+          <input
+            v-model="bookingSearchQuery"
+            type="search"
+            placeholder="Search bookings…"
+            class="w-full sm:max-w-sm rounded-xl border border-ink-200 bg-white/80 px-4 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          />
+        </div>
+
         <div class="flex flex-wrap gap-2 mb-5">
           <button
             v-for="tab in FILTER_TABS"
             :key="tab.id"
             type="button"
             class="rounded-full px-4 py-1.5 text-sm font-semibold transition"
-            :class="filterTabClass(statusFilter === tab.id)"
-            @click="statusFilter = tab.id"
+            :class="filterTabClass(selectedBookingStatus === tab.id)"
+            @click="selectedBookingStatus = tab.id"
           >
             {{ tab.label }}
             <span class="ml-1 opacity-75">({{ filterCounts[tab.id] || 0 }})</span>
@@ -65,7 +74,7 @@
             </router-link>
           </template>
           <template v-else>
-            No bookings match this filter.
+            No bookings match your search.
           </template>
         </div>
 
@@ -108,9 +117,9 @@
           </table>
         </div>
 
-        <div v-if="filteredBookings.length > 5" class="mt-4 flex justify-center">
-          <button class="ml-btn-ghost text-sm font-semibold" @click="showAllBookings = !showAllBookings">
-            {{ showAllBookings ? 'Show Latest 5' : `View All Bookings (${filteredBookings.length})` }}
+        <div v-if="filteredBookings.length > VISIBLE_LIST_LIMIT" class="mt-4 flex justify-center">
+          <button class="ml-btn-ghost text-sm font-semibold" @click="bookingsExpanded = !bookingsExpanded">
+            {{ bookingsExpanded ? 'Show Less' : `View All Bookings (${filteredBookings.length})` }}
           </button>
         </div>
       </section>
@@ -288,7 +297,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import VendorEventInsights from '../../components/VendorEventInsights.vue';
@@ -322,6 +331,10 @@ import {
 const toast = useToast();
 const auth = useAuthStore();
 
+const VISIBLE_LIST_LIMIT = 5;
+
+const normalizeSearch = (value) => String(value ?? '').toLowerCase().trim();
+
 const DEFAULT_INSIGHTS = {
   items_reused: 0,
   estimated_sales: 0,
@@ -336,8 +349,9 @@ const insightsError = ref(false);
 
 const myBookings = ref([]);
 const loadingBookings = ref(false);
-const statusFilter = ref('all');
-const showAllBookings = ref(false);
+const bookingSearchQuery = ref('');
+const selectedBookingStatus = ref('all');
+const bookingsExpanded = ref(false);
 const selectedBookingId = ref(null);
 const showBookingModal = ref(false);
 const showPassModal = ref(false);
@@ -421,16 +435,46 @@ const openBookingDocument = (bookingId) => {
   downloadPassPdf(bookingId);
 };
 
+const bookingMatchesSearch = (booking, query) => {
+  if (!query) return true;
+
+  const haystack = [
+    booking.id,
+    `#${booking.id}`,
+    formatBookingDate(booking.booking_date),
+    booking.booking_date,
+    boothTypeLabel(booking),
+    booking.product_category,
+    booking.product_details,
+    booking.approval_status,
+    statusLabel(booking.approval_status),
+    productSummary(booking),
+  ]
+    .filter((part) => part != null && part !== '')
+    .join(' ')
+    .toLowerCase();
+
+  return haystack.includes(query);
+};
+
 const validBookings = computed(() =>
   myBookings.value.filter((booking) => isValidBookingDate(booking.booking_date)),
 );
 
-const filteredBookings = computed(() =>
-  validBookings.value.filter((booking) => matchesStatusFilter(booking, statusFilter.value)),
-);
+const filteredBookings = computed(() => {
+  const query = normalizeSearch(bookingSearchQuery.value);
+
+  return validBookings.value.filter(
+    (booking) =>
+      matchesStatusFilter(booking, selectedBookingStatus.value) &&
+      bookingMatchesSearch(booking, query),
+  );
+});
 
 const visibleBookings = computed(() =>
-  showAllBookings.value ? filteredBookings.value : filteredBookings.value.slice(0, 5),
+  bookingsExpanded.value
+    ? filteredBookings.value
+    : filteredBookings.value.slice(0, VISIBLE_LIST_LIMIT),
 );
 
 const filterCounts = computed(() =>
@@ -439,6 +483,10 @@ const filterCounts = computed(() =>
     return counts;
   }, {}),
 );
+
+watch([bookingSearchQuery, selectedBookingStatus], () => {
+  bookingsExpanded.value = false;
+});
 
 const openBookingDetails = (bookingId) => {
   selectedBookingId.value = bookingId;
