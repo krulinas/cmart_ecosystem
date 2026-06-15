@@ -244,49 +244,24 @@
         </aside>
       </div>
 
-      <ImpactDashboard
-        :reused-items="impactMetrics.reusedItems"
-        :economic-value-rm="impactMetrics.economicValueRm"
-        :active-vendors="impactMetrics.activeVendors"
-        :active-students="impactMetrics.activeStudents"
-        class="rounded-3xl overflow-hidden border border-white/60 shadow-xl shadow-brand-900/5"
+      <VendorEventInsights
+        :items-reused="vendorInsights.items_reused"
+        :estimated-sales="vendorInsights.estimated_sales"
+        :booth-status="vendorInsights.booth_status"
+        :current-event="vendorInsights.current_event"
+        :booth-number="vendorInsights.booth_number"
+        :loading="loadingInsights"
+        :load-error="insightsError"
+        @retry="fetchVendorInsights"
       />
 
-      <!-- Bottom Row: History & Receipts -->
-      <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5 overflow-hidden">
-        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
-          <div>
-            <h2 class="text-xl font-extrabold text-ink-900">History &amp; Receipts</h2>
-            <p class="text-sm text-ink-500">Past events and payment records for your vendor account.</p>
-          </div>
-          <span class="ml-badge bg-ink-100 text-ink-600">Sample data</span>
-        </div>
-
-        <div class="overflow-x-auto rounded-2xl border border-ink-100">
-          <table class="min-w-full divide-y divide-ink-100 text-sm">
-            <thead class="bg-ink-50/80">
-              <tr>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Event</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Date</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Booth</th>
-                <th scope="col" class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">Amount</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Status</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-ink-100 bg-white/60">
-              <tr v-for="row in receiptHistory" :key="row.id" class="hover:bg-brand-50/40 transition-colors">
-                <td class="px-4 py-4 font-semibold text-ink-900">{{ row.event }}</td>
-                <td class="px-4 py-4 text-ink-600">{{ row.date }}</td>
-                <td class="px-4 py-4 text-ink-600">{{ row.booth }}</td>
-                <td class="px-4 py-4 text-right font-semibold text-ink-900">RM {{ row.amount.toFixed(2) }}</td>
-                <td class="px-4 py-4">
-                  <span :class="receiptStatusClass(row.status)">{{ row.status }}</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <VendorHistoryReceipts
+        :records="paymentRecords"
+        :loading="loadingHistory"
+        :load-error="historyError"
+        @retry="fetchPaymentHistory"
+        @view-document="openBookingDocument"
+      />
     </div>
 
     <VendorBookingDetailsModal
@@ -316,7 +291,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
-import ImpactDashboard from '../../components/ImpactDashboard.vue';
+import VendorEventInsights from '../../components/VendorEventInsights.vue';
+import VendorHistoryReceipts from '../../components/VendorHistoryReceipts.vue';
 import VendorBookingDetailsModal from '../../components/VendorBookingDetailsModal.vue';
 import VendorPassModal from '../../components/VendorPassModal.vue';
 import VendorBusinessProfileModal from '../../components/VendorBusinessProfileModal.vue';
@@ -346,12 +322,17 @@ import {
 const toast = useToast();
 const auth = useAuthStore();
 
-const impactMetrics = {
-  reusedItems: 12450,
-  economicValueRm: 892000,
-  activeVendors: 156,
-  activeStudents: 89,
+const DEFAULT_INSIGHTS = {
+  items_reused: 0,
+  estimated_sales: 0,
+  booth_status: 'No Active Booking',
+  current_event: null,
+  booth_number: null,
 };
+
+const vendorInsights = ref({ ...DEFAULT_INSIGHTS });
+const loadingInsights = ref(false);
+const insightsError = ref(false);
 
 const myBookings = ref([]);
 const loadingBookings = ref(false);
@@ -362,11 +343,9 @@ const showBookingModal = ref(false);
 const showPassModal = ref(false);
 const showProfileModal = ref(false);
 
-const receiptHistory = [
-  { id: 1, event: 'CMart Weekend Carboot', date: '18 May 2026', booth: 'A-12', amount: 30.0, status: 'Paid' },
-  { id: 2, event: 'CMart Weekend Carboot', date: '11 May 2026', booth: 'B-07', amount: 50.0, status: 'Paid' },
-  { id: 3, event: 'CMart Special Market', date: '27 Apr 2026', booth: 'C-03', amount: 30.0, status: 'Refunded' },
-];
+const paymentRecords = ref([]);
+const loadingHistory = ref(false);
+const historyError = ref(false);
 
 const userDisplayName = computed(() => auth.user?.name || 'Vendor');
 const contactDisplay = computed(() => auth.user?.phone_number || auth.user?.email || '—');
@@ -431,11 +410,15 @@ const downloadPassPdf = async (bookingId) => {
     const fileUrl = URL.createObjectURL(file);
     window.open(fileUrl, '_blank', 'noopener,noreferrer');
     setTimeout(() => URL.revokeObjectURL(fileUrl), 60000);
-    toast.success('Vendor pass PDF opened.');
+    toast.success('Booking document opened.');
   } catch (error) {
-    console.error('Unable to download vendor pass PDF:', error);
-    toast.error('Unable to download vendor pass PDF.');
+    console.error('Unable to download booking document PDF:', error);
+    toast.error('Unable to open booking document.');
   }
+};
+
+const openBookingDocument = (bookingId) => {
+  downloadPassPdf(bookingId);
 };
 
 const validBookings = computed(() =>
@@ -470,8 +453,41 @@ onMounted(async () => {
       // Public fallback handled by router on protected routes
     }
   }
-  await fetchMyBookings();
+  await Promise.all([fetchMyBookings(), fetchVendorInsights(), fetchPaymentHistory()]);
 });
+
+const fetchPaymentHistory = async () => {
+  loadingHistory.value = true;
+  historyError.value = false;
+  try {
+    const { data } = await api.get('/vendor/history-receipts');
+    paymentRecords.value = Array.isArray(data?.records) ? data.records : [];
+  } catch (e) {
+    console.error('Unable to retrieve vendor payment history from the API.', e);
+    historyError.value = true;
+    paymentRecords.value = [];
+  } finally {
+    loadingHistory.value = false;
+  }
+};
+
+const fetchVendorInsights = async () => {
+  loadingInsights.value = true;
+  insightsError.value = false;
+  try {
+    const { data } = await api.get('/vendor/analytics/me');
+    vendorInsights.value = {
+      ...DEFAULT_INSIGHTS,
+      ...data,
+    };
+  } catch (e) {
+    console.error('Unable to retrieve vendor analytics from the API.', e);
+    insightsError.value = true;
+    vendorInsights.value = { ...DEFAULT_INSIGHTS };
+  } finally {
+    loadingInsights.value = false;
+  }
+};
 
 const fetchMyBookings = async () => {
   loadingBookings.value = true;
@@ -485,10 +501,4 @@ const fetchMyBookings = async () => {
     loadingBookings.value = false;
   }
 };
-
-const receiptStatusClass = (status) => ({
-  Paid: 'ml-badge bg-emerald-100 text-emerald-800',
-  Refunded: 'ml-badge bg-amber-100 text-amber-800',
-  Pending: 'ml-badge bg-brand-100 text-brand-800',
-}[status] || 'ml-badge bg-ink-100 text-ink-700');
 </script>

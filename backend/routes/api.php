@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\CarbootEventController;
 use App\Http\Controllers\Api\EventRegistrationController;
 use App\Http\Controllers\Api\NewsPostController;
 use App\Http\Controllers\Api\BossAnalyticsController;
+use App\Http\Controllers\Api\VendorAnalyticsController;
+use App\Http\Controllers\Api\VendorHistoryController;
 use App\Http\Controllers\Api\AuditLogController;
 
 /*
@@ -47,6 +49,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/events/{carboot_event}/register', [EventRegistrationController::class, 'register']);
 
     Route::get('/bookings/{booking}/pdf', [BookingController::class, 'generatePdf']);
+
+    Route::middleware('role:community')->group(function () {
+        Route::get('/vendor/analytics/me', [VendorAnalyticsController::class, 'me']);
+        Route::get('/vendor/history-receipts', [VendorHistoryController::class, 'historyReceipts']);
+    });
 
     Route::middleware('vendor.approved')->group(function () {
         Route::get('/vendor/bookings', [BookingController::class, 'mine']);
