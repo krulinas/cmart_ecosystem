@@ -227,41 +227,21 @@
           </div>
         </section>
 
-        <aside class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
-          <h2 class="text-xl font-extrabold text-ink-900">Business Profile</h2>
-          <p class="text-sm text-ink-500 mt-1">Your registered vendor details on file.</p>
-
-          <dl class="mt-6 space-y-5">
-            <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Name</dt>
-              <dd class="mt-1 text-base font-semibold text-ink-900">{{ userDisplayName }}</dd>
-            </div>
-            <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Contact</dt>
-              <dd class="mt-1 text-base font-semibold text-ink-900">{{ contactDisplay }}</dd>
-            </div>
-            <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Registered Product</dt>
-              <dd class="mt-1 text-base font-semibold text-ink-900">{{ registeredProduct }}</dd>
-              <p v-if="registeredCategory" class="mt-1 text-xs text-ink-500">{{ registeredCategory }}</p>
-            </div>
-          </dl>
-
-          <button type="button" class="mt-6 ml-btn-ghost w-full" @click="showProfileModal = true">
-            Edit Profile
-          </button>
-        </aside>
+        <VendorBusinessProfileManager
+          ref="profileManagerRef"
+          @loaded="onBusinessProfileLoaded"
+          @updated="onBusinessProfileUpdated"
+        />
       </div>
 
-      <VendorEventInsights
-        :items-reused="vendorInsights.items_reused"
-        :estimated-sales="vendorInsights.estimated_sales"
-        :booth-status="vendorInsights.booth_status"
-        :current-event="vendorInsights.current_event"
-        :booth-number="vendorInsights.booth_number"
+      <VendorItemManager @changed="onVendorItemsChanged" />
+
+      <VendorAnalyticsDashboard
+        :analytics="vendorAnalytics"
         :loading="loadingInsights"
         :load-error="insightsError"
         @retry="fetchVendorInsights"
+        @edit-profile="scrollToBusinessProfile"
       />
 
       <VendorHistoryReceipts
@@ -291,8 +271,6 @@
       :qr-image-url="passQrImageUrl"
       @download="downloadPassPdf"
     />
-
-    <VendorBusinessProfileModal v-model="showProfileModal" :profile="businessProfilePayload" />
   </div>
 </template>
 
@@ -300,11 +278,12 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
-import VendorEventInsights from '../../components/VendorEventInsights.vue';
+import VendorBusinessProfileManager from '../../components/VendorBusinessProfileManager.vue';
+import VendorItemManager from '../../components/VendorItemManager.vue';
+import VendorAnalyticsDashboard from '../../components/VendorAnalyticsDashboard.vue';
 import VendorHistoryReceipts from '../../components/VendorHistoryReceipts.vue';
 import VendorBookingDetailsModal from '../../components/VendorBookingDetailsModal.vue';
 import VendorPassModal from '../../components/VendorPassModal.vue';
-import VendorBusinessProfileModal from '../../components/VendorBusinessProfileModal.vue';
 import api from '../../services/api';
 import {
   buildQrImageUrl,
@@ -335,17 +314,38 @@ const VISIBLE_LIST_LIMIT = 5;
 
 const normalizeSearch = (value) => String(value ?? '').toLowerCase().trim();
 
-const DEFAULT_INSIGHTS = {
-  items_reused: 0,
-  estimated_sales: 0,
-  booth_status: 'No Active Booking',
-  current_event: null,
-  booth_number: null,
+const DEFAULT_ANALYTICS = {
+  summary: {
+    total_bookings: 0,
+    upcoming_bookings: 0,
+    completed_bookings: 0,
+    cancelled_bookings: 0,
+    rejected_bookings: 0,
+    total_receipts: 0,
+    total_paid_amount: 0,
+    active_reuse_listings: 0,
+    inactive_reuse_listings: 0,
+    total_reuse_listings: 0,
+    profile_completion_percent: 0,
+    profile_missing_fields: [],
+  },
+  booth: {
+    items_reused: 0,
+    estimated_sales: 0,
+    booth_status: 'No Active Booking',
+    current_event: null,
+    booth_number: null,
+  },
+  trends: { monthly_bookings: [], monthly_payments: [] },
+  distributions: { booking_status: {}, reuse_listing_status: { active: 0, inactive: 0 } },
+  recent_activity: [],
+  latest: { booking: null, receipt: null, reuse_item: null },
 };
 
-const vendorInsights = ref({ ...DEFAULT_INSIGHTS });
+const vendorAnalytics = ref(structuredClone(DEFAULT_ANALYTICS));
 const loadingInsights = ref(false);
 const insightsError = ref(false);
+const profileManagerRef = ref(null);
 
 const myBookings = ref([]);
 const loadingBookings = ref(false);
@@ -355,26 +355,19 @@ const bookingsExpanded = ref(false);
 const selectedBookingId = ref(null);
 const showBookingModal = ref(false);
 const showPassModal = ref(false);
-const showProfileModal = ref(false);
+const businessProfile = ref(null);
 
 const paymentRecords = ref([]);
 const loadingHistory = ref(false);
 const historyError = ref(false);
 
-const userDisplayName = computed(() => auth.user?.name || 'Vendor');
-const contactDisplay = computed(() => auth.user?.phone_number || auth.user?.email || '—');
+const userDisplayName = computed(() => businessProfile.value?.business_name || auth.user?.name || 'Vendor');
+const contactDisplay = computed(() =>
+  businessProfile.value?.business_phone || auth.user?.phone_number || auth.user?.email || '—',
+);
 
-const latestBooking = computed(() => myBookings.value[0] || null);
 const latestApprovedBooking = computed(() =>
   myBookings.value.find((b) => b.approval_status === 'Approved') || null,
-);
-const hasApprovedBooking = computed(() => Boolean(latestApprovedBooking.value));
-
-const registeredProduct = computed(() =>
-  latestBooking.value?.product_details || latestBooking.value?.product_category || '—',
-);
-const registeredCategory = computed(() =>
-  latestBooking.value?.product_details ? latestBooking.value?.product_category : null,
 );
 
 const passBooking = computed(() => latestApprovedBooking.value);
@@ -399,12 +392,27 @@ const passQrImageUrl = computed(() =>
   passBooking.value?.id ? buildQrImageUrl(passBooking.value.id) : '',
 );
 
-const businessProfilePayload = computed(() => ({
-  name: auth.user?.name || '',
-  phone_number: auth.user?.phone_number || '',
-  email: auth.user?.email || '',
-  product_summary: registeredProduct.value === '—' ? '' : registeredProduct.value,
-}));
+const onBusinessProfileLoaded = (profile) => {
+  businessProfile.value = profile;
+};
+
+const onBusinessProfileUpdated = async (profile) => {
+  businessProfile.value = profile;
+  if (auth.user && profile?.business_name) {
+    auth.user.name = profile.business_name;
+    localStorage.setItem('carboot_cmart_user', JSON.stringify(auth.user));
+  }
+  await fetchVendorInsights();
+};
+
+const scrollToBusinessProfile = () => {
+  document.getElementById('vendor-business-profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  profileManagerRef.value?.startEditing?.();
+};
+
+const onVendorItemsChanged = async () => {
+  await fetchVendorInsights();
+};
 
 const openPassModal = () => {
   if (!passBooking.value) return;
@@ -524,14 +532,20 @@ const fetchVendorInsights = async () => {
   insightsError.value = false;
   try {
     const { data } = await api.get('/vendor/analytics/me');
-    vendorInsights.value = {
-      ...DEFAULT_INSIGHTS,
+    vendorAnalytics.value = {
+      ...structuredClone(DEFAULT_ANALYTICS),
       ...data,
+      summary: { ...DEFAULT_ANALYTICS.summary, ...(data.summary || {}) },
+      booth: { ...DEFAULT_ANALYTICS.booth, ...(data.booth || {}) },
+      trends: { ...DEFAULT_ANALYTICS.trends, ...(data.trends || {}) },
+      distributions: { ...DEFAULT_ANALYTICS.distributions, ...(data.distributions || {}) },
+      latest: { ...DEFAULT_ANALYTICS.latest, ...(data.latest || {}) },
+      recent_activity: Array.isArray(data.recent_activity) ? data.recent_activity : [],
     };
   } catch (e) {
     console.error('Unable to retrieve vendor analytics from the API.', e);
     insightsError.value = true;
-    vendorInsights.value = { ...DEFAULT_INSIGHTS };
+    vendorAnalytics.value = structuredClone(DEFAULT_ANALYTICS);
   } finally {
     loadingInsights.value = false;
   }

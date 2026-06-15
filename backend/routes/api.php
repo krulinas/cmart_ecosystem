@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\NewsPostController;
 use App\Http\Controllers\Api\BossAnalyticsController;
 use App\Http\Controllers\Api\VendorAnalyticsController;
 use App\Http\Controllers\Api\VendorHistoryController;
+use App\Http\Controllers\Api\VendorBusinessProfileController;
+use App\Http\Controllers\Api\VendorItemController;
 use App\Http\Controllers\Api\AuditLogController;
 
 /*
@@ -52,7 +54,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('role:community')->group(function () {
         Route::get('/vendor/analytics/me', [VendorAnalyticsController::class, 'me']);
+        Route::get('/vendor/analytics/report', [VendorAnalyticsController::class, 'report']);
         Route::get('/vendor/history-receipts', [VendorHistoryController::class, 'historyReceipts']);
+
+        Route::get('/vendor/business-profile', [VendorBusinessProfileController::class, 'show']);
+        Route::put('/vendor/business-profile', [VendorBusinessProfileController::class, 'update']);
+        Route::post('/vendor/business-profile/logo', [VendorBusinessProfileController::class, 'uploadLogo']);
+
+        Route::get('/vendor/items', [VendorItemController::class, 'index']);
+        Route::post('/vendor/items', [VendorItemController::class, 'store']);
+        Route::get('/vendor/items/{vendor_item}', [VendorItemController::class, 'show']);
+        Route::put('/vendor/items/{vendor_item}', [VendorItemController::class, 'update']);
+        Route::delete('/vendor/items/{vendor_item}', [VendorItemController::class, 'destroy']);
     });
 
     Route::middleware('vendor.approved')->group(function () {

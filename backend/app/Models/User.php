@@ -62,4 +62,14 @@ class User extends Authenticatable
             ->withPivot('registered_at')
             ->withTimestamps();
     }
+
+    public function businessProfile()
+    {
+        return $this->hasOne(VendorBusinessProfile::class);
+    }
+
+    public function vendorItems()
+    {
+        return $this->hasMany(VendorItem::class);
+    }
 }
