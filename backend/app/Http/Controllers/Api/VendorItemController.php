@@ -4,16 +4,20 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\VendorItem;
+use App\Services\VendorItemPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class VendorItemController extends Controller
 {
+    private const MAX_IMAGES = 5;
+
     public function index(Request $request)
     {
         $query = $request->user()
             ->vendorItems()
+            ->with('images')
             ->latest();
 
         if ($search = trim((string) $request->query('search', ''))) {
@@ -34,7 +38,7 @@ class VendorItemController extends Controller
         }
 
         return response()->json([
-            'items' => $query->get(),
+            'items' => $query->get()->map(fn (VendorItem $item) => VendorItemPresenter::fromModel($item))->values(),
         ]);
     }
 
@@ -42,14 +46,12 @@ class VendorItemController extends Controller
     {
         $validated = $this->validateItem($request);
 
-        $item = $request->user()->vendorItems()->create([
-            ...$validated,
-            'image_path' => $this->storeImage($request),
-        ]);
+        $item = $request->user()->vendorItems()->create($validated);
+        $this->attachUploadedImages($request, $item);
 
         return response()->json([
             'message' => '201 Created: Reuse item created successfully.',
-            'item' => $item,
+            'item' => VendorItemPresenter::fromModel($item->fresh('images')),
         ], 201);
     }
 
@@ -59,7 +61,11 @@ class VendorItemController extends Controller
             return $denied;
         }
 
-        return response()->json(['item' => $vendor_item]);
+        $vendor_item->load('images');
+
+        return response()->json([
+            'item' => VendorItemPresenter::fromModel($vendor_item),
+        ]);
     }
 
     public function update(Request $request, VendorItem $vendor_item)
@@ -69,17 +75,21 @@ class VendorItemController extends Controller
         }
 
         $validated = $this->validateItem($request, true);
-        $imagePath = $this->resolveImagePath($request, $vendor_item);
+        $vendor_item->update($validated);
 
-        if ($request->hasFile('image') || $request->boolean('remove_image')) {
-            $validated['image_path'] = $imagePath;
+        if ($request->boolean('remove_image')) {
+            $this->removeAllImages($vendor_item);
         }
 
-        $vendor_item->update($validated);
+        if ($request->filled('remove_image_ids')) {
+            $this->removeImagesById($vendor_item, (array) $request->input('remove_image_ids'));
+        }
+
+        $this->attachUploadedImages($request, $vendor_item);
 
         return response()->json([
             'message' => '200 OK: Reuse item updated successfully.',
-            'item' => $vendor_item->fresh(),
+            'item' => VendorItemPresenter::fromModel($vendor_item->fresh('images')),
         ]);
     }
 
@@ -89,7 +99,6 @@ class VendorItemController extends Controller
             return $denied;
         }
 
-        $this->deleteImageFile($vendor_item->image_path);
         $vendor_item->delete();
 
         return response()->json([
@@ -132,10 +141,14 @@ class VendorItemController extends Controller
             'description' => 'nullable|string|max:5000',
             'status' => $prefix . 'required|in:active,inactive',
             'image' => 'nullable|file|mimes:jpeg,jpg,png,webp|max:5120',
+            'images' => 'nullable|array|max:' . self::MAX_IMAGES,
+            'images.*' => 'file|mimes:jpeg,jpg,png,webp|max:5120',
             'remove_image' => 'nullable|boolean',
+            'remove_image_ids' => 'nullable|array',
+            'remove_image_ids.*' => 'integer',
         ]);
 
-        unset($validated['image'], $validated['remove_image']);
+        unset($validated['image'], $validated['images'], $validated['remove_image'], $validated['remove_image_ids']);
 
         if (($validated['pricing_type'] ?? $request->input('pricing_type')) === 'fixed') {
             $request->validate(['price' => ($partial ? 'sometimes|' : '') . 'required|numeric|min:0|max:999999.99']);
@@ -147,36 +160,110 @@ class VendorItemController extends Controller
         return $validated;
     }
 
-    private function storeImage(Request $request): ?string
+    private function collectUploadFiles(Request $request): array
     {
-        if (!$request->hasFile('image')) {
-            return null;
-        }
-
-        return $request->file('image')->store('images/vendor-items', 'public');
-    }
-
-    private function resolveImagePath(Request $request, VendorItem $item): ?string
-    {
-        if ($request->boolean('remove_image')) {
-            $this->deleteImageFile($item->image_path);
-
-            return null;
-        }
+        $files = [];
 
         if ($request->hasFile('image')) {
-            $this->deleteImageFile($item->image_path);
-
-            return $request->file('image')->store('images/vendor-items', 'public');
+            $files[] = $request->file('image');
         }
 
-        return $item->image_path;
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $file) {
+                if ($file) {
+                    $files[] = $file;
+                }
+            }
+        }
+
+        return $files;
     }
 
-    private function deleteImageFile(?string $path): void
+    private function attachUploadedImages(Request $request, VendorItem $item): void
     {
-        if ($path) {
-            Storage::disk('public')->delete($path);
+        $files = $this->collectUploadFiles($request);
+        if ($files === []) {
+            $this->syncPrimaryImagePath($item);
+
+            return;
         }
+
+        $existingCount = $item->images()->count();
+        $availableSlots = self::MAX_IMAGES - $existingCount;
+
+        if ($availableSlots <= 0) {
+            return;
+        }
+
+        $hasPrimary = $item->images()->where('is_primary', true)->exists();
+
+        foreach (array_slice($files, 0, $availableSlots) as $offset => $file) {
+            $path = $file->store('reuse-items', 'public');
+
+            $item->images()->create([
+                'image_path' => $path,
+                'sort_order' => $existingCount + $offset,
+                'is_primary' => !$hasPrimary && $offset === 0,
+            ]);
+
+            if ($offset === 0 && !$hasPrimary) {
+                $hasPrimary = true;
+            }
+        }
+
+        $this->syncPrimaryImagePath($item->fresh('images'));
+    }
+
+    private function removeImagesById(VendorItem $item, array $ids): void
+    {
+        $ids = array_values(array_filter(array_map('intval', $ids)));
+        if ($ids === []) {
+            return;
+        }
+
+        $images = $item->images()->whereIn('id', $ids)->get();
+        foreach ($images as $image) {
+            $image->delete();
+        }
+
+        $this->reassignPrimaryIfNeeded($item);
+        $this->syncPrimaryImagePath($item->fresh('images'));
+    }
+
+    private function removeAllImages(VendorItem $item): void
+    {
+        $item->load('images');
+
+        foreach ($item->images as $image) {
+            $image->delete();
+        }
+
+        if ($item->image_path) {
+            Storage::disk('public')->delete($item->image_path);
+        }
+
+        $item->updateQuietly(['image_path' => null]);
+    }
+
+    private function reassignPrimaryIfNeeded(VendorItem $item): void
+    {
+        if ($item->images()->where('is_primary', true)->exists()) {
+            return;
+        }
+
+        $first = $item->images()->orderBy('sort_order')->orderBy('id')->first();
+        if ($first) {
+            $first->update(['is_primary' => true]);
+        }
+    }
+
+    private function syncPrimaryImagePath(VendorItem $item): void
+    {
+        $item->loadMissing('images');
+
+        $primary = $item->images->firstWhere('is_primary', true)
+            ?? $item->images->sortBy('sort_order')->first();
+
+        $item->updateQuietly(['image_path' => $primary?->image_path]);
     }
 }

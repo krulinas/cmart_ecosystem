@@ -84,20 +84,62 @@
             </div>
 
             <div>
-              <label class="ml-label">Item image (optional)</label>
+              <label class="ml-label">Item images (optional, up to 5)</label>
               <input
                 ref="imageInput"
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
+                multiple
                 class="ml-input file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-brand-700"
-                @change="onImageSelected"
+                :disabled="remainingImageSlots <= 0"
+                @change="onImagesSelected"
               />
-              <p class="text-xs text-ink-500 mt-1">JPG, PNG, or WEBP up to 5 MB.</p>
-              <div v-if="imagePreviewUrl" class="mt-3">
-                <img :src="imagePreviewUrl" alt="Item preview" class="max-h-40 rounded-lg border border-ink-200 object-cover" />
-                <button type="button" class="ml-btn-ghost text-sm text-rose-600 mt-2" @click="clearImageSelection">
-                  Remove selected image
-                </button>
+              <p class="text-xs text-ink-500 mt-1">
+                JPG, PNG, or WEBP up to 5 MB each. {{ imageCountLabel }}.
+              </p>
+
+              <div v-if="visibleExistingImages.length" class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div
+                  v-for="image in visibleExistingImages"
+                  :key="`existing-${image.id}`"
+                  class="relative overflow-hidden rounded-lg border border-ink-200 bg-ink-50"
+                >
+                  <img
+                    :src="image.image_url"
+                    :alt="`${form.name || 'Item'} image`"
+                    class="h-24 w-full object-cover object-center"
+                  />
+                  <button
+                    type="button"
+                    class="absolute right-1 top-1 rounded-md bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-rose-700 shadow-sm"
+                    @click="markExistingImageRemoved(image.id)"
+                  >
+                    Remove
+                  </button>
+                  <span
+                    v-if="image.is_primary"
+                    class="absolute bottom-1 left-1 rounded-md bg-cyan-600/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                  >
+                    Primary
+                  </span>
+                </div>
+              </div>
+
+              <div v-if="newImagePreviews.length" class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div
+                  v-for="preview in newImagePreviews"
+                  :key="preview.key"
+                  class="relative overflow-hidden rounded-lg border border-brand-200 bg-brand-50/40"
+                >
+                  <img :src="preview.url" alt="New item preview" class="h-24 w-full object-cover object-center" />
+                  <button
+                    type="button"
+                    class="absolute right-1 top-1 rounded-md bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-rose-700 shadow-sm"
+                    @click="removeNewImage(preview.key)"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -120,7 +162,10 @@ import { useToast } from 'vue-toastification';
 import api from '../services/api';
 import { extractApiError } from '../utils/apiErrors';
 import { PRODUCT_CATEGORIES } from '../utils/bookingDisplay';
+import { resolveReuseItemGallery } from '../utils/imageUrl';
 import { ITEM_CONDITIONS, ITEM_PRICING_TYPES } from '../utils/vendorCatalog';
+
+const MAX_IMAGES = 5;
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -135,10 +180,11 @@ const titleId = computed(() => (props.item ? 'vendor-item-edit-title' : 'vendor-
 const saving = ref(false);
 const errors = reactive({});
 const imageInput = ref(null);
-const imageFile = ref(null);
-const imagePreviewUrl = ref('');
-const removeImage = ref(false);
-let objectPreviewUrl = '';
+const existingImages = ref([]);
+const removeImageIds = ref([]);
+const newImageFiles = ref([]);
+const newImagePreviews = ref([]);
+let previewKeyCounter = 0;
 
 const emptyForm = () => ({
   name: '',
@@ -152,12 +198,30 @@ const emptyForm = () => ({
 
 const form = reactive(emptyForm());
 
-const revokeObjectPreview = () => {
-  if (objectPreviewUrl) {
-    URL.revokeObjectURL(objectPreviewUrl);
-    objectPreviewUrl = '';
+const revokeNewPreviews = () => {
+  for (const preview of newImagePreviews.value) {
+    if (preview.url?.startsWith('blob:')) {
+      URL.revokeObjectURL(preview.url);
+    }
   }
 };
+
+const keptExistingCount = computed(() =>
+  existingImages.value.filter((image) => !removeImageIds.value.includes(image.id)).length,
+);
+
+const remainingImageSlots = computed(() =>
+  Math.max(0, MAX_IMAGES - keptExistingCount.value - newImageFiles.value.length),
+);
+
+const visibleExistingImages = computed(() =>
+  existingImages.value.filter((image) => !removeImageIds.value.includes(image.id)),
+);
+
+const imageCountLabel = computed(() => {
+  const total = keptExistingCount.value + newImageFiles.value.length;
+  return `${total} of ${MAX_IMAGES} images selected`;
+});
 
 const clearErrors = () => {
   Object.keys(errors).forEach((key) => {
@@ -176,10 +240,11 @@ const applyValidationErrors = (error) => {
 
 const resetForm = () => {
   Object.assign(form, emptyForm());
-  imageFile.value = null;
-  removeImage.value = false;
-  revokeObjectPreview();
-  imagePreviewUrl.value = '';
+  existingImages.value = [];
+  removeImageIds.value = [];
+  newImageFiles.value = [];
+  revokeNewPreviews();
+  newImagePreviews.value = [];
   if (imageInput.value) imageInput.value.value = '';
   clearErrors();
 };
@@ -192,7 +257,7 @@ const fillForm = (item) => {
   form.price = item?.price != null ? String(item.price) : '';
   form.description = item?.description || '';
   form.status = item?.status || 'active';
-  imagePreviewUrl.value = item?.image_url || '';
+  existingImages.value = resolveReuseItemGallery(item).filter((image) => image.id != null);
 };
 
 watch(
@@ -206,22 +271,43 @@ watch(
 
 const close = () => emit('update:modelValue', false);
 
-const onImageSelected = (event) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  imageFile.value = file;
-  removeImage.value = false;
-  revokeObjectPreview();
-  objectPreviewUrl = URL.createObjectURL(file);
-  imagePreviewUrl.value = objectPreviewUrl;
+const onImagesSelected = (event) => {
+  const files = Array.from(event.target.files || []);
+  if (!files.length) return;
+
+  const allowed = files.slice(0, remainingImageSlots.value);
+  if (allowed.length < files.length) {
+    toast.info(`Only ${MAX_IMAGES} images are allowed per item.`);
+  }
+
+  for (const file of allowed) {
+    const key = `new-${++previewKeyCounter}`;
+    newImageFiles.value.push(file);
+    newImagePreviews.value.push({
+      key,
+      url: URL.createObjectURL(file),
+    });
+  }
+
+  if (imageInput.value) imageInput.value.value = '';
 };
 
-const clearImageSelection = () => {
-  imageFile.value = null;
-  removeImage.value = true;
-  revokeObjectPreview();
-  imagePreviewUrl.value = '';
-  if (imageInput.value) imageInput.value.value = '';
+const removeNewImage = (key) => {
+  const previewIndex = newImagePreviews.value.findIndex((preview) => preview.key === key);
+  if (previewIndex === -1) return;
+
+  const [preview] = newImagePreviews.value.splice(previewIndex, 1);
+  newImageFiles.value.splice(previewIndex, 1);
+
+  if (preview?.url?.startsWith('blob:')) {
+    URL.revokeObjectURL(preview.url);
+  }
+};
+
+const markExistingImageRemoved = (imageId) => {
+  if (!removeImageIds.value.includes(imageId)) {
+    removeImageIds.value.push(imageId);
+  }
 };
 
 const buildFormData = () => {
@@ -235,19 +321,23 @@ const buildFormData = () => {
   if (form.pricing_type === 'fixed') {
     fd.append('price', form.price);
   }
-  if (imageFile.value) {
-    fd.append('image', imageFile.value);
+  for (const file of newImageFiles.value) {
+    fd.append('images[]', file);
   }
-  if (removeImage.value) {
-    fd.append('remove_image', '1');
+  for (const imageId of removeImageIds.value) {
+    fd.append('remove_image_ids[]', String(imageId));
   }
   return fd;
 };
 
+const hasImageChanges = computed(() =>
+  newImageFiles.value.length > 0 || removeImageIds.value.length > 0,
+);
+
 const save = async () => {
   saving.value = true;
   clearErrors();
-  const usesMultipart = Boolean(imageFile.value || removeImage.value);
+  const usesMultipart = hasImageChanges.value;
 
   try {
     if (props.item) {
@@ -267,7 +357,7 @@ const save = async () => {
         });
       }
       toast.success('Reuse item updated.');
-    } else if (usesMultipart) {
+    } else if (usesMultipart || newImageFiles.value.length) {
       await api.post('/vendor/items', buildFormData());
       toast.success('Reuse item added.');
     } else {

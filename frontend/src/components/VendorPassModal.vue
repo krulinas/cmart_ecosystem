@@ -36,13 +36,14 @@
               </svg>
             </button>
             <p class="text-xs font-bold uppercase tracking-wider text-brand-100">Vendor Event Pass</p>
-            <h2 :id="titleId" class="mt-1 text-2xl font-black">Booking #{{ pass.id }}</h2>
+            <h2 :id="titleId" class="mt-1 text-2xl font-black">Booking #{{ pass.booking_id || pass.id }}</h2>
           </div>
 
           <div class="p-6 space-y-5">
             <div class="flex flex-wrap gap-2">
-              <span class="ml-badge bg-emerald-100 text-emerald-800">Approved</span>
-              <span class="ml-badge bg-brand-100 text-brand-800">Check-in Ready</span>
+              <span :class="passStatusBadgeClass(pass.pass_status)">{{ pass.pass_status_label || 'Pass' }}</span>
+              <span v-if="pass.show_qr && isPassQrScannable(pass)" class="ml-badge bg-cyan-100 text-cyan-800">QR Active</span>
+              <span v-else-if="pass.show_qr" class="ml-badge bg-ink-100 text-ink-700">QR Inactive</span>
             </div>
 
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -51,39 +52,57 @@
                 <dd class="mt-1 font-semibold text-ink-900">{{ vendorName }}</dd>
               </div>
               <div>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Event</dt>
+                <dd class="mt-1 font-semibold text-ink-900">{{ pass.event_name || '—' }}</dd>
+              </div>
+              <div>
                 <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Assigned Booth</dt>
-                <dd class="mt-1 font-semibold text-ink-900">{{ boothLabel }}</dd>
+                <dd class="mt-1 font-semibold text-ink-900">
+                  <template v-if="pass.show_booth">{{ pass.booth_label || '—' }}</template>
+                  <template v-else>{{ pass.pending_message || 'Booth will be assigned after approval' }}</template>
+                </dd>
               </div>
               <div>
                 <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Event Date</dt>
-                <dd class="mt-1 font-semibold text-ink-900">{{ eventDateLabel }}</dd>
+                <dd class="mt-1 font-semibold text-ink-900">{{ pass.event_date_label || eventDateLabel }}</dd>
               </div>
               <div>
                 <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Event Time</dt>
-                <dd class="mt-1 font-semibold text-ink-900">{{ eventTimeLabel }}</dd>
+                <dd class="mt-1 font-semibold text-ink-900">{{ formatEventTimeLabel(pass) || eventTimeLabel }}</dd>
               </div>
               <div class="sm:col-span-2">
                 <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Product</dt>
-                <dd class="mt-1 font-semibold text-ink-900">{{ productLabel }}</dd>
+                <dd class="mt-1 font-semibold text-ink-900">{{ pass.product_label || productLabel }}</dd>
               </div>
             </dl>
 
             <div class="rounded-xl border border-ink-100 bg-ink-50/60 p-4 text-center">
-              <img
-                :src="qrImageUrl"
-                :alt="`Verification QR for booking ${pass.id}`"
-                class="mx-auto h-44 w-44 rounded-lg border border-ink-200 bg-white p-2 object-contain"
-              />
-              <p class="mt-3 text-xs font-semibold text-ink-500 break-all">{{ verifyUrl }}</p>
-              <p class="mt-1 text-xs text-ink-400">Staff can scan this code to verify your booking at the entrance.</p>
+              <template v-if="pass.show_qr && isPassQrScannable(pass)">
+                <img
+                  :src="qrImageUrl"
+                  :alt="`Verification QR for booking ${pass.booking_id || pass.id}`"
+                  class="mx-auto h-44 w-44 rounded-lg border border-ink-200 bg-white p-2 object-contain"
+                />
+                <p class="mt-3 text-xs text-ink-400">Staff can scan this code during the check-in window.</p>
+              </template>
+              <p v-else class="text-sm font-semibold text-ink-500 py-8">
+                {{ passQrDisabledMessage(pass) }}
+              </p>
             </div>
 
             <p class="rounded-xl border border-brand-100 bg-brand-50/80 px-4 py-3 text-sm text-brand-900">
-              Show this pass at the event entrance for verification.
+              This pass is valid only for the selected event. QR codes expire after the check-in window closes.
             </p>
 
             <div class="flex flex-wrap gap-3">
-              <button type="button" class="ml-btn-primary" @click="downloadPass">Download Pass</button>
+              <button
+                v-if="pass.show_qr"
+                type="button"
+                class="ml-btn-primary"
+                @click="downloadPass"
+              >
+                Download Pass
+              </button>
               <button type="button" class="ml-btn-ghost" @click="close">Close</button>
             </div>
           </div>
@@ -95,6 +114,13 @@
 
 <script setup>
 import { computed, ref, watch, onUnmounted, nextTick } from 'vue';
+import {
+  buildQrImageUrl,
+  formatEventTimeLabel,
+  isPassQrScannable,
+  passQrDisabledMessage,
+  passStatusBadgeClass,
+} from '../utils/vendorPass';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -111,12 +137,21 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'download']);
 
 const panelRef = ref(null);
-const titleId = computed(() => (props.pass?.id ? `vendor-pass-modal-${props.pass.id}` : 'vendor-pass-modal'));
+const titleId = computed(() => {
+  const id = props.pass?.booking_id || props.pass?.id;
+  return id ? `vendor-pass-modal-${id}` : 'vendor-pass-modal';
+});
+
+const qrImageUrl = computed(() => {
+  if (props.qrImageUrl) return props.qrImageUrl;
+  const id = props.pass?.booking_id || props.pass?.id;
+  return id ? buildQrImageUrl(id) : '';
+});
 
 const close = () => emit('update:modelValue', false);
 
 const downloadPass = () => {
-  emit('download', props.pass?.id);
+  emit('download', props.pass?.booking_id || props.pass?.id);
 };
 
 const onEscape = (event) => {

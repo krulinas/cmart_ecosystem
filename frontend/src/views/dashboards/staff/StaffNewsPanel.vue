@@ -19,27 +19,18 @@
           <label class="ml-label">Body (optional)</label>
           <textarea v-model="form.body" rows="4" class="ml-input"></textarea>
         </div>
-        <div>
-          <label class="ml-label">Banner image (optional)</label>
-          <input
-            ref="bannerInput"
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
-            class="ml-input file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-brand-700"
-            @change="onBannerSelected"
-          />
-          <p class="text-xs text-ink-500 mt-1">JPG, JPEG, PNG, or WEBP up to 5 MB.</p>
-          <div v-if="bannerPreviewUrl" class="mt-3">
-            <img :src="bannerPreviewUrl" alt="News banner preview" class="max-h-40 rounded-lg border border-ink-200 object-cover" />
-            <button type="button" class="ml-btn-ghost text-sm text-rose-600 mt-2" @click="clearBannerSelection">
-              Remove selected banner
-            </button>
-          </div>
-        </div>
+        <MultiImageUploadField
+          ref="imageField"
+          label="News images (optional)"
+          :existing="editingImages"
+          :legacy-field="legacyImagePath"
+          @update:files="imageFiles = $event"
+          @update:removeIds="removeImageIds = $event"
+        />
         <div>
           <label class="ml-label">External image URL (optional fallback)</label>
           <input v-model="form.image_url" type="url" class="ml-input" placeholder="https://..." />
-          <p class="text-xs text-ink-500 mt-1">Used only when no uploaded banner is set.</p>
+          <p class="text-xs text-ink-500 mt-1">Used only when no uploaded images are set.</p>
         </div>
         <div>
           <label class="ml-label">Published at</label>
@@ -80,6 +71,9 @@
                 :alt="`${post.title} banner preview`"
                 class="w-16 h-16 rounded-lg object-cover object-top border border-ink-200 shrink-0"
               />
+              <div v-else class="w-16 h-16 rounded-lg border border-dashed border-ink-200 bg-ink-50 shrink-0 flex items-center justify-center text-[10px] font-bold text-ink-400">
+                No image
+              </div>
               <div class="min-w-0">
                 <div class="font-bold text-ink-900">{{ post.title }}</div>
                 <div class="text-xs text-ink-500">
@@ -103,11 +97,7 @@
       </ul>
     </section>
 
-    <NewsDetailsModal
-      v-model="showNewsModal"
-      :post="selectedNews"
-      show-status
-    />
+    <NewsDetailsModal v-model="showNewsModal" :post="selectedNews" show-status />
   </div>
 </template>
 
@@ -115,8 +105,10 @@
 import { ref, reactive } from 'vue';
 import { useToast } from 'vue-toastification';
 import NewsDetailsModal from '../../../components/NewsDetailsModal.vue';
+import MultiImageUploadField from '../../../components/MultiImageUploadField.vue';
 import api from '../../../services/api';
 import { mapApiNewsToCard } from '../../../utils/newsDisplay';
+import { normalizeNews } from '../../../utils/imageUrl';
 
 const toast = useToast();
 const posts = ref([]);
@@ -127,11 +119,11 @@ const deletingId = ref(null);
 const editingId = ref(null);
 const selectedNews = ref(null);
 const showNewsModal = ref(false);
-const bannerInput = ref(null);
-const bannerFile = ref(null);
-const bannerPreviewUrl = ref('');
-const existingBannerUrl = ref('');
-const removeBanner = ref(false);
+const imageField = ref(null);
+const imageFiles = ref([]);
+const removeImageIds = ref([]);
+const editingImages = ref([]);
+const legacyImagePath = ref('');
 
 const emptyForm = () => ({
   title: '',
@@ -160,32 +152,6 @@ const extractApiError = (error) => {
   return data?.message || error.message || 'Request failed.';
 };
 
-const revokeBannerPreview = () => {
-  if (bannerPreviewUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(bannerPreviewUrl.value);
-  }
-};
-
-const clearBannerSelection = () => {
-  bannerFile.value = null;
-  removeBanner.value = Boolean(existingBannerUrl.value);
-  revokeBannerPreview();
-  bannerPreviewUrl.value = '';
-  if (bannerInput.value) {
-    bannerInput.value.value = '';
-  }
-};
-
-const onBannerSelected = (event) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-
-  bannerFile.value = file;
-  removeBanner.value = false;
-  revokeBannerPreview();
-  bannerPreviewUrl.value = URL.createObjectURL(file);
-};
-
 const buildFormData = () => {
   const fd = new FormData();
   fd.append('title', form.title.trim());
@@ -199,12 +165,19 @@ const buildFormData = () => {
   if (form.published_at) {
     fd.append('published_at', form.published_at);
   }
-  if (bannerFile.value) {
-    fd.append('banner', bannerFile.value);
-  }
-  if (removeBanner.value) {
+
+  imageFiles.value.forEach((file) => {
+    fd.append('images[]', file);
+  });
+
+  removeImageIds.value.forEach((id) => {
+    fd.append('remove_image_ids[]', String(id));
+  });
+
+  if (imageField.value?.hasLegacyRemoval?.()) {
     fd.append('remove_banner', '1');
   }
+
   return fd;
 };
 
@@ -230,29 +203,29 @@ const load = async () => {
 
 const resetForm = () => {
   editingId.value = null;
-  existingBannerUrl.value = '';
-  removeBanner.value = false;
-  clearBannerSelection();
+  editingImages.value = [];
+  legacyImagePath.value = '';
+  imageFiles.value = [];
+  removeImageIds.value = [];
+  imageField.value?.reset();
   Object.assign(form, emptyForm());
 };
 
 const edit = (post) => {
-  editingId.value = post.id;
-  form.title = post.title;
-  form.excerpt = post.excerpt;
-  form.body = post.body || '';
-  form.category = post.category;
-  form.image_url = post.image_url || '';
-  form.published_at = toLocalInput(post.published_at);
-  form.is_published = Boolean(post.is_published);
-  existingBannerUrl.value = post.bannerUrl || '';
-  removeBanner.value = false;
-  bannerFile.value = null;
-  if (bannerInput.value) {
-    bannerInput.value.value = '';
-  }
-  revokeBannerPreview();
-  bannerPreviewUrl.value = post.bannerUrl || '';
+  const normalized = normalizeNews(post);
+  editingId.value = normalized.id;
+  form.title = normalized.title;
+  form.excerpt = normalized.excerpt;
+  form.body = normalized.body || '';
+  form.category = normalized.category;
+  form.image_url = normalized.external_image_url || '';
+  form.published_at = toLocalInput(normalized.published_at);
+  form.is_published = Boolean(normalized.is_published);
+  editingImages.value = normalized.images?.filter((image) => image.id) || [];
+  legacyImagePath.value = normalized.image_path || '';
+  imageFiles.value = [];
+  removeImageIds.value = [];
+  imageField.value?.reset();
 };
 
 const save = async () => {
@@ -262,7 +235,9 @@ const save = async () => {
   }
 
   saving.value = true;
-  const usesMultipart = Boolean(bannerFile.value || removeBanner.value);
+  const usesMultipart = imageFiles.value.length > 0
+    || removeImageIds.value.length > 0
+    || imageField.value?.hasLegacyRemoval?.();
 
   try {
     if (usesMultipart) {

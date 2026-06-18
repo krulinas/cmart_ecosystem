@@ -124,108 +124,15 @@
         </div>
       </section>
 
-      <!-- Vendor Pass & Business Profile -->
+      <!-- Event Passes & Business Profile -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <section class="lg:col-span-2 rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
-          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-            <div>
-              <span
-                v-if="passState === 'active'"
-                class="ml-badge bg-emerald-100 text-emerald-800"
-              >
-                Approved
-              </span>
-              <span
-                v-else-if="passState === 'invalid'"
-                class="ml-badge bg-rose-100 text-rose-800"
-              >
-                Pass Unavailable
-              </span>
-              <span v-else class="ml-badge bg-ink-100 text-ink-700">Pending Approval</span>
-              <h2 class="mt-2 text-xl font-extrabold text-ink-900">Vendor Pass &amp; Business Profile</h2>
-              <p class="mt-1 text-sm text-ink-500 max-w-xl">
-                Your approved vendor pass for event check-in, booth confirmation, and staff verification.
-              </p>
-            </div>
-          </div>
-
-          <div v-if="passState === 'active' && passBooking" class="grid grid-cols-1 xl:grid-cols-5 gap-6">
-            <div class="xl:col-span-3 rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-white p-5 sm:p-6 shadow-inner">
-              <div class="flex flex-wrap items-center gap-2 mb-4">
-                <span class="ml-badge bg-emerald-100 text-emerald-800">Approved</span>
-                <span class="ml-badge bg-brand-100 text-brand-800">Booking #{{ passBooking.id }}</span>
-              </div>
-
-              <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Vendor</dt>
-                  <dd class="mt-1 text-base font-semibold text-ink-900">{{ userDisplayName }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Assigned Booth</dt>
-                  <dd class="mt-1 text-base font-semibold text-ink-900">{{ boothLabel }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Booth Type</dt>
-                  <dd class="mt-1 font-semibold text-ink-900">{{ boothTypeLabel(passBooking) }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Event Date</dt>
-                  <dd class="mt-1 font-semibold text-ink-900">{{ passEventDateLong }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Event Time</dt>
-                  <dd class="mt-1 font-semibold text-ink-900">{{ passEventTimeLabel }}</dd>
-                </div>
-                <div class="sm:col-span-2">
-                  <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Product</dt>
-                  <dd class="mt-1 font-semibold text-ink-900">{{ passProductLabel }}</dd>
-                </div>
-              </dl>
-
-              <div class="mt-6 flex flex-wrap gap-3">
-                <button type="button" class="ml-btn-primary" @click="openPassModal">View Full Pass</button>
-                <button type="button" class="ml-btn-ghost" @click="downloadPassPdf">Download Pass</button>
-              </div>
-            </div>
-
-            <div class="xl:col-span-2 rounded-2xl border border-ink-200 bg-white p-5 text-center shadow-sm">
-              <p class="text-xs font-bold uppercase tracking-wider text-ink-500">Verification QR</p>
-              <img
-                :src="passQrImageUrl"
-                :alt="`Verification QR for booking ${passBooking.id}`"
-                class="mx-auto mt-4 h-44 w-44 rounded-xl border border-ink-100 bg-white p-2 object-contain"
-              />
-              <p class="mt-3 text-xs font-semibold text-ink-600 break-all">{{ passVerifyUrl }}</p>
-              <p class="mt-2 text-xs text-ink-400">Scan at event entrance for staff verification.</p>
-            </div>
-          </div>
-
-          <div
-            v-else-if="passState === 'invalid'"
-            class="rounded-2xl border border-rose-200 bg-rose-50/70 p-8 text-center"
-          >
-            <h3 class="text-lg font-bold text-rose-900">Vendor pass unavailable</h3>
-            <p class="mt-2 text-sm text-rose-800">
-              This booking is no longer active. Contact CMart staff if you need assistance.
-            </p>
-          </div>
-
-          <div
-            v-else
-            class="rounded-2xl border border-dashed border-ink-300 bg-ink-50/60 p-8 sm:p-10 text-center"
-          >
-            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-ink-200/80 text-ink-500">
-              <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <h3 class="mt-4 text-lg font-bold text-ink-900">Your pass will be available once the booking is approved</h3>
-            <p class="mt-2 text-sm text-ink-500 max-w-md mx-auto">
-              Complete the approval pipeline above to unlock your vendor event pass, QR verification, and booth confirmation.
-            </p>
-          </div>
-        </section>
+        <div class="lg:col-span-2">
+          <VendorEventPassesPanel
+            ref="eventPassesRef"
+            :vendor-name="userDisplayName"
+            @download-pass="downloadPassPdf"
+          />
+        </div>
 
         <VendorBusinessProfileManager
           ref="profileManagerRef"
@@ -256,20 +163,7 @@
     <VendorBookingDetailsModal
       v-model="showBookingModal"
       :booking-id="selectedBookingId"
-      @refreshed="fetchMyBookings"
-    />
-
-    <VendorPassModal
-      v-model="showPassModal"
-      :pass="passBooking"
-      :vendor-name="userDisplayName"
-      :booth-label="boothLabel"
-      :event-date-label="passEventDateLong"
-      :event-time-label="passEventTimeLabel"
-      :product-label="passProductLabel"
-      :verify-url="passVerifyUrl"
-      :qr-image-url="passQrImageUrl"
-      @download="downloadPassPdf"
+      @refreshed="onBookingsRefreshed"
     />
   </div>
 </template>
@@ -279,24 +173,15 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import VendorBusinessProfileManager from '../../components/VendorBusinessProfileManager.vue';
+import VendorEventPassesPanel from '../../components/VendorEventPassesPanel.vue';
 import VendorItemManager from '../../components/VendorItemManager.vue';
 import VendorAnalyticsDashboard from '../../components/VendorAnalyticsDashboard.vue';
 import VendorHistoryReceipts from '../../components/VendorHistoryReceipts.vue';
 import VendorBookingDetailsModal from '../../components/VendorBookingDetailsModal.vue';
-import VendorPassModal from '../../components/VendorPassModal.vue';
 import api from '../../services/api';
-import {
-  buildQrImageUrl,
-  buildVerifyUrl,
-  formatBookingDateLong,
-  formatEventTimeLabel,
-  passStateForBooking,
-  productDetailsLabel,
-} from '../../utils/vendorPass';
 import { useAuthStore } from '../../stores/auth';
 import {
   FILTER_TABS,
-  boothLabelForBooking,
   boothTypeLabel,
   filterTabClass,
   formatBookingDate,
@@ -346,6 +231,7 @@ const vendorAnalytics = ref(structuredClone(DEFAULT_ANALYTICS));
 const loadingInsights = ref(false);
 const insightsError = ref(false);
 const profileManagerRef = ref(null);
+const eventPassesRef = ref(null);
 
 const myBookings = ref([]);
 const loadingBookings = ref(false);
@@ -354,7 +240,6 @@ const selectedBookingStatus = ref('all');
 const bookingsExpanded = ref(false);
 const selectedBookingId = ref(null);
 const showBookingModal = ref(false);
-const showPassModal = ref(false);
 const businessProfile = ref(null);
 
 const paymentRecords = ref([]);
@@ -362,35 +247,6 @@ const loadingHistory = ref(false);
 const historyError = ref(false);
 
 const userDisplayName = computed(() => businessProfile.value?.business_name || auth.user?.name || 'Vendor');
-const contactDisplay = computed(() =>
-  businessProfile.value?.business_phone || auth.user?.phone_number || auth.user?.email || '—',
-);
-
-const latestApprovedBooking = computed(() =>
-  myBookings.value.find((b) => b.approval_status === 'Approved') || null,
-);
-
-const passBooking = computed(() => latestApprovedBooking.value);
-
-const passState = computed(() => passStateForBooking(passBooking.value));
-
-const boothLabel = computed(() => boothLabelForBooking(passBooking.value));
-
-const passEventDateLong = computed(() =>
-  formatBookingDateLong(passBooking.value?.booking_date),
-);
-
-const passEventTimeLabel = computed(() => formatEventTimeLabel(passBooking.value?.booking_date));
-
-const passProductLabel = computed(() => productDetailsLabel(passBooking.value));
-
-const passVerifyUrl = computed(() =>
-  passBooking.value?.id ? buildVerifyUrl(passBooking.value.id) : '',
-);
-
-const passQrImageUrl = computed(() =>
-  passBooking.value?.id ? buildQrImageUrl(passBooking.value.id) : '',
-);
 
 const onBusinessProfileLoaded = (profile) => {
   businessProfile.value = profile;
@@ -414,13 +270,13 @@ const onVendorItemsChanged = async () => {
   await fetchVendorInsights();
 };
 
-const openPassModal = () => {
-  if (!passBooking.value) return;
-  showPassModal.value = true;
+const onBookingsRefreshed = async () => {
+  await fetchMyBookings();
+  await eventPassesRef.value?.loadPasses?.();
 };
 
 const downloadPassPdf = async (bookingId) => {
-  const id = bookingId || passBooking.value?.id;
+  const id = bookingId;
   if (!id) {
     toast.error('No approved booking pass is available to download yet.');
     return;

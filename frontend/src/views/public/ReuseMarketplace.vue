@@ -107,12 +107,13 @@
             class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
             @click="openDetails(item.id)"
           >
-            <div class="h-40 bg-gray-50 border-b border-gray-100">
+            <div class="h-40 bg-gray-50 border-b border-gray-100 overflow-hidden">
               <img
-                v-if="item.image_url"
-                :src="item.image_url"
+                v-if="itemImageSrc(item)"
+                :src="itemImageSrc(item)"
                 :alt="item.name"
-                class="h-full w-full object-cover"
+                class="h-full w-full object-cover object-center"
+                @error="onItemImageError(item.id)"
               />
               <div v-else class="h-full flex items-center justify-center text-xs font-semibold uppercase tracking-wide text-gray-400">
                 No image
@@ -169,6 +170,7 @@ import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import MarketplaceItemDetailsModal from '../../components/MarketplaceItemDetailsModal.vue';
 import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
+import { normalizeReuseItem } from '../../utils/imageUrl';
 import { PRODUCT_CATEGORIES } from '../../utils/bookingDisplay';
 import {
   formatItemPrice,
@@ -187,6 +189,18 @@ const page = ref(1);
 const meta = ref({ current_page: 1, last_page: 1, per_page: 12, total: 0 });
 const showDetails = ref(false);
 const selectedItemId = ref(null);
+const brokenImageIds = ref(new Set());
+
+const normalizeMarketplaceItem = (item) => normalizeReuseItem(item);
+
+const itemImageSrc = (item) => {
+  if (!item || brokenImageIds.value.has(item.id)) return null;
+  return item.image_url || resolveReuseItemImageUrl(item);
+};
+
+const onItemImageError = (id) => {
+  brokenImageIds.value = new Set([...brokenImageIds.value, id]);
+};
 
 const filters = reactive({
   search: '',
@@ -230,7 +244,7 @@ const fetchItems = async (nextPage = 1) => {
       },
     });
 
-    items.value = Array.isArray(data?.data) ? data.data : [];
+    items.value = (Array.isArray(data?.data) ? data.data : []).map(normalizeMarketplaceItem);
     meta.value = data?.meta || meta.value;
   } catch (error) {
     console.error('Unable to load marketplace items:', error);

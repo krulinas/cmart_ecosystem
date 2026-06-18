@@ -9,9 +9,11 @@ class MarketplaceItemPresenter
 {
     public static function fromItem(VendorItem $item, bool $detailed = false): array
     {
+        $item->loadMissing(['user.businessProfile', 'images']);
         $profile = $item->user?->businessProfile;
-
         $vendor = self::publicVendorSummary($profile, $item);
+        $images = $item->galleryImagesForApi();
+        $primaryPath = $item->primaryImagePath();
 
         $payload = [
             'id' => $item->id,
@@ -23,7 +25,9 @@ class MarketplaceItemPresenter
             'description' => $detailed
                 ? $item->description
                 : self::truncate($item->description, 140),
-            'image_url' => $item->image_url,
+            'image_path' => $primaryPath,
+            'image_url' => $primaryPath ? asset('storage/' . $primaryPath) : null,
+            'images' => $images,
             'listed_at' => $item->created_at?->toIso8601String(),
             'vendor' => $vendor,
         ];

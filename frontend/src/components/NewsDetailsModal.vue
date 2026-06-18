@@ -50,14 +50,11 @@
             </button>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 lg:gap-6 p-5 sm:p-6 lg:p-8">
-              <div
-                v-if="post.bannerUrl"
-                class="flex min-h-[200px] items-center justify-center rounded-xl bg-gray-50 p-3 sm:p-4 mb-4 lg:mb-0"
-              >
-                <img
-                  :src="post.bannerUrl"
-                  :alt="`${post.title} news banner`"
-                  class="max-h-[70vh] w-full object-contain"
+              <div class="mb-4 lg:mb-0">
+                <MediaImageGallery
+                  :images="post.images || []"
+                  :alt-text="`${post.title} news banner`"
+                  placeholder-text="No news image"
                 />
               </div>
 
@@ -111,6 +108,7 @@
 
 <script setup>
 import { computed, ref, watch, onUnmounted, nextTick } from 'vue';
+import MediaImageGallery from './MediaImageGallery.vue';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },

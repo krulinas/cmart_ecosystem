@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
 class CarbootEvent extends Model
@@ -32,24 +34,84 @@ class CarbootEvent extends Model
         'max_slots' => 'integer',
     ];
 
-    public function getPosterUrlAttribute(): ?string
+    public function images(): HasMany
     {
-        if (! $this->image_path) {
+        return $this->hasMany(EventImage::class, 'event_id')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function primaryImage(): HasOne
+    {
+        return $this->hasOne(EventImage::class, 'event_id')
+            ->where('is_primary', true)
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function galleryImagesForApi(): array
+    {
+        $this->loadMissing('images');
+
+        if ($this->images->isNotEmpty()) {
+            return $this->images
+                ->map(fn (EventImage $image) => $image->toApiArray())
+                ->values()
+                ->all();
+        }
+
+        $legacyPath = $this->normalizedImagePath();
+        if (!$legacyPath) {
+            return [];
+        }
+
+        return [[
+            'id' => null,
+            'image_path' => $legacyPath,
+            'image_url' => asset('storage/' . $legacyPath),
+            'sort_order' => 0,
+            'is_primary' => true,
+        ]];
+    }
+
+    public function primaryImagePath(): ?string
+    {
+        $this->loadMissing('images');
+
+        $primary = $this->images->firstWhere('is_primary', true)
+            ?? $this->images->sortBy('sort_order')->first();
+
+        if ($primary) {
+            return $primary->normalizedImagePath();
+        }
+
+        return $this->normalizedImagePath();
+    }
+
+    public function normalizedImagePath(): ?string
+    {
+        if (!$this->image_path) {
             return null;
         }
 
-        return Storage::disk('public')->url($this->image_path);
+        $path = str_replace('\\', '/', trim($this->image_path));
+        $path = preg_replace('#^public/#', '', $path);
+
+        return ltrim($path, '/') ?: null;
     }
 
-    /** Alias for API consumers expecting image_url. */
+    public function getPosterUrlAttribute(): ?string
+    {
+        $path = $this->primaryImagePath();
+
+        return $path ? asset('storage/' . $path) : null;
+    }
+
     public function getImageUrlAttribute(): ?string
     {
         return $this->poster_url;
     }
 
-    /**
-     * Community users who registered for this event (event_user pivot).
-     */
     public function registeredUsers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'event_user')
@@ -57,11 +119,6 @@ class CarbootEvent extends Model
             ->withTimestamps();
     }
 
-    /**
-     * Recompute the public status column from current registration count vs max_slots.
-     *
-     * Called inside the registration transaction after a new user is attached.
-     */
     public function syncCapacityStatus(): void
     {
         if ($this->max_slots === null) {
@@ -71,13 +128,11 @@ class CarbootEvent extends Model
         $count = $this->registeredUsers()->count();
 
         if ($count >= $this->max_slots) {
-            // updateQuietly() skips the observer — capacity changes are not staff cancellations.
             $this->updateQuietly(['status' => 'Closed']);
 
             return;
         }
 
-        // "Almost Full" when at least 80% of slots are taken.
         $threshold = (int) ceil($this->max_slots * 0.8);
         if ($count >= $threshold) {
             $this->updateQuietly(['status' => 'Almost Full']);
@@ -88,5 +143,20 @@ class CarbootEvent extends Model
         if ($this->status !== 'Available') {
             $this->updateQuietly(['status' => 'Available']);
         }
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $event) {
+            $event->loadMissing('images');
+
+            foreach ($event->images as $image) {
+                $image->delete();
+            }
+
+            if ($event->image_path) {
+                Storage::disk('public')->delete($event->image_path);
+            }
+        });
     }
 }

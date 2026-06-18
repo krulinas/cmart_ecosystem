@@ -25,7 +25,7 @@ class MarketplaceController extends Controller
 
         $query = VendorItem::query()
             ->active()
-            ->with(['user.businessProfile']);
+            ->with(['user.businessProfile', 'images']);
 
         if ($search = trim((string) ($validated['search'] ?? ''))) {
             $needle = mb_strtolower($search);
@@ -80,7 +80,7 @@ class MarketplaceController extends Controller
             ], 404);
         }
 
-        $vendor_item->load(['user.businessProfile']);
+        $vendor_item->load(['user.businessProfile', 'images']);
 
         return response()->json([
             'item' => MarketplaceItemPresenter::fromItem($vendor_item, detailed: true),

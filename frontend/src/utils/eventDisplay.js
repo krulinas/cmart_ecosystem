@@ -1,4 +1,4 @@
-import { resolveEventImageUrl } from './imageUrl';
+import { resolveEventImageUrl, normalizeEvent } from './imageUrl';
 
 export const DEFAULT_EVENT_LOCATION = 'CMart Kompleks Changlun, Changlun';
 
@@ -34,20 +34,22 @@ export const formatEventDate = (startsAt) => {
 };
 
 export const mapApiEventToCard = (ev, location = DEFAULT_EVENT_LOCATION) => {
-  const start = new Date(ev.starts_at);
+  const normalized = normalizeEvent(ev);
+  const start = new Date(normalized.starts_at);
   return {
-    id: ev.id,
+    id: normalized.id,
     day: String(start.getDate()),
     month: start.toLocaleString('en-GB', { month: 'short', timeZone: MY_TZ }),
-    title: ev.title,
-    time: formatEventTime(ev.starts_at, ev.ends_at),
-    dateLabel: formatEventDate(ev.starts_at),
+    title: normalized.title,
+    time: formatEventTime(normalized.starts_at, normalized.ends_at),
+    dateLabel: formatEventDate(normalized.starts_at),
     location,
-    description: ev.description || 'Join us for a weekend of bargains, local vendors, and community fun.',
-    status: ev.status,
-    statusClass: statusClassForEvent(ev.status),
-    posterUrl: resolveEventImageUrl(ev),
-    startsAt: ev.starts_at,
-    endsAt: ev.ends_at,
+    description: normalized.description || 'Join us for a weekend of bargains, local vendors, and community fun.',
+    status: normalized.status,
+    statusClass: statusClassForEvent(normalized.status),
+    posterUrl: resolveEventImageUrl(normalized),
+    images: normalized.images || [],
+    startsAt: normalized.starts_at,
+    endsAt: normalized.ends_at,
   };
 };

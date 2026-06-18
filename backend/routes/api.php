@@ -15,7 +15,9 @@ use App\Http\Controllers\Api\BossAnalyticsController;
 use App\Http\Controllers\Api\VendorAnalyticsController;
 use App\Http\Controllers\Api\VendorHistoryController;
 use App\Http\Controllers\Api\VendorBusinessProfileController;
-use App\Http\Controllers\Api\VendorItemController;
+use App\Http\Controllers\Api\VendorProfileController;
+use App\Http\Controllers\Api\VendorEventPassController;
+use App\Http\Controllers\Api\BookingPassVerificationController;
 use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\AuditLogController;
 
@@ -61,9 +63,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/vendor/analytics/report', [VendorAnalyticsController::class, 'report']);
         Route::get('/vendor/history-receipts', [VendorHistoryController::class, 'historyReceipts']);
 
+        Route::get('/vendor/profile', [VendorProfileController::class, 'show']);
+        Route::patch('/vendor/profile', [VendorProfileController::class, 'update']);
+
         Route::get('/vendor/business-profile', [VendorBusinessProfileController::class, 'show']);
         Route::put('/vendor/business-profile', [VendorBusinessProfileController::class, 'update']);
         Route::post('/vendor/business-profile/logo', [VendorBusinessProfileController::class, 'uploadLogo']);
+
+        Route::get('/vendor/event-passes', [VendorEventPassController::class, 'index']);
+        Route::get('/vendor/event-passes/{booking}', [VendorEventPassController::class, 'show']);
 
         Route::get('/vendor/items', [VendorItemController::class, 'index']);
         Route::post('/vendor/items', [VendorItemController::class, 'store']);
@@ -86,6 +94,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:staff,manager,super_admin,cmart_staff,cmart_admin,boss')->group(function () {
         Route::get('/staff/feedbacks', [FeedbackController::class, 'staffIndex']);
         Route::get('/staff/bookings', [BookingController::class, 'staffRegistry']);
+
+        Route::get('/staff/bookings/{booking}/verify', [BookingPassVerificationController::class, 'verify']);
+        Route::post('/staff/bookings/{booking}/check-in', [BookingPassVerificationController::class, 'checkIn']);
 
         Route::get('/bookings', [BookingController::class, 'index']);
         Route::get('/bookings/{booking}', [BookingController::class, 'show']);

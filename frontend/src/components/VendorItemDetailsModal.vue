@@ -19,9 +19,7 @@
         <div class="absolute inset-0 bg-[rgba(15,23,42,0.65)] backdrop-blur-[6px]" @click="close" />
 
         <div class="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden" @click.stop>
-          <div v-if="item.image_url" class="h-48 bg-ink-100">
-            <img :src="item.image_url" :alt="item.name" class="h-full w-full object-cover" />
-          </div>
+          <ReuseItemImageGallery :item="item" :alt-text="item.name" placeholder-text="No image" />
 
           <div class="p-6">
             <div class="flex flex-wrap items-start justify-between gap-3">
@@ -64,6 +62,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import ReuseItemImageGallery from './ReuseItemImageGallery.vue';
 import { formatItemPrice } from '../utils/vendorCatalog';
 
 const props = defineProps({

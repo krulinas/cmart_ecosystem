@@ -1,9 +1,6 @@
-import { resolveStorageUrl } from './imageUrl';
+import { resolveNewsBannerUrl, normalizeNews } from './imageUrl';
 
 const MY_TZ = 'Asia/Kuala_Lumpur';
-
-export const resolveNewsBannerUrl = (post) =>
-  resolveStorageUrl(post?.banner_url || post?.image_url || post?.image_path);
 
 export const formatNewsDate = (dateStr) => {
   if (!dateStr) return '';
@@ -34,21 +31,25 @@ export const newsStatusClass = (isPublished) =>
     ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
     : 'bg-gray-100 text-gray-700 border border-gray-200';
 
-export const mapApiNewsToCard = (post) => ({
-  id: post.id,
-  title: post.title,
-  excerpt: post.excerpt || '',
-  body: post.body || '',
-  category: post.category || 'Announcement',
-  publishedAt: post.published_at,
-  published_at: post.published_at,
-  image_url: post.image_url || '',
-  image_path: post.image_path || null,
-  publishedDateLabel: formatNewsDateTime(post.published_at),
-  publishedDateShort: formatNewsDate(post.published_at),
-  bannerUrl: resolveNewsBannerUrl(post),
-  isPublished: Boolean(post.is_published),
-  is_published: Boolean(post.is_published),
-  statusLabel: post.is_published ? 'Published' : 'Draft',
-  statusClass: newsStatusClass(post.is_published),
-});
+export const mapApiNewsToCard = (post) => {
+  const normalized = normalizeNews(post);
+  return {
+    id: normalized.id,
+    title: normalized.title,
+    excerpt: normalized.excerpt || '',
+    body: normalized.body || '',
+    category: normalized.category || 'Announcement',
+    publishedAt: normalized.published_at,
+    published_at: normalized.published_at,
+    image_url: normalized.external_image_url || normalized.image_url || '',
+    image_path: normalized.image_path || null,
+    publishedDateLabel: formatNewsDateTime(normalized.published_at),
+    publishedDateShort: formatNewsDate(normalized.published_at),
+    bannerUrl: resolveNewsBannerUrl(normalized),
+    images: normalized.images || [],
+    isPublished: Boolean(normalized.is_published),
+    is_published: Boolean(normalized.is_published),
+    statusLabel: normalized.is_published ? 'Published' : 'Draft',
+    statusClass: newsStatusClass(normalized.is_published),
+  };
+};

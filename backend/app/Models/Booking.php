@@ -16,6 +16,7 @@ class Booking extends Model
         'product_category',
         'product_details',
         'approval_status',
+        'checked_in_at',
         'revision_comment',
         'vendor_request_type',
         'vendor_request_note',
@@ -24,6 +25,7 @@ class Booking extends Model
 
     protected $casts = [
         'booking_date' => 'date',
+        'checked_in_at' => 'datetime',
     ];
 
     /** Exclude invalid legacy/test dates from vendor-facing lists. */

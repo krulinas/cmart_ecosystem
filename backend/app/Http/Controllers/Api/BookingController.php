@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\CarbootEvent;
 use App\Models\Invoice;
 use App\Models\Space;
+use App\Models\User;
 use App\Support\ManagementRole;
 use App\Services\BookingAuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -245,10 +247,7 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
-        return response()->json([
-            'data' => $this->bookingListQuery()->get(),
-            'access' => 'full',
-        ]);
+        return $this->paginatedBookingListResponse($request, 'full');
     }
 
     /**
@@ -263,15 +262,194 @@ class BookingController extends Controller
             ], 403);
         }
 
+        $access = ManagementRole::isStaffRole($request->user()->role) ? 'read_only' : 'full';
+
+        return $this->paginatedBookingListResponse($request, $access);
+    }
+
+    /**
+     * Paginated registry with optional search, filters, and sort.
+     * Always includes lightweight summary counts and the role-specific approval queue.
+     */
+    private function paginatedBookingListResponse(Request $request, string $access)
+    {
+        $filters = $this->validateBookingListRequest($request);
+        $user = $request->user();
+
+        $paginator = $this->applyBookingListFilters(
+            Booking::query(),
+            $filters,
+        )
+            ->with(['user.businessProfile', 'space', 'invoice'])
+            ->paginate($filters['per_page']);
+
         return response()->json([
-            'data' => $this->bookingListQuery()->get(),
-            'access' => ManagementRole::isStaffRole($request->user()->role) ? 'read_only' : 'full',
+            'data' => $paginator->items(),
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
+            ],
+            'summary' => $this->bookingSummaryCounts(),
+            'queue' => $this->fetchQueueBookings($user),
+            'access' => $access,
         ]);
     }
 
-    private function bookingListQuery()
+    private function validateBookingListRequest(Request $request): array
     {
-        return Booking::with(['user', 'space', 'invoice'])->latest();
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:200',
+            'status' => 'nullable|string|in:Pending_Staff,Pending_Boss,Needs_Revision,Approved,Rejected,Cancelled',
+            'payment_status' => 'nullable|string|in:Paid,Unpaid',
+            'event_id' => 'nullable|integer|exists:carboot_events,id',
+            'event' => 'nullable|integer|exists:carboot_events,id',
+            'sort' => 'nullable|string|in:newest,oldest,status,event,vendor,amount',
+            'direction' => 'nullable|string|in:asc,desc',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:5|max:100',
+        ]);
+
+        $perPage = (int) ($validated['per_page'] ?? 15);
+        $perPage = min(max($perPage, 5), 100);
+
+        return [
+            'search' => trim((string) ($validated['search'] ?? '')),
+            'status' => $validated['status'] ?? null,
+            'payment_status' => $validated['payment_status'] ?? null,
+            'event_id' => $validated['event_id'] ?? $validated['event'] ?? null,
+            'sort' => $validated['sort'] ?? 'newest',
+            'direction' => $validated['direction'] ?? null,
+            'page' => (int) ($validated['page'] ?? 1),
+            'per_page' => $perPage,
+        ];
+    }
+
+    private function applyBookingListFilters($query, array $filters)
+    {
+        $query = $query->where('booking_date', '>', '1970-01-01');
+
+        if ($filters['search'] !== '') {
+            $needle = '%' . mb_strtolower($filters['search']) . '%';
+            $search = $filters['search'];
+
+            $query->where(function ($builder) use ($needle, $search) {
+                $builder->where('bookings.id', 'like', '%' . $search . '%')
+                    ->orWhereRaw('LOWER(bookings.approval_status) LIKE ?', [$needle])
+                    ->orWhereRaw('LOWER(bookings.product_category) LIKE ?', [$needle])
+                    ->orWhereRaw('LOWER(bookings.product_details) LIKE ?', [$needle])
+                    ->orWhereHas('user', function ($userQuery) use ($needle) {
+                        $userQuery->whereRaw('LOWER(name) LIKE ?', [$needle]);
+                    })
+                    ->orWhereHas('user.businessProfile', function ($profileQuery) use ($needle) {
+                        $profileQuery->whereRaw('LOWER(business_name) LIKE ?', [$needle]);
+                    })
+                    ->orWhereHas('space', function ($spaceQuery) use ($needle) {
+                        $spaceQuery->whereRaw('LOWER(space_size) LIKE ?', [$needle]);
+                    })
+                    ->orWhereHas('invoice', function ($invoiceQuery) use ($needle) {
+                        $invoiceQuery->whereRaw('LOWER(payment_status) LIKE ?', [$needle]);
+                    });
+            });
+        }
+
+        if ($filters['status']) {
+            $query->where('approval_status', $filters['status']);
+        }
+
+        if ($filters['payment_status']) {
+            $query->whereHas('invoice', function ($invoiceQuery) use ($filters) {
+                $invoiceQuery->where('payment_status', $filters['payment_status']);
+            });
+        }
+
+        if ($filters['event_id']) {
+            $event = CarbootEvent::query()->find($filters['event_id']);
+            if ($event) {
+                $query->whereDate('booking_date', '>=', $event->starts_at->toDateString())
+                    ->whereDate('booking_date', '<=', $event->ends_at->toDateString());
+            }
+        }
+
+        $direction = $filters['direction'];
+        switch ($filters['sort']) {
+            case 'oldest':
+                $query->orderBy('bookings.created_at', 'asc');
+                break;
+            case 'status':
+                $query->orderBy('bookings.approval_status', $direction ?? 'asc');
+                break;
+            case 'event':
+                $query->orderBy('bookings.booking_date', $direction ?? 'desc');
+                break;
+            case 'vendor':
+                $query->orderBy(
+                    User::select('name')
+                        ->whereColumn('users.id', 'bookings.user_id')
+                        ->limit(1),
+                    $direction ?? 'asc'
+                );
+                break;
+            case 'amount':
+                $query->orderBy(
+                    Invoice::select('amount')
+                        ->whereColumn('invoices.booking_id', 'bookings.id')
+                        ->limit(1),
+                    $direction ?? 'desc'
+                );
+                break;
+            case 'newest':
+            default:
+                $query->orderBy('bookings.created_at', $direction ?? 'desc');
+                break;
+        }
+
+        return $query;
+    }
+
+    private function bookingSummaryCounts(): array
+    {
+        $counts = Booking::query()
+            ->where('booking_date', '>', '1970-01-01')
+            ->selectRaw("
+                SUM(CASE WHEN approval_status = 'Pending_Staff' THEN 1 ELSE 0 END) as pending_staff,
+                SUM(CASE WHEN approval_status = 'Pending_Boss' THEN 1 ELSE 0 END) as pending_boss,
+                SUM(CASE WHEN approval_status = 'Needs_Revision' THEN 1 ELSE 0 END) as needs_revision,
+                SUM(CASE WHEN approval_status = 'Approved' THEN 1 ELSE 0 END) as approved,
+                SUM(CASE WHEN approval_status = 'Rejected' THEN 1 ELSE 0 END) as rejected,
+                SUM(CASE WHEN approval_status = 'Cancelled' THEN 1 ELSE 0 END) as cancelled
+            ")
+            ->first();
+
+        return [
+            'pending_staff' => (int) ($counts->pending_staff ?? 0),
+            'pending_boss' => (int) ($counts->pending_boss ?? 0),
+            'needs_revision' => (int) ($counts->needs_revision ?? 0),
+            'approved' => (int) ($counts->approved ?? 0),
+            'rejected' => (int) ($counts->rejected ?? 0),
+            'cancelled' => (int) ($counts->cancelled ?? 0),
+        ];
+    }
+
+    private function queueStatusForUser($user): string
+    {
+        return ManagementRole::workflowRoleKey($user->role) === ManagementRole::MANAGER
+            ? 'Pending_Boss'
+            : 'Pending_Staff';
+    }
+
+    private function fetchQueueBookings($user)
+    {
+        return Booking::query()
+            ->with(['user.businessProfile', 'space', 'invoice'])
+            ->where('booking_date', '>', '1970-01-01')
+            ->where('approval_status', $this->queueStatusForUser($user))
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get();
     }
 
     public function mine(Request $request)

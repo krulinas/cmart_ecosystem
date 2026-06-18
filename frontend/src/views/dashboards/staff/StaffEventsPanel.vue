@@ -31,23 +31,14 @@
           <label class="ml-label">Description</label>
           <textarea v-model="form.description" rows="3" class="ml-input"></textarea>
         </div>
-        <div>
-          <label class="ml-label">Event poster (optional)</label>
-          <input
-            ref="posterInput"
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
-            class="ml-input file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-brand-700"
-            @change="onPosterSelected"
-          />
-          <p class="text-xs text-ink-500 mt-1">JPG, JPEG, PNG, or WEBP up to 5 MB.</p>
-          <div v-if="posterPreviewUrl" class="mt-3">
-            <img :src="posterPreviewUrl" alt="Event poster preview" class="max-h-40 rounded-lg border border-ink-200 object-cover" />
-            <button type="button" class="ml-btn-ghost text-sm text-rose-600 mt-2" @click="clearPosterSelection">
-              Remove selected poster
-            </button>
-          </div>
-        </div>
+        <MultiImageUploadField
+          ref="imageField"
+          label="Event images (optional)"
+          :existing="editingImages"
+          :legacy-field="legacyImagePath"
+          @update:files="imageFiles = $event"
+          @update:removeIds="removeImageIds = $event"
+        />
         <div class="flex gap-2">
           <button type="submit" class="ml-btn-primary" :disabled="saving">{{ saving ? 'Saving…' : 'Save Event' }}</button>
           <button v-if="editingId" type="button" class="ml-btn-ghost" @click="resetForm">Cancel Edit</button>
@@ -72,6 +63,9 @@
               :alt="`${ev.title} poster`"
               class="w-16 h-16 rounded-lg object-cover border border-ink-200 shrink-0"
             />
+            <div v-else class="w-16 h-16 rounded-lg border border-dashed border-ink-200 bg-ink-50 shrink-0 flex items-center justify-center text-[10px] font-bold text-ink-400">
+              No image
+            </div>
             <div class="min-w-0">
               <div class="font-bold text-ink-900">{{ ev.title }}</div>
               <div class="text-xs text-ink-500">{{ formatEventDateTime(ev.starts_at) }} → {{ formatEventDateTime(ev.ends_at) }}</div>
@@ -95,7 +89,8 @@
 import { ref, reactive } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
-import { resolveEventImageUrl } from '../../../utils/imageUrl';
+import MultiImageUploadField from '../../../components/MultiImageUploadField.vue';
+import { resolveEventImageUrl, normalizeEvent } from '../../../utils/imageUrl';
 
 const toast = useToast();
 const MY_TZ = 'Asia/Kuala_Lumpur';
@@ -106,11 +101,11 @@ const hasLoaded = ref(false);
 const saving = ref(false);
 const deletingId = ref(null);
 const editingId = ref(null);
-const posterInput = ref(null);
-const posterFile = ref(null);
-const posterPreviewUrl = ref('');
-const existingPosterUrl = ref('');
-const removePoster = ref(false);
+const imageField = ref(null);
+const imageFiles = ref([]);
+const removeImageIds = ref([]);
+const editingImages = ref([]);
+const legacyImagePath = ref('');
 
 const emptyForm = () => ({
   title: '',
@@ -151,32 +146,6 @@ const extractApiError = (error) => {
   return data?.message || error.message || 'Request failed.';
 };
 
-const revokePosterPreview = () => {
-  if (posterPreviewUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(posterPreviewUrl.value);
-  }
-};
-
-const clearPosterSelection = () => {
-  posterFile.value = null;
-  removePoster.value = Boolean(existingPosterUrl.value);
-  revokePosterPreview();
-  posterPreviewUrl.value = '';
-  if (posterInput.value) {
-    posterInput.value.value = '';
-  }
-};
-
-const onPosterSelected = (event) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-
-  posterFile.value = file;
-  removePoster.value = false;
-  revokePosterPreview();
-  posterPreviewUrl.value = URL.createObjectURL(file);
-};
-
 const buildFormData = () => {
   const fd = new FormData();
   fd.append('title', form.title.trim());
@@ -187,12 +156,19 @@ const buildFormData = () => {
   if (form.max_slots) {
     fd.append('max_slots', String(form.max_slots));
   }
-  if (posterFile.value) {
-    fd.append('poster', posterFile.value);
-  }
-  if (removePoster.value) {
+
+  imageFiles.value.forEach((file) => {
+    fd.append('images[]', file);
+  });
+
+  removeImageIds.value.forEach((id) => {
+    fd.append('remove_image_ids[]', String(id));
+  });
+
+  if (imageField.value?.hasLegacyRemoval?.()) {
     fd.append('remove_poster', '1');
   }
+
   return fd;
 };
 
@@ -200,7 +176,7 @@ const load = async () => {
   loading.value = true;
   try {
     const { data } = await api.get('/carboot-events');
-    events.value = Array.isArray(data) ? data : [];
+    events.value = (Array.isArray(data) ? data : []).map(normalizeEvent);
     hasLoaded.value = true;
   } catch (error) {
     console.error('Failed to load events:', error);
@@ -213,28 +189,28 @@ const load = async () => {
 
 const resetForm = () => {
   editingId.value = null;
-  existingPosterUrl.value = '';
-  removePoster.value = false;
-  clearPosterSelection();
+  editingImages.value = [];
+  legacyImagePath.value = '';
+  imageFiles.value = [];
+  removeImageIds.value = [];
+  imageField.value?.reset();
   Object.assign(form, emptyForm());
 };
 
 const edit = (ev) => {
-  editingId.value = ev.id;
-  form.title = ev.title;
-  form.starts_at = toLocalInput(ev.starts_at);
-  form.ends_at = toLocalInput(ev.ends_at);
-  form.status = ev.status;
-  form.description = ev.description || '';
-  form.max_slots = ev.max_slots;
-  existingPosterUrl.value = resolveEventImageUrl(ev) || '';
-  removePoster.value = false;
-  posterFile.value = null;
-  if (posterInput.value) {
-    posterInput.value.value = '';
-  }
-  revokePosterPreview();
-  posterPreviewUrl.value = resolveEventImageUrl(ev) || '';
+  const normalized = normalizeEvent(ev);
+  editingId.value = normalized.id;
+  form.title = normalized.title;
+  form.starts_at = toLocalInput(normalized.starts_at);
+  form.ends_at = toLocalInput(normalized.ends_at);
+  form.status = normalized.status;
+  form.description = normalized.description || '';
+  form.max_slots = normalized.max_slots;
+  editingImages.value = normalized.images?.filter((image) => image.id) || [];
+  legacyImagePath.value = normalized.image_path || '';
+  imageFiles.value = [];
+  removeImageIds.value = [];
+  imageField.value?.reset();
 };
 
 const save = async () => {
@@ -244,7 +220,9 @@ const save = async () => {
   }
 
   saving.value = true;
-  const usesMultipart = Boolean(posterFile.value || removePoster.value);
+  const usesMultipart = imageFiles.value.length > 0
+    || removeImageIds.value.length > 0
+    || imageField.value?.hasLegacyRemoval?.();
 
   try {
     if (usesMultipart) {

@@ -11,6 +11,7 @@ import VendorDashboard from '../views/dashboards/VendorDashboard.vue';
 import VendorProfile from '../views/vendor/VendorProfile.vue';
 import ReuseMarketplace from '../views/public/ReuseMarketplace.vue';
 import EventCalendar from '../components/EventCalendar.vue';
+import StaffVerifyBooking from '../views/staff/StaffVerifyBooking.vue';
 
 import { useAuthStore } from '../stores/auth';
 import { useBossPreviewStore } from '../stores/bossPreview';
@@ -74,6 +75,17 @@ const routes = [
     name: 'vendor-booking',
     component: Registration,
     meta: { requiresAuth: true, roles: ['community'], vendorApproved: true },
+  },
+
+  {
+    path: '/staff/verify-booking/:bookingId',
+    name: 'staff-verify-booking',
+    component: StaffVerifyBooking,
+    meta: { requiresAuth: true, roles: ['staff', 'manager', 'super_admin', 'cmart_staff', 'cmart_admin', 'boss'] },
+  },
+  {
+    path: '/verify-booking/:bookingId',
+    redirect: (to) => `/staff/verify-booking/${to.params.bookingId}`,
   },
 
   // Zone 3: CMart back-office

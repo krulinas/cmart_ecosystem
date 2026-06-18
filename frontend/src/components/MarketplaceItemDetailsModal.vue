@@ -27,12 +27,7 @@
           </div>
 
           <template v-else-if="item">
-            <div v-if="item.image_url" class="h-56 sm:h-72 bg-ink-100">
-              <img :src="item.image_url" :alt="item.name" class="h-full w-full object-cover" />
-            </div>
-            <div v-else class="h-40 bg-ink-50 flex items-center justify-center text-sm font-semibold text-ink-400">
-              No image available
-            </div>
+            <ReuseItemImageGallery :item="item" :alt-text="item.name" />
 
             <div class="p-6 sm:p-8">
               <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -106,6 +101,8 @@
 <script setup>
 import { ref, watch } from 'vue';
 import api from '../services/api';
+import ReuseItemImageGallery from './ReuseItemImageGallery.vue';
+import { normalizeReuseItem } from '../utils/imageUrl';
 import { formatItemPrice, formatListedDate } from '../utils/vendorCatalog';
 
 const props = defineProps({
@@ -129,7 +126,7 @@ const loadItem = async () => {
   showInterest.value = false;
   try {
     const { data } = await api.get(`/marketplace/items/${props.itemId}`);
-    item.value = data.item;
+    item.value = normalizeReuseItem(data.item);
   } catch (error) {
     console.error('Unable to load marketplace item:', error);
     loadError.value = true;

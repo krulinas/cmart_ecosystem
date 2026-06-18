@@ -70,12 +70,13 @@
           :key="item.id"
           class="rounded-2xl border border-ink-100 bg-white/70 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
         >
-          <div class="h-36 bg-ink-50 border-b border-ink-100">
+          <div class="h-36 bg-ink-50 border-b border-ink-100 overflow-hidden">
             <img
-              v-if="item.image_url"
-              :src="item.image_url"
+              v-if="itemImageSrc(item)"
+              :src="itemImageSrc(item)"
               :alt="item.name"
-              class="h-full w-full object-cover"
+              class="h-full w-full object-cover object-center"
+              @error="onItemImageError(item.id)"
             />
             <div v-else class="h-full flex items-center justify-center text-xs font-semibold uppercase tracking-wide text-ink-400">
               No image
@@ -146,6 +147,7 @@ import VendorItemDetailsModal from './VendorItemDetailsModal.vue';
 import api from '../services/api';
 import { extractApiError } from '../utils/apiErrors';
 import { filterTabClass } from '../utils/bookingDisplay';
+import { resolveReuseItemImageUrl, normalizeReuseItem } from '../utils/imageUrl';
 import { formatItemPrice, ITEM_STATUS_TABS, marketplaceVisibilityLabel } from '../utils/vendorCatalog';
 
 const emit = defineEmits(['changed']);
@@ -164,6 +166,18 @@ const showFormModal = ref(false);
 const showDetailsModal = ref(false);
 const editingItem = ref(null);
 const selectedItem = ref(null);
+const brokenImageIds = ref(new Set());
+
+const normalizeVendorItem = (item) => normalizeReuseItem(item);
+
+const itemImageSrc = (item) => {
+  if (!item || brokenImageIds.value.has(item.id)) return null;
+  return item.image_url || resolveReuseItemImageUrl(item);
+};
+
+const onItemImageError = (id) => {
+  brokenImageIds.value = new Set([...brokenImageIds.value, id]);
+};
 
 const normalizeSearch = (value) => String(value ?? '').toLowerCase().trim();
 
@@ -219,7 +233,7 @@ const loadItems = async () => {
   loadError.value = false;
   try {
     const { data } = await api.get('/vendor/items');
-    items.value = Array.isArray(data?.items) ? data.items : [];
+    items.value = (Array.isArray(data?.items) ? data.items : []).map(normalizeVendorItem);
     emit('changed', items.value);
   } catch (error) {
     console.error('Unable to load vendor items:', error);
