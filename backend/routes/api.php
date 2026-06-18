@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\VendorBusinessProfileController;
 use App\Http\Controllers\Api\VendorProfileController;
 use App\Http\Controllers\Api\VendorEventPassController;
 use App\Http\Controllers\Api\BookingPassVerificationController;
+use App\Http\Controllers\Api\VendorItemController;
 use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\AuditLogController;
 

@@ -3,12 +3,15 @@
 namespace App\Services;
 
 use App\Models\VendorItem;
+use Illuminate\Support\Facades\Schema;
 
 class VendorItemPresenter
 {
     public static function fromModel(VendorItem $item): array
     {
-        $item->loadMissing('images');
+        if (Schema::hasTable('reuse_item_images')) {
+            $item->loadMissing('images');
+        }
 
         $images = $item->galleryImagesForApi();
         $primaryPath = $item->primaryImagePath();
@@ -25,7 +28,7 @@ class VendorItemPresenter
             'status' => $item->status,
             'image_path' => $primaryPath,
             'image_url' => $primaryPath ? asset('storage/' . $primaryPath) : null,
-            'images' => $images,
+            'images' => is_array($images) ? $images : [],
             'created_at' => $item->created_at,
             'updated_at' => $item->updated_at,
         ];

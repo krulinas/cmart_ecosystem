@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\VendorItem;
 use App\Services\VendorItemPresenter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -17,8 +18,11 @@ class VendorItemController extends Controller
     {
         $query = $request->user()
             ->vendorItems()
-            ->with('images')
             ->latest();
+
+        if (Schema::hasTable('reuse_item_images')) {
+            $query->with('images');
+        }
 
         if ($search = trim((string) $request->query('search', ''))) {
             $needle = mb_strtolower($search);

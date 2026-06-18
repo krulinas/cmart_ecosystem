@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class VendorItem extends Model
@@ -60,13 +61,15 @@ class VendorItem extends Model
 
     public function galleryImagesForApi(): array
     {
-        $this->loadMissing('images');
+        if ($this->hasGalleryTable()) {
+            $this->loadMissing('images');
 
-        if ($this->images->isNotEmpty()) {
-            return $this->images
-                ->map(fn (ReuseItemImage $image) => $image->toApiArray())
-                ->values()
-                ->all();
+            if ($this->images->isNotEmpty()) {
+                return $this->images
+                    ->map(fn (ReuseItemImage $image) => $image->toApiArray())
+                    ->values()
+                    ->all();
+            }
         }
 
         $legacyPath = $this->normalizedImagePath();
@@ -85,16 +88,29 @@ class VendorItem extends Model
 
     public function primaryImagePath(): ?string
     {
-        $this->loadMissing('images');
+        if ($this->hasGalleryTable()) {
+            $this->loadMissing('images');
 
-        $primary = $this->images->firstWhere('is_primary', true)
-            ?? $this->images->sortBy('sort_order')->first();
+            $primary = $this->images->firstWhere('is_primary', true)
+                ?? $this->images->sortBy('sort_order')->first();
 
-        if ($primary) {
-            return $primary->normalizedImagePath();
+            if ($primary) {
+                return $primary->normalizedImagePath();
+            }
         }
 
         return $this->normalizedImagePath();
+    }
+
+    private function hasGalleryTable(): bool
+    {
+        static $exists = null;
+
+        if ($exists === null) {
+            $exists = Schema::hasTable('reuse_item_images');
+        }
+
+        return $exists;
     }
 
     public function getImageUrlAttribute(): ?string
