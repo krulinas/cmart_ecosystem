@@ -40,33 +40,16 @@
     <!-- Members: feedback form -->
     <form v-else-if="auth.isAuthenticated" @submit.prevent="submitFeedback" class="space-y-6">
       <div>
-        <label class="block text-gray-700 font-bold mb-3">Vendor Service</label>
+        <label class="block text-gray-700 font-bold mb-3">Overall Rating</label>
         <div class="flex justify-center sm:justify-start gap-2">
           <button
             v-for="star in 5"
-            :key="'service-' + star"
+            :key="'rating-' + star"
             type="button"
-            @click="serviceRating = star"
+            @click="overallRating = star"
             class="text-4xl focus:outline-none transition-transform hover:scale-110"
-            :class="star <= serviceRating ? 'text-brand-500' : 'text-gray-300 hover:text-brand-200'"
-            :aria-label="`Vendor service ${star} star`"
-          >
-            ★
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-gray-700 font-bold mb-3">Value &amp; Cleanliness</label>
-        <div class="flex justify-center sm:justify-start gap-2">
-          <button
-            v-for="star in 5"
-            :key="'value-' + star"
-            type="button"
-            @click="valueRating = star"
-            class="text-4xl focus:outline-none transition-transform hover:scale-110"
-            :class="star <= valueRating ? 'text-brand-500' : 'text-gray-300 hover:text-brand-200'"
-            :aria-label="`Value and cleanliness ${star} star`"
+            :class="star <= overallRating ? 'text-brand-500' : 'text-gray-300 hover:text-brand-200'"
+            :aria-label="`Overall rating ${star} star`"
           >
             ★
           </button>
@@ -88,34 +71,37 @@
       </div>
 
       <div>
-        <label class="block text-gray-700 font-bold mb-2">Your Feedback (minimum 50 words)</label>
+        <label class="block text-gray-700 font-bold mb-2">Your Feedback (5–100 words)</label>
         <textarea
           v-model="comments"
           rows="6"
           class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition resize-none"
-          placeholder="Share your detailed experience at Carboot@CMart — what went well, what could improve, and any suggestions for the community..."
+          placeholder="Share your experience at Carboot@CMart — what went well, what could improve, and any suggestions for the community..."
         ></textarea>
         <p
-  class="mt-2 text-sm font-medium transition-colors"
-  :class="wordCount > 50 ? 'text-rose-600' : 'text-gray-500'"
->
-  <span class="tabular-nums">{{ wordCount }}</span> / 50 words max
-  <span v-if="wordCount > 50" class="font-bold">
-    — You are {{ wordCount - 50 }} words over the limit!
-  </span>
-</p>
+          class="mt-2 text-sm font-medium transition-colors"
+          :class="wordCountClass"
+        >
+          <span class="tabular-nums">{{ wordCount }}</span> / {{ MAX_WORDS }} words
+          <span v-if="wordCount > 0 && wordCount < MIN_WORDS" class="text-amber-600">
+            — at least {{ MIN_WORDS - wordCount }} more word{{ MIN_WORDS - wordCount === 1 ? '' : 's' }} needed
+          </span>
+          <span v-else-if="wordCount > MAX_WORDS" class="text-rose-600 font-bold">
+            — {{ wordCount - MAX_WORDS }} word{{ wordCount - MAX_WORDS === 1 ? '' : 's' }} over the limit
+          </span>
+        </p>
       </div>
 
       <div>
-        <label class="block text-gray-700 font-bold mb-2">Photo/Video Proof (Optional)</label>
+        <label class="block text-gray-700 font-bold mb-2">Photo Proof (Optional)</label>
         <input
           ref="mediaInput"
           type="file"
-          accept="image/jpeg,image/png,image/jpg,video/mp4"
+          accept="image/jpeg,image/png,image/jpg"
           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 cursor-pointer"
           @change="handleFileUpload"
         />
-        <p class="text-xs text-ink-500 mt-1">Max 5MB. JPEG, PNG, or MP4 only.</p>
+        <p class="text-xs text-ink-500 mt-1">One photo only. Max 5MB. JPEG or PNG.</p>
       </div>
 
       <button
@@ -141,6 +127,7 @@
 import { ref, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import api from '../services/api';
+
 const emit = defineEmits(['submitted']);
 
 defineProps({
@@ -150,9 +137,10 @@ defineProps({
 const auth = useAuthStore();
 
 const REVIEWER_ROLES = ['Shopper', 'Vendor', 'UUM Student', 'Local Resident'];
+const MIN_WORDS = 5;
+const MAX_WORDS = 100;
 
-const serviceRating = ref(0);
-const valueRating = ref(0);
+const overallRating = ref(0);
 const reviewerRole = ref('');
 const comments = ref('');
 const mediaFile = ref(null);
@@ -161,7 +149,6 @@ const isSubmitting = ref(false);
 const message = ref('');
 const isSuccess = ref(false);
 
-/** Mirrors PHP str_word_count(trim($value)) for typical text input. */
 const countWords = (text) => {
   const trimmed = text.trim();
   if (!trimmed) return 0;
@@ -170,13 +157,18 @@ const countWords = (text) => {
 
 const wordCount = computed(() => countWords(comments.value));
 
+const wordCountClass = computed(() => {
+  if (wordCount.value > MAX_WORDS) return 'text-rose-600';
+  if (wordCount.value > 0 && wordCount.value < MIN_WORDS) return 'text-amber-600';
+  return 'text-gray-500';
+});
+
 const canSubmit = computed(() => {
-  return serviceRating.value >= 1 && 
-         valueRating.value >= 1 && 
-         reviewerRole.value !== '' &&
-         wordCount.value > 0 && 
-         wordCount.value <= 50 && // Must be LESS THAN OR EQUAL to 50
-         !isSubmitting.value;
+  return overallRating.value >= 1
+    && reviewerRole.value !== ''
+    && wordCount.value >= MIN_WORDS
+    && wordCount.value <= MAX_WORDS
+    && !isSubmitting.value;
 });
 
 const handleFileUpload = (event) => {
@@ -185,6 +177,15 @@ const handleFileUpload = (event) => {
     mediaFile.value = null;
     return;
   }
+
+  if (!file.type.startsWith('image/')) {
+    message.value = 'Only JPEG or PNG images are allowed.';
+    isSuccess.value = false;
+    event.target.value = '';
+    mediaFile.value = null;
+    return;
+  }
+
   if (file.size > 5 * 1024 * 1024) {
     message.value = 'File is too large. Maximum size is 5MB.';
     isSuccess.value = false;
@@ -192,13 +193,13 @@ const handleFileUpload = (event) => {
     mediaFile.value = null;
     return;
   }
+
   mediaFile.value = file;
   message.value = '';
 };
 
 const resetForm = () => {
-  serviceRating.value = 0;
-  valueRating.value = 0;
+  overallRating.value = 0;
   reviewerRole.value = '';
   comments.value = '';
   mediaFile.value = null;
@@ -216,8 +217,7 @@ const submitFeedback = async () => {
   message.value = '';
 
   const formData = new FormData();
-  formData.append('service_rating', String(serviceRating.value));
-  formData.append('value_rating', String(valueRating.value));
+  formData.append('rating', String(overallRating.value));
   formData.append('reviewer_role', reviewerRole.value);
   formData.append('comments', comments.value);
   if (mediaFile.value) {

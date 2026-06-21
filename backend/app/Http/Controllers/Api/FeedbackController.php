@@ -9,23 +9,30 @@ use Illuminate\Validation\Rule;
 
 class FeedbackController extends Controller
 {
+    private const MIN_WORDS = 5;
+    private const MAX_WORDS = 100;
+    private const PER_PAGE = 6;
+
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'service_rating' => 'required|integer|min:1|max:5',
-            'value_rating' => 'required|integer|min:1|max:5',
+            'rating' => 'required|integer|min:1|max:5',
             'reviewer_role' => ['required', Rule::in(['Shopper', 'Vendor', 'UUM Student', 'Local Resident'])],
             'comments' => [
                 'required',
                 'string',
                 'max:2000',
                 function ($attribute, $value, $fail) {
-                    if (str_word_count(trim($value)) > 50) {
-                        $fail('Please limit your feedback to a maximum of 50 words.');
+                    $count = $this->countWords($value);
+                    if ($count < self::MIN_WORDS) {
+                        $fail('Please write at least ' . self::MIN_WORDS . ' words in your feedback.');
+                    }
+                    if ($count > self::MAX_WORDS) {
+                        $fail('Please limit your feedback to a maximum of ' . self::MAX_WORDS . ' words.');
                     }
                 },
             ],
-            'media' => 'nullable|file|mimes:jpeg,png,jpg,mp4|max:5120',
+            'media' => 'nullable|file|mimes:jpeg,png,jpg|max:5120',
         ]);
 
         $mediaPath = null;
@@ -36,10 +43,10 @@ class FeedbackController extends Controller
         $feedback = Feedback::create([
             'user_id' => $request->user()->id,
             'reviewer_role' => $validated['reviewer_role'],
-            'rating' => (int) round(($validated['service_rating'] + $validated['value_rating']) / 2),
+            'rating' => $validated['rating'],
             'comments' => $validated['comments'],
-            'service_rating' => $validated['service_rating'],
-            'value_rating' => $validated['value_rating'],
+            'service_rating' => $validated['rating'],
+            'value_rating' => $validated['rating'],
             'media_path' => $mediaPath,
             'helpful_count' => 0,
             'is_hidden' => false,
@@ -63,16 +70,25 @@ class FeedbackController extends Controller
         ], 200);
     }
 
-    /** Public listing — visible reviews only. */
-    public function index()
+    /** Public listing — visible reviews only, paginated. */
+    public function index(Request $request)
     {
-        $feedbacks = Feedback::with('user')
+        $paginated = Feedback::with('user')
             ->where('is_hidden', false)
             ->orderByDesc('created_at')
-            ->get()
-            ->map(fn ($review) => $this->formatFeedback($review));
+            ->paginate(self::PER_PAGE);
 
-        return response()->json($feedbacks, 200);
+        return response()->json([
+            'data' => $paginated->getCollection()
+                ->map(fn ($review) => $this->formatFeedback($review))
+                ->values(),
+            'current_page' => $paginated->currentPage(),
+            'per_page' => $paginated->perPage(),
+            'total' => $paginated->total(),
+            'last_page' => $paginated->lastPage(),
+            'from' => $paginated->firstItem(),
+            'to' => $paginated->lastItem(),
+        ], 200);
     }
 
     /** Staff listing — includes hidden reviews. */
@@ -115,12 +131,67 @@ class FeedbackController extends Controller
         ], 200);
     }
 
-    private function formatFeedback(Feedback $review): Feedback
+    private function formatFeedback(Feedback $review): array
     {
-        $review->setAttribute('user', [
-            'name' => $review->user?->name ?? 'Community Member',
-        ]);
+        return [
+            'id' => $review->id,
+            'user_name' => $review->user?->name ?? 'Community Member',
+            'role' => $review->reviewer_role,
+            'rating' => $this->resolveRating($review),
+            'comment' => $review->comments,
+            'proof_url' => $this->resolveProofUrl($review->media_path),
+            'created_at' => $review->created_at?->toIso8601String(),
+            'is_hidden' => (bool) $review->is_hidden,
+        ];
+    }
 
-        return $review;
+    private function resolveRating(Feedback $review): ?int
+    {
+        if ($review->rating >= 1 && $review->rating <= 5) {
+            return (int) $review->rating;
+        }
+
+        $service = (int) ($review->service_rating ?? 0);
+        $value = (int) ($review->value_rating ?? 0);
+
+        if ($service >= 1 && $value >= 1) {
+            return (int) round(($service + $value) / 2);
+        }
+
+        if ($service >= 1) {
+            return $service;
+        }
+
+        if ($value >= 1) {
+            return $value;
+        }
+
+        return null;
+    }
+
+    private function resolveProofUrl(?string $mediaPath): ?string
+    {
+        if (!$mediaPath) {
+            return null;
+        }
+
+        if (preg_match('/\.(mp4|mov|webm|avi)$/i', $mediaPath)) {
+            return null;
+        }
+
+        $normalized = ltrim(str_replace('\\', '/', $mediaPath), '/');
+
+        return asset('storage/' . $normalized);
+    }
+
+    private function countWords(string $text): int
+    {
+        $trimmed = trim($text);
+
+        if ($trimmed === '') {
+            return 0;
+        }
+
+        return count(preg_split('/\s+/u', $trimmed, -1, PREG_SPLIT_NO_EMPTY));
     }
 }

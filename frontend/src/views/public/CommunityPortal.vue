@@ -133,29 +133,103 @@
           <div class="relative bg-white z-20 rounded-t-[2.5rem] -mt-6 p-8 border-b border-gray-100">
             <CommunityFeedback @submitted="onFeedbackSubmitted" />
           </div>
-          <div class="p-8 md:p-12 bg-gray-50/50">
-            <h3 class="text-xl font-bold text-gray-900 mb-6">
-              Community Reviews
-              <span class="text-brand-600">({{ communityReviews.length }})</span>
-            </h3>
+          <div ref="reviewsSection" class="p-8 md:p-12 bg-gray-50/50">
+            <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-6">
+              <div>
+                <h3 class="text-xl font-bold text-gray-900">
+                  Community Reviews
+                  <span class="text-brand-600">({{ reviewMeta.total }})</span>
+                </h3>
+                <p v-if="reviewMeta.total > 0" class="text-sm text-gray-500 mt-1">
+                  Showing {{ reviewMeta.from }}–{{ reviewMeta.to }} of {{ reviewMeta.total }}
+                </p>
+              </div>
+            </div>
+
             <div v-if="loadingReviews" class="text-center py-8 text-gray-500">Loading reviews…</div>
             <div v-else-if="!communityReviews.length" class="text-center text-gray-500 italic py-8">
               No reviews yet. Be the first to share your experience!
             </div>
-            <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div
-                v-for="review in communityReviews.slice(0, 4)"
-                :key="review.id"
-                class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100"
-              >
-                <div class="flex items-center space-x-3 mb-3">
-                  <div class="bg-brand-100 text-brand-600 rounded-full h-10 w-10 flex items-center justify-center font-black">
-                    {{ (review.user?.name || 'M').charAt(0).toUpperCase() }}
+            <div v-else>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <article
+                  v-for="review in communityReviews"
+                  :key="review.id"
+                  class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col"
+                >
+                  <div class="flex items-start justify-between gap-3 mb-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <div class="bg-brand-100 text-brand-600 rounded-full h-10 w-10 shrink-0 flex items-center justify-center font-black">
+                        {{ reviewInitial(review) }}
+                      </div>
+                      <div class="min-w-0">
+                        <div class="font-bold text-gray-900 text-sm truncate">{{ reviewUserName(review) }}</div>
+                        <span
+                          v-if="reviewRole(review)"
+                          class="text-[11px] font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full"
+                        >
+                          {{ reviewRole(review) }}
+                        </span>
+                      </div>
+                    </div>
+                    <div
+                      v-if="reviewRating(review)"
+                      class="shrink-0 text-sm text-brand-500"
+                      :aria-label="`${reviewRating(review)} out of 5 stars`"
+                    >
+                      <span v-for="star in 5" :key="`${review.id}-star-${star}`">
+                        {{ star <= reviewRating(review) ? '★' : '☆' }}
+                      </span>
+                    </div>
                   </div>
-                  <div class="font-bold text-gray-900 text-sm">{{ review.user?.name || 'Community Member' }}</div>
-                </div>
-                <p v-if="review.comments" class="text-gray-600 text-sm line-clamp-3">"{{ review.comments }}"</p>
+
+                  <p v-if="reviewComment(review)" class="text-gray-600 text-sm line-clamp-4 flex-1">
+                    "{{ reviewComment(review) }}"
+                  </p>
+
+                  <button
+                    v-if="reviewProofUrl(review)"
+                    type="button"
+                    class="mt-3 self-start rounded-lg overflow-hidden border border-gray-200 hover:border-brand-300 hover:ring-2 hover:ring-brand-500/20 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                    @click="openProofLightbox(reviewProofUrl(review), reviewUserName(review))"
+                  >
+                    <img
+                      :src="reviewProofUrl(review)"
+                      :alt="`Photo proof from ${reviewUserName(review)}`"
+                      class="h-16 w-16 object-cover"
+                      loading="lazy"
+                    />
+                  </button>
+                </article>
               </div>
+
+              <nav
+                v-if="reviewMeta.last_page > 1"
+                class="mt-8 flex flex-wrap items-center justify-center gap-2"
+                aria-label="Review pagination"
+              >
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm font-bold border transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  :class="reviewMeta.current_page <= 1 ? 'border-gray-200 text-gray-400' : 'border-brand-200 text-brand-700 hover:bg-brand-50'"
+                  :disabled="reviewMeta.current_page <= 1 || loadingReviews"
+                  @click="goToReviewPage(reviewMeta.current_page - 1)"
+                >
+                  Previous
+                </button>
+                <span class="text-sm text-gray-600 px-2">
+                  Page {{ reviewMeta.current_page }} of {{ reviewMeta.last_page }}
+                </span>
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm font-bold border transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  :class="reviewMeta.current_page >= reviewMeta.last_page ? 'border-gray-200 text-gray-400' : 'border-brand-200 text-brand-700 hover:bg-brand-50'"
+                  :disabled="reviewMeta.current_page >= reviewMeta.last_page || loadingReviews"
+                  @click="goToReviewPage(reviewMeta.current_page + 1)"
+                >
+                  Next
+                </button>
+              </nav>
             </div>
           </div>
         </div>
@@ -186,6 +260,52 @@
       :booking-link="bookingLink"
       :booking-label="auth.isApprovedVendor ? 'Book Space' : 'Learn More'"
     />
+
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="proofLightbox.open"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo proof preview"
+          @keydown.esc="closeProofLightbox"
+        >
+          <div
+            class="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            aria-hidden="true"
+            @click="closeProofLightbox"
+          />
+          <div class="relative z-10 max-w-3xl w-full">
+            <button
+              type="button"
+              class="absolute -top-12 right-0 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-md hover:bg-white transition"
+              aria-label="Close photo preview"
+              @click="closeProofLightbox"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <img
+              :src="proofLightbox.url"
+              :alt="`Photo proof from ${proofLightbox.caption}`"
+              class="w-full max-h-[80vh] object-contain rounded-xl bg-white shadow-2xl"
+            />
+            <p v-if="proofLightbox.caption" class="mt-3 text-center text-sm text-white/90">
+              Photo proof from {{ proofLightbox.caption }}
+            </p>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -198,16 +318,27 @@ import EventDetailsModal from '../../components/EventDetailsModal.vue';
 import { useAuthStore } from '../../stores/auth';
 import api from '../../services/api';
 import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
+import { resolveStorageUrl } from '../../utils/imageUrl';
 
 const auth = useAuthStore();
 const toast = useToast();
 
 const upcomingEvents = ref([]);
 const communityReviews = ref([]);
+const reviewMeta = ref({
+  current_page: 1,
+  per_page: 6,
+  total: 0,
+  last_page: 1,
+  from: 0,
+  to: 0,
+});
 const selectedEvent = ref(null);
 const showEventModal = ref(false);
 const loadingEvents = ref(true);
 const loadingReviews = ref(true);
+const reviewsSection = ref(null);
+const proofLightbox = ref({ open: false, url: null, caption: '' });
 
 const bookingLink = computed(() => {
   if (auth.isApprovedVendor) return '/vendor-booking';
@@ -233,11 +364,21 @@ const fetchEvents = async () => {
   }
 };
 
-const fetchReviews = async () => {
+const fetchReviews = async (page = 1) => {
   loadingReviews.value = true;
   try {
-    const response = await api.get('/feedbacks');
-    communityReviews.value = response.data.data || response.data;
+    const response = await api.get('/feedbacks', { params: { page } });
+    const payload = response.data;
+
+    communityReviews.value = Array.isArray(payload?.data) ? payload.data : [];
+    reviewMeta.value = {
+      current_page: payload?.current_page ?? 1,
+      per_page: payload?.per_page ?? 6,
+      total: payload?.total ?? communityReviews.value.length,
+      last_page: payload?.last_page ?? 1,
+      from: payload?.from ?? (communityReviews.value.length ? 1 : 0),
+      to: payload?.to ?? communityReviews.value.length,
+    };
   } catch (error) {
     console.error('Failed to fetch reviews:', error);
   } finally {
@@ -245,9 +386,30 @@ const fetchReviews = async () => {
   }
 };
 
+const goToReviewPage = async (page) => {
+  if (page < 1 || page > reviewMeta.value.last_page) return;
+  await fetchReviews(page);
+  reviewsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+const reviewUserName = (review) => review.user_name || review.user?.name || 'Community Member';
+const reviewRole = (review) => review.role || review.reviewer_role || null;
+const reviewComment = (review) => review.comment || review.comments || '';
+const reviewRating = (review) => review.rating || null;
+const reviewProofUrl = (review) => resolveStorageUrl(review.proof_url || review.media_path || null);
+const reviewInitial = (review) => reviewUserName(review).charAt(0).toUpperCase();
+
+const openProofLightbox = (url, caption) => {
+  proofLightbox.value = { open: true, url, caption };
+};
+
+const closeProofLightbox = () => {
+  proofLightbox.value = { open: false, url: null, caption: '' };
+};
+
 const onFeedbackSubmitted = async () => {
   toast.success('Feedback submitted successfully!');
-  await fetchReviews();
+  await fetchReviews(1);
 };
 
 onMounted(async () => {

@@ -23,13 +23,25 @@
       >
         <div class="flex flex-wrap justify-between gap-2 mb-2">
           <div>
-            <span class="font-bold text-ink-900">{{ item.user?.name || 'Community Member' }}</span>
-            <span v-if="item.reviewer_role" class="ml-2 text-xs font-semibold text-brand-700">{{ item.reviewer_role }}</span>
+            <span class="font-bold text-ink-900">{{ item.user_name || item.user?.name || 'Community Member' }}</span>
+            <span v-if="item.role || item.reviewer_role" class="ml-2 text-xs font-semibold text-brand-700">
+              {{ item.role || item.reviewer_role }}
+            </span>
+            <span v-if="item.rating" class="ml-2 text-xs text-brand-500">
+              {{ '★'.repeat(item.rating) }}{{ '☆'.repeat(5 - item.rating) }}
+            </span>
             <span v-if="item.is_hidden" class="ml-2 ml-badge bg-rose-100 text-rose-800">Hidden</span>
           </div>
           <div class="text-xs text-ink-500">#{{ item.id }} · {{ formatDate(item.created_at) }}</div>
         </div>
-        <p class="text-sm text-ink-700 italic mb-3">"{{ item.comments }}"</p>
+        <p class="text-sm text-ink-700 italic mb-3">"{{ item.comment || item.comments }}"</p>
+        <img
+          v-if="proofUrl(item)"
+          :src="proofUrl(item)"
+          alt="Photo proof"
+          class="h-16 w-16 object-cover rounded-lg border border-ink-200 mb-3"
+          loading="lazy"
+        />
         <div class="flex gap-2">
           <button class="ml-btn-ghost" @click="toggleHidden(item)">
             {{ item.is_hidden ? 'Unhide' : 'Hide' }}
@@ -45,6 +57,7 @@
 import { ref } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
+import { resolveStorageUrl } from '../../../utils/imageUrl';
 
 const toast = useToast();
 const items = ref([]);
@@ -53,6 +66,7 @@ const hasLoaded = ref(false);
 const loadError = ref(null);
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-GB') : '');
+const proofUrl = (item) => resolveStorageUrl(item.proof_url || item.media_path || null);
 
 const load = async () => {
   loading.value = true;
