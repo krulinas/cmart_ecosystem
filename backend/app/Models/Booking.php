@@ -12,6 +12,7 @@ class Booking extends Model
     protected $fillable = [
         'user_id',
         'space_id',
+        'carboot_event_id',
         'booking_date',
         'product_category',
         'product_details',
@@ -40,6 +41,10 @@ class Booking extends Model
 
     public function space() {
         return $this->belongsTo(Space::class);
+    }
+
+    public function carbootEvent() {
+        return $this->belongsTo(CarbootEvent::class, 'carboot_event_id');
     }
 
     public function invoice() {

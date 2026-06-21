@@ -28,6 +28,23 @@ class CarbootEventController extends Controller
         return response()->json($events);
     }
 
+    public function publicShow(CarbootEvent $carboot_event)
+    {
+        $carboot_event->load('images');
+
+        if ($carboot_event->status === 'Closed' || $carboot_event->ends_at < now()) {
+            return response()->json([
+                'message' => 'This event is no longer available for booking. Please choose another event.',
+                'available' => false,
+            ], 404);
+        }
+
+        return response()->json(array_merge(
+            EventPresenter::fromModel($carboot_event),
+            ['available' => true],
+        ));
+    }
+
     public function index()
     {
         $events = CarbootEvent::query()

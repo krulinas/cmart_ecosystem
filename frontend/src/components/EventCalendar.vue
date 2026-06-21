@@ -48,7 +48,13 @@
             <div class="mt-6 flex justify-end gap-3">
               <button @click="closeModal" class="text-gray-600 border px-4 py-2 rounded-lg">Cancel</button>
               <button v-if="modalData.isNew && auth.isCmartWorker" @click="createEvent" class="text-white bg-[#29B6F6] px-4 py-2 rounded-lg font-bold">Create Event</button>
-              <router-link v-else-if="!modalData.isNew" to="/vendor-booking" class="text-white bg-[#29B6F6] px-4 py-2 rounded-lg font-bold">Book a Space</router-link>
+              <router-link
+                v-else-if="!modalData.isNew"
+                :to="vendorBookingLink(modalData.id, auth)"
+                class="text-white bg-[#29B6F6] px-4 py-2 rounded-lg font-bold"
+              >
+                Book a Space
+              </router-link>
             </div>
           </div>
         </div>
@@ -68,6 +74,7 @@ import listPlugin from '@fullcalendar/list';
 import interactionPlugin from '@fullcalendar/interaction';
 import api from '../services/api';
 import { useAuthStore } from '../stores/auth';
+import { vendorBookingLink } from '../utils/vendorBooking';
 
 const auth = useAuthStore();
 
@@ -80,6 +87,7 @@ const newEventStatus = ref('Available');
 const apiEvents = ref([]);
 
 const modalData = reactive({
+  id: null,
   title: '',
   start: '',
   end: '',
@@ -122,6 +130,7 @@ const loadEvents = async () => {
 };
 
 const handleEventClick = (clickInfo) => {
+  modalData.id = clickInfo.event.id ? Number(clickInfo.event.id) : null;
   modalData.title = clickInfo.event.title;
   modalData.start = clickInfo.event.startStr;
   modalData.end = clickInfo.event.endStr;

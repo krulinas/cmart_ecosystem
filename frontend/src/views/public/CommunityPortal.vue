@@ -111,7 +111,7 @@
                 </div>
               </div>
               <router-link
-                :to="bookingLink"
+                :to="vendorBookingLink(event.id, auth)"
                 class="text-sm font-bold bg-brand-100 text-brand-700 px-4 py-2 rounded-lg hover:bg-brand-200 transition shrink-0"
                 @click.stop
               >
@@ -257,7 +257,7 @@
     <EventDetailsModal
       v-model="showEventModal"
       :event="selectedEvent"
-      :booking-link="bookingLink"
+      :booking-link="vendorBookingLink(selectedEvent?.id, auth)"
       :booking-label="auth.isApprovedVendor ? 'Book Space' : 'Learn More'"
     />
 
@@ -310,7 +310,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import CommunityFeedback from '../../components/CommunityFeedback.vue';
@@ -318,6 +318,7 @@ import EventDetailsModal from '../../components/EventDetailsModal.vue';
 import { useAuthStore } from '../../stores/auth';
 import api from '../../services/api';
 import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
+import { vendorBookingLink } from '../../utils/vendorBooking';
 import { resolveStorageUrl } from '../../utils/imageUrl';
 
 const auth = useAuthStore();
@@ -339,12 +340,6 @@ const loadingEvents = ref(true);
 const loadingReviews = ref(true);
 const reviewsSection = ref(null);
 const proofLightbox = ref({ open: false, url: null, caption: '' });
-
-const bookingLink = computed(() => {
-  if (auth.isApprovedVendor) return '/vendor-booking';
-  if (auth.isAuthenticated) return '/dashboard';
-  return '/login?redirect=/vendor-booking';
-});
 
 const openEventDetails = (event) => {
   selectedEvent.value = event;

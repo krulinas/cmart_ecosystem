@@ -197,6 +197,10 @@ class VendorEventPassService
 
     public function resolveEventForBooking(Booking $booking): ?CarbootEvent
     {
+        if ($booking->carboot_event_id) {
+            return CarbootEvent::query()->find($booking->carboot_event_id);
+        }
+
         return CarbootEvent::query()
             ->whereDate('starts_at', $booking->booking_date)
             ->orderBy('starts_at')

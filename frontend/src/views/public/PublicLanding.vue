@@ -125,7 +125,7 @@
               <div class="flex justify-between items-center mt-auto pt-5 border-t border-gray-100/80" @click.stop>
                 <span :class="['text-xs font-bold px-4 py-1.5 rounded-full pointer-events-none', event.statusClass]">{{ event.status }}</span>
                 <router-link
-                  :to="bookingCtaLink"
+                  :to="vendorBookingLink(event.id, auth)"
                   class="inline-flex items-center text-sm font-bold text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-4 py-1.5 rounded-full transition-colors"
                   @click.stop
                 >
@@ -367,7 +367,7 @@
     <EventDetailsModal
       v-model="showEventModal"
       :event="selectedEvent"
-      :booking-link="bookingCtaLink"
+      :booking-link="vendorBookingLink(selectedEvent?.id, auth)"
       booking-label="Book Space"
     />
 
@@ -386,6 +386,7 @@ import NewsDetailsModal from '../../components/NewsDetailsModal.vue';
 import api from '../../services/api';
 import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
 import { mapApiNewsToCard } from '../../utils/newsDisplay';
+import { vendorBookingLink } from '../../utils/vendorBooking';
 import { useAuthStore } from '../../stores/auth';
 import { PUBLIC_LINKS } from '../../config/navigation';
 import { useScrollReveal } from '../../composables/useScrollReveal';
@@ -394,10 +395,7 @@ import { useHeroParallax } from '../../composables/useHeroParallax';
 const auth = useAuthStore();
 const { contentStyle, videoStyle } = useHeroParallax();
 
-const bookingCtaLink = computed(() => {
-  if (auth.isApprovedVendor) return '/vendor-booking';
-  return '/login?redirect=/vendor-booking';
-});
+const bookingCtaLink = computed(() => vendorBookingLink(null, auth));
 
 const currentYear = new Date().getFullYear();
 const footerLinks = PUBLIC_LINKS.filter((link) => link.label !== 'Home');

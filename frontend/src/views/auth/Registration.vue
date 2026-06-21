@@ -14,11 +14,83 @@
             Book your Carboot space
           </h1>
           <p class="text-sm text-ink-500 mt-1">
-            Reserve your space for the next Carboot@CMart event. Approval takes 3-5 working days.
+            Reserve your booth for a specific Carboot@CMart event. Approval takes 3–5 working days.
           </p>
         </div>
 
-        <form @submit.prevent="submitBooking" class="space-y-4">
+        <div v-if="loadingEvents" class="rounded-xl border border-ink-200 bg-ink-50 px-4 py-8 text-center text-sm text-ink-500">
+          Loading available events…
+        </div>
+
+        <div
+          v-else-if="eventLoadError"
+          class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-800 mb-6"
+        >
+          {{ eventLoadError }}
+        </div>
+
+        <div
+          v-if="!loadingEvents && selectedEvent && !eventLoadError"
+          class="rounded-xl border border-brand-200 bg-brand-50/70 p-5 mb-6"
+        >
+          <p class="text-xs font-bold uppercase tracking-wider text-brand-700 mb-2">Selected Event</p>
+          <h2 class="text-lg font-extrabold text-ink-900">{{ selectedEvent.title }}</h2>
+          <dl class="mt-3 space-y-2 text-sm text-ink-700">
+            <div class="flex gap-2">
+              <dt class="w-20 shrink-0 font-semibold text-ink-500">Date</dt>
+              <dd>{{ selectedEvent.dateLabel }}</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="w-20 shrink-0 font-semibold text-ink-500">Time</dt>
+              <dd>{{ selectedEvent.time }}</dd>
+            </div>
+            <div class="flex gap-2">
+              <dt class="w-20 shrink-0 font-semibold text-ink-500">Location</dt>
+              <dd>{{ selectedEvent.location }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div v-if="!loadingEvents && !selectedEvent && (!routeEventId || eventLoadError)" class="mb-6">
+          <label for="event-select" class="ml-label">Select an event</label>
+          <select
+            id="event-select"
+            v-model="selectedEventId"
+            class="ml-input"
+            required
+          >
+            <option value="" disabled>Choose an upcoming event</option>
+            <option v-for="event in bookableEvents" :key="event.id" :value="String(event.id)">
+              {{ event.title }} — {{ event.dateLabel }}
+            </option>
+          </select>
+          <p v-if="!bookableEvents.length" class="mt-2 text-sm text-ink-500">
+            No upcoming events are open for booking right now. Please check back later.
+          </p>
+        </div>
+
+        <form v-if="!loadingEvents" @submit.prevent="submitBooking" class="space-y-4">
+          <div
+            v-if="savedPreferenceLoaded"
+            class="rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3 text-sm text-ink-700"
+          >
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div>
+                <p class="font-bold text-brand-800">Quick Rebook Details</p>
+                <p class="mt-1">
+                  Saved booking details loaded from your previous booking. You can edit them before submitting.
+                </p>
+              </div>
+              <button
+                type="button"
+                class="shrink-0 text-sm font-semibold text-brand-700 hover:text-brand-900 underline underline-offset-2"
+                @click="clearSavedPreference"
+              >
+                Clear saved details
+              </button>
+            </div>
+          </div>
+
           <div>
             <label class="ml-label">Your name</label>
             <input v-model="userName" type="text" required class="ml-input" placeholder="e.g. Ahmad bin Ali" />
@@ -84,7 +156,8 @@
 
               <button
                 type="button"
-                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink-200 bg-white text-xl font-bold text-ink-700 shadow-sm transition hover:bg-ink-50"
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink-200 bg-white text-xl font-bold text-ink-700 shadow-sm transition hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-40"
+                :disabled="tapakQuantity >= MAX_TAPAK"
                 aria-label="Increase tapak quantity"
                 @click="increaseTapak"
               >
@@ -97,12 +170,23 @@
             </p>
           </div>
 
-          <div>
-            <label class="ml-label">Booking date</label>
-            <input v-model="bookingForm.booking_date" type="date" required class="ml-input" />
+          <div class="rounded-xl border border-ink-100 bg-ink-50/50 px-4 py-3">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <input
+                v-model="saveForNextBooking"
+                type="checkbox"
+                class="mt-1 h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
+              />
+              <span>
+                <span class="block text-sm font-semibold text-ink-800">Save these details for my next booking</span>
+                <span class="block text-xs text-ink-500 mt-1">
+                  Only your product and tapak details will be saved. Event date and payment details are never reused.
+                </span>
+              </span>
+            </label>
           </div>
 
-          <button type="submit" class="ml-btn-primary w-full" :disabled="submitting">
+          <button type="submit" class="ml-btn-primary w-full" :disabled="submitting || !canSubmit">
             {{ submitting ? 'Submitting…' : 'Submit booking' }}
           </button>
 
@@ -117,22 +201,26 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 import { PRODUCT_CATEGORIES } from '../../constants/productCategories';
+import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
+
+const EVENT_UNAVAILABLE_MESSAGE = 'This event is no longer available for booking. Please choose another event.';
 
 const TAPAK_UNIT_PRICE = 20;
+const MAX_TAPAK = 10;
 
 const toast = useToast();
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 
 const bookingForm = reactive({
-  booking_date: '',
   product_category: '',
   product_details: '',
 });
@@ -140,11 +228,149 @@ const bookingForm = reactive({
 const userName = ref(auth.user?.name || '');
 const tapakQuantity = ref(1);
 const submitting = ref(false);
+const loadingEvents = ref(true);
+const bookableEvents = ref([]);
+const selectedEvent = ref(null);
+const selectedEventId = ref('');
+const eventLoadError = ref('');
+const savedPreferenceLoaded = ref(false);
+const saveForNextBooking = ref(false);
+const clearingPreference = ref(false);
+
+const routeEventId = computed(() => {
+  const raw = route.query.event_id;
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+});
 
 const totalPrice = computed(() => tapakQuantity.value * TAPAK_UNIT_PRICE);
 
-onMounted(() => {
+const canSubmit = computed(() => Boolean(selectedEvent.value) && !eventLoadError.value);
+
+const loadBookableEvents = async () => {
+  const { data } = await api.get('/events');
+  bookableEvents.value = (Array.isArray(data) ? data : [])
+    .map((ev) => mapApiEventToCard(ev, DEFAULT_EVENT_LOCATION));
+};
+
+const applySelectedEvent = (event) => {
+  selectedEvent.value = event || null;
+  selectedEventId.value = event ? String(event.id) : '';
+  eventLoadError.value = '';
+};
+
+const applySavedPreference = (preference) => {
+  if (preference.name) {
+    userName.value = preference.name;
+  }
+  if (preference.product_category) {
+    bookingForm.product_category = preference.product_category;
+  }
+  if (preference.specific_products) {
+    bookingForm.product_details = preference.specific_products;
+  }
+  if (preference.tapak_count >= 1) {
+    tapakQuantity.value = Math.min(preference.tapak_count, MAX_TAPAK);
+  }
+  savedPreferenceLoaded.value = true;
+  saveForNextBooking.value = true;
+};
+
+const loadSavedPreference = async () => {
+  try {
+    const { data } = await api.get('/booking-preferences/me');
+    if (data?.has_preference && data.preference) {
+      applySavedPreference(data.preference);
+    }
+  } catch (error) {
+    console.error('Failed to load saved booking preference:', error);
+  }
+};
+
+const saveBookingPreference = async () => {
+  await api.put('/booking-preferences/me', {
+    name: userName.value.trim() || null,
+    product_category: bookingForm.product_category || null,
+    specific_products: bookingForm.product_details.trim() || null,
+    tapak_count: tapakQuantity.value,
+    remember_enabled: true,
+  });
+};
+
+const clearSavedPreference = async () => {
+  if (clearingPreference.value) {
+    return;
+  }
+
+  clearingPreference.value = true;
+  try {
+    await api.delete('/booking-preferences/me');
+    savedPreferenceLoaded.value = false;
+    saveForNextBooking.value = false;
+    toast.success('Saved booking details cleared.');
+  } catch (error) {
+    console.error('Failed to clear saved booking preference:', error);
+    toast.error(error.response?.data?.message || 'Unable to clear saved booking details.');
+  } finally {
+    clearingPreference.value = false;
+  }
+};
+
+const loadSelectedEventFromRoute = async () => {
+  if (!routeEventId.value) {
+    return;
+  }
+
+  try {
+    const { data } = await api.get(`/events/${routeEventId.value}`);
+    applySelectedEvent(mapApiEventToCard(data, DEFAULT_EVENT_LOCATION));
+  } catch {
+    const fallback = bookableEvents.value.find((event) => event.id === routeEventId.value);
+    if (fallback) {
+      applySelectedEvent(fallback);
+      return;
+    }
+
+    selectedEvent.value = null;
+    selectedEventId.value = '';
+    eventLoadError.value = EVENT_UNAVAILABLE_MESSAGE;
+  }
+};
+
+watch(selectedEventId, (id) => {
+  if (routeEventId.value && String(routeEventId.value) === id) {
+    return;
+  }
+
+  if (!id) {
+    if (!routeEventId.value) {
+      selectedEvent.value = null;
+    }
+    return;
+  }
+
+  const event = bookableEvents.value.find((item) => String(item.id) === String(id));
+  applySelectedEvent(event || null);
+});
+
+onMounted(async () => {
   userName.value = auth.user?.name || '';
+  loadingEvents.value = true;
+  eventLoadError.value = '';
+
+  try {
+    await Promise.all([
+      loadBookableEvents(),
+      loadSavedPreference(),
+    ]);
+    await loadSelectedEventFromRoute();
+  } catch (error) {
+    console.error('Failed to load booking events:', error);
+    toast.error('Unable to load upcoming events. Please try again.');
+  } finally {
+    loadingEvents.value = false;
+  }
 });
 
 const decreaseTapak = () => {
@@ -154,27 +380,46 @@ const decreaseTapak = () => {
 };
 
 const increaseTapak = () => {
-  tapakQuantity.value += 1;
+  if (tapakQuantity.value < MAX_TAPAK) {
+    tapakQuantity.value += 1;
+  }
 };
 
 const resetBookingForm = () => {
-  bookingForm.booking_date = '';
   bookingForm.product_category = '';
   bookingForm.product_details = '';
   tapakQuantity.value = 1;
+  if (!routeEventId.value) {
+    applySelectedEvent(null);
+  }
 };
 
 const submitBooking = async () => {
+  if (!canSubmit.value || !selectedEvent.value) {
+    toast.error('Please select a valid event before submitting.');
+    return;
+  }
+
   submitting.value = true;
   try {
     const { data } = await api.post('/bookings', {
-      booking_date: bookingForm.booking_date,
+      event_id: selectedEvent.value.id,
       product_category: bookingForm.product_category,
       product_details: bookingForm.product_details,
       tapak_quantity: tapakQuantity.value,
       total_price: totalPrice.value,
     });
     toast.success(data.message || '201 Created: Booking submitted successfully.');
+
+    if (saveForNextBooking.value) {
+      try {
+        await saveBookingPreference();
+      } catch (preferenceError) {
+        console.error('Failed to save booking preference:', preferenceError);
+        toast.warning('Booking submitted, but your details could not be saved for next time.');
+      }
+    }
+
     resetBookingForm();
     router.push('/dashboard');
   } catch (e) {

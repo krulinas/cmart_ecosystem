@@ -119,6 +119,11 @@ class CarbootEvent extends Model
             ->withTimestamps();
     }
 
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class, 'carboot_event_id');
+    }
+
     public function syncCapacityStatus(): void
     {
         if ($this->max_slots === null) {

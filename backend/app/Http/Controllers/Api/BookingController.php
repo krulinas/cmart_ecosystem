@@ -37,9 +37,9 @@ class BookingController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'event_id' => 'required|integer|exists:carboot_events,id',
             'tapak_quantity' => 'required|integer|min:1',
             'total_price' => 'required|numeric|min:20',
-            'booking_date' => 'required|date',
             'product_category' => [
                 'required',
                 'string',
@@ -55,6 +55,13 @@ class BookingController extends Controller
             'product_details' => 'required|string|max:5000',
         ]);
 
+        $event = CarbootEvent::query()->find($validated['event_id']);
+        if (!$event || !$this->isEventBookable($event)) {
+            return response()->json([
+                'message' => 'This event is no longer available for booking. Please choose another event.',
+            ], 422);
+        }
+
         $expectedTotal = $validated['tapak_quantity'] * 20;
         if ((float) $validated['total_price'] !== (float) $expectedTotal) {
             return response()->json([
@@ -69,7 +76,8 @@ class BookingController extends Controller
         $booking = Booking::create([
             'user_id' => $request->user()->id,
             'space_id' => $space->id,
-            'booking_date' => $validated['booking_date'],
+            'carboot_event_id' => $event->id,
+            'booking_date' => $event->starts_at->toDateString(),
             'product_category' => $validated['product_category'],
             'product_details' => $validated['product_details'],
             'approval_status' => 'Pending_Staff',
@@ -369,8 +377,14 @@ class BookingController extends Controller
         if ($filters['event_id']) {
             $event = CarbootEvent::query()->find($filters['event_id']);
             if ($event) {
-                $query->whereDate('booking_date', '>=', $event->starts_at->toDateString())
-                    ->whereDate('booking_date', '<=', $event->ends_at->toDateString());
+                $query->where(function ($builder) use ($filters, $event) {
+                    $builder->where('carboot_event_id', $filters['event_id'])
+                        ->orWhere(function ($legacy) use ($event) {
+                            $legacy->whereNull('carboot_event_id')
+                                ->whereDate('booking_date', '>=', $event->starts_at->toDateString())
+                                ->whereDate('booking_date', '<=', $event->ends_at->toDateString());
+                        });
+                });
             }
         }
 
@@ -666,5 +680,14 @@ class BookingController extends Controller
         return response()->json([
             'message' => '200 OK: Booking deleted successfully.',
         ]);
+    }
+
+    private function isEventBookable(CarbootEvent $event): bool
+    {
+        if ($event->status === 'Closed') {
+            return false;
+        }
+
+        return $event->ends_at !== null && $event->ends_at->gte(now());
     }
 }

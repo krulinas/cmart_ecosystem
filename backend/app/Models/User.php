@@ -81,4 +81,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(VendorItem::class);
     }
+
+    public function bookingPreference()
+    {
+        return $this->hasOne(UserBookingPreference::class);
+    }
 }

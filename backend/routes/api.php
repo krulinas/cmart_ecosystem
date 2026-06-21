@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\BookingPassVerificationController;
 use App\Http\Controllers\Api\VendorItemController;
 use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\AuditLogController;
+use App\Http\Controllers\Api\UserBookingPreferenceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,6 +46,7 @@ Route::get('/feedbacks', [FeedbackController::class, 'index']);
 Route::post('/feedback/{id}/helpful', [FeedbackController::class, 'markHelpful']);
 
 Route::get('/events', [CarbootEventController::class, 'publicIndex']);
+Route::get('/events/{carboot_event}', [CarbootEventController::class, 'publicShow']);
 Route::get('/news', [NewsPostController::class, 'publicIndex']);
 
 Route::get('/marketplace/items', [MarketplaceController::class, 'index']);
@@ -58,6 +60,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/events/{carboot_event}/register', [EventRegistrationController::class, 'register']);
 
     Route::get('/bookings/{booking}/pdf', [BookingController::class, 'generatePdf']);
+
+    Route::get('/booking-preferences/me', [UserBookingPreferenceController::class, 'show']);
+    Route::put('/booking-preferences/me', [UserBookingPreferenceController::class, 'update']);
+    Route::delete('/booking-preferences/me', [UserBookingPreferenceController::class, 'destroy']);
 
     Route::middleware('role:community')->group(function () {
         Route::get('/vendor/analytics/me', [VendorAnalyticsController::class, 'me']);
