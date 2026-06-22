@@ -144,6 +144,22 @@
               </section>
 
               <section
+                v-if="isWithdrawnBooking(booking)"
+                class="rounded-xl border border-slate-200 bg-slate-50 p-4"
+              >
+                <h3 class="font-bold text-slate-800">Withdrawn Booking</h3>
+                <p class="mt-1 text-sm text-slate-700">
+                  This booking was withdrawn on {{ formatWithdrawnDate(booking.withdrawn_at) }}.
+                </p>
+                <p v-if="booking.withdrawal_reason" class="mt-2 text-sm text-slate-600">
+                  Reason: {{ booking.withdrawal_reason }}
+                </p>
+                <p class="mt-2 text-xs text-slate-500">
+                  Withdrawn bookings cannot be edited.
+                </p>
+              </section>
+
+              <section
                 v-if="booking.approval_status === 'Needs_Revision'"
                 class="rounded-xl border border-amber-200 bg-amber-50 p-4"
               >
@@ -198,7 +214,7 @@
                   v-if="canVendorWithdraw(booking)"
                   class="ml-btn-ghost text-rose-700"
                   :disabled="saving"
-                  @click="withdrawBooking"
+                  @click="openWithdrawModal"
                 >
                   Withdraw Booking
                 </button>
@@ -210,12 +226,18 @@
       </div>
     </Transition>
   </Teleport>
+
+  <WithdrawBookingModal
+    v-model="showWithdrawModal"
+    @confirm="handleWithdrawConfirm"
+  />
 </template>
 
 <script setup>
 import { computed, reactive, ref, watch, onUnmounted, nextTick } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '../services/api';
+import WithdrawBookingModal from './WithdrawBookingModal.vue';
 import {
   PIPELINE_STEPS,
   PRODUCT_CATEGORIES,
@@ -226,6 +248,8 @@ import {
   canVendorResubmit,
   canVendorWithdraw,
   formatBookingDate,
+  formatWithdrawnDate,
+  isWithdrawnBooking,
   progressBarClass,
   progressWidth,
   statusBadgeClass,
@@ -245,6 +269,7 @@ const panelRef = ref(null);
 const booking = ref(null);
 const loading = ref(false);
 const saving = ref(false);
+const showWithdrawModal = ref(false);
 const requestNote = ref('');
 const editForm = reactive({
   booking_date: '',
@@ -316,17 +341,27 @@ const resubmit = async () => {
   }
 };
 
-const withdrawBooking = async () => {
-  if (!window.confirm('Withdraw this booking? This action cannot be undone.')) return;
-  saving.value = true;
+const openWithdrawModal = () => {
+  showWithdrawModal.value = true;
+};
+
+const handleWithdrawConfirm = async ({ withdrawal_reason, setSubmitting, setError, close: closeWithdrawModal }) => {
+  setSubmitting(true);
   try {
-    const { data } = await api.post(`/vendor/bookings/${props.bookingId}/cancel`);
-    toast.success(data.message || 'Booking withdrawn.');
-    refreshParent();
+    const { data } = await api.patch(`/bookings/${props.bookingId}/withdraw`, {
+      withdrawal_reason: withdrawal_reason || null,
+    });
+    booking.value = {
+      ...data.booking,
+      audit_logs: data.booking.audit_logs || data.booking.auditLogs || [],
+    };
+    toast.success(data.message || 'Booking withdrawn successfully.');
+    closeWithdrawModal();
+    emit('refreshed');
   } catch (error) {
-    toast.error(error.response?.data?.message || 'Unable to withdraw booking.');
+    setError(error.response?.data?.message || 'Unable to withdraw booking.');
   } finally {
-    saving.value = false;
+    setSubmitting(false);
   }
 };
 

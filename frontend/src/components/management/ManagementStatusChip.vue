@@ -21,6 +21,7 @@ const label = computed(() => {
     Approved: 'Approved',
     Rejected: 'Rejected',
     Cancelled: 'Cancelled',
+    Withdrawn: 'Withdrawn',
   };
   return map[props.status] || statusLabel(props.status);
 });
@@ -33,6 +34,7 @@ const chipClass = computed(() => {
     Approved: 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80',
     Rejected: 'bg-rose-50 text-rose-800 ring-1 ring-rose-200/80',
     Cancelled: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200/80',
+    Withdrawn: 'bg-slate-100 text-slate-700 ring-1 ring-slate-300/80',
   };
   return map[props.status] || 'bg-ink-100 text-ink-700 ring-1 ring-ink-200';
 });
@@ -45,6 +47,7 @@ const dotClass = computed(() => {
     Approved: 'bg-emerald-500',
     Rejected: 'bg-rose-500',
     Cancelled: 'bg-slate-400',
+    Withdrawn: 'bg-slate-400',
   };
   return map[props.status] || 'bg-ink-400';
 });

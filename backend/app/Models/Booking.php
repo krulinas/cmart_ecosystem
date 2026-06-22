@@ -21,12 +21,16 @@ class Booking extends Model
         'revision_comment',
         'vendor_request_type',
         'vendor_request_note',
+        'withdrawn_at',
+        'withdrawal_reason',
+        'withdrawn_by',
         'whatsapp_link',
     ];
 
     protected $casts = [
         'booking_date' => 'date',
         'checked_in_at' => 'datetime',
+        'withdrawn_at' => 'datetime',
     ];
 
     /** Exclude invalid legacy/test dates from vendor-facing lists. */
@@ -53,5 +57,9 @@ class Booking extends Model
 
     public function auditLogs() {
         return $this->hasMany(BookingAuditLog::class);
+    }
+
+    public function withdrawnBy() {
+        return $this->belongsTo(User::class, 'withdrawn_by');
     }
 }

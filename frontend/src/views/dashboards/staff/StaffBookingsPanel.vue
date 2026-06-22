@@ -84,7 +84,7 @@
                   <td class="px-4 py-3.5">
                     <div class="flex justify-end gap-1.5 flex-wrap">
                       <button class="ml-btn-ghost text-xs px-3 py-1.5" @click="viewPdf(b.id)">PDF</button>
-                      <template v-if="isStaffView">
+                      <template v-if="isStaffView && !isTerminalBookingStatus(b.approval_status)">
                         <button class="ml-btn-success text-xs px-3 py-1.5" @click="updateStatus(b.id, 'Pending_Boss')">
                           Forward
                         </button>
@@ -98,7 +98,7 @@
                           Revision
                         </button>
                       </template>
-                      <template v-if="canFinalApproveBookings">
+                      <template v-if="canFinalApproveBookings && !isTerminalBookingStatus(b.approval_status)">
                         <button class="ml-btn-success text-xs px-3 py-1.5" @click="updateStatus(b.id, 'Approved')">
                           Approve
                         </button>
@@ -166,6 +166,7 @@
                 <option value="Approved">Approved</option>
                 <option value="Rejected">Rejected</option>
                 <option value="Cancelled">Cancelled</option>
+                <option value="Withdrawn">Withdrawn</option>
               </select>
               <select v-model="paymentFilter" class="ml-input text-sm">
                 <option value="all">All payments</option>
@@ -322,7 +323,7 @@ import ManagementKpiCard from '../../../components/management/ManagementKpiCard.
 import ManagementEmptyState from '../../../components/management/ManagementEmptyState.vue';
 import ManagementStatusChip from '../../../components/management/ManagementStatusChip.vue';
 import { useManagementAccess } from '../../../composables/useManagementAccess';
-import { formatBookingDate, statusLabel } from '../../../utils/bookingDisplay';
+import { formatBookingDate, isTerminalBookingStatus, statusLabel } from '../../../utils/bookingDisplay';
 
 const emit = defineEmits(['refreshed']);
 

@@ -8,6 +8,10 @@ export const PIPELINE_STEPS = [
 
 export const PENDING_STATUSES = ['Pending_Staff', 'Pending_Boss', 'Needs_Revision'];
 
+export const TERMINAL_BOOKING_STATUSES = ['Withdrawn', 'Rejected', 'Cancelled'];
+
+export const isTerminalBookingStatus = (status) => TERMINAL_BOOKING_STATUSES.includes(status);
+
 export const PRODUCT_CATEGORIES = [
   'Pre-loved / Thrift',
   'Food & Beverages',
@@ -22,6 +26,7 @@ export const FILTER_TABS = [
   { id: 'pending', label: 'Pending' },
   { id: 'approved', label: 'Approved' },
   { id: 'rejected', label: 'Rejected' },
+  { id: 'withdrawn', label: 'Withdrawn' },
   { id: 'cancelled', label: 'Cancelled' },
 ];
 
@@ -50,6 +55,7 @@ export const statusLabel = (status) =>
     Approved: 'Approved',
     Rejected: 'Rejected',
     Cancelled: 'Cancelled',
+    Withdrawn: 'Withdrawn',
   }[status] || status);
 
 export const statusBadgeClass = (status) =>
@@ -60,6 +66,7 @@ export const statusBadgeClass = (status) =>
     Approved: 'ml-badge bg-emerald-100 text-emerald-800',
     Rejected: 'ml-badge bg-rose-100 text-rose-800',
     Cancelled: 'ml-badge bg-ink-100 text-ink-700',
+    Withdrawn: 'ml-badge bg-slate-100 text-slate-700 border border-slate-200',
   }[status] || 'ml-badge bg-ink-100 text-ink-700');
 
 export const filterTabClass = (active) =>
@@ -73,6 +80,7 @@ export const matchesStatusFilter = (booking, filterId) => {
   if (filterId === 'pending') return PENDING_STATUSES.includes(status);
   if (filterId === 'approved') return status === 'Approved';
   if (filterId === 'rejected') return status === 'Rejected';
+  if (filterId === 'withdrawn') return status === 'Withdrawn';
   if (filterId === 'cancelled') return status === 'Cancelled';
   return true;
 };
@@ -84,7 +92,7 @@ export const boothLabelForBooking = (booking) => {
 };
 
 export const progressIndex = (status) => {
-  if (status === 'Cancelled' || status === 'Rejected') return 0;
+  if (status === 'Cancelled' || status === 'Rejected' || status === 'Withdrawn') return 0;
   if (status === 'Pending_Staff' || status === 'Needs_Revision') return 1;
   if (status === 'Pending_Boss') return 2;
   if (status === 'Approved') return 3;
@@ -106,6 +114,7 @@ export const progressBarClass = (status) =>
     Approved: 'bg-emerald-500',
     Rejected: 'bg-rose-500',
     Cancelled: 'bg-ink-400',
+    Withdrawn: 'bg-slate-400',
   }[status] || 'bg-ink-400');
 
 export const stepClass = (currentStatus, stepStatus) => {
@@ -118,14 +127,33 @@ export const stepClass = (currentStatus, stepStatus) => {
     Approved: 'border-emerald-500 text-emerald-700',
     Rejected: 'border-rose-500 text-rose-700',
     Cancelled: 'border-ink-400 text-ink-600',
+    Withdrawn: 'border-slate-400 text-slate-600',
   }[currentStatus] || 'border-ink-400 text-ink-700';
+};
+
+export const isWithdrawnBooking = (booking) => booking?.approval_status === 'Withdrawn';
+
+export const formatWithdrawnDate = (value) => {
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString('en-GB', {
+    timeZone: MY_TZ,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 };
 
 export const canVendorEdit = (booking) =>
   ['Pending_Staff', 'Needs_Revision'].includes(booking?.approval_status);
 
-export const canVendorWithdraw = (booking) =>
-  PENDING_STATUSES.includes(booking?.approval_status);
+export const canVendorWithdraw = (booking) => {
+  if (typeof booking?.can_withdraw === 'boolean') {
+    return booking.can_withdraw;
+  }
+
+  return PENDING_STATUSES.includes(booking?.approval_status)
+    && booking?.invoice?.payment_status !== 'Paid';
+};
 
 export const canVendorResubmit = (booking) => booking?.approval_status === 'Needs_Revision';
 

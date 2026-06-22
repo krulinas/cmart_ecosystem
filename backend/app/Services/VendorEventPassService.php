@@ -132,7 +132,7 @@ class VendorEventPassService
         $reason = null;
         if ($booking->approval_status !== 'Approved') {
             $reason = 'This booking is not approved.';
-        } elseif (in_array($booking->approval_status, ['Cancelled', 'Rejected'], true)) {
+        } elseif (in_array($booking->approval_status, ['Cancelled', 'Rejected', 'Withdrawn'], true)) {
             $reason = 'This pass has been cancelled.';
         } elseif ($pass['qr_expired']) {
             $reason = 'This QR code has expired.';
@@ -229,7 +229,7 @@ class VendorEventPassService
         Carbon $windowStart,
         Carbon $windowEnd,
     ): string {
-        if ($booking->approval_status === 'Cancelled' || $booking->approval_status === 'Rejected') {
+        if (in_array($booking->approval_status, ['Cancelled', 'Rejected', 'Withdrawn'], true)) {
             return self::STATUS_CANCELLED;
         }
 

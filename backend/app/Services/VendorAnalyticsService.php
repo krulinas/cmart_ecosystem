@@ -57,13 +57,13 @@ class VendorAnalyticsService
                 'total_bookings' => $bookings->count(),
                 'upcoming_bookings' => $bookings->filter(
                     fn (Booking $b) => $b->booking_date->toDateString() >= $today
-                        && !in_array($b->approval_status, ['Rejected', 'Cancelled'], true),
+                        && !in_array($b->approval_status, ['Rejected', 'Cancelled', 'Withdrawn'], true),
                 )->count(),
                 'completed_bookings' => $bookings->filter(
                     fn (Booking $b) => $b->booking_date->toDateString() < $today
                         && $b->approval_status === 'Approved',
                 )->count(),
-                'cancelled_bookings' => $bookings->where('approval_status', 'Cancelled')->count(),
+                'cancelled_bookings' => $bookings->whereIn('approval_status', ['Cancelled', 'Withdrawn'])->count(),
                 'rejected_bookings' => $bookings->where('approval_status', 'Rejected')->count(),
                 'total_receipts' => $invoicesWithBooking,
                 'total_paid_amount' => round($totalPaidAmount, 2),
@@ -155,7 +155,7 @@ class VendorAnalyticsService
         return $bookings
             ->filter(
                 fn (Booking $b) => $b->booking_date->toDateString() >= $today
-                    && !in_array($b->approval_status, ['Rejected', 'Cancelled'], true),
+                    && !in_array($b->approval_status, ['Rejected', 'Cancelled', 'Withdrawn'], true),
             )
             ->sortBy([
                 fn (Booking $b) => $b->booking_date->timestamp,

@@ -93,6 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/vendor/bookings/{booking}', [BookingController::class, 'vendorUpdate']);
         Route::patch('/vendor/bookings/{booking}/resubmit', [BookingController::class, 'resubmit']);
         Route::post('/vendor/bookings/{booking}/cancel', [BookingController::class, 'vendorCancel']);
+        Route::patch('/bookings/{booking}/withdraw', [BookingController::class, 'withdraw']);
         Route::post('/vendor/bookings/{booking}/request-change', [BookingController::class, 'vendorRequestChange']);
         Route::post('/vendor/bookings/{booking}/request-cancellation', [BookingController::class, 'vendorRequestCancellation']);
         Route::post('/bookings', [BookingController::class, 'store']);

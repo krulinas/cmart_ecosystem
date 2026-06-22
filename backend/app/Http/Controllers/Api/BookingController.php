@@ -10,6 +10,7 @@ use App\Models\Space;
 use App\Models\User;
 use App\Support\ManagementRole;
 use App\Services\BookingAuditLogger;
+use App\Services\VendorBookingPresenter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -115,6 +116,13 @@ class BookingController extends Controller
         $user = $request->user();
         $current = $booking->approval_status;
         $target = $validated['approval_status'];
+
+        if (in_array($current, ['Withdrawn', 'Cancelled', 'Rejected'], true)) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: This booking is no longer active in the approval pipeline.',
+                'current_status' => $current,
+            ], 422);
+        }
 
         $workflowRole = ManagementRole::workflowRoleKey($user->role);
         $allowedTargets = self::STATE_TRANSITIONS[$workflowRole][$current] ?? [];
@@ -311,7 +319,7 @@ class BookingController extends Controller
     {
         $validated = $request->validate([
             'search' => 'nullable|string|max:200',
-            'status' => 'nullable|string|in:Pending_Staff,Pending_Boss,Needs_Revision,Approved,Rejected,Cancelled',
+            'status' => 'nullable|string|in:Pending_Staff,Pending_Boss,Needs_Revision,Approved,Rejected,Cancelled,Withdrawn',
             'payment_status' => 'nullable|string|in:Paid,Unpaid',
             'event_id' => 'nullable|integer|exists:carboot_events,id',
             'event' => 'nullable|integer|exists:carboot_events,id',
@@ -434,7 +442,8 @@ class BookingController extends Controller
                 SUM(CASE WHEN approval_status = 'Needs_Revision' THEN 1 ELSE 0 END) as needs_revision,
                 SUM(CASE WHEN approval_status = 'Approved' THEN 1 ELSE 0 END) as approved,
                 SUM(CASE WHEN approval_status = 'Rejected' THEN 1 ELSE 0 END) as rejected,
-                SUM(CASE WHEN approval_status = 'Cancelled' THEN 1 ELSE 0 END) as cancelled
+                SUM(CASE WHEN approval_status = 'Cancelled' THEN 1 ELSE 0 END) as cancelled,
+                SUM(CASE WHEN approval_status = 'Withdrawn' THEN 1 ELSE 0 END) as withdrawn
             ")
             ->first();
 
@@ -445,6 +454,7 @@ class BookingController extends Controller
             'approved' => (int) ($counts->approved ?? 0),
             'rejected' => (int) ($counts->rejected ?? 0),
             'cancelled' => (int) ($counts->cancelled ?? 0),
+            'withdrawn' => (int) ($counts->withdrawn ?? 0),
         ];
     }
 
@@ -468,12 +478,16 @@ class BookingController extends Controller
 
     public function mine(Request $request)
     {
+        $userId = $request->user()->id;
+
         return $request->user()
             ->bookings()
             ->withValidBookingDate()
             ->with(['space', 'invoice'])
             ->latest()
-            ->get();
+            ->get()
+            ->map(fn (Booking $booking) => VendorBookingPresenter::presentForVendor($booking, $userId))
+            ->values();
     }
 
     public function vendorShow(Request $request, Booking $booking)
@@ -486,8 +500,10 @@ class BookingController extends Controller
             return response()->json(['message' => '404 Not Found: Booking record is unavailable.'], 404);
         }
 
+        $booking->load(['space', 'invoice', 'auditLogs.actor']);
+
         return response()->json(
-            $booking->load(['space', 'invoice', 'auditLogs.actor'])
+            VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
         );
     }
 
@@ -563,6 +579,65 @@ class BookingController extends Controller
         return response()->json([
             'message' => '200 OK: Booking withdrawn successfully.',
             'booking' => $booking->fresh(['space', 'invoice']),
+        ]);
+    }
+
+    public function withdraw(Request $request, Booking $booking)
+    {
+        if ($denied = $this->authorizeVendorBooking($request, $booking)) {
+            return $denied;
+        }
+
+        if ($booking->approval_status === 'Withdrawn') {
+            return response()->json([
+                'message' => 'This booking can no longer be withdrawn.',
+            ], 422);
+        }
+
+        if ($booking->invoice?->payment_status === 'Paid') {
+            return response()->json([
+                'message' => 'Paid bookings cannot be withdrawn directly. Please contact CMart staff for cancellation assistance.',
+            ], 422);
+        }
+
+        if (!VendorBookingPresenter::canVendorWithdraw($booking, $request->user()->id)) {
+            return response()->json([
+                'message' => 'This booking can no longer be withdrawn.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'withdrawal_reason' => 'nullable|string|max:500',
+        ]);
+
+        $previous = $booking->approval_status;
+        $reason = trim((string) ($validated['withdrawal_reason'] ?? ''));
+
+        $booking->update([
+            'approval_status' => 'Withdrawn',
+            'withdrawn_at' => now(),
+            'withdrawal_reason' => $reason !== '' ? $reason : null,
+            'withdrawn_by' => $request->user()->id,
+            'revision_comment' => null,
+            'vendor_request_type' => null,
+            'vendor_request_note' => null,
+        ]);
+
+        BookingAuditLogger::log(
+            $booking,
+            $request->user(),
+            $previous,
+            'Withdrawn',
+            $reason !== '' ? $reason : 'Withdrawn by vendor.',
+            $request,
+            'vendor_withdraw',
+        );
+
+        $booking->load(['space', 'invoice', 'auditLogs.actor']);
+
+        return response()->json([
+            'message' => 'Booking withdrawn successfully.',
+            'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
         ]);
     }
 
