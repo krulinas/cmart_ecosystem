@@ -9,22 +9,54 @@
       ></div>
       <div class="max-w-7xl mx-auto relative z-10 text-center text-white">
         <p class="text-brand-200 font-bold uppercase tracking-wider text-sm mb-3">Carboot@CMart Reuse</p>
-        <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4">Reuse Marketplace</h1>
-        <p class="text-lg text-brand-100 max-w-2xl mx-auto">
-          Discover pre-loved finds from approved CMart vendors. Browse active listings and support circular shopping at our weekend carboot.
+        <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4">Carboot Reuse Preview</h1>
+        <p class="text-lg text-brand-100 max-w-3xl mx-auto leading-relaxed">
+          Preview selected pre-loved items from approved CMart vendors before visiting the weekend carboot.
+          Items shown here are available for in-person viewing and purchase at CMart during event day.
         </p>
       </div>
     </header>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-10 -mt-8 space-y-6">
+      <section
+        class="rounded-2xl border border-amber-400 bg-[#FFFBEB] px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm"
+        role="note"
+        aria-label="Before you visit notice"
+      >
+        <div class="flex gap-3 sm:items-start">
+          <div class="shrink-0 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-[#FDE68A] text-[#B45309]">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="min-w-0 space-y-1">
+            <p class="text-sm font-extrabold text-[#78350F]">Before you visit</p>
+            <p class="text-sm font-semibold text-[#92400E] leading-snug">
+              Preview only: no online checkout, delivery, or postage.
+            </p>
+            <p class="text-sm text-[#92400E]/95 leading-relaxed">
+              These items are shown to help you plan your CMart Carboot visit.
+              Purchases are made in person at the vendor booth during event day.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section class="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 sm:p-6">
+        <div class="mb-5">
+          <h2 class="text-lg font-extrabold text-gray-900">Plan your carboot visit</h2>
+          <p class="mt-1 text-sm text-gray-600">
+            Search items, categories, or vendors to discover what you may find at the upcoming CMart Carboot.
+          </p>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
           <div class="lg:col-span-2">
             <label class="ml-label">Search</label>
             <input
               v-model="filters.search"
               type="search"
-              placeholder="Search items, categories, or vendors…"
+              placeholder="Search items to check out at the carboot..."
               class="ml-input"
               @input="debouncedFetch"
             />
@@ -64,9 +96,9 @@
             </select>
           </div>
           <div>
-            <label class="ml-label">Pricing</label>
+            <label class="ml-label">Budget Guide</label>
             <select v-model="filters.pricing_type" class="ml-input" @change="fetchItems(1)">
-              <option value="">All pricing types</option>
+              <option value="">All budget types</option>
               <option v-for="option in ITEM_PRICING_TYPES" :key="option.value" :value="option.value">
                 {{ option.label }}
               </option>
@@ -86,7 +118,7 @@
       </div>
 
       <div v-else-if="loadError" class="bg-white rounded-2xl border border-amber-200 p-10 text-center">
-        <p class="text-amber-900 font-semibold">Unable to load marketplace listings.</p>
+        <p class="text-amber-900 font-semibold">Unable to load preview items.</p>
         <button type="button" class="mt-4 ml-btn-ghost" @click="fetchItems(page)">Try Again</button>
       </div>
 
@@ -94,20 +126,27 @@
         v-else-if="!items.length"
         class="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center text-gray-500"
       >
-        No active reuse listings match your search right now. Check back after vendors publish new items.
+        <p class="text-lg font-semibold text-gray-700">No preview items available yet.</p>
+        <p class="mt-2 text-sm text-gray-500 max-w-md mx-auto">
+          Approved vendors will appear here once they add items for the upcoming CMart Carboot.
+        </p>
       </div>
 
       <template v-else>
-        <p class="text-sm text-gray-500">{{ meta.total }} active listing{{ meta.total === 1 ? '' : 's' }} found</p>
+        <p class="text-sm text-gray-500">
+          {{ meta.total }} preview item{{ meta.total === 1 ? '' : 's' }} found
+        </p>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           <article
             v-for="item in items"
             :key="item.id"
-            class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
-            @click="openDetails(item.id)"
+            class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col"
           >
-            <div class="h-40 bg-gray-50 border-b border-gray-100 overflow-hidden">
+            <div
+              class="h-40 bg-gray-50 border-b border-gray-100 overflow-hidden cursor-pointer"
+              @click="openDetails(item.id)"
+            >
               <img
                 v-if="itemImageSrc(item)"
                 :src="itemImageSrc(item)"
@@ -120,20 +159,31 @@
               </div>
             </div>
 
-            <div class="p-4">
-              <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <h2 class="font-bold text-gray-900 truncate">{{ item.name }}</h2>
-                  <p class="text-xs text-gray-500 mt-0.5">{{ item.category }} · {{ item.condition }}</p>
-                </div>
-                <span class="text-sm font-bold text-brand-700 shrink-0">{{ formatItemPrice(item) }}</span>
-              </div>
-
-              <p class="mt-2 text-xs font-semibold text-gray-700 truncate">
-                {{ item.vendor?.business_name || 'CMart Vendor' }}
+            <div class="p-4 flex flex-col flex-grow">
+              <h2 class="font-bold text-gray-900 line-clamp-2">{{ item.name }}</h2>
+              <p class="mt-2 text-sm font-semibold text-brand-700">
+                Guide Price: {{ formatItemPrice(item) }}
               </p>
+              <ul class="mt-3 space-y-1.5 text-xs text-gray-600">
+                <li class="flex items-start gap-1.5">
+                  <span class="font-semibold text-gray-500 shrink-0">Vendor:</span>
+                  <span>{{ item.vendor?.business_name || 'CMart Vendor' }}</span>
+                </li>
+                <li class="flex items-start gap-1.5">
+                  <span class="font-semibold text-gray-500 shrink-0">Condition:</span>
+                  <span>{{ item.condition }}</span>
+                </li>
+                <li class="text-emerald-700 font-medium">Available at CMart Carboot</li>
+                <li class="text-gray-500">Purchase: In-person only</li>
+              </ul>
               <p v-if="item.description" class="mt-2 text-xs text-gray-500 line-clamp-2">{{ item.description }}</p>
-              <p class="mt-3 text-[11px] uppercase tracking-wide text-gray-400">Listed {{ formatListedDate(item.listed_at) }}</p>
+              <button
+                type="button"
+                class="mt-4 w-full rounded-full border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition hover:bg-brand-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+                @click="openDetails(item.id)"
+              >
+                View Details
+              </button>
             </div>
           </article>
         </div>
@@ -170,11 +220,10 @@ import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import MarketplaceItemDetailsModal from '../../components/MarketplaceItemDetailsModal.vue';
 import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
-import { normalizeReuseItem } from '../../utils/imageUrl';
+import { normalizeReuseItem, resolveReuseItemImageUrl } from '../../utils/imageUrl';
 import { PRODUCT_CATEGORIES } from '../../utils/bookingDisplay';
 import {
   formatItemPrice,
-  formatListedDate,
   ITEM_CONDITIONS,
   ITEM_PRICING_TYPES,
   MARKETPLACE_SORT_OPTIONS,
@@ -247,7 +296,7 @@ const fetchItems = async (nextPage = 1) => {
     items.value = (Array.isArray(data?.data) ? data.data : []).map(normalizeMarketplaceItem);
     meta.value = data?.meta || meta.value;
   } catch (error) {
-    console.error('Unable to load marketplace items:', error);
+    console.error('Unable to load preview items:', error);
     loadError.value = true;
     items.value = [];
   } finally {

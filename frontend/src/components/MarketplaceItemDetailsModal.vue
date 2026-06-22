@@ -22,7 +22,7 @@
           <div v-if="loading" class="p-10 text-center text-ink-500">Loading item details…</div>
 
           <div v-else-if="loadError" class="p-10 text-center">
-            <p class="text-sm text-rose-700 font-semibold">Unable to load this listing.</p>
+            <p class="text-sm text-rose-700 font-semibold">Unable to load this preview item.</p>
             <button type="button" class="mt-4 ml-btn-ghost text-sm" @click="loadItem">Try Again</button>
           </div>
 
@@ -30,13 +30,28 @@
             <ReuseItemImageGallery :item="item" :alt-text="item.name" />
 
             <div class="p-6 sm:p-8">
+              <div
+                class="mb-5 rounded-xl border border-amber-400 bg-[#FFFBEB] px-4 py-3 text-sm text-[#92400E] leading-relaxed"
+                role="note"
+              >
+                <p class="font-semibold text-[#78350F]">Preview only: in-person purchase at the event.</p>
+                <p class="mt-1">
+                  This item is shown to help you plan your visit. Please go to the vendor booth during the CMart
+                  Carboot event to view, confirm availability, and purchase in person.
+                </p>
+              </div>
+
               <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
                   <p class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ item.category }}</p>
                   <h2 id="marketplace-item-details-title" class="mt-1 text-2xl font-extrabold text-ink-900">{{ item.name }}</h2>
-                  <p class="mt-2 text-sm text-ink-500">Listed {{ formatListedDate(item.listed_at) }}</p>
+                  <p class="mt-2 text-sm text-emerald-700 font-medium">
+                    Available at CMart Carboot. Purchase: In-person only.
+                  </p>
                 </div>
-                <p class="text-xl font-black text-brand-700 shrink-0">{{ formatItemPrice(item) }}</p>
+                <p class="text-lg font-black text-brand-700 shrink-0">
+                  Guide Price: {{ formatItemPrice(item) }}
+                </p>
               </div>
 
               <dl class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -45,7 +60,7 @@
                   <dd class="mt-1 font-semibold text-ink-900">{{ item.condition }}</dd>
                 </div>
                 <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-                  <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Pricing</dt>
+                  <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Budget Guide</dt>
                   <dd class="mt-1 font-semibold text-ink-900 capitalize">{{ item.pricing_type.replace('_', ' ') }}</dd>
                 </div>
               </dl>
@@ -67,6 +82,7 @@
                     <span v-else class="text-[10px] font-bold uppercase text-ink-400">Vendor</span>
                   </div>
                   <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-ink-400">Vendor</p>
                     <h3 class="text-lg font-bold text-ink-900">{{ item.vendor?.business_name || 'CMart Vendor' }}</h3>
                     <p v-if="item.vendor?.business_category" class="text-sm text-brand-700 font-semibold mt-0.5">
                       {{ item.vendor.business_category }}
@@ -79,16 +95,7 @@
               </div>
 
               <div class="mt-6 flex flex-wrap gap-3">
-                <button type="button" class="ml-btn-primary" @click="showInterest = true">I'm Interested</button>
                 <button type="button" class="ml-btn-ghost" @click="close">Close</button>
-              </div>
-
-              <div
-                v-if="showInterest"
-                class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-              >
-                Please visit the vendor booth at the next Carboot@CMart event or contact the event organizer through
-                the community portal for vendor enquiries. Direct messaging is not available yet.
               </div>
             </div>
           </template>
@@ -103,7 +110,7 @@ import { ref, watch } from 'vue';
 import api from '../services/api';
 import ReuseItemImageGallery from './ReuseItemImageGallery.vue';
 import { normalizeReuseItem } from '../utils/imageUrl';
-import { formatItemPrice, formatListedDate } from '../utils/vendorCatalog';
+import { formatItemPrice } from '../utils/vendorCatalog';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -115,7 +122,6 @@ const emit = defineEmits(['update:modelValue']);
 const item = ref(null);
 const loading = ref(false);
 const loadError = ref(false);
-const showInterest = ref(false);
 
 const close = () => emit('update:modelValue', false);
 
@@ -123,12 +129,11 @@ const loadItem = async () => {
   if (!props.itemId) return;
   loading.value = true;
   loadError.value = false;
-  showInterest.value = false;
   try {
     const { data } = await api.get(`/marketplace/items/${props.itemId}`);
     item.value = normalizeReuseItem(data.item);
   } catch (error) {
-    console.error('Unable to load marketplace item:', error);
+    console.error('Unable to load preview item:', error);
     loadError.value = true;
     item.value = null;
   } finally {
@@ -142,7 +147,6 @@ watch(
     if (open && id) loadItem();
     if (!open) {
       item.value = null;
-      showInterest.value = false;
     }
   },
 );
