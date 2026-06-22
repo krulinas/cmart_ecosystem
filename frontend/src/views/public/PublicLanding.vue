@@ -47,21 +47,10 @@
       <!-- Upcoming Events -->
       <section id="events" ref="eventsSectionRef" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6 bg-gray-50">
         <div class="max-w-7xl mx-auto">
-          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-10" :class="eventsHeaderClass('fade')">
-            <div>
-              <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">What's On</span>
-              <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Upcoming Carboot Events</h2>
-              <p class="mt-2 text-gray-600 max-w-xl">Plan your visit — browse dates, times, and book a vendor space before slots fill up.</p>
-            </div>
-            <router-link
-              to="/calendar"
-              class="inline-flex items-center justify-center gap-2 self-stretch sm:self-auto rounded-full border-2 border-brand-600 bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 hover:border-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
-            >
-              <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              View Full Calendar
-            </router-link>
+          <div class="mb-10 max-w-3xl" :class="eventsHeaderClass('fade')">
+            <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">What's On</span>
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Upcoming Carboot Events</h2>
+            <p class="mt-2 text-gray-600 max-w-xl">Plan your visit — browse dates, times, and book a vendor space before slots fill up.</p>
           </div>
 
           <div v-if="loadingEvents" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -259,12 +248,16 @@
               @keydown.enter.prevent="openNewsDetails(post)"
               @keydown.space.prevent="openNewsDetails(post)"
             >
-              <div v-if="post.bannerUrl" class="h-[140px] overflow-hidden bg-gray-100 pointer-events-none">
-                <img
-                  :src="post.bannerUrl"
-                  :alt="`${post.title} banner preview`"
-                  class="w-full h-full object-cover object-top"
-                  loading="lazy"
+              <div
+                v-if="post.bannerUrl || post.images?.length"
+                class="pointer-events-auto shrink-0"
+                @click.stop
+              >
+                <MediaImageGallery
+                  :images="post.images || []"
+                  :alt-text="`${post.title} news banner`"
+                  enable-lightbox
+                  compact
                 />
               </div>
               <div v-else class="h-[140px] bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center pointer-events-none">
@@ -400,6 +393,7 @@ import { ref, computed, h, onMounted } from 'vue';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import EventDetailsModal from '../../components/EventDetailsModal.vue';
 import NewsDetailsModal from '../../components/NewsDetailsModal.vue';
+import MediaImageGallery from '../../components/MediaImageGallery.vue';
 import api from '../../services/api';
 import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
 import { mapApiNewsToCard } from '../../utils/newsDisplay';

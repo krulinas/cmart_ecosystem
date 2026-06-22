@@ -251,15 +251,18 @@ const save = async () => {
         toast.success('News post created.');
       }
     } else if (editingId.value) {
-      await api.put(`/news-posts/${editingId.value}`, {
+      const payload = {
         title: form.title.trim(),
         excerpt: form.excerpt.trim(),
         category: form.category.trim(),
         body: form.body || null,
-        image_url: form.image_url || null,
         published_at: form.published_at || null,
         is_published: form.is_published,
-      });
+      };
+      if (form.image_url?.trim()) {
+        payload.image_url = form.image_url.trim();
+      }
+      await api.put(`/news-posts/${editingId.value}`, payload);
       toast.success('News post updated.');
     } else {
       await api.post('/news-posts', {
@@ -267,7 +270,7 @@ const save = async () => {
         excerpt: form.excerpt.trim(),
         category: form.category.trim(),
         body: form.body || null,
-        image_url: form.image_url || null,
+        image_url: form.image_url?.trim() || null,
         published_at: form.published_at || null,
         is_published: form.is_published,
       });

@@ -50,11 +50,13 @@
             </button>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 lg:gap-6 p-5 sm:p-6 lg:p-8">
-              <div class="mb-4 lg:mb-0">
+              <div ref="gallerySectionRef" class="mb-4 lg:mb-0">
                 <MediaImageGallery
+                  ref="galleryRef"
                   :images="post.images || []"
                   :alt-text="`${post.title} news banner`"
                   placeholder-text="No news image"
+                  enable-lightbox
                 />
               </div>
 
@@ -88,7 +90,15 @@
                   {{ fullContent }}
                 </div>
 
-                <div class="mt-8 pt-5 border-t border-gray-100">
+                <div class="mt-8 pt-5 border-t border-gray-100 flex flex-wrap gap-3">
+                  <button
+                    v-if="hasBanner"
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-full border border-brand-200 bg-brand-50 px-5 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+                    @click="viewBanner"
+                  >
+                    View Image
+                  </button>
                   <button
                     type="button"
                     class="inline-flex items-center justify-center rounded-full border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
@@ -119,8 +129,12 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue']);
 
 const panelRef = ref(null);
+const galleryRef = ref(null);
+const gallerySectionRef = ref(null);
 
 const titleId = computed(() => (props.post?.id ? `news-modal-title-${props.post.id}` : 'news-modal-title'));
+
+const hasBanner = computed(() => Boolean(props.post?.bannerUrl || props.post?.images?.length));
 
 const fullContent = computed(() => {
   if (!props.post) return '';
@@ -130,6 +144,14 @@ const fullContent = computed(() => {
 
 const close = () => {
   emit('update:modelValue', false);
+};
+
+const viewBanner = () => {
+  if (galleryRef.value?.openImagePreview) {
+    galleryRef.value.openImagePreview();
+    return;
+  }
+  gallerySectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 };
 
 const onEscape = (event) => {

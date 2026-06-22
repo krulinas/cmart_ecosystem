@@ -1,27 +1,36 @@
 <template>
-  <div class="border-b border-ink-100 bg-ink-50/60">
+  <div :class="compact ? 'h-[140px] overflow-hidden bg-gray-100' : 'border-b border-ink-100 bg-ink-50/60'">
     <div
       v-if="selectedImageUrl"
-      class="flex h-64 sm:h-80 items-center justify-center bg-ink-50 px-4 py-3"
+      :class="compact
+        ? 'h-full w-full'
+        : 'flex h-64 sm:h-80 items-center justify-center bg-ink-50 px-4 py-3'"
     >
       <button
         v-if="enableLightbox"
         type="button"
-        class="group relative flex h-full w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+        :class="compact
+          ? 'group relative block h-full w-full cursor-pointer overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset'
+          : 'group relative flex h-full w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2'"
         :aria-label="`View full ${altText}`"
         @click="openImagePreview"
       >
         <img
           :src="selectedImageUrl"
           :alt="altText"
-          class="max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.02] group-hover:opacity-95"
+          :class="compact
+            ? 'h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.03] group-hover:opacity-95'
+            : 'max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.02] group-hover:opacity-95'"
           @error="onMainImageError"
         />
         <span
           class="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
           aria-hidden="true"
         >
-          <span class="mb-3 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+          <span
+            class="rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm"
+            :class="compact ? 'mb-2' : 'mb-3'"
+          >
             Click to view
           </span>
         </span>
@@ -36,13 +45,16 @@
     </div>
     <div
       v-else
-      class="flex h-48 items-center justify-center bg-ink-50 text-sm font-semibold uppercase tracking-wide text-ink-400"
+      :class="compact
+        ? 'flex h-full items-center justify-center bg-gradient-to-br from-brand-100 to-brand-50 text-brand-400'
+        : 'flex h-48 items-center justify-center bg-ink-50 text-sm font-semibold uppercase tracking-wide text-ink-400'"
     >
-      {{ placeholderText }}
+      <span v-if="compact" class="font-black text-4xl">@</span>
+      <template v-else>{{ placeholderText }}</template>
     </div>
 
     <div
-      v-if="galleryImages.length > 1"
+      v-if="!compact && galleryImages.length > 1"
       class="flex gap-2 overflow-x-auto border-t border-ink-100 bg-white px-4 py-3"
     >
       <button
@@ -117,6 +129,7 @@ const props = defineProps({
   altText: { type: String, default: 'Image' },
   placeholderText: { type: String, default: 'No image available' },
   enableLightbox: { type: Boolean, default: false },
+  compact: { type: Boolean, default: false },
 });
 
 const selectedImage = ref(null);

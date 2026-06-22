@@ -146,8 +146,6 @@ class NewsPostController extends Controller
     {
         $files = $this->collectUploadFiles($request);
         if ($files === []) {
-            $this->syncPrimaryImagePath($post);
-
             return;
         }
 
@@ -228,6 +226,10 @@ class NewsPostController extends Controller
             ?? $post->images->sortBy('sort_order')->first();
 
         $newPath = $primary?->image_path;
+
+        if ($newPath === null) {
+            return;
+        }
 
         if ($newPath !== $post->image_path) {
             if ($post->image_path && $post->image_path !== $newPath) {
