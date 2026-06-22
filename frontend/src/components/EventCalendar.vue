@@ -75,6 +75,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import api from '../services/api';
 import { useAuthStore } from '../stores/auth';
 import { vendorBookingLink } from '../utils/vendorBooking';
+import { EVENT_TZ, formatEventDateTime } from '../utils/eventDisplay';
 
 const auth = useAuthStore();
 
@@ -96,12 +97,7 @@ const modalData = reactive({
   selectInfo: null,
 });
 
-const formatDateTime = (dateStr) => {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleString('en-GB', {
-    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-};
+const formatDateTime = (dateStr) => formatEventDateTime(dateStr);
 
 const eventColor = (status) => {
   if (status === 'Almost Full') return '#0277BD';
@@ -178,6 +174,7 @@ const createEvent = async () => {
 
 const calendarOptions = reactive({
   plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
+  timeZone: EVENT_TZ,
   initialView: 'dayGridMonth',
   initialDate: '2026-05-01',
   headerToolbar: {

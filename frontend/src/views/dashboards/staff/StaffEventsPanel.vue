@@ -91,9 +91,13 @@ import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
 import MultiImageUploadField from '../../../components/MultiImageUploadField.vue';
 import { resolveEventImageUrl, normalizeEvent } from '../../../utils/imageUrl';
+import {
+  formatEventDateTime,
+  fromDatetimeLocalValue,
+  toDatetimeLocalValue,
+} from '../../../utils/eventDisplay';
 
 const toast = useToast();
-const MY_TZ = 'Asia/Kuala_Lumpur';
 const statuses = ['Available', 'Almost Full', 'Closed'];
 const events = ref([]);
 const loading = ref(false);
@@ -118,26 +122,6 @@ const emptyForm = () => ({
 
 const form = reactive(emptyForm());
 
-const formatEventDateTime = (iso) => {
-  if (!iso) return '';
-  return new Date(iso).toLocaleString('en-GB', {
-    timeZone: MY_TZ,
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-};
-
-const toLocalInput = (iso) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-
 const extractApiError = (error) => {
   const data = error.response?.data;
   if (data?.errors) {
@@ -149,8 +133,8 @@ const extractApiError = (error) => {
 const buildFormData = () => {
   const fd = new FormData();
   fd.append('title', form.title.trim());
-  fd.append('starts_at', form.starts_at);
-  fd.append('ends_at', form.ends_at);
+  fd.append('starts_at', fromDatetimeLocalValue(form.starts_at));
+  fd.append('ends_at', fromDatetimeLocalValue(form.ends_at));
   fd.append('status', form.status);
   fd.append('description', form.description || '');
   if (form.max_slots) {
@@ -201,8 +185,8 @@ const edit = (ev) => {
   const normalized = normalizeEvent(ev);
   editingId.value = normalized.id;
   form.title = normalized.title;
-  form.starts_at = toLocalInput(normalized.starts_at);
-  form.ends_at = toLocalInput(normalized.ends_at);
+  form.starts_at = toDatetimeLocalValue(normalized.starts_at);
+  form.ends_at = toDatetimeLocalValue(normalized.ends_at);
   form.status = normalized.status;
   form.description = normalized.description || '';
   form.max_slots = normalized.max_slots;
@@ -219,7 +203,21 @@ const save = async () => {
     return;
   }
 
+  if (form.ends_at <= form.starts_at) {
+    toast.error('End time must be after start time.');
+    return;
+  }
+
   saving.value = true;
+  const payload = {
+    title: form.title.trim(),
+    starts_at: fromDatetimeLocalValue(form.starts_at),
+    ends_at: fromDatetimeLocalValue(form.ends_at),
+    status: form.status,
+    description: form.description || null,
+    max_slots: form.max_slots || null,
+  };
+
   const usesMultipart = imageFiles.value.length > 0
     || removeImageIds.value.length > 0
     || imageField.value?.hasLegacyRemoval?.();
@@ -236,20 +234,10 @@ const save = async () => {
         toast.success('Event created.');
       }
     } else if (editingId.value) {
-      await api.put(`/carboot-events/${editingId.value}`, {
-        ...form,
-        title: form.title.trim(),
-        max_slots: form.max_slots || null,
-        description: form.description || null,
-      });
+      await api.put(`/carboot-events/${editingId.value}`, payload);
       toast.success('Event updated.');
     } else {
-      await api.post('/carboot-events', {
-        ...form,
-        title: form.title.trim(),
-        max_slots: form.max_slots || null,
-        description: form.description || null,
-      });
+      await api.post('/carboot-events', payload);
       toast.success('Event created.');
     }
 

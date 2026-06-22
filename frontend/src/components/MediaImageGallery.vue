@@ -4,7 +4,30 @@
       v-if="selectedImageUrl"
       class="flex h-64 sm:h-80 items-center justify-center bg-ink-50 px-4 py-3"
     >
+      <button
+        v-if="enableLightbox"
+        type="button"
+        class="group relative flex h-full w-full cursor-pointer items-center justify-center overflow-hidden rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+        :aria-label="`View full ${altText}`"
+        @click="openImagePreview"
+      >
+        <img
+          :src="selectedImageUrl"
+          :alt="altText"
+          class="max-h-full max-w-full object-contain transition duration-300 group-hover:scale-[1.02] group-hover:opacity-95"
+          @error="onMainImageError"
+        />
+        <span
+          class="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+          aria-hidden="true"
+        >
+          <span class="mb-3 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+            Click to view
+          </span>
+        </span>
+      </button>
       <img
+        v-else
         :src="selectedImageUrl"
         :alt="altText"
         class="max-h-full max-w-full object-contain"
@@ -39,21 +62,67 @@
         />
       </button>
     </div>
+
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="enableLightbox && isImagePreviewOpen && selectedImageUrl"
+          class="fixed inset-0 z-[110] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="`Full size ${altText}`"
+        >
+          <div
+            class="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            aria-hidden="true"
+            @click="closeImagePreview"
+          />
+
+          <div class="relative z-10 flex max-h-[90vh] max-w-[90vw] items-center justify-center">
+            <button
+              type="button"
+              class="absolute -top-12 right-0 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-gray-700 shadow-lg ring-1 ring-white/20 transition hover:bg-white"
+              aria-label="Close image preview"
+              @click="closeImagePreview"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <img
+              :src="selectedImageUrl"
+              :alt="altText"
+              class="max-h-[90vh] max-w-[90vw] object-contain rounded-lg shadow-2xl"
+              @click.stop
+            />
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onUnmounted } from 'vue';
 
 const props = defineProps({
   images: { type: Array, default: () => [] },
   altText: { type: String, default: 'Image' },
   placeholderText: { type: String, default: 'No image available' },
+  enableLightbox: { type: Boolean, default: false },
 });
 
 const selectedImage = ref(null);
 const mainImageBroken = ref(false);
 const brokenThumbnailKeys = ref(new Set());
+const isImagePreviewOpen = ref(false);
 
 const galleryImages = computed(() =>
   (Array.isArray(props.images) ? props.images : [])
@@ -76,6 +145,24 @@ const selectImage = (image) => {
   mainImageBroken.value = false;
 };
 
+const openImagePreview = () => {
+  if (!selectedImageUrl.value) return;
+  isImagePreviewOpen.value = true;
+  document.addEventListener('keydown', onLightboxEscape, true);
+};
+
+const closeImagePreview = () => {
+  isImagePreviewOpen.value = false;
+  document.removeEventListener('keydown', onLightboxEscape, true);
+};
+
+const onLightboxEscape = (event) => {
+  if (event.key === 'Escape' && isImagePreviewOpen.value) {
+    event.stopPropagation();
+    closeImagePreview();
+  }
+};
+
 const onMainImageError = () => {
   mainImageBroken.value = true;
 };
@@ -90,6 +177,7 @@ const onThumbnailError = (image) => {
 const syncSelection = () => {
   mainImageBroken.value = false;
   brokenThumbnailKeys.value = new Set();
+  closeImagePreview();
 
   const images = galleryImages.value;
   if (!images.length) {
@@ -101,4 +189,8 @@ const syncSelection = () => {
 };
 
 watch(() => props.images, syncSelection, { immediate: true, deep: true });
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', onLightboxEscape, true);
+});
 </script>

@@ -55,6 +55,7 @@
                   :images="event.images || []"
                   :alt-text="`${event.title} event poster`"
                   placeholder-text="No event image"
+                  enable-lightbox
                 />
               </div>
 

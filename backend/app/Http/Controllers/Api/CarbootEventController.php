@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CarbootEvent;
 use App\Services\EventPresenter;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -143,7 +144,25 @@ class CarbootEventController extends Controller
             $validated['max_slots'] = null;
         }
 
+        if (isset($validated['starts_at'])) {
+            $validated['starts_at'] = $this->normalizeEventDatetime($validated['starts_at']);
+        }
+
+        if (isset($validated['ends_at'])) {
+            $validated['ends_at'] = $this->normalizeEventDatetime($validated['ends_at']);
+        }
+
         return $validated;
+    }
+
+    /**
+     * Treat incoming datetimes as Malaysia wall-clock times (matches datetime-local inputs).
+     */
+    private function normalizeEventDatetime(string $value): string
+    {
+        return Carbon::parse($value, config('app.timezone'))
+            ->timezone(config('app.timezone'))
+            ->format('Y-m-d H:i:s');
     }
 
     private function collectUploadFiles(Request $request): array
@@ -169,8 +188,6 @@ class CarbootEventController extends Controller
     {
         $files = $this->collectUploadFiles($request);
         if ($files === []) {
-            $this->syncPrimaryImagePath($event);
-
             return;
         }
 
@@ -251,6 +268,10 @@ class CarbootEventController extends Controller
             ?? $event->images->sortBy('sort_order')->first();
 
         $newPath = $primary?->image_path;
+
+        if ($newPath === null) {
+            return;
+        }
 
         if ($newPath !== $event->image_path) {
             if ($event->image_path && $event->image_path !== $newPath) {
