@@ -55,12 +55,12 @@
             </div>
             <router-link
               to="/calendar"
-              class="inline-flex items-center self-start text-sm font-bold text-brand-600 hover:text-brand-700 transition"
+              class="inline-flex items-center justify-center gap-2 self-stretch sm:self-auto rounded-full border-2 border-brand-600 bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 hover:border-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             >
-              Full Calendar
-              <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
+              View Full Calendar
             </router-link>
           </div>
 
@@ -133,6 +133,23 @@
                 </router-link>
               </div>
             </article>
+          </div>
+
+          <div
+            v-if="!loadingEvents && upcomingEvents.length"
+            class="mt-10 rounded-2xl border border-brand-100 bg-white px-6 py-8 text-center shadow-sm"
+          >
+            <p class="text-gray-700 font-medium">Want to see all available dates?</p>
+            <p class="mt-1 text-sm text-gray-500">Open the full calendar to check every upcoming carboot event.</p>
+            <router-link
+              to="/calendar"
+              class="mt-4 inline-flex items-center justify-center gap-2 rounded-full border-2 border-brand-600 bg-white px-5 py-2.5 text-sm font-bold text-brand-700 transition hover:bg-brand-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+            >
+              <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              View Full Calendar
+            </router-link>
           </div>
         </div>
       </section>

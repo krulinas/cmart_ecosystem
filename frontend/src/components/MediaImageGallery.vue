@@ -193,4 +193,6 @@ watch(() => props.images, syncSelection, { immediate: true, deep: true });
 onUnmounted(() => {
   document.removeEventListener('keydown', onLightboxEscape, true);
 });
+
+defineExpose({ openImagePreview });
 </script>
