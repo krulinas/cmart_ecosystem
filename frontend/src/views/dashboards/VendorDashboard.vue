@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-ink-50 via-brand-50/30 to-ink-50">
+  <div class="min-h-screen bg-gradient-to-br from-ink-50 via-brand-50/30 to-ink-50" data-testid="dashboard-root">
     <AppNavbar variant="vendor" />
 
     <div class="max-w-6xl mx-auto py-10 px-4 sm:px-6 space-y-8">

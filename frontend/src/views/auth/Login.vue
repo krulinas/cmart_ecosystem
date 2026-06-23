@@ -15,7 +15,7 @@
         <form @submit.prevent="submit" class="space-y-4">
           <div>
             <label class="ml-label">Email</label>
-            <input v-model="form.email" type="email" required class="ml-input" placeholder="admin@cmart.com" />
+            <input v-model="form.email" type="email" required class="ml-input" placeholder="admin@cmart.com" data-testid="login-email" />
           </div>
 
           <div>
@@ -26,7 +26,8 @@
                 :type="showPassword ? 'text' : 'password'" 
                 required 
                 class="ml-input pr-16" 
-                placeholder="password123" 
+                placeholder="password123"
+                data-testid="login-password"
               />
               <button 
                 type="button" 
@@ -38,7 +39,7 @@
             </div>
           </div>
 
-          <button type="submit" class="ml-btn-primary w-full" :disabled="auth.loading">
+          <button type="submit" class="ml-btn-primary w-full" :disabled="auth.loading" data-testid="login-submit">
             {{ auth.loading ? 'Logging in…' : 'Log in' }}
           </button>
         </form>

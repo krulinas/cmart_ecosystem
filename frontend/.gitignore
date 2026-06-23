@@ -35,5 +35,8 @@ coverage
 # Vitest
 __screenshots__/
 
+# E2E credentials (never commit real passwords)
+tests/e2e/.env.e2e
+
 # Vite
 *.timestamp-*-*.mjs
