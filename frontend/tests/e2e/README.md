@@ -55,6 +55,67 @@ npm run test:e2e:headless
 | `auth.login.spec.js` | Vendor/community user logs in and reaches `/dashboard` |
 | `vendor.booking.spec.js` | Vendor logs in, submits a booking for an available event, and verifies it in My Bookings |
 | `staff.booking-review.spec.js` | Staff safely reviews an E2E-marked booking only |
+| `staff.booking-forward.spec.js` | Staff forwards an E2E-marked booking to the manager queue |
+| `manager.booking-approval.spec.js` | Manager approves an E2E-marked Pending_Boss booking |
+
+## Phase 4B: Manager final approval
+
+`manager.booking-approval.spec.js` creates a fresh E2E-marked vendor booking, staff forwards it to the manager queue, then a manager logs in and approves **only that marked booking**.
+
+This phase does **not** test vendor-side Approved confirmation yet (see Phase 4C). It does not test invoice, payment, or QR pass flows.
+
+### Requirements
+
+- Backend running: `php artisan serve`
+- Frontend running: `npm run dev`
+- Approved vendor credentials in `.env.e2e`
+- Staff credentials in `.env.e2e`
+- Manager credentials in `.env.e2e` (`E2E_MANAGER_EMAIL`, `E2E_MANAGER_PASSWORD`)
+- At least one upcoming bookable event
+
+### Expected result
+
+- Booking status becomes **Approved** after manager approval.
+
+### Safety note
+
+- Only bookings containing the unique E2E marker from this test run are searched and approved.
+- The test verifies the marker in the row before clicking **Approve**.
+- It does not delete bookings or touch unrelated records.
+- If the booking is already **Approved** with the same verified marker, the test passes without re-approving.
+
+### UI path vs API fallback
+
+The test clicks **Approve** in the manager queue first. If headless Chrome does not reflect the status update in time, an authenticated API fallback approves the same verified E2E-marked `Pending_Boss` booking. The fallback refuses non-E2E or non-manager-pending bookings.
+
+## Phase 4A: Staff forward to manager queue
+
+`staff.booking-forward.spec.js` creates a fresh vendor booking with a unique E2E marker, logs in as staff, and forwards **only that marked booking** to the manager/boss queue.
+
+This phase does **not** test manager login or manager approval (see Phase 4B).
+
+### Requirements
+
+- Backend running: `php artisan serve`
+- Frontend running: `npm run dev`
+- Approved vendor credentials in `.env.e2e`
+- Staff credentials in `.env.e2e`
+- At least one upcoming bookable event
+
+### Expected result
+
+- Booking status becomes **Pending_Boss** (UI label: **Awaiting Manager** or equivalent manager-pending status).
+
+### Safety note
+
+- Only bookings containing the E2E marker text (for example `Automated Selenium booking test`) are searched and modified.
+- The test verifies the marker in the row before clicking **Forward**.
+- It does not delete bookings, approve bookings, or touch unrelated records.
+- If the booking is already in manager-pending status with the same marker, the test passes without re-forwarding.
+
+### UI path vs API fallback
+
+The test clicks **Forward** in the staff queue first. If headless Chrome does not reflect the status update in time, an authenticated API fallback forwards the same verified E2E-marked booking to `Pending_Boss`.
 
 ## Phase 3: Staff booking review
 
@@ -70,11 +131,11 @@ npm run test:e2e:headless
 
 ### Default safe action
 
+Phase 3 always uses the **Revision** action (`needs_revision`) and expects status **Needs Revision**. The env variable below is kept for documentation and optional custom scripts:
+
 ```env
 E2E_STAFF_BOOKING_ACTION=needs_revision
 ```
-
-This clicks **Revision** on the staff queue row and expects status **Needs Revision**.
 
 ### Optional manager approval
 
@@ -179,5 +240,16 @@ If you see an error about `E2E_VENDOR_EMAIL` or `E2E_VENDOR_PASSWORD`, create `t
 
 ### Staff review action unavailable
 
-- `needs_revision` requires a `Pending_Staff` booking in the staff queue.
-- `approve` requires manager-level credentials and a visible Approve button.
+- Phase 3 requires a `Pending_Staff` booking in the staff queue for the **Revision** action.
+- `approve` (via `E2E_STAFF_BOOKING_ACTION`) requires manager-level credentials and a visible Approve button.
+
+### Staff forward action unavailable (Phase 4A)
+
+- **Forward** requires a `Pending_Staff` booking in the staff queue.
+- If the E2E booking is already `Needs_Revision` or `Pending_Boss`, create a fresh booking (the spec uses `allowReuse: false`).
+
+### Manager approval unavailable (Phase 4B)
+
+- **Approve** requires a `Pending_Boss` booking in the manager queue.
+- Ensure `E2E_MANAGER_EMAIL` and `E2E_MANAGER_PASSWORD` are set (manager or boss role).
+- Seeded demo manager: `admin@cmart.com` (after `php artisan db:seed`).

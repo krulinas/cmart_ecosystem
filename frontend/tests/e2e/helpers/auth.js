@@ -1,5 +1,5 @@
 import { By } from 'selenium-webdriver';
-import { env, requireStaffCredentials, requireVendorCredentials } from '../config/env.js';
+import { env, requireManagerCredentials, requireStaffCredentials, requireVendorCredentials } from '../config/env.js';
 import { waitForTestId, waitForUrlContains } from './wait.js';
 
 async function fillLoginField(driver, testId, value) {
@@ -23,14 +23,16 @@ async function submitLoginForm(driver) {
 }
 
 export async function logout(driver) {
+  await driver.get(`${env.baseUrl}/login`);
   await driver.executeScript(`
     localStorage.clear();
     sessionStorage.clear();
   `);
   await driver.manage().deleteAllCookies();
+  await driver.get('about:blank');
   await driver.get(`${env.baseUrl}/login`);
-  await driver.navigate().refresh();
-  await waitForTestId(driver, 'login-email', 20000);
+  await waitForUrlContains(driver, '/login', 30000);
+  await waitForTestId(driver, 'login-email', 30000);
 }
 
 export async function loginAsVendor(driver) {
@@ -85,6 +87,36 @@ export async function loginAsStaff(driver) {
 
     throw new Error(
       `Staff login did not reach the admin workspace. Current URL: ${currentUrl}. ` +
+        `Toast messages: ${toastMessages.filter(Boolean).join(' | ') || 'none'}.`,
+      { cause: error },
+    );
+  }
+
+  await waitForTestId(driver, 'staff-dashboard-root');
+}
+
+export async function loginAsManager(driver) {
+  const { email, password } = requireManagerCredentials();
+
+  await driver.get(`${env.baseUrl}/login`);
+
+  await fillLoginField(driver, 'login-email', email);
+  await fillLoginField(driver, 'login-password', password);
+  await submitLoginForm(driver);
+
+  try {
+    await waitForUrlContains(driver, '/admin', 20000);
+  } catch (error) {
+    const currentUrl = await driver.getCurrentUrl();
+    const toasts = await driver.findElements(By.css('.Vue-Toastification__toast-body'));
+    const toastMessages = [];
+
+    for (const toast of toasts) {
+      toastMessages.push((await toast.getText()).trim());
+    }
+
+    throw new Error(
+      `Manager login did not reach the admin workspace. Current URL: ${currentUrl}. ` +
         `Toast messages: ${toastMessages.filter(Boolean).join(' | ') || 'none'}.`,
       { cause: error },
     );

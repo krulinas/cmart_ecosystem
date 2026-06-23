@@ -22,6 +22,8 @@ export const env = {
   vendorPassword: process.env.E2E_VENDOR_PASSWORD || '',
   staffEmail: process.env.E2E_STAFF_EMAIL || '',
   staffPassword: process.env.E2E_STAFF_PASSWORD || '',
+  managerEmail: process.env.E2E_MANAGER_EMAIL || '',
+  managerPassword: process.env.E2E_MANAGER_PASSWORD || '',
   bookingEventName: process.env.E2E_BOOKING_EVENT_NAME || '',
   bookingBusinessName: process.env.E2E_BOOKING_BUSINESS_NAME || 'E2E Test Vendor',
   bookingCategory: process.env.E2E_BOOKING_CATEGORY || 'Food & Beverages',
@@ -67,14 +69,34 @@ export function requireStaffCredentials() {
   };
 }
 
+export function requireManagerCredentials() {
+  const missing = [];
+
+  if (!env.managerEmail) missing.push('E2E_MANAGER_EMAIL');
+  if (!env.managerPassword) missing.push('E2E_MANAGER_PASSWORD');
+
+  if (missing.length) {
+    throw new Error(
+      `Missing E2E_MANAGER_EMAIL or E2E_MANAGER_PASSWORD in tests/e2e/.env.e2e.\n` +
+        `Copy tests/e2e/.env.e2e.example to tests/e2e/.env.e2e and fill in your local manager test user values.`,
+    );
+  }
+
+  return {
+    email: env.managerEmail,
+    password: env.managerPassword,
+  };
+}
+
 export function resolveStaffBookingAction() {
   const action = env.staffBookingAction.replace(/-/g, '_');
 
-  if (['needs_revision', 'approve'].includes(action)) {
+  if (['needs_revision', 'approve', 'forward'].includes(action)) {
     return action;
   }
 
   throw new Error(
-    `Unsupported E2E_STAFF_BOOKING_ACTION="${env.staffBookingAction}". Use "needs_revision" or "approve".`,
+    `Unsupported E2E_STAFF_BOOKING_ACTION="${env.staffBookingAction}". ` +
+      'Use "needs_revision", "forward", or "approve".',
   );
 }
