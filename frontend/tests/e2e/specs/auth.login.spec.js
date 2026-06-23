@@ -10,7 +10,7 @@ describe('Authentication', function () {
 
   before(async function () {
     driver = await createDriver();
-    setActiveDriver(driver);
+    await setActiveDriver(driver);
   });
 
   it('Vendor/community user can log in and reach dashboard', async function () {

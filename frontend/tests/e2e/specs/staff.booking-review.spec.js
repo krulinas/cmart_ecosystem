@@ -33,7 +33,7 @@ describe('Staff booking review', function () {
     requireStaffCredentials();
 
     driver = await createDriver();
-    setActiveDriver(driver);
+    await setActiveDriver(driver);
   });
 
   it('Staff user can safely review an E2E-marked vendor booking', async function () {

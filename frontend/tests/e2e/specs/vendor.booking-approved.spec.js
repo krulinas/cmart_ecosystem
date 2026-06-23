@@ -6,7 +6,7 @@ import {
   requireVendorCredentials,
 } from '../config/env.js';
 import { uniqueTestMarker } from '../helpers/actions.js';
-import { loginAsManager, loginAsStaff, logout } from '../helpers/auth.js';
+import { loginAsManager, loginAsStaff, loginAsVendor, logout } from '../helpers/auth.js';
 import { ensureE2EBookingExists } from '../helpers/booking.js';
 import { createDriver } from '../helpers/driver.js';
 import {
@@ -17,16 +17,21 @@ import {
   openStaffBookings,
   statusMatchesExpectation,
 } from '../helpers/staff-bookings.js';
+import {
+  VENDOR_APPROVED_EXPECTATION,
+  assertVendorBookingApproved,
+  goToMyBookings,
+  vendorStatusMatches,
+} from '../helpers/vendor-bookings.js';
 import { setActiveDriver } from '../setup.js';
 
 const E2E_MARKER_BASE = env.bookingDetails;
 
-describe('Manager booking approval', function () {
+describe('Vendor booking approved confirmation', function () {
   this.timeout(300000);
 
   let driver;
   let marker;
-  let usedApiFallback = false;
 
   before(async function () {
     requireVendorCredentials();
@@ -36,7 +41,7 @@ describe('Manager booking approval', function () {
     await setActiveDriver(driver);
   });
 
-  it('Manager user can safely approve an E2E-marked Pending_Boss booking', async function () {
+  it('Vendor user can see an E2E-marked booking as Approved after manager approval', async function () {
     marker = uniqueTestMarker(E2E_MARKER_BASE);
     const ensured = await ensureE2EBookingExists(driver, marker, { allowReuse: false });
     marker = ensured.marker;
@@ -55,21 +60,27 @@ describe('Manager booking approval', function () {
 
     await loginAsManager(driver);
     await openStaffBookings(driver, env.baseUrl);
-
-    // UI path first: manager clicks Approve on the verified E2E Pending_Boss row.
     const approved = await approveE2EBookingAsManager(driver, marker, env.baseUrl, {
       bookingId: forwarded.bookingId,
     });
-    usedApiFallback = approved.usedApiFallback;
 
     assert.ok(
       statusMatchesExpectation(approved.statusAttr, approved.statusLabel, APPROVED_EXPECTATION),
-      `Booking #${approved.bookingId} ended with unexpected status "${approved.statusAttr || approved.statusLabel}". ` +
-        'Expected Approved.',
+      `Manager approval did not reach Approved for booking #${approved.bookingId}.`,
     );
 
-    if (usedApiFallback) {
-      assert.ok(true, 'API fallback was used after the UI Approve click did not update status in time.');
-    }
+    await logout(driver);
+
+    await loginAsVendor(driver);
+    await goToMyBookings(driver, env.baseUrl);
+
+    const vendorView = await assertVendorBookingApproved(driver, marker, {
+      bookingId: approved.bookingId,
+    });
+
+    assert.ok(
+      vendorStatusMatches(vendorView.statusAttr, vendorView.statusLabel, VENDOR_APPROVED_EXPECTATION),
+      `Vendor My Bookings shows "${vendorView.statusAttr || vendorView.statusLabel}" for booking #${vendorView.bookingId}; expected Approved.`,
+    );
   });
 });

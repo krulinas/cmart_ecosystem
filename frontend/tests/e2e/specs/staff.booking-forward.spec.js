@@ -24,7 +24,7 @@ describe('Staff booking forward', function () {
     requireVendorCredentials();
     requireStaffCredentials();
     driver = await createDriver();
-    setActiveDriver(driver);
+    await setActiveDriver(driver);
   });
 
   it('Staff user can safely forward an E2E-marked vendor booking to manager queue', async function () {

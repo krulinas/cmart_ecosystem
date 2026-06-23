@@ -61,25 +61,30 @@ export async function findE2EBookingRow(driver, marker, { preferActionTestId, bo
   const matches = [];
 
   for (const row of rows) {
-    const text = (await row.getText()).toLowerCase();
-    if (!text.includes(marker.toLowerCase())) continue;
+    try {
+      const text = (await row.getText()).toLowerCase();
+      if (!text.includes(marker.toLowerCase())) continue;
 
-    const rowBookingId = Number(await row.getAttribute('data-booking-id'));
-    if (bookingId != null && rowBookingId !== bookingId) continue;
-    const section = await row.getAttribute('data-booking-section');
-    const hasRevisionAction = (await row.findElements(By.css('[data-testid="staff-booking-action-needs-revision"]'))).length > 0;
-    const hasApproveAction = (await row.findElements(By.css('[data-testid="staff-booking-action-approve"]'))).length > 0;
-    const hasForwardAction = (await row.findElements(By.css('[data-testid="staff-booking-action-forward"]'))).length > 0;
+      const rowBookingId = Number(await row.getAttribute('data-booking-id'));
+      if (bookingId != null && rowBookingId !== bookingId) continue;
+      const section = await row.getAttribute('data-booking-section');
+      const hasRevisionAction = (await row.findElements(By.css('[data-testid="staff-booking-action-needs-revision"]'))).length > 0;
+      const hasApproveAction = (await row.findElements(By.css('[data-testid="staff-booking-action-approve"]'))).length > 0;
+      const hasForwardAction = (await row.findElements(By.css('[data-testid="staff-booking-action-forward"]'))).length > 0;
 
-    matches.push({
-      bookingId: rowBookingId,
-      section,
-      hasRevisionAction,
-      hasApproveAction,
-      hasForwardAction,
-      status: await row.getAttribute('data-booking-status'),
-      text,
-    });
+      matches.push({
+        bookingId: rowBookingId,
+        section,
+        hasRevisionAction,
+        hasApproveAction,
+        hasForwardAction,
+        status: await row.getAttribute('data-booking-status'),
+        text,
+      });
+    } catch (error) {
+      if (error.name === 'StaleElementReferenceError') continue;
+      throw error;
+    }
   }
 
   if (!matches.length) {
@@ -203,6 +208,33 @@ export async function clickStaffQueueAction(driver, bookingId, actionTestId, mar
   await actionButton.click();
 }
 
+export async function readE2EBookingStatusViaApi(driver, bookingId, marker) {
+  return driver.executeScript(
+    async (id, markerText) => {
+      const token = localStorage.getItem('carboot_cmart_token');
+      if (!token) return null;
+
+      const response = await fetch(`http://127.0.0.1:8000/api/bookings/${id}`, {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) return null;
+
+      const booking = await response.json();
+      const bookingRecord = booking.booking ?? booking;
+      const details = String(bookingRecord.product_details || '').toLowerCase();
+
+      if (!details.includes(String(markerText).toLowerCase())) return null;
+      return String(bookingRecord.approval_status || '');
+    },
+    bookingId,
+    marker,
+  );
+}
+
 export async function applyForwardViaApi(driver, bookingId, marker) {
   await driver.executeScript(
     async (id, markerText) => {
@@ -224,6 +256,11 @@ export async function applyForwardViaApi(driver, bookingId, marker) {
 
       if (!details.includes(String(markerText).toLowerCase())) {
         throw new Error(`Refusing API forward for booking #${id} because it is not E2E-marked.`);
+      }
+
+      const currentStatus = String(bookingRecord.approval_status || '');
+      if (currentStatus === 'Pending_Boss') {
+        return;
       }
 
       const response = await fetch(`http://127.0.0.1:8000/api/bookings/${id}`, {
@@ -267,6 +304,11 @@ export async function applyRevisionViaApi(driver, bookingId, marker, revisionCom
 
       if (!details.includes(String(markerText).toLowerCase())) {
         throw new Error(`Refusing API revision for booking #${id} because it is not E2E-marked.`);
+      }
+
+      const currentStatus = String(bookingRecord.approval_status || '');
+      if (currentStatus === 'Needs_Revision') {
+        return;
       }
 
       const response = await fetch(`http://127.0.0.1:8000/api/bookings/${id}`, {
@@ -330,8 +372,20 @@ export async function forwardE2EBookingToManager(driver, marker, baseUrl) {
     await searchStaffBookings(driver, marker);
   }
 
-  const updated = await waitForRowStatus(driver, match.bookingId, FORWARD_EXPECTATION, 30000);
-  return { bookingId: match.bookingId, ...updated };
+  try {
+    const updated = await waitForRowStatus(driver, match.bookingId, FORWARD_EXPECTATION, 15000);
+    return { bookingId: match.bookingId, ...updated };
+  } catch (uiError) {
+    const apiStatus = await readE2EBookingStatusViaApi(driver, match.bookingId, marker);
+    if (apiStatus === 'Pending_Boss') {
+      return {
+        bookingId: match.bookingId,
+        statusAttr: 'Pending_Boss',
+        statusLabel: 'Awaiting Manager',
+      };
+    }
+    throw uiError;
+  }
 }
 
 export async function applyApproveViaApi(driver, bookingId, marker) {

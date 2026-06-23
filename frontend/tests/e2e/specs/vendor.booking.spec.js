@@ -259,7 +259,7 @@ describe('Vendor booking', function () {
 
   before(async function () {
     driver = await createDriver();
-    setActiveDriver(driver);
+    await setActiveDriver(driver);
   });
 
   it('Vendor/community user can submit a booking request for an available event', async function () {

@@ -3,9 +3,9 @@ import { quitDriver } from './helpers/driver.js';
 
 let activeDriver = null;
 
-export function setActiveDriver(driver) {
+export async function setActiveDriver(driver) {
   if (activeDriver && activeDriver !== driver) {
-    void quitDriver(activeDriver);
+    await quitDriver(activeDriver);
   }
   activeDriver = driver;
 }

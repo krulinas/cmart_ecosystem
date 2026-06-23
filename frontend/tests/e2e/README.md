@@ -57,6 +57,32 @@ npm run test:e2e:headless
 | `staff.booking-review.spec.js` | Staff safely reviews an E2E-marked booking only |
 | `staff.booking-forward.spec.js` | Staff forwards an E2E-marked booking to the manager queue |
 | `manager.booking-approval.spec.js` | Manager approves an E2E-marked Pending_Boss booking |
+| `vendor.booking-approved.spec.js` | Vendor sees E2E-marked booking as Approved in My Bookings |
+
+## Phase 4C: Vendor-side Approved confirmation
+
+`vendor.booking-approved.spec.js` runs the full safe approval pipeline (vendor booking → staff forward → manager approve), then logs back in as the vendor and confirms **Approved** in **My Bookings** for the same E2E marker.
+
+This phase does **not** test invoice, payment, QR pass, or other post-approval flows.
+
+### Requirements
+
+- Backend running: `php artisan serve`
+- Frontend running: `npm run dev`
+- Approved vendor credentials in `.env.e2e`
+- Staff credentials in `.env.e2e`
+- Manager credentials in `.env.e2e`
+- At least one upcoming bookable event
+
+### Expected result
+
+- Vendor **My Bookings** shows **Approved** for the unique E2E-marked booking created in this test run.
+
+### Safety note
+
+- Only the booking with the unique E2E marker from this test is created, forwarded, approved, and verified.
+- Marker is checked before staff forward, manager approve, and vendor confirmation.
+- No unrelated bookings are touched.
 
 ## Phase 4B: Manager final approval
 
@@ -253,3 +279,9 @@ If you see an error about `E2E_VENDOR_EMAIL` or `E2E_VENDOR_PASSWORD`, create `t
 - **Approve** requires a `Pending_Boss` booking in the manager queue.
 - Ensure `E2E_MANAGER_EMAIL` and `E2E_MANAGER_PASSWORD` are set (manager or boss role).
 - Seeded demo manager: `admin@cmart.com` (after `php artisan db:seed`).
+
+### Vendor Approved status not visible (Phase 4C)
+
+- Confirm manager approval succeeded (run Phase 4B spec alone if needed).
+- Use the **All** bookings filter on My Bookings (default).
+- Search using the full unique E2E marker from the test run.
