@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-ink-50">
+  <div class="min-h-screen bg-ink-50" data-testid="booking-page-root">
     <AppNavbar variant="vendor" />
     <div class="py-12 px-4">
     <div class="max-w-2xl mx-auto">
@@ -18,7 +18,7 @@
           </p>
         </div>
 
-        <div v-if="loadingEvents" class="rounded-xl border border-ink-200 bg-ink-50 px-4 py-8 text-center text-sm text-ink-500">
+        <div v-if="loadingEvents" class="rounded-xl border border-ink-200 bg-ink-50 px-4 py-8 text-center text-sm text-ink-500" data-testid="booking-events-loading">
           Loading available events…
         </div>
 
@@ -32,6 +32,7 @@
         <div
           v-if="!loadingEvents && selectedEvent && !eventLoadError"
           class="rounded-xl border border-brand-200 bg-brand-50/70 p-5 mb-6"
+          data-testid="booking-selected-event"
         >
           <p class="text-xs font-bold uppercase tracking-wider text-brand-700 mb-2">Selected Event</p>
           <h2 class="text-lg font-extrabold text-ink-900">{{ selectedEvent.title }}</h2>
@@ -58,18 +59,19 @@
             v-model="selectedEventId"
             class="ml-input"
             required
+            data-testid="booking-event-select"
           >
             <option value="" disabled>Choose an upcoming event</option>
             <option v-for="event in bookableEvents" :key="event.id" :value="String(event.id)">
               {{ event.title }} — {{ event.dateLabel }}
             </option>
           </select>
-          <p v-if="!bookableEvents.length" class="mt-2 text-sm text-ink-500">
+          <p v-if="!bookableEvents.length" class="mt-2 text-sm text-ink-500" data-testid="booking-no-events">
             No upcoming events are open for booking right now. Please check back later.
           </p>
         </div>
 
-        <form v-if="!loadingEvents" @submit.prevent="submitBooking" class="space-y-4">
+        <form v-if="!loadingEvents" @submit.prevent="submitBooking" class="space-y-4" data-testid="booking-form">
           <div
             v-if="savedPreferenceLoaded"
             class="rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3 text-sm text-ink-700"
@@ -93,12 +95,12 @@
 
           <div>
             <label class="ml-label">Your name</label>
-            <input v-model="userName" type="text" required class="ml-input" placeholder="e.g. Ahmad bin Ali" />
+            <input v-model="userName" type="text" required class="ml-input" placeholder="e.g. Ahmad bin Ali" data-testid="booking-business-name" />
           </div>
 
           <div>
             <label class="ml-label">Product category</label>
-            <select v-model="bookingForm.product_category" required class="ml-input">
+            <select v-model="bookingForm.product_category" required class="ml-input" data-testid="booking-category">
               <option disabled value="">Select a category</option>
               <option v-for="category in PRODUCT_CATEGORIES" :key="category" :value="category">
                 {{ category }}
@@ -132,6 +134,7 @@
               required
               class="ml-input"
               placeholder="e.g., Ayam Gunting, Bundle T-shirt..."
+              data-testid="booking-details"
             />
           </div>
 
@@ -186,7 +189,7 @@
             </label>
           </div>
 
-          <button type="submit" class="ml-btn-primary w-full" :disabled="submitting || !canSubmit">
+          <button type="submit" class="ml-btn-primary w-full" :disabled="submitting || !canSubmit" data-testid="booking-submit">
             {{ submitting ? 'Submitting…' : 'Submit booking' }}
           </button>
 

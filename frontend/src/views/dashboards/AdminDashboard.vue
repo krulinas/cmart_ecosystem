@@ -63,6 +63,7 @@
     </div>
 
     <template v-else>
+      <div data-testid="staff-dashboard-root">
       <ManagementSectionLoader
         v-if="showSectionLoader"
         :message="sectionLoadingMessage"
@@ -104,6 +105,7 @@
           ref="auditPanel"
         />
       </template>
+      </div>
     </template>
   </WorkspaceShell>
 </template>

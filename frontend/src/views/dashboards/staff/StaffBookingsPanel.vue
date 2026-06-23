@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6 pb-10">
+  <div class="space-y-6 pb-10" data-testid="staff-bookings-root">
     <div v-if="loading && !hasLoaded" class="rounded-2xl border border-ink-200 bg-white py-16 text-center shadow-sm">
       <div class="mx-auto h-10 w-10 animate-pulse rounded-full bg-gradient-to-br from-cyan-100 to-sky-100" />
       <p class="mt-4 text-sm font-medium text-ink-500">Loading bookings…</p>
@@ -67,7 +67,15 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-ink-100">
-                <tr v-for="b in queueBookings" :key="'q-' + b.id" class="transition hover:bg-ink-50/50">
+                <tr
+                  v-for="b in queueBookings"
+                  :key="'q-' + b.id"
+                  data-testid="staff-booking-row"
+                  data-booking-section="queue"
+                  :data-booking-id="b.id"
+                  :data-booking-status="b.approval_status"
+                  class="transition hover:bg-ink-50/50"
+                >
                   <td class="px-4 py-3.5">
                     <div class="font-bold text-ink-900">#{{ b.id }}</div>
                     <div class="text-xs text-ink-500">{{ vendorLabel(b) }}</div>
@@ -79,13 +87,18 @@
                   <td class="px-4 py-3.5 text-ink-700">{{ b.space?.space_size || b.space_id }}</td>
                   <td class="px-4 py-3.5 whitespace-nowrap text-ink-700">{{ formatBookingDate(b.booking_date) }}</td>
                   <td class="px-4 py-3.5">
-                    <ManagementStatusChip :status="b.approval_status" />
+                    <ManagementStatusChip :status="b.approval_status" data-testid="staff-booking-status" />
                   </td>
                   <td class="px-4 py-3.5">
                     <div class="flex justify-end gap-1.5 flex-wrap">
                       <button class="ml-btn-ghost text-xs px-3 py-1.5" @click="viewPdf(b.id)">PDF</button>
                       <template v-if="isStaffView && !isTerminalBookingStatus(b.approval_status)">
-                        <button class="ml-btn-success text-xs px-3 py-1.5" @click="updateStatus(b.id, 'Pending_Boss')">
+                        <button
+                          class="ml-btn-success text-xs px-3 py-1.5"
+                          data-testid="staff-booking-action-forward"
+                          :data-booking-id="b.id"
+                          @click="updateStatus(b.id, 'Pending_Boss')"
+                        >
                           Forward
                         </button>
                         <button class="ml-btn-danger text-xs px-3 py-1.5" @click="updateStatus(b.id, 'Rejected')">
@@ -93,13 +106,20 @@
                         </button>
                         <button
                           class="inline-flex items-center rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                          data-testid="staff-booking-action-needs-revision"
+                          :data-booking-id="b.id"
                           @click="requestRevision(b.id)"
                         >
                           Revision
                         </button>
                       </template>
                       <template v-if="canFinalApproveBookings && !isTerminalBookingStatus(b.approval_status)">
-                        <button class="ml-btn-success text-xs px-3 py-1.5" @click="updateStatus(b.id, 'Approved')">
+                        <button
+                          class="ml-btn-success text-xs px-3 py-1.5"
+                          data-testid="staff-booking-action-approve"
+                          :data-booking-id="b.id"
+                          @click="updateStatus(b.id, 'Approved')"
+                        >
                           Approve
                         </button>
                         <button class="ml-btn-danger text-xs px-3 py-1.5" @click="updateStatus(b.id, 'Rejected')">
@@ -107,6 +127,8 @@
                         </button>
                         <button
                           class="inline-flex items-center rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                          data-testid="staff-booking-action-needs-revision"
+                          :data-booking-id="b.id"
                           @click="requestRevision(b.id)"
                         >
                           Revision
@@ -155,6 +177,7 @@
                   v-model="searchQuery"
                   type="search"
                   placeholder="Search vendor, booth, ID, status…"
+                  data-testid="staff-bookings-search"
                   class="ml-input w-full pl-8 text-sm"
                 />
               </div>
@@ -225,6 +248,10 @@
               <tr
                 v-for="b in registryBookings"
                 :key="b.id"
+                data-testid="staff-booking-row"
+                data-booking-section="registry"
+                :data-booking-id="b.id"
+                :data-booking-status="b.approval_status"
                 class="transition hover:bg-ink-50/40"
               >
                 <td class="px-4 py-3.5 font-bold text-ink-900">#{{ b.id }}</td>
@@ -234,7 +261,7 @@
                 <td class="px-4 py-3.5 text-ink-700">{{ b.space?.space_size || b.space_id }}</td>
                 <td class="px-4 py-3.5 whitespace-nowrap text-ink-700">{{ formatBookingDate(b.booking_date) }}</td>
                 <td class="px-4 py-3.5">
-                  <ManagementStatusChip :status="b.approval_status" />
+                  <ManagementStatusChip :status="b.approval_status" data-testid="staff-booking-status" />
                 </td>
                 <td class="px-4 py-3.5">
                   <span

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-ink-50 via-brand-50/30 to-ink-50" data-testid="dashboard-root">
+  <div class="min-h-screen bg-gradient-to-br from-ink-50 via-brand-50/30 to-ink-50" data-testid="vendor-dashboard-root">
     <AppNavbar variant="vendor" />
 
     <div class="max-w-6xl mx-auto py-10 px-4 sm:px-6 space-y-8">
@@ -15,6 +15,7 @@
           <router-link
             v-if="auth.isApprovedVendor"
             to="/vendor-booking"
+            data-testid="nav-booking-events"
             class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-500/25 hover:bg-brand-600 transition shrink-0"
           >
             Book a Space
@@ -23,7 +24,7 @@
       </header>
 
       <!-- My Bookings -->
-      <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
+      <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5" data-testid="my-bookings-root">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
           <div>
             <h2 class="text-xl font-extrabold text-ink-900">My Bookings</h2>
@@ -48,6 +49,7 @@
             v-model="bookingSearchQuery"
             type="search"
             placeholder="Search bookings…"
+            data-testid="booking-search"
             class="w-full sm:max-w-sm rounded-xl border border-ink-200 bg-white/80 px-4 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
           />
         </div>
@@ -94,6 +96,9 @@
               <tr
                 v-for="booking in visibleBookings"
                 :key="booking.id"
+                data-testid="booking-list-item"
+                :data-booking-id="booking.id"
+                :data-booking-status="booking.approval_status"
                 class="hover:bg-brand-50/40 transition-colors"
               >
                 <td class="px-4 py-3 font-semibold text-ink-900">#{{ booking.id }}</td>
@@ -103,7 +108,7 @@
                   {{ productSummary(booking) }}
                 </td>
                 <td class="px-4 py-3">
-                  <span :class="statusBadgeClass(booking.approval_status)">
+                  <span :class="statusBadgeClass(booking.approval_status)" data-testid="booking-status">
                     {{ statusLabel(booking.approval_status) }}
                   </span>
                 </td>

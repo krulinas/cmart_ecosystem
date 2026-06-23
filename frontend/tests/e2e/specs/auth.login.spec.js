@@ -29,7 +29,7 @@ describe('Authentication', function () {
     await submitButton.click();
 
     await waitForUrlContains(driver, '/dashboard');
-    const dashboardRoot = await waitForTestId(driver, 'dashboard-root');
+    const dashboardRoot = await waitForTestId(driver, 'vendor-dashboard-root');
 
     assert.equal(await dashboardRoot.isDisplayed(), true);
   });

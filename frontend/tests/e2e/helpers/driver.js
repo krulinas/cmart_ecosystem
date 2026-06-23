@@ -13,7 +13,21 @@ export async function createDriver() {
   options.addArguments('--disable-gpu');
   options.addArguments('--no-sandbox');
 
-  return new Builder().forBrowser('chrome').setChromeOptions(options).build();
+  const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
+
+  try {
+    await driver.sendDevToolsCommand('Page.addScriptToEvaluateOnNewDocument', {
+      source: `
+        window.prompt = function() {
+          return 'E2E automated revision request - safe to ignore';
+        };
+      `,
+    });
+  } catch {
+    // DevTools command is best-effort for local E2E runs.
+  }
+
+  return driver;
 }
 
 export async function quitDriver(driver) {

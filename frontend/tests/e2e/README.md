@@ -53,6 +53,83 @@ npm run test:e2e:headless
 | Spec | What it checks |
 |------|----------------|
 | `auth.login.spec.js` | Vendor/community user logs in and reaches `/dashboard` |
+| `vendor.booking.spec.js` | Vendor logs in, submits a booking for an available event, and verifies it in My Bookings |
+| `staff.booking-review.spec.js` | Staff safely reviews an E2E-marked booking only |
+
+## Phase 3: Staff booking review
+
+`staff.booking-review.spec.js` creates (or reuses) a vendor booking with a unique E2E marker, then logs in as staff and updates **only that marked booking**.
+
+### Requirements
+
+- Backend running: `php artisan serve`
+- Frontend running: `npm run dev`
+- Approved vendor credentials in `.env.e2e`
+- Staff credentials in `.env.e2e`
+- At least one upcoming bookable event
+
+### Default safe action
+
+```env
+E2E_STAFF_BOOKING_ACTION=needs_revision
+```
+
+This clicks **Revision** on the staff queue row and expects status **Needs Revision**.
+
+### Optional manager approval
+
+```env
+E2E_STAFF_BOOKING_ACTION=approve
+```
+
+This only works when the logged-in user can see the **Approve** button (manager-level access). Standard staff accounts should keep the default `needs_revision` action.
+
+### Safety note
+
+- The test searches for bookings containing the E2E marker text (for example `Automated Selenium booking test`).
+- It refuses to act on rows that do not contain the marker.
+- It does not delete bookings or touch unrelated records.
+
+### Recommended setup
+
+1. Start backend and frontend.
+2. Fill in vendor and staff credentials in `tests/e2e/.env.e2e`.
+3. Ensure at least one upcoming event exists for vendor booking.
+4. Run `npm run test:e2e`.
+
+## Phase 2: Vendor booking flow
+
+`vendor.booking.spec.js` proves that an approved vendor/community user can book an upcoming event and see the booking on the dashboard.
+
+### Requirements
+
+- The test vendor must be **approved** (`vendor_status = approved`) so `/vendor-booking` is accessible.
+- At least **one upcoming active/bookable event** must exist in the database (`status` not `Closed`, `ends_at` in the future).
+
+### Recommended setup
+
+1. Start backend and frontend.
+2. Log in as staff and open the admin workspace.
+3. Create an upcoming carboot event with status **Available** (or **Almost Full**).
+4. Confirm the event appears on the vendor booking page (`/vendor-booking`).
+5. Run `npm run test:e2e`.
+
+### Optional env values
+
+```env
+E2E_BOOKING_EVENT_NAME=CMart Weekly Carboot
+E2E_BOOKING_BUSINESS_NAME=E2E Test Vendor
+E2E_BOOKING_CATEGORY=Food & Beverages
+E2E_BOOKING_DETAILS=Automated Selenium booking test
+```
+
+- If `E2E_BOOKING_EVENT_NAME` is set, the test targets that event.
+- If it is empty, the test picks the first bookable event in the dropdown.
+- If no bookable event exists, the test fails with a clear setup message.
+
+### Duplicate bookings
+
+If the vendor already has a booking for the selected event, the test treats an existing row in **My Bookings** as a pass instead of failing immediately.
 
 ## Troubleshooting
 
@@ -81,3 +158,26 @@ If you see an error about `E2E_VENDOR_EMAIL` or `E2E_VENDOR_PASSWORD`, create `t
 
 - Start Vite: `npm run dev` from the `frontend` folder.
 - If you use a different port, update `E2E_BASE_URL` in `.env.e2e`.
+
+### No available events for booking test
+
+- Create a future event from the staff admin dashboard.
+- Confirm `GET /api/events` returns at least one non-closed event with a future `ends_at`.
+- Optionally set `E2E_BOOKING_EVENT_NAME` to match the event title.
+
+### Booking test cannot find submitted booking
+
+- Ensure the vendor account is approved.
+- Check My Bookings manually after a manual booking attempt.
+- Re-run with a fresh `E2E_BOOKING_DETAILS` marker or clear old test bookings if needed.
+
+### Staff review test cannot find E2E booking
+
+- Confirm vendor booking creation succeeded (run Phase 2 spec alone first if needed).
+- Search staff bookings manually for `Automated Selenium booking test`.
+- Ensure the booking is still in `Pending_Staff` if you expect the Revision action to be available.
+
+### Staff review action unavailable
+
+- `needs_revision` requires a `Pending_Staff` booking in the staff queue.
+- `approve` requires manager-level credentials and a visible Approve button.
