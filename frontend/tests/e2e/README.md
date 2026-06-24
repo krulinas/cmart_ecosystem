@@ -62,6 +62,7 @@ npm run test:e2e:headless
 | `vendor.invoice-visible-after-approval.spec.js` | Phase 5A: vendor sees invoice/payment record after manager approval |
 | `vendor.payment-submit.spec.js` | Phase 5B: vendor submits payment proof and sees Pending Verification |
 | `vendor.receipt-pass-after-paid.spec.js` | Phase 5C: vendor sees Paid receipt/pass after staff verifies payment |
+| `vendor.payment-verification-pass-unlock.spec.js` | Test 6: full payment verification gate — receipt/pass locked until Verify Paid |
 
 ## Phase 5C: Vendor receipt/pass after verified paid payment
 

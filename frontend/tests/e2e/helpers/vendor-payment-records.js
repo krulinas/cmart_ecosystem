@@ -475,6 +475,128 @@ export async function openVendorPassOrReceipt(driver, bookingId) {
   await waitForTestId(driver, 'vendor-pass-modal');
 }
 
+async function isElementVisible(element) {
+  try {
+    return await element.isDisplayed();
+  } catch {
+    return false;
+  }
+}
+
+export async function assertVendorPassLocked(driver, bookingId, { baseUrl } = {}) {
+  if (baseUrl) {
+    await goToVendorEventPasses(driver, baseUrl);
+  } else {
+    await goToVendorEventPasses(driver);
+  }
+
+  await selectVendorPassByBookingId(driver, bookingId);
+
+  const scopedButtons = await driver.findElements(
+    By.css(`[data-testid="vendor-pass-button"][data-booking-id="${bookingId}"]`),
+  );
+
+  for (const button of scopedButtons) {
+    assert.equal(
+      await isElementVisible(button),
+      false,
+      `View Full Pass must stay locked for booking #${bookingId} until payment is verified as Paid.`,
+    );
+  }
+
+  const allPassButtons = await driver.findElements(By.css('[data-testid="vendor-pass-button"]'));
+  for (const button of allPassButtons) {
+    if (!(await isElementVisible(button))) continue;
+
+    const buttonBookingId = Number(await button.getAttribute('data-booking-id'));
+    if (buttonBookingId === bookingId) {
+      assert.fail(
+        `View Full Pass must stay locked for booking #${bookingId} until payment is verified as Paid.`,
+      );
+    }
+  }
+
+  const modals = await driver.findElements(By.css('[data-testid="vendor-pass-modal"]'));
+  for (const modal of modals) {
+    assert.equal(
+      await isElementVisible(modal),
+      false,
+      `Vendor pass modal must not be open while pass is locked for booking #${bookingId}.`,
+    );
+  }
+}
+
+export async function assertVendorReceiptAndPassLocked(
+  driver,
+  marker,
+  {
+    bookingId,
+    baseUrl,
+    expectedPaymentStatus = 'Unpaid',
+    expectViewInvoice = true,
+    timeoutMs = 45000,
+  } = {},
+) {
+  const bookingMatch = await findVendorBookingByMarker(driver, marker, { bookingId });
+  const resolvedBookingId = bookingMatch.bookingId;
+
+  assert.ok(
+    bookingMatch.text.includes(marker.toLowerCase()),
+    `Refusing to verify locked receipt/pass for booking #${resolvedBookingId} because My Bookings does not contain the E2E marker.`,
+  );
+
+  if (baseUrl) {
+    await goToVendorPaymentRecords(driver, baseUrl);
+  }
+
+  const paymentView = await waitForVendorPaymentStatus(driver, resolvedBookingId, expectedPaymentStatus, {
+    timeoutMs,
+  });
+
+  assert.notEqual(
+    paymentView.paymentStatus,
+    VENDOR_PAID_STATUS,
+    `Payment for booking #${resolvedBookingId} must not be Paid before staff verification.`,
+  );
+
+  const receiptButtons = await paymentView.row.findElements(By.css('[data-testid="view-receipt-button"]'));
+  let receiptActionVisible = false;
+
+  for (const button of receiptButtons) {
+    if (await isElementVisible(button)) {
+      receiptActionVisible = true;
+      break;
+    }
+  }
+
+  assert.equal(
+    receiptActionVisible,
+    false,
+    `View Receipt must stay locked for booking #${resolvedBookingId} while payment status is "${expectedPaymentStatus}".`,
+  );
+
+  if (expectViewInvoice) {
+    const invoiceButtons = await paymentView.row.findElements(By.css('[data-testid="view-invoice-button"]'));
+    let invoiceActionVisible = false;
+
+    for (const button of invoiceButtons) {
+      if (await isElementVisible(button)) {
+        invoiceActionVisible = true;
+        break;
+      }
+    }
+
+    assert.ok(
+      invoiceActionVisible,
+      `Approved booking #${resolvedBookingId} should still expose View Invoice before payment is verified as Paid.`,
+    );
+  }
+
+  await assertVendorPassLocked(driver, resolvedBookingId, { baseUrl });
+
+  return paymentView;
+}
+
 export async function assertVendorReceiptOrPassVisible(
   driver,
   marker,
@@ -542,9 +664,20 @@ export async function assertVendorReceiptOrPassVisible(
 
   await openVendorPassOrReceipt(driver, resolvedBookingId);
 
-  const bookingReference = (
-    await driver.findElement(By.css('[data-testid="vendor-pass-booking-reference"]')).getText()
-  ).trim();
+  const bookingReference = await driver.wait(
+    async () => {
+      const elements = await driver.findElements(By.css('[data-testid="vendor-pass-booking-reference"]'));
+      for (const element of elements) {
+        if (!(await isElementVisible(element))) continue;
+        const text = (await element.getText()).trim();
+        if (text.includes(String(resolvedBookingId))) return text;
+      }
+      return null;
+    },
+    timeoutMs,
+    `Vendor pass modal should show booking #${resolvedBookingId}.`,
+  );
+
   const eventLabel = (
     await driver.findElement(By.css('[data-testid="vendor-pass-event-label"]')).getText()
   ).trim();

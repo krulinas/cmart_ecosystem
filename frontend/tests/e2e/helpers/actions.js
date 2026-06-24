@@ -18,3 +18,7 @@ export async function safeClick(driver, testId, timeoutMs = 15000) {
 export function uniqueTestMarker(baseText) {
   return `${baseText} ${Date.now()}`;
 }
+
+export function e2eT6PayPassMarker() {
+  return `E2E-T6-PAYPASS-${Date.now()}`;
+}

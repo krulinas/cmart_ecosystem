@@ -1,0 +1,152 @@
+import { strict as assert } from 'node:assert';
+import {
+  env,
+  requireManagerCredentials,
+  requireStaffCredentials,
+  requireVendorCredentials,
+} from '../config/env.js';
+import { e2eT6PayPassMarker } from '../helpers/actions.js';
+import { loginAsManager, loginAsStaff, loginAsVendor, logout } from '../helpers/auth.js';
+import { ensureE2EBookingExists } from '../helpers/booking.js';
+import { createDriver } from '../helpers/driver.js';
+import {
+  MANAGEMENT_PAID_STATUS,
+  verifyPaymentAsPaid,
+} from '../helpers/payment-verification.js';
+import {
+  APPROVED_EXPECTATION,
+  FORWARD_EXPECTATION,
+  approveE2EBookingAsManager,
+  forwardE2EBookingToManager,
+  openStaffBookings,
+  statusMatchesExpectation,
+} from '../helpers/staff-bookings.js';
+import {
+  VENDOR_APPROVED_EXPECTATION,
+  assertVendorBookingApproved,
+  goToMyBookings,
+  vendorStatusMatches,
+} from '../helpers/vendor-bookings.js';
+import {
+  VENDOR_PENDING_VERIFICATION_STATUS,
+  assertVendorPaymentSubmitted,
+  assertVendorReceiptAndPassLocked,
+  assertVendorReceiptOrPassVisible,
+  goToVendorPaymentRecords,
+  openVendorPaymentAction,
+  submitVendorPayment,
+  uploadVendorPaymentProof,
+} from '../helpers/vendor-payment-records.js';
+import { setActiveDriver } from '../setup.js';
+
+describe('Vendor payment verification and pass unlock', function () {
+  this.timeout(420000);
+
+  let driver;
+  let marker;
+  let bookingId;
+
+  before(async function () {
+    requireVendorCredentials();
+    requireStaffCredentials();
+    requireManagerCredentials();
+    driver = await createDriver();
+    await setActiveDriver(driver);
+  });
+
+  it('Vendor cannot unlock receipt or pass until staff verifies payment as Paid', async function () {
+    marker = e2eT6PayPassMarker();
+
+    const ensured = await ensureE2EBookingExists(driver, marker, { allowReuse: false });
+    marker = ensured.marker;
+    await logout(driver);
+
+    await loginAsStaff(driver);
+    await openStaffBookings(driver, env.baseUrl);
+    const forwarded = await forwardE2EBookingToManager(driver, marker, env.baseUrl);
+
+    assert.ok(
+      statusMatchesExpectation(forwarded.statusAttr, forwarded.statusLabel, FORWARD_EXPECTATION),
+      `Staff forward did not reach manager queue for booking #${forwarded.bookingId}.`,
+    );
+    bookingId = forwarded.bookingId;
+    await logout(driver);
+
+    await loginAsManager(driver);
+    await openStaffBookings(driver, env.baseUrl);
+    const approved = await approveE2EBookingAsManager(driver, marker, env.baseUrl, {
+      bookingId,
+    });
+
+    assert.ok(
+      statusMatchesExpectation(approved.statusAttr, approved.statusLabel, APPROVED_EXPECTATION),
+      `Manager approval did not reach Approved for booking #${approved.bookingId}.`,
+    );
+    bookingId = approved.bookingId;
+    await logout(driver);
+
+    await loginAsVendor(driver);
+    await goToMyBookings(driver, env.baseUrl);
+
+    const approvedView = await assertVendorBookingApproved(driver, marker, { bookingId });
+    assert.ok(
+      vendorStatusMatches(approvedView.statusAttr, approvedView.statusLabel, VENDOR_APPROVED_EXPECTATION),
+      `Booking #${bookingId} must remain Approved before payment verification.`,
+    );
+
+    const unpaidLocked = await assertVendorReceiptAndPassLocked(driver, marker, {
+      bookingId,
+      expectedPaymentStatus: 'Unpaid',
+      expectViewInvoice: true,
+    });
+
+    assert.equal(unpaidLocked.paymentStatus, 'Unpaid');
+    assert.notEqual(unpaidLocked.paymentStatus, 'Paid');
+
+    await openVendorPaymentAction(driver, bookingId);
+    await uploadVendorPaymentProof(driver);
+    await submitVendorPayment(driver, { bookingId });
+
+    const pendingSubmitted = await assertVendorPaymentSubmitted(driver, marker, {
+      bookingId,
+      expectedStatus: VENDOR_PENDING_VERIFICATION_STATUS,
+    });
+
+    assert.equal(pendingSubmitted.paymentStatus, VENDOR_PENDING_VERIFICATION_STATUS);
+
+    const pendingLocked = await assertVendorReceiptAndPassLocked(driver, marker, {
+      bookingId,
+      expectedPaymentStatus: VENDOR_PENDING_VERIFICATION_STATUS,
+      expectViewInvoice: true,
+    });
+
+    assert.equal(pendingLocked.paymentStatus, VENDOR_PENDING_VERIFICATION_STATUS);
+    assert.notEqual(pendingLocked.paymentStatus, 'Paid');
+
+    await logout(driver);
+
+    await loginAsStaff(driver);
+    const verified = await verifyPaymentAsPaid(driver, marker, { bookingId, baseUrl: env.baseUrl });
+
+    assert.equal(
+      verified.paymentStatus,
+      MANAGEMENT_PAID_STATUS,
+      `Management registry should show Paid for booking #${bookingId} after Verify Paid.`,
+    );
+    await logout(driver);
+
+    await loginAsVendor(driver);
+    await goToVendorPaymentRecords(driver, env.baseUrl);
+
+    const unlocked = await assertVendorReceiptOrPassVisible(driver, marker, {
+      bookingId,
+      baseUrl: env.baseUrl,
+    });
+
+    assert.equal(unlocked.bookingId, bookingId);
+    assert.equal(unlocked.paymentStatus, 'Paid');
+    assert.ok(unlocked.eventLabel);
+    assert.ok(unlocked.boothLabel);
+    assert.ok(unlocked.bookingReference.includes(String(bookingId)));
+  });
+});
