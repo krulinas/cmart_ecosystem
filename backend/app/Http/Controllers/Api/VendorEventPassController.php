@@ -25,7 +25,7 @@ class VendorEventPassController extends Controller
         }
 
         return response()->json([
-            'pass' => $this->passes->presentPass($booking->load('space')),
+            'pass' => $this->passes->presentPass($booking->load(['space', 'invoice'])),
         ]);
     }
 }

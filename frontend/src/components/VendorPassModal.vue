@@ -21,6 +21,7 @@
         <div
           ref="panelRef"
           class="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden"
+          data-testid="vendor-pass-modal"
           tabindex="-1"
           @click.stop
         >
@@ -36,12 +37,21 @@
               </svg>
             </button>
             <p class="text-xs font-bold uppercase tracking-wider text-brand-100">Vendor Event Pass</p>
-            <h2 :id="titleId" class="mt-1 text-2xl font-black">Booking #{{ pass.booking_id || pass.id }}</h2>
+            <h2 :id="titleId" class="mt-1 text-2xl font-black" data-testid="vendor-pass-booking-reference">
+              Booking #{{ pass.booking_id || pass.id }}
+            </h2>
           </div>
 
           <div class="p-6 space-y-5">
             <div class="flex flex-wrap gap-2">
               <span :class="passStatusBadgeClass(pass.pass_status)">{{ pass.pass_status_label || 'Pass' }}</span>
+              <span
+                v-if="pass.payment_status === 'Paid'"
+                class="ml-badge bg-emerald-100 text-emerald-800"
+                data-testid="vendor-pass-payment-status"
+              >
+                Paid
+              </span>
               <span v-if="pass.show_qr && isPassQrScannable(pass)" class="ml-badge bg-cyan-100 text-cyan-800">QR Active</span>
               <span v-else-if="pass.show_qr" class="ml-badge bg-ink-100 text-ink-700">QR Inactive</span>
             </div>
@@ -53,11 +63,11 @@
               </div>
               <div>
                 <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Event</dt>
-                <dd class="mt-1 font-semibold text-ink-900">{{ pass.event_name || '—' }}</dd>
+                <dd class="mt-1 font-semibold text-ink-900" data-testid="vendor-pass-event-label">{{ pass.event_name || '—' }}</dd>
               </div>
               <div>
                 <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Assigned Booth</dt>
-                <dd class="mt-1 font-semibold text-ink-900">
+                <dd class="mt-1 font-semibold text-ink-900" data-testid="vendor-pass-booth-label">
                   <template v-if="pass.show_booth">{{ pass.booth_label || '—' }}</template>
                   <template v-else>{{ pass.pending_message || 'Booth will be assigned after approval' }}</template>
                 </dd>

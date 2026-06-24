@@ -96,6 +96,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/bookings/{booking}/withdraw', [BookingController::class, 'withdraw']);
         Route::post('/vendor/bookings/{booking}/request-change', [BookingController::class, 'vendorRequestChange']);
         Route::post('/vendor/bookings/{booking}/request-cancellation', [BookingController::class, 'vendorRequestCancellation']);
+        Route::post('/vendor/bookings/{booking}/submit-payment', [BookingController::class, 'vendorSubmitPayment']);
         Route::post('/bookings', [BookingController::class, 'store']);
     });
 
@@ -110,6 +111,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/bookings/{booking}', [BookingController::class, 'show']);
         Route::put('/bookings/{booking}', [BookingController::class, 'update']);
         Route::patch('/bookings/{booking}', [BookingController::class, 'update']);
+        Route::patch('/bookings/{booking}/verify-payment', [BookingController::class, 'verifyBookingPayment']);
 
         Route::apiResource('invoices', InvoiceController::class)->only(['index', 'show', 'update']);
         Route::apiResource('feedbacks', FeedbackController::class)->except(['store', 'index']);

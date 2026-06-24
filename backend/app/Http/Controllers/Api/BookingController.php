@@ -320,7 +320,7 @@ class BookingController extends Controller
         $validated = $request->validate([
             'search' => 'nullable|string|max:200',
             'status' => 'nullable|string|in:Pending_Staff,Pending_Boss,Needs_Revision,Approved,Rejected,Cancelled,Withdrawn',
-            'payment_status' => 'nullable|string|in:Paid,Unpaid',
+            'payment_status' => 'nullable|string|in:Paid,Unpaid,Pending Verification',
             'event_id' => 'nullable|integer|exists:carboot_events,id',
             'event' => 'nullable|integer|exists:carboot_events,id',
             'sort' => 'nullable|string|in:newest,oldest,status,event,vendor,amount',
@@ -712,6 +712,90 @@ class BookingController extends Controller
         return response()->json([
             'message' => '200 OK: Cancellation request submitted. CMart staff will review your request.',
             'booking' => $booking->fresh(['space', 'invoice']),
+        ]);
+    }
+
+    public function vendorSubmitPayment(Request $request, Booking $booking)
+    {
+        if ($denied = $this->authorizeVendorBooking($request, $booking)) {
+            return $denied;
+        }
+
+        if ($booking->approval_status !== 'Approved') {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Payment can only be submitted for approved bookings.',
+                'current_status' => $booking->approval_status,
+            ], 422);
+        }
+
+        $invoice = $booking->invoice;
+        if (!$invoice) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: No invoice is available for this booking yet.',
+            ], 422);
+        }
+
+        if ($invoice->payment_status !== 'Unpaid') {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Payment has already been submitted or completed for this invoice.',
+                'current_payment_status' => $invoice->payment_status,
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'payment_proof' => 'required|file|mimes:jpg,jpeg,png,webp|max:5120',
+        ]);
+
+        $path = $validated['payment_proof']->store('payment-proofs', 'public');
+
+        $invoice->update([
+            'payment_proof_path' => $path,
+            'payment_status' => 'Pending Verification',
+            'payment_submitted_at' => now(),
+        ]);
+
+        $booking->load(['space', 'invoice']);
+
+        return response()->json([
+            'message' => 'Payment proof submitted successfully. Awaiting CMart verification.',
+            'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
+            'invoice' => $invoice->fresh(),
+        ]);
+    }
+
+    public function verifyBookingPayment(Request $request, Booking $booking)
+    {
+        $invoice = $booking->invoice;
+        if (!$invoice) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: No invoice is available for this booking.',
+            ], 422);
+        }
+
+        if ($booking->approval_status !== 'Approved') {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Payment can only be verified for approved bookings.',
+                'current_status' => $booking->approval_status,
+            ], 422);
+        }
+
+        if ($invoice->payment_status !== 'Pending Verification') {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Only submitted payments awaiting verification can be marked as paid.',
+                'current_payment_status' => $invoice->payment_status,
+            ], 422);
+        }
+
+        $invoice->update([
+            'payment_status' => 'Paid',
+        ]);
+
+        $booking->load(['space', 'invoice', 'user.businessProfile']);
+
+        return response()->json([
+            'message' => 'Payment verified successfully. Vendor receipt and event pass are now available.',
+            'booking' => $booking,
+            'invoice' => $invoice->fresh(),
         ]);
     }
 

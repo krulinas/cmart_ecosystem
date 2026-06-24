@@ -1,5 +1,8 @@
 <template>
-  <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5 overflow-hidden">
+  <section
+    class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5 overflow-hidden"
+    data-testid="vendor-history-receipts-root"
+  >
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
       <div>
         <h2 class="text-xl font-extrabold text-ink-900">Booking Receipts</h2>
@@ -15,7 +18,7 @@
       </button>
     </div>
 
-    <div v-if="loading" class="overflow-x-auto rounded-2xl border border-ink-100">
+    <div v-if="loading" class="overflow-x-auto rounded-2xl border border-ink-100" data-testid="vendor-receipts-loading">
       <table class="min-w-full divide-y divide-ink-100 text-sm">
         <thead class="bg-ink-50/80">
           <tr>
@@ -58,6 +61,7 @@
           v-model="receiptsSearchQuery"
           type="search"
           placeholder="Search payment records…"
+          data-testid="receipt-search"
           class="w-full sm:max-w-sm rounded-xl border border-ink-200 bg-white/80 px-4 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         />
       </div>
@@ -103,20 +107,33 @@
               <tr
                 v-for="row in visibleRecords"
                 :key="`${row.booking_id}-${row.id}`"
+                data-testid="receipt-list-item"
+                :data-booking-id="row.booking_id"
+                :data-payment-status="row.payment_status"
                 class="hover:bg-brand-50/40 transition-colors"
               >
-                <td class="px-4 py-4 font-semibold text-ink-900">{{ row.event }}</td>
+                <td class="px-4 py-4 font-semibold text-ink-900" data-testid="receipt-event-label">{{ row.event }}</td>
                 <td class="px-4 py-4 text-ink-600">{{ formatRecordDate(row.date) }}</td>
-                <td class="px-4 py-4 text-ink-600">{{ row.booth_number || '—' }}</td>
-                <td class="px-4 py-4 text-right font-semibold text-ink-900">RM {{ formatAmount(row.amount) }}</td>
+                <td class="px-4 py-4 text-ink-600" data-testid="receipt-booth-label">{{ row.booth_number || '—' }}</td>
+                <td class="px-4 py-4 text-right font-semibold text-ink-900" data-testid="receipt-amount">RM {{ formatAmount(row.amount) }}</td>
                 <td class="px-4 py-4">
-                  <span :class="statusBadgeClass(row)">{{ displayStatus(row) }}</span>
+                  <span :class="statusBadgeClass(row)" data-testid="receipt-payment-status">{{ displayStatus(row) }}</span>
                 </td>
-                <td class="px-4 py-4 text-right">
+                <td class="px-4 py-4 text-right space-x-1">
+                  <button
+                    v-if="canSubmitPayment(row)"
+                    type="button"
+                    class="ml-btn-ghost text-sm font-semibold text-brand-700"
+                    data-testid="payment-action-button"
+                    @click="$emit('submit-payment', row)"
+                  >
+                    Submit Payment
+                  </button>
                   <button
                     v-if="row.receipt_available"
                     type="button"
                     class="ml-btn-ghost text-sm font-semibold"
+                    data-testid="view-receipt-button"
                     @click="$emit('view-document', row.booking_id)"
                   >
                     View Receipt
@@ -125,6 +142,7 @@
                     v-else-if="row.invoice_available"
                     type="button"
                     class="ml-btn-ghost text-sm font-semibold"
+                    data-testid="view-invoice-button"
                     @click="$emit('view-document', row.booking_id)"
                   >
                     View Invoice
@@ -168,6 +186,7 @@ const RECEIPT_FILTER_TABS = [
   { id: 'all', label: 'All' },
   { id: 'paid', label: 'Paid' },
   { id: 'unpaid', label: 'Unpaid' },
+  { id: 'pending_verification', label: 'Pending Verification' },
   { id: 'not_issued', label: 'Not Issued' },
   { id: 'cancelled', label: 'Cancelled' },
   { id: 'rejected', label: 'Rejected' },
@@ -179,7 +198,12 @@ const props = defineProps({
   loadError: { type: Boolean, default: false },
 });
 
-defineEmits(['retry', 'view-document']);
+defineEmits(['retry', 'view-document', 'submit-payment']);
+
+const canSubmitPayment = (row) =>
+  row.invoice_available
+  && row.booking_status === 'Approved'
+  && row.payment_status === 'Unpaid';
 
 const receiptsSearchQuery = ref('');
 const selectedReceiptStatus = ref('all');
@@ -204,6 +228,7 @@ const displayStatus = (row) => {
   if (['Cancelled', 'Rejected'].includes(row.booking_status)) {
     return row.booking_status;
   }
+  if (row.payment_status === 'Pending Verification') return 'Pending Verification';
   if (row.payment_status === 'Unpaid') return 'Unpaid';
   return row.payment_status;
 };
@@ -214,6 +239,7 @@ const matchesReceiptStatusFilter = (row, filterId) => {
   if (filterId === 'rejected') return row.booking_status === 'Rejected';
   if (filterId === 'paid') return row.payment_status === 'Paid';
   if (filterId === 'unpaid') return row.payment_status === 'Unpaid';
+  if (filterId === 'pending_verification') return row.payment_status === 'Pending Verification';
   if (filterId === 'not_issued') return row.payment_status === 'Not Issued';
   return true;
 };
@@ -274,6 +300,7 @@ const statusBadgeClass = (row) => {
   return {
     Paid: 'ml-badge bg-emerald-100 text-emerald-800',
     Unpaid: 'ml-badge bg-amber-100 text-amber-800',
+    'Pending Verification': 'ml-badge bg-sky-100 text-sky-800',
     Pending: 'ml-badge bg-brand-100 text-brand-800',
     'Not Issued': 'ml-badge bg-ink-100 text-ink-700',
     Cancelled: 'ml-badge bg-ink-100 text-ink-700',

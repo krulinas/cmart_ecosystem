@@ -144,7 +144,10 @@
       </section>
 
       <!-- Registry -->
-      <section class="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-sm">
+      <section
+        class="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-sm"
+        data-testid="management-payment-records-root"
+      >
         <div class="border-b border-ink-100 px-5 py-4 sm:px-6">
           <div class="flex flex-col gap-4">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -195,6 +198,7 @@
                 <option value="all">All payments</option>
                 <option value="Paid">Paid</option>
                 <option value="Unpaid">Unpaid</option>
+                <option value="Pending Verification">Pending Verification</option>
               </select>
               <select v-model="eventFilter" class="ml-input text-sm">
                 <option value="all">All events</option>
@@ -252,6 +256,7 @@
                 data-booking-section="registry"
                 :data-booking-id="b.id"
                 :data-booking-status="b.approval_status"
+                :data-booking-payment-status="b.invoice?.payment_status || ''"
                 class="transition hover:bg-ink-50/40"
               >
                 <td class="px-4 py-3.5 font-bold text-ink-900">#{{ b.id }}</td>
@@ -264,14 +269,37 @@
                   <ManagementStatusChip :status="b.approval_status" data-testid="staff-booking-status" />
                 </td>
                 <td class="px-4 py-3.5">
-                  <span
-                    v-if="b.invoice?.payment_status"
-                    class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                    :class="b.invoice.payment_status === 'Paid' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'"
-                  >
-                    {{ b.invoice.payment_status }}
-                  </span>
-                  <span v-else class="text-ink-400">—</span>
+                  <div class="flex flex-col items-start gap-2">
+                    <span
+                      v-if="b.invoice?.payment_status"
+                      data-testid="management-payment-status"
+                      class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                      :class="paymentStatusBadgeClass(b.invoice.payment_status)"
+                    >
+                      {{ b.invoice.payment_status }}
+                    </span>
+                    <span v-else class="text-ink-400">—</span>
+                    <a
+                      v-if="b.invoice?.payment_proof_path"
+                      :href="paymentProofUrl(b.invoice.payment_proof_path)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-testid="payment-proof-link"
+                      class="text-xs font-semibold text-brand-700 hover:text-brand-800 hover:underline"
+                    >
+                      View proof
+                    </a>
+                    <button
+                      v-if="canVerifyPayment(b)"
+                      type="button"
+                      class="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100"
+                      data-testid="verify-payment-button"
+                      :data-booking-id="b.id"
+                      @click="openPaymentVerifyModal(b)"
+                    >
+                      Verify Paid
+                    </button>
+                  </div>
                 </td>
                 <td v-if="canDeleteBookings" class="px-4 py-3.5 text-right">
                   <button
@@ -339,6 +367,40 @@
         </div>
       </section>
     </template>
+
+    <Teleport to="body">
+      <div
+        v-if="showPaymentVerifyModal && paymentVerifyTarget"
+        class="fixed inset-0 z-[120] flex items-center justify-center p-4"
+        data-testid="verify-payment-modal"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div class="absolute inset-0 bg-[rgba(15,23,42,0.55)] backdrop-blur-[2px]" @click="closePaymentVerifyModal" />
+        <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
+          <h3 class="text-lg font-extrabold text-ink-900">Verify payment as Paid?</h3>
+          <p class="mt-2 text-sm text-ink-600">
+            Confirm that CMart has verified the submitted payment proof for booking
+            <span class="font-semibold text-ink-900">#{{ paymentVerifyTarget.id }}</span>.
+            The vendor receipt and event pass will unlock after confirmation.
+          </p>
+          <div class="mt-6 flex flex-wrap justify-end gap-3">
+            <button type="button" class="ml-btn-ghost text-sm" @click="closePaymentVerifyModal">
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="ml-btn-primary text-sm"
+              data-testid="confirm-verify-payment-button"
+              :disabled="verifyingPayment"
+              @click="confirmVerifyPayment"
+            >
+              {{ verifyingPayment ? 'Verifying…' : 'Confirm Paid' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -411,6 +473,56 @@ const vendorLabel = (booking) =>
   || booking.user?.businessProfile?.business_name
   || booking.user?.name
   || '—';
+
+const paymentStatusBadgeClass = (status) => {
+  if (status === 'Paid') return 'bg-emerald-50 text-emerald-800';
+  if (status === 'Pending Verification') return 'bg-sky-50 text-sky-800';
+  return 'bg-amber-50 text-amber-800';
+};
+
+const paymentProofUrl = (path) => `/storage/${String(path || '').replace(/^\/+/, '')}`;
+
+const canVerifyPayments = computed(() =>
+  isStaffView.value || isManagerView.value || isSuperAdminView.value,
+);
+
+const canVerifyPayment = (booking) =>
+  canVerifyPayments.value
+  && booking.approval_status === 'Approved'
+  && booking.invoice?.payment_status === 'Pending Verification';
+
+const paymentVerifyTarget = ref(null);
+const showPaymentVerifyModal = ref(false);
+const verifyingPayment = ref(false);
+
+const openPaymentVerifyModal = (booking) => {
+  paymentVerifyTarget.value = booking;
+  showPaymentVerifyModal.value = true;
+};
+
+const closePaymentVerifyModal = () => {
+  showPaymentVerifyModal.value = false;
+  paymentVerifyTarget.value = null;
+};
+
+const confirmVerifyPayment = async () => {
+  const booking = paymentVerifyTarget.value;
+  if (!booking || verifyingPayment.value) return;
+
+  verifyingPayment.value = true;
+  try {
+    await api.patch(`/bookings/${booking.id}/verify-payment`);
+    toast.success(`Payment for booking #${booking.id} marked as Paid.`);
+    closePaymentVerifyModal();
+    await fetchBookings();
+  } catch (e) {
+    if (!e.forbiddenMessage) {
+      toast.error(e.response?.data?.message || 'Unable to verify payment.');
+    }
+  } finally {
+    verifyingPayment.value = false;
+  }
+};
 
 const hasActiveFilters = computed(() =>
   Boolean(

@@ -9,7 +9,17 @@ class Invoice extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['booking_id', 'amount', 'payment_status'];
+    protected $fillable = [
+        'booking_id',
+        'amount',
+        'payment_status',
+        'payment_proof_path',
+        'payment_submitted_at',
+    ];
+
+    protected $casts = [
+        'payment_submitted_at' => 'datetime',
+    ];
 
     public function booking() {
         return $this->belongsTo(Booking::class);

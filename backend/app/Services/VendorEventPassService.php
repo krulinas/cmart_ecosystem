@@ -23,7 +23,7 @@ class VendorEventPassService
         $bookings = Booking::query()
             ->where('user_id', $userId)
             ->withValidBookingDate()
-            ->with(['space'])
+            ->with(['space', 'invoice'])
             ->orderByDesc('booking_date')
             ->orderByDesc('id')
             ->get();
@@ -87,7 +87,9 @@ class VendorEventPassService
 
         $passStatus = $this->resolvePassStatus($booking, $now, $startsAt, $endsAt, $windowStart, $windowEnd);
         $isApproved = $booking->approval_status === 'Approved';
+        $isPaid = $booking->invoice?->payment_status === 'Paid';
         $qrActive = $isApproved
+            && $isPaid
             && ! in_array($passStatus, [self::STATUS_CANCELLED, self::STATUS_EXPIRED, self::STATUS_COMPLETED], true)
             && $now->between($windowStart, $windowEnd);
 
@@ -96,6 +98,7 @@ class VendorEventPassService
         return [
             'booking_id' => $booking->id,
             'approval_status' => $booking->approval_status,
+            'payment_status' => $booking->invoice?->payment_status,
             'pass_status' => $passStatus,
             'pass_status_label' => $this->statusLabel($passStatus),
             'event_id' => $event?->id,
@@ -110,14 +113,16 @@ class VendorEventPassService
             'product_category' => $booking->product_category ?? 'Others',
             'product_details' => $booking->product_details,
             'product_label' => $this->productLabel($booking),
-            'show_qr' => $isApproved,
+            'show_qr' => $isApproved && $isPaid,
             'show_booth' => $isApproved,
             'qr_active' => $qrActive,
-            'qr_expired' => $isApproved && $now->gt($windowEnd),
+            'qr_expired' => $isApproved && $isPaid && $now->gt($windowEnd),
             'checked_in_at' => $booking->checked_in_at?->toIso8601String(),
             'checkin_window_starts_at' => $windowStart->toIso8601String(),
             'checkin_window_ends_at' => $windowEnd->toIso8601String(),
-            'pending_message' => $isApproved ? null : 'Booth will be assigned after approval',
+            'pending_message' => $isApproved
+                ? ($isPaid ? null : 'Event pass unlocks after CMart verifies your payment')
+                : 'Booth will be assigned after approval',
             'is_archived' => in_array($passStatus, [self::STATUS_COMPLETED, self::STATUS_EXPIRED, self::STATUS_CANCELLED], true),
         ];
     }

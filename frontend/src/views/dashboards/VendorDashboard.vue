@@ -113,7 +113,11 @@
                   </span>
                 </td>
                 <td class="px-4 py-3 text-right">
-                  <button class="ml-btn-ghost text-sm" @click="openBookingDetails(booking.id)">
+                  <button
+                    class="ml-btn-ghost text-sm"
+                    data-testid="booking-view-details"
+                    @click="openBookingDetails(booking.id)"
+                  >
                     View Details
                   </button>
                 </td>
@@ -162,6 +166,7 @@
         :load-error="historyError"
         @retry="fetchPaymentHistory"
         @view-document="openBookingDocument"
+        @submit-payment="openPaymentSubmission"
       />
     </div>
 
@@ -169,6 +174,13 @@
       v-model="showBookingModal"
       :booking-id="selectedBookingId"
       @refreshed="onBookingsRefreshed"
+    />
+
+    <VendorPaymentModal
+      v-model="showPaymentModal"
+      :booking-id="paymentBookingId"
+      :amount="paymentInvoiceAmount"
+      @submitted="onPaymentSubmitted"
     />
   </div>
 </template>
@@ -183,6 +195,7 @@ import VendorItemManager from '../../components/VendorItemManager.vue';
 import VendorAnalyticsDashboard from '../../components/VendorAnalyticsDashboard.vue';
 import VendorHistoryReceipts from '../../components/VendorHistoryReceipts.vue';
 import VendorBookingDetailsModal from '../../components/VendorBookingDetailsModal.vue';
+import VendorPaymentModal from '../../components/VendorPaymentModal.vue';
 import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 import {
@@ -245,6 +258,9 @@ const selectedBookingStatus = ref('all');
 const bookingsExpanded = ref(false);
 const selectedBookingId = ref(null);
 const showBookingModal = ref(false);
+const showPaymentModal = ref(false);
+const paymentBookingId = ref(null);
+const paymentInvoiceAmount = ref(null);
 const businessProfile = ref(null);
 
 const paymentRecords = ref([]);
@@ -302,6 +318,16 @@ const downloadPassPdf = async (bookingId) => {
 
 const openBookingDocument = (bookingId) => {
   downloadPassPdf(bookingId);
+};
+
+const openPaymentSubmission = (row) => {
+  paymentBookingId.value = row?.booking_id ?? null;
+  paymentInvoiceAmount.value = row?.amount ?? null;
+  showPaymentModal.value = true;
+};
+
+const onPaymentSubmitted = async () => {
+  await fetchPaymentHistory();
 };
 
 const bookingMatchesSearch = (booking, query) => {

@@ -26,6 +26,7 @@
         >
           <div
             v-if="modelValue"
+            data-testid="withdraw-booking-modal"
             class="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl ring-1 ring-black/5"
             @click.stop
           >
@@ -52,6 +53,7 @@
                 <textarea
                   id="withdrawal-reason"
                   v-model="reason"
+                  data-testid="withdrawal-reason"
                   rows="3"
                   class="ml-input"
                   placeholder="Example: Schedule conflict, wrong event date, changed product plan..."
@@ -68,6 +70,7 @@
               <button
                 type="button"
                 class="ml-btn-ghost"
+                data-testid="withdraw-booking-cancel"
                 :disabled="submitting"
                 @click="close"
               >
@@ -76,6 +79,7 @@
               <button
                 type="button"
                 class="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                data-testid="withdraw-booking-confirm"
                 :disabled="submitting"
                 @click="confirmWithdraw"
               >

@@ -1,5 +1,8 @@
 <template>
-  <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
+  <section
+    class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5"
+    data-testid="vendor-event-passes-root"
+  >
     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
       <div>
         <h2 class="text-xl font-extrabold text-ink-900">My Event Passes</h2>
@@ -89,6 +92,8 @@
               v-if="selectedPass.show_qr"
               type="button"
               class="ml-btn-primary"
+              data-testid="vendor-pass-button"
+              :data-booking-id="selectedPass.booking_id"
               @click="openPassModal"
             >
               View Full Pass

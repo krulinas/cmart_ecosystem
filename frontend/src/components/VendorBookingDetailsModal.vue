@@ -10,6 +10,7 @@
     >
       <div
         v-if="modelValue && bookingId"
+        data-testid="vendor-booking-details-overlay"
         class="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4"
         role="dialog"
         aria-modal="true"
@@ -27,6 +28,7 @@
           <div
             v-if="modelValue"
             ref="panelRef"
+            data-testid="vendor-booking-details-modal"
             class="relative z-10 w-full sm:max-w-3xl max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl"
             tabindex="-1"
             @click.stop
@@ -213,6 +215,7 @@
                 <button
                   v-if="canVendorWithdraw(booking)"
                   class="ml-btn-ghost text-rose-700"
+                  data-testid="vendor-booking-action-withdraw"
                   :disabled="saving"
                   @click="openWithdrawModal"
                 >
