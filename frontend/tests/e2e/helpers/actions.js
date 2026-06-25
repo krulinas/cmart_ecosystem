@@ -19,6 +19,27 @@ export function uniqueTestMarker(baseText) {
   return `${baseText} ${Date.now()}`;
 }
 
+export function e2eT6APayPassMarker() {
+  return `E2E-T6A-PAYPASS-${Date.now()}`;
+}
+
+/** @deprecated Use e2eT6APayPassMarker */
 export function e2eT6PayPassMarker() {
-  return `E2E-T6-PAYPASS-${Date.now()}`;
+  return e2eT6APayPassMarker();
+}
+
+export function e2eT6BWithdrawnMarker() {
+  return `E2E-T6B-WITHDRAWN-${Date.now()}`;
+}
+
+export function e2eT6BRejectedMarker() {
+  return `E2E-T6B-REJECTED-${Date.now()}`;
+}
+
+export function e2eT6CNotPendingMarker() {
+  return `E2E-T6C-NOT-PENDING-${Date.now()}`;
+}
+
+export function e2eT6DDoubleVerifyMarker() {
+  return `E2E-T6D-DOUBLE-VERIFY-${Date.now()}`;
 }

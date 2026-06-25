@@ -18,6 +18,11 @@ export const APPROVED_EXPECTATION = {
   labels: new Set(['Approved']),
 };
 
+export const REJECTED_EXPECTATION = {
+  attrs: new Set(['Rejected']),
+  labels: new Set(['Rejected']),
+};
+
 const FORWARD_ACTION_TEST_ID = 'staff-booking-action-forward';
 const APPROVE_ACTION_TEST_ID = 'staff-booking-action-approve';
 
@@ -493,4 +498,102 @@ export async function approveE2EBookingAsManager(driver, marker, baseUrl, { book
 
   const updated = await waitForRowStatus(driver, match.bookingId, APPROVED_EXPECTATION, 30000);
   return { bookingId: match.bookingId, ...updated, usedApiFallback };
+}
+
+export async function applyRejectViaApi(driver, bookingId, marker) {
+  await driver.executeScript(
+    async (id, markerText) => {
+      const token = localStorage.getItem('carboot_cmart_token');
+      const verifyResponse = await fetch(`http://127.0.0.1:8000/api/bookings/${id}`, {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!verifyResponse.ok) {
+        throw new Error(`Unable to verify E2E booking #${id} before API reject.`);
+      }
+
+      const booking = await verifyResponse.json();
+      const bookingRecord = booking.booking ?? booking;
+      const details = String(bookingRecord.product_details || '').toLowerCase();
+
+      if (!details.includes(String(markerText).toLowerCase())) {
+        throw new Error(`Refusing API reject for booking #${id} because it is not E2E-marked.`);
+      }
+
+      const currentStatus = String(bookingRecord.approval_status || '');
+      if (currentStatus === 'Rejected') {
+        return;
+      }
+
+      const response = await fetch(`http://127.0.0.1:8000/api/bookings/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ approval_status: 'Rejected' }),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(body || `Failed to reject booking #${id}.`);
+      }
+    },
+    bookingId,
+    marker,
+  );
+}
+
+export async function rejectE2EBookingAsStaff(driver, marker, baseUrl) {
+  const match = await findE2EBookingRow(driver, marker, {
+    preferActionTestId: FORWARD_ACTION_TEST_ID,
+  });
+
+  const initial = await readRowStatusById(driver, match.bookingId);
+  if (statusMatchesExpectation(initial.statusAttr, initial.statusLabel, REJECTED_EXPECTATION)) {
+    const confirmedRow = await getStaffBookingRowById(driver, match.bookingId);
+    assertRowContainsMarker((await confirmedRow.getText()).toLowerCase(), marker, match.bookingId);
+    return { bookingId: match.bookingId, ...initial };
+  }
+
+  await driver.wait(
+    async () => {
+      return driver.executeScript(
+        (id) => {
+          const rows = document.querySelectorAll(`[data-testid="staff-booking-row"][data-booking-id="${id}"]`);
+          for (const row of rows) {
+            const buttons = row.querySelectorAll('button');
+            for (const button of buttons) {
+              if (button.textContent.trim() === 'Reject') {
+                button.scrollIntoView({ block: 'center' });
+                button.click();
+                return true;
+              }
+            }
+          }
+          return false;
+        },
+        match.bookingId,
+      );
+    },
+    20000,
+    `Reject action did not trigger for booking #${match.bookingId}.`,
+  );
+
+  try {
+    await searchStaffBookings(driver, marker);
+    await waitForRowStatus(driver, match.bookingId, REJECTED_EXPECTATION, 10000);
+  } catch {
+    await applyRejectViaApi(driver, match.bookingId, marker);
+    await driver.navigate().refresh();
+    await openStaffBookings(driver, baseUrl);
+    await searchStaffBookings(driver, marker);
+  }
+
+  const updated = await waitForRowStatus(driver, match.bookingId, REJECTED_EXPECTATION, 30000);
+  return { bookingId: match.bookingId, ...updated };
 }

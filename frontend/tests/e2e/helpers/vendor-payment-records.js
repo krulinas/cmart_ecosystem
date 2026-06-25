@@ -1,4 +1,5 @@
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { By } from 'selenium-webdriver';
@@ -93,6 +94,10 @@ async function expandAllPaymentRecordsIfNeeded(driver) {
 }
 
 export async function findVendorPaymentRecord(driver, searchText, { bookingId } = {}) {
+  if (bookingId != null && !String(searchText).trim()) {
+    return findVendorPaymentRecordByBookingId(driver, bookingId);
+  }
+
   await searchVendorPaymentRecord(driver, searchText);
   await expandAllPaymentRecordsIfNeeded(driver);
 
@@ -121,6 +126,38 @@ export async function findVendorPaymentRecord(driver, searchText, { bookingId } 
 
   matches.sort((a, b) => b.bookingId - a.bookingId);
   return matches[0];
+}
+
+export async function findVendorPaymentRecordByBookingId(driver, bookingId, { baseUrl, timeoutMs = 45000 } = {}) {
+  if (baseUrl) {
+    await goToVendorPaymentRecords(driver, baseUrl);
+  }
+
+  await refreshVendorPaymentRecordsList(driver, baseUrl ?? env.baseUrl);
+  await fillInputValue(driver, 'receipt-search', '');
+
+  return driver.wait(
+    async () => {
+      const rows = await driver.findElements(
+        By.css(`[data-testid="receipt-list-item"][data-booking-id="${bookingId}"]`),
+      );
+
+      for (const row of rows) {
+        if (await row.isDisplayed()) {
+          return {
+            row,
+            bookingId: Number(await row.getAttribute('data-booking-id')),
+            text: (await row.getText()).toLowerCase(),
+          };
+        }
+      }
+
+      await refreshVendorPaymentRecordsList(driver, baseUrl ?? env.baseUrl);
+      return null;
+    },
+    timeoutMs,
+    `No payment record row found for booking #${bookingId}.`,
+  );
 }
 
 export async function waitForVendorPaymentRecord(driver, searchText, { bookingId, timeoutMs = 30000 } = {}) {
@@ -389,7 +426,11 @@ export async function goToVendorEventPasses(driver, baseUrl = env.baseUrl) {
       );
 
       for (const block of loadingBlocks) {
-        if (await block.isDisplayed()) return false;
+        try {
+          if (await block.isDisplayed()) return false;
+        } catch (error) {
+          if (error.name !== 'StaleElementReferenceError') throw error;
+        }
       }
 
       const emptyState = await driver.findElements(
@@ -399,7 +440,11 @@ export async function goToVendorEventPasses(driver, baseUrl = env.baseUrl) {
       );
 
       for (const element of emptyState) {
-        if (await element.isDisplayed()) return true;
+        try {
+          if (await element.isDisplayed()) return true;
+        } catch (error) {
+          if (error.name !== 'StaleElementReferenceError') throw error;
+        }
       }
 
       const passButtons = await driver.findElements(By.css('[data-testid="vendor-pass-button"]'));
@@ -775,4 +820,151 @@ export async function assertVendorPaymentSubmitted(
   );
 
   return paymentView;
+}
+
+export async function attemptVendorPaymentViaApi(
+  driver,
+  bookingId,
+  marker,
+  fixturePath = PAYMENT_PROOF_FIXTURE,
+) {
+  const fileBase64 = readFileSync(fixturePath).toString('base64');
+
+  return driver.executeScript(
+    async (id, markerText, b64, fileName) => {
+      const token = localStorage.getItem('carboot_cmart_token');
+      if (!token) {
+        throw new Error('No auth token available for vendor payment API attempt.');
+      }
+
+      const verifyResponse = await fetch(`http://127.0.0.1:8000/api/vendor/bookings/${id}`, {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!verifyResponse.ok) {
+        throw new Error(`Unable to verify E2E booking #${id} before payment submission attempt.`);
+      }
+
+      const bookingRecord = await verifyResponse.json();
+      const details = String(bookingRecord.product_details || '').toLowerCase();
+
+      if (!details.includes(String(markerText).toLowerCase())) {
+        throw new Error(`Refusing API payment attempt for booking #${id} because it is not E2E-marked.`);
+      }
+
+      const bytes = Uint8Array.from(atob(b64), (char) => char.charCodeAt(0));
+      const blob = new Blob([bytes], { type: 'image/png' });
+      const formData = new FormData();
+      formData.append('payment_proof', blob, fileName);
+
+      const response = await fetch(`http://127.0.0.1:8000/api/vendor/bookings/${id}/submit-payment`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      return {
+        ok: response.ok,
+        status: response.status,
+        body: await response.text(),
+      };
+    },
+    bookingId,
+    marker,
+    fileBase64,
+    'payment-proof.png',
+  );
+}
+
+export async function assertVendorPaymentActionUnavailable(
+  driver,
+  marker,
+  {
+    bookingId,
+    baseUrl,
+    expectedPaymentStatus = 'Unpaid',
+    forbiddenPaymentStatus = VENDOR_PENDING_VERIFICATION_STATUS,
+  } = {},
+) {
+  const bookingMatch = await findVendorBookingByMarker(driver, marker, { bookingId });
+  const resolvedBookingId = bookingMatch.bookingId;
+
+  assert.ok(
+    bookingMatch.text.includes(marker.toLowerCase()),
+    `Refusing to verify payment guard for booking #${resolvedBookingId} because My Bookings does not contain the E2E marker.`,
+  );
+
+  if (baseUrl) {
+    await goToVendorPaymentRecords(driver, baseUrl);
+  }
+
+  const recordMatch = await findVendorPaymentRecordByBookingId(driver, resolvedBookingId, {
+    baseUrl,
+    timeoutMs: 45000,
+  });
+
+  const paymentStatusAttr = (await recordMatch.row.getAttribute('data-payment-status')) || 'Unpaid';
+
+  assert.equal(
+    paymentStatusAttr,
+    expectedPaymentStatus,
+    `Booking #${resolvedBookingId} payment status should remain "${expectedPaymentStatus}".`,
+  );
+  assert.notEqual(
+    paymentStatusAttr,
+    forbiddenPaymentStatus,
+    `Booking #${resolvedBookingId} must not reach "${forbiddenPaymentStatus}" from a blocked payment action.`,
+  );
+
+  const submitButtons = await recordMatch.row.findElements(By.css('[data-testid="payment-action-button"]'));
+  let submitVisible = false;
+
+  for (const button of submitButtons) {
+    if (await isElementVisible(button)) {
+      submitVisible = true;
+      break;
+    }
+  }
+
+  assert.equal(
+    submitVisible,
+    false,
+    `Submit Payment must not be available for booking #${resolvedBookingId}.`,
+  );
+
+  const apiResult = await attemptVendorPaymentViaApi(driver, resolvedBookingId, marker);
+  assert.equal(
+    apiResult.ok,
+    false,
+    `Backend must reject payment submission for booking #${resolvedBookingId}. Response: ${apiResult.body?.slice(0, 240)}`,
+  );
+  assert.ok(
+    apiResult.status === 422 || apiResult.status === 403,
+    `Expected HTTP 422/403 for blocked payment submission on booking #${resolvedBookingId}, got ${apiResult.status}.`,
+  );
+
+  const afterAttempt = await findVendorPaymentRecordByBookingId(driver, resolvedBookingId, { timeoutMs: 30000 });
+  const afterPaymentAttr = (await afterAttempt.row.getAttribute('data-payment-status')) || 'Unpaid';
+
+  assert.equal(
+    afterPaymentAttr,
+    expectedPaymentStatus,
+    `Payment status for booking #${resolvedBookingId} must remain "${expectedPaymentStatus}" after blocked submission.`,
+  );
+  assert.notEqual(
+    afterPaymentAttr,
+    forbiddenPaymentStatus,
+    `Payment proof upload must not move booking #${resolvedBookingId} to "${forbiddenPaymentStatus}".`,
+  );
+
+  return {
+    bookingId: resolvedBookingId,
+    paymentStatus: afterPaymentAttr,
+  };
 }

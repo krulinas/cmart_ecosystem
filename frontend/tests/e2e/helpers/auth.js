@@ -40,6 +40,22 @@ export async function loginAsVendor(driver) {
 
   await driver.get(`${env.baseUrl}/login`);
 
+  let loginFormVisible = false;
+  try {
+    await waitForTestId(driver, 'login-email', 5000);
+    loginFormVisible = true;
+  } catch {
+    const currentUrl = await driver.getCurrentUrl();
+    if (currentUrl.includes('/dashboard')) {
+      await waitForTestId(driver, 'vendor-dashboard-root', 20000);
+      return;
+    }
+  }
+
+  if (!loginFormVisible) {
+    await waitForTestId(driver, 'login-email', 30000);
+  }
+
   await fillLoginField(driver, 'login-email', email);
   await fillLoginField(driver, 'login-password', password);
   await submitLoginForm(driver);

@@ -177,3 +177,169 @@ export async function verifyPaymentAsPaid(driver, marker, { bookingId, baseUrl =
 
   return { bookingId, paymentStatus };
 }
+
+export async function attemptVerifyPaymentViaApi(driver, bookingId, marker) {
+  return driver.executeScript(
+    async (id, markerText) => {
+      const token = localStorage.getItem('carboot_cmart_token');
+      if (!token) {
+        throw new Error('No auth token available for payment verification API attempt.');
+      }
+
+      const verifyResponse = await fetch(`http://127.0.0.1:8000/api/bookings/${id}`, {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!verifyResponse.ok) {
+        throw new Error(`Unable to verify E2E booking #${id} before payment verification attempt.`);
+      }
+
+      const booking = await verifyResponse.json();
+      const bookingRecord = booking.booking ?? booking;
+      const details = String(bookingRecord.product_details || '').toLowerCase();
+
+      if (!details.includes(String(markerText).toLowerCase())) {
+        throw new Error(`Refusing API payment verification attempt for booking #${id} because it is not E2E-marked.`);
+      }
+
+      const response = await fetch(`http://127.0.0.1:8000/api/bookings/${id}/verify-payment`, {
+        method: 'PATCH',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      return {
+        ok: response.ok,
+        status: response.status,
+        body: await response.text(),
+      };
+    },
+    bookingId,
+    marker,
+  );
+}
+
+export async function assertCannotVerifyPaymentUnlessPending(
+  driver,
+  marker,
+  { bookingId, baseUrl = env.baseUrl, expectedStatus = 'Unpaid' } = {},
+) {
+  assert.ok(bookingId != null, 'assertCannotVerifyPaymentUnlessPending requires a verified booking ID.');
+
+  await goToManagementPaymentRecords(driver, baseUrl);
+  await searchManagementPaymentRecord(driver, marker);
+
+  const row = await getStaffBookingRowById(driver, bookingId);
+  const rowText = (await row.getText()).toLowerCase();
+  assertRowContainsMarker(rowText, marker, bookingId);
+
+  const currentStatus = await readManagementPaymentStatus(driver, bookingId);
+  assert.equal(
+    currentStatus,
+    expectedStatus,
+    `Booking #${bookingId} must remain "${expectedStatus}" before an invalid Verify Paid attempt.`,
+  );
+  assert.notEqual(currentStatus, MANAGEMENT_PAID_STATUS);
+
+  const verifyButtons = await row.findElements(By.css('[data-testid="verify-payment-button"]'));
+  let verifyVisible = false;
+
+  for (const button of verifyButtons) {
+    if (await button.isDisplayed()) {
+      verifyVisible = true;
+      break;
+    }
+  }
+
+  assert.equal(
+    verifyVisible,
+    false,
+    `Verify Paid must not be available unless payment status is Pending Verification for booking #${bookingId}.`,
+  );
+
+  const apiResult = await attemptVerifyPaymentViaApi(driver, bookingId, marker);
+  assert.equal(
+    apiResult.ok,
+    false,
+    `Backend must reject Verify Paid for booking #${bookingId} when status is "${expectedStatus}". Response: ${apiResult.body?.slice(0, 240)}`,
+  );
+  assert.equal(
+    apiResult.status,
+    422,
+    `Expected HTTP 422 for invalid Verify Paid on booking #${bookingId}, got ${apiResult.status}.`,
+  );
+
+  const afterStatus = await readManagementPaymentStatus(driver, bookingId);
+  assert.equal(
+    afterStatus,
+    expectedStatus,
+    `Booking #${bookingId} must remain "${expectedStatus}" after blocked Verify Paid attempt.`,
+  );
+  assert.notEqual(afterStatus, MANAGEMENT_PAID_STATUS);
+
+  return { bookingId, paymentStatus: afterStatus };
+}
+
+export async function assertCannotVerifyPaidTwice(
+  driver,
+  marker,
+  { bookingId, baseUrl = env.baseUrl } = {},
+) {
+  assert.ok(bookingId != null, 'assertCannotVerifyPaidTwice requires a verified booking ID.');
+
+  await goToManagementPaymentRecords(driver, baseUrl);
+  await searchManagementPaymentRecord(driver, marker);
+
+  const row = await getStaffBookingRowById(driver, bookingId);
+  const rowText = (await row.getText()).toLowerCase();
+  assertRowContainsMarker(rowText, marker, bookingId);
+
+  const currentStatus = await readManagementPaymentStatus(driver, bookingId);
+  assert.equal(
+    currentStatus,
+    MANAGEMENT_PAID_STATUS,
+    `Booking #${bookingId} must already be Paid before duplicate Verify Paid guard test.`,
+  );
+
+  const verifyButtons = await row.findElements(By.css('[data-testid="verify-payment-button"]'));
+  let verifyVisible = false;
+
+  for (const button of verifyButtons) {
+    if (await button.isDisplayed()) {
+      verifyVisible = true;
+      break;
+    }
+  }
+
+  assert.equal(
+    verifyVisible,
+    false,
+    `Verify Paid must not remain available after booking #${bookingId} is already Paid.`,
+  );
+
+  const apiResult = await attemptVerifyPaymentViaApi(driver, bookingId, marker);
+  assert.equal(
+    apiResult.ok,
+    false,
+    `Backend must reject duplicate Verify Paid for booking #${bookingId}. Response: ${apiResult.body?.slice(0, 240)}`,
+  );
+  assert.equal(
+    apiResult.status,
+    422,
+    `Expected HTTP 422 for duplicate Verify Paid on booking #${bookingId}, got ${apiResult.status}.`,
+  );
+
+  const afterStatus = await readManagementPaymentStatus(driver, bookingId);
+  assert.equal(
+    afterStatus,
+    MANAGEMENT_PAID_STATUS,
+    `Booking #${bookingId} must remain Paid after blocked duplicate verification.`,
+  );
+
+  return { bookingId, paymentStatus: afterStatus };
+}

@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { By } from 'selenium-webdriver';
 import { env } from '../config/env.js';
+import { ensureE2EBookingExists } from './booking.js';
 import { fillInputValue } from './booking.js';
 import { waitForTestId, waitForTestIdHidden } from './wait.js';
 
@@ -349,4 +350,13 @@ export async function assertVendorBookingWithdrawn(driver, marker, { bookingId, 
   }
 
   return vendorView;
+}
+
+export async function createWithdrawnE2EBooking(driver, marker, { reason = 'E2E automated withdrawal for payment guard test' } = {}) {
+  const ensured = await ensureE2EBookingExists(driver, marker, { allowReuse: false });
+  marker = ensured.marker;
+  await goToMyBookings(driver, env.baseUrl);
+  const withdrawn = await withdrawVendorBooking(driver, marker, reason);
+
+  return { marker, bookingId: withdrawn.bookingId };
 }

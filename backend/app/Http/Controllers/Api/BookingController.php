@@ -721,6 +721,13 @@ class BookingController extends Controller
             return $denied;
         }
 
+        if (in_array($booking->approval_status, ['Withdrawn', 'Rejected', 'Cancelled'], true)) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Payment cannot be submitted for withdrawn, rejected, or cancelled bookings.',
+                'current_status' => $booking->approval_status,
+            ], 422);
+        }
+
         if ($booking->approval_status !== 'Approved') {
             return response()->json([
                 'message' => '422 Unprocessable Entity: Payment can only be submitted for approved bookings.',
@@ -776,6 +783,13 @@ class BookingController extends Controller
             return response()->json([
                 'message' => '422 Unprocessable Entity: Payment can only be verified for approved bookings.',
                 'current_status' => $booking->approval_status,
+            ], 422);
+        }
+
+        if ($invoice->payment_status === 'Paid') {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: This payment has already been verified as paid.',
+                'current_payment_status' => $invoice->payment_status,
             ], 422);
         }
 
