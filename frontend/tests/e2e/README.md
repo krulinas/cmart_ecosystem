@@ -63,6 +63,39 @@ npm run test:e2e:headless
 | `vendor.payment-submit.spec.js` | Phase 5B: vendor submits payment proof and sees Pending Verification |
 | `vendor.receipt-pass-after-paid.spec.js` | Phase 5C: vendor sees Paid receipt/pass after staff verifies payment |
 | `vendor.payment-verification-pass-unlock.spec.js` | Test 6: full payment verification gate — receipt/pass locked until Verify Paid |
+| `access.staff-action-guard.spec.js` | Test 7A: staff can use staff-safe booking actions but cannot access manager-only/destructive controls or APIs |
+
+## Test 7A: Staff vs manager action guard
+
+`access.staff-action-guard.spec.js` verifies that a **staff** user can access the management workspace and staff-safe booking workflow actions, but cannot use manager-only destructive controls or privileged APIs.
+
+### What it checks
+
+| Area | Staff expectation |
+|------|-------------------|
+| Management login | Staff reaches `/admin` and bookings panel loads |
+| E2E booking visibility | Unique marker is searchable in staff bookings |
+| Staff-safe actions | **Forward** and **Revision** are visible for `Pending_Staff` bookings |
+| Manager-only UI | **Approve** and **Delete** controls are not visible |
+| DELETE API | `DELETE /api/bookings/{id}` returns **403 Forbidden** |
+| Booking persistence | Booking still exists after denied DELETE |
+| Manager-only APIs | `GET /api/boss/analytics/revenue` and `GET /api/boss/audit-logs` return **403** |
+
+### Marker
+
+Uses `E2E-T7A-STAFF-GUARD-{timestamp}` via `e2eT7AStaffGuardMarker()`.
+
+### Run focused
+
+```bash
+node node_modules/mocha/bin/mocha.js tests/e2e/specs/access.staff-action-guard.spec.js --timeout 180000 --file tests/e2e/setup.js
+```
+
+### Troubleshooting
+
+- Requires a fresh `Pending_Staff` booking (`allowReuse: false`).
+- Staff credentials: `E2E_STAFF_EMAIL` / `E2E_STAFF_PASSWORD` in `tests/e2e/.env.e2e`.
+- Manager success flows are covered separately in Test 7B (not this spec).
 
 ## Phase 5C: Vendor receipt/pass after verified paid payment
 

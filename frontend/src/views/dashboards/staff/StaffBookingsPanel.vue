@@ -304,6 +304,8 @@
                 <td v-if="canDeleteBookings" class="px-4 py-3.5 text-right">
                   <button
                     class="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                    data-testid="staff-booking-action-delete"
+                    :data-booking-id="b.id"
                     @click="deleteBooking(b.id)"
                   >
                     Delete

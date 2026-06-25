@@ -43,3 +43,7 @@ export function e2eT6CNotPendingMarker() {
 export function e2eT6DDoubleVerifyMarker() {
   return `E2E-T6D-DOUBLE-VERIFY-${Date.now()}`;
 }
+
+export function e2eT7AStaffGuardMarker() {
+  return `E2E-T7A-STAFF-GUARD-${Date.now()}`;
+}
