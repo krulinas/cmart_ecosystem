@@ -59,3 +59,7 @@ export function e2eT7BManagerRejectMarker() {
 export function e2eT7CVendorBOwnershipMarker() {
   return `E2E-T7C-VENDOR-B-OWNERSHIP-${Date.now()}`;
 }
+
+export function e2eT7DGuestProtectionMarker() {
+  return `E2E-T7D-GUEST-PROTECTION-${Date.now()}`;
+}

@@ -144,6 +144,39 @@ npm run test:e2e:headless -- auth.login.spec.js access.staff-action-guard.spec.j
 | `access.staff-action-guard.spec.js` | Test 7A: staff can use staff-safe booking actions but cannot access manager-only/destructive controls or APIs |
 | `access.manager-confirmation.spec.js` | Test 7B: managers can access manager-only booking actions and API routes, including approve/reject |
 | `access.vendor-ownership-guard.spec.js` | Test 7C: vendor data ownership isolation — Vendor A cannot access Vendor B booking, receipt, pass, or payment resources |
+| `access.guest-protection.spec.js` | Test 7D: guest/unauthenticated protection — protected dashboards, APIs, and resources require login |
+
+## Test 7D: Guest / unauthenticated protection
+
+`access.guest-protection.spec.js` verifies unauthenticated users cannot access protected dashboards, booking resources, payment/receipt/pass endpoints, or management APIs.
+
+### What it checks
+
+| Area | Guest expectation |
+|------|-------------------|
+| Frontend routes | `/dashboard`, `/profile`, `/vendor-booking`, `/admin`, `/admin#bookings`, `/staff/verify-booking/{id}` redirect to login or show login form |
+| Protected UI | Vendor dashboard, staff dashboard, and bookings panel roots are not visible |
+| Vendor booking APIs | `GET /vendor/bookings`, `/vendor/history-receipts`, `/vendor/event-passes`, `/vendor/analytics/me` denied |
+| Staff booking APIs | `GET /staff/bookings`, `/bookings`, `/invoices` denied |
+| Resource-by-ID | `GET /vendor/bookings/{id}`, `/vendor/event-passes/{id}`, `/bookings/{id}`, `/bookings/{id}/pdf` denied |
+| Payment proof | `POST /vendor/bookings/{id}/submit-payment` denied |
+| Management APIs | `GET /boss/analytics/revenue`, `/boss/audit-logs`, `DELETE /bookings/{id}` denied |
+| Booking integrity | E2E booking still exists for vendor after guest denied DELETE |
+
+### Session setup
+
+Each check runs after full session cleanup (cookies, localStorage, sessionStorage). No auth token is present.
+
+### Expected denial behavior
+
+- **Frontend:** redirect to `/login` (with optional `redirect` query) or visible login form; protected dashboard roots hidden.
+- **API:** **401 Unauthorized** (Sanctum default for unauthenticated requests). **403** or **404** also accepted for resource-specific probes.
+
+### Run focused
+
+```bash
+npm run test:e2e:headless -- access.guest-protection.spec.js
+```
 
 ## Test 7C: Vendor data ownership guard
 
