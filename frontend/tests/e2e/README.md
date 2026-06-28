@@ -145,6 +145,37 @@ npm run test:e2e:headless -- auth.login.spec.js access.staff-action-guard.spec.j
 | `access.manager-confirmation.spec.js` | Test 7B: managers can access manager-only booking actions and API routes, including approve/reject |
 | `access.vendor-ownership-guard.spec.js` | Test 7C: vendor data ownership isolation — Vendor A cannot access Vendor B booking, receipt, pass, or payment resources |
 | `access.guest-protection.spec.js` | Test 7D: guest/unauthenticated protection — protected dashboards, APIs, and resources require login |
+| `access.destructive-action-protection.spec.js` | Test 7E: destructive/state-changing action protection — wrong roles, guests, wrong owners, terminal statuses, duplicate payment |
+
+## Test 7E: Destructive action protection
+
+`access.destructive-action-protection.spec.js` verifies destructive and state-changing actions are protected against wrong roles, guests, wrong owners, terminal statuses, and duplicate payment attempts.
+
+### What it checks
+
+| Flow | Guard |
+|------|-------|
+| 7E-A Staff delete | `DELETE /api/bookings/{id}` returns **403**; Delete UI absent; booking persists |
+| 7E-B Guest delete | `DELETE /api/bookings/{id}` denied (**401** preferred; **403/404** accepted); booking unchanged |
+| 7E-C Wrong vendor | Vendor A `PATCH /bookings/{id}/withdraw`, `POST /vendor/bookings/{id}/submit-payment`, `PATCH /vendor/bookings/{id}` denied (**403/404**); Vendor B snapshot unchanged |
+| 7E-D Terminal withdraw | Owning vendor cannot `PATCH /bookings/{id}/withdraw` when **Approved**, **Rejected**, **Withdrawn**, or **Paid** — **422**; status/timestamps unchanged |
+| 7E-E Duplicate payment | Owning vendor cannot re-submit proof when invoice is **Paid** — **422**; payment status unchanged |
+| 7E-F Duplicate approve | Manager cannot `PATCH /bookings/{id}` to **Approved** when already **Approved** — **422**; status unchanged |
+
+### Markers
+
+- `E2E-T7E-STAFF-DELETE-GUARD-{timestamp}`
+- `E2E-T7E-GUEST-DELETE-GUARD-{timestamp}`
+- `E2E-T7E-VENDOR-OTHER-MUTATION-{timestamp}`
+- `E2E-T7E-TERMINAL-WITHDRAW-{state}-{timestamp}`
+- `E2E-T7E-DUPLICATE-PAYMENT-{timestamp}`
+- `E2E-T7E-DUPLICATE-APPROVE-{timestamp}`
+
+### Run focused
+
+```bash
+npm run test:e2e:headless -- access.destructive-action-protection.spec.js
+```
 
 ## Test 7D: Guest / unauthenticated protection
 

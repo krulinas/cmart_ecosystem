@@ -63,3 +63,27 @@ export function e2eT7CVendorBOwnershipMarker() {
 export function e2eT7DGuestProtectionMarker() {
   return `E2E-T7D-GUEST-PROTECTION-${Date.now()}`;
 }
+
+export function e2eT7EStaffDeleteMarker() {
+  return `E2E-T7E-STAFF-DELETE-GUARD-${Date.now()}`;
+}
+
+export function e2eT7EGuestDeleteMarker() {
+  return `E2E-T7E-GUEST-DELETE-GUARD-${Date.now()}`;
+}
+
+export function e2eT7EVendorOtherMutationMarker() {
+  return `E2E-T7E-VENDOR-OTHER-MUTATION-${Date.now()}`;
+}
+
+export function e2eT7ETerminalWithdrawMarker(stateLabel) {
+  return `E2E-T7E-TERMINAL-WITHDRAW-${stateLabel}-${Date.now()}`;
+}
+
+export function e2eT7EDuplicatePaymentMarker() {
+  return `E2E-T7E-DUPLICATE-PAYMENT-${Date.now()}`;
+}
+
+export function e2eT7EDuplicateApproveMarker() {
+  return `E2E-T7E-DUPLICATE-APPROVE-${Date.now()}`;
+}
