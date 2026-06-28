@@ -146,6 +146,7 @@ npm run test:e2e:headless -- auth.login.spec.js access.staff-action-guard.spec.j
 | `access.vendor-ownership-guard.spec.js` | Test 7C: vendor data ownership isolation — Vendor A cannot access Vendor B booking, receipt, pass, or payment resources |
 | `access.guest-protection.spec.js` | Test 7D: guest/unauthenticated protection — protected dashboards, APIs, and resources require login |
 | `access.destructive-action-protection.spec.js` | Test 7E: destructive/state-changing action protection — wrong roles, guests, wrong owners, terminal statuses, duplicate payment |
+| `public.public-route-safety.spec.js` | Test 8A: public route safety — guests can access intended public pages without over-locking after Test 7 |
 
 ## Test 7 — Access Control & Role Security Suite (wrap-up)
 
@@ -159,6 +160,60 @@ npm run test:e2e:headless -- auth.login.spec.js access.staff-action-guard.spec.j
 - Verification commands
 
 Per-spec detail, markers, and troubleshooting for 7A–7E remain in the sections below.
+
+## Test 8A — Public Route Safety & No Over-Locking
+
+`public.public-route-safety.spec.js` verifies that **intended public pages remain accessible to guests** after Test 7 access-control hardening. It complements Test 7:
+
+- **Test 7** — unauthorized users are blocked from protected dashboards, APIs, and destructive actions.
+- **Test 8A** — guests are **not** accidentally blocked from legitimate public browsing.
+
+### Covered public routes
+
+| Route | What guests should see |
+|-------|------------------------|
+| `/` | Landing page (`public-landing-root`), hero, upcoming events section |
+| `/calendar` | Public event calendar (`public-calendar-root`) |
+| `/#news` | News section on landing (`public-news-root`) — no dedicated `/news` route |
+| `/marketplace` | Carboot Reuse Preview (`marketplace-preview-root`), preview-only notice |
+
+There is **no standalone public news URL**; news is embedded on the landing page at `/#news`.
+
+### What it checks
+
+| Flow | Guest expectation |
+|------|-------------------|
+| 8A-1 Landing | No redirect to `/login`; `Carboot@CMart` visible; public APIs `GET /events`, `/news`, `/marketplace/items` return **200** |
+| 8A-2 Calendar | `/calendar` loads; `CMart Carboot Schedule` visible |
+| 8A-3 News | `/#news` loads; `News & Updates` visible; `GET /news` returns **200** |
+| 8A-4 Marketplace preview | `/marketplace` loads; preview-only wording visible; no checkout |
+| 8A-5 Public details | Opens event/news/item detail modals when seeded cards exist; **skipped** if no cards (empty DB) |
+| 8A-6 Control check | `/dashboard` and `/admin` still redirect guests to login (reuses Test 7D helpers) |
+
+### What it proves
+
+- Security hardening did not over-lock public marketing/browse routes.
+- Public list APIs remain unauthenticated where intended.
+- Protected dashboards stay protected (lightweight regression against Test 7D).
+
+### What it does not overclaim
+
+- Does not test every public route (`/community`, `/register` are out of scope for this spec).
+- 8A-5 detail modals require seeded events/news/marketplace items; otherwise the case is **skipped**, not failed.
+- Does not prove SEO, performance, or full content correctness — only access and basic visible content.
+
+### Run focused
+
+```bash
+npm run test:e2e:headless -- public.public-route-safety.spec.js
+```
+
+### Environment notes
+
+- Use `npm run dev:e2e` (port **5175**) and `php artisan serve`.
+- Preflight skips the bookable-events requirement for this spec (unlike booking specs).
+- Standard `.env.e2e` credentials are still validated by preflight.
+- For full 8A-5 coverage, seed upcoming events, news posts, and marketplace items.
 
 ## Test 7E: Destructive action protection
 

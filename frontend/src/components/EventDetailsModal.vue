@@ -13,6 +13,7 @@
         class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
         role="dialog"
         aria-modal="true"
+        data-testid="public-detail-modal"
         :aria-labelledby="titleId"
         @keydown.esc="close"
       >

@@ -69,13 +69,17 @@ const LOGIN_ONLY_SPECS = new Set([
   'auth.manager-login.spec.js',
 ]);
 
+const PUBLIC_ROUTE_SPECS = new Set([
+  'public.public-route-safety.spec.js',
+]);
+
 export function requiresBookingData(specFiles = []) {
   if (process.env.E2E_REQUIRES_BOOKING_DATA === 'true') return true;
   if (process.env.E2E_REQUIRES_BOOKING_DATA === 'false') return false;
   if (!specFiles.length) return true;
   return specFiles.some((spec) => {
     const basename = spec.split(/[/\\]/).pop();
-    return !LOGIN_ONLY_SPECS.has(basename);
+    return !LOGIN_ONLY_SPECS.has(basename) && !PUBLIC_ROUTE_SPECS.has(basename);
   });
 }
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gray-50" data-testid="marketplace-preview-root">
     <AppNavbar :variant="auth.isCommunityMember ? 'vendor' : 'public'" />
 
     <header class="bg-gradient-to-br from-brand-700 via-brand-600 to-brand-500 pt-16 pb-20 px-6 relative overflow-hidden">
@@ -22,6 +22,7 @@
         class="rounded-2xl border border-amber-400 bg-[#FFFBEB] px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm"
         role="note"
         aria-label="Before you visit notice"
+        data-testid="marketplace-preview-notice"
       >
         <div class="flex gap-3 sm:items-start">
           <div class="shrink-0 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-[#FDE68A] text-[#B45309]">
@@ -141,6 +142,7 @@
           <article
             v-for="item in items"
             :key="item.id"
+            data-testid="public-item-card"
             class="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col"
           >
             <div

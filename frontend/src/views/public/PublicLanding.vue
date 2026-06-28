@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-white">
+  <div class="min-h-screen bg-white" data-testid="public-landing-root">
     <AppNavbar variant="public" />
 
     <!-- Hero -->
@@ -45,7 +45,7 @@
 
     <main>
       <!-- Upcoming Events -->
-      <section id="events" ref="eventsSectionRef" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6 bg-gray-50">
+      <section id="events" ref="eventsSectionRef" data-testid="public-events-root" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6 bg-gray-50">
         <div class="max-w-7xl mx-auto">
           <div class="mb-10 max-w-3xl" :class="eventsHeaderClass('fade')">
             <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">What's On</span>
@@ -66,6 +66,7 @@
             <article
               v-for="(event, index) in upcomingEvents"
               :key="event.id"
+              data-testid="public-event-card"
               tabindex="0"
               role="button"
               :aria-label="`View details for ${event.title}`"
@@ -213,7 +214,7 @@
       </section>
 
       <!-- News & Updates -->
-      <section id="news" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6 bg-gray-50">
+      <section id="news" data-testid="public-news-root" class="scroll-mt-24 py-16 sm:py-20 px-4 sm:px-6 bg-gray-50">
         <div class="max-w-7xl mx-auto">
           <div class="mb-10">
             <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">Stay Informed</span>
@@ -240,6 +241,7 @@
             <article
               v-for="post in newsPosts.slice(0, 6)"
               :key="post.id"
+              data-testid="public-news-card"
               tabindex="0"
               role="button"
               :aria-label="`View news: ${post.title}`"
