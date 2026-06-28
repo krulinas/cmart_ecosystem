@@ -147,6 +147,19 @@ npm run test:e2e:headless -- auth.login.spec.js access.staff-action-guard.spec.j
 | `access.guest-protection.spec.js` | Test 7D: guest/unauthenticated protection — protected dashboards, APIs, and resources require login |
 | `access.destructive-action-protection.spec.js` | Test 7E: destructive/state-changing action protection — wrong roles, guests, wrong owners, terminal statuses, duplicate payment |
 
+## Test 7 — Access Control & Role Security Suite (wrap-up)
+
+**[TEST-7-ACCESS-CONTROL.md](./TEST-7-ACCESS-CONTROL.md)** is the final milestone document for Test 7. It includes:
+
+- Final verified status (28/28 E2E, login smokes, build, backend tests)
+- Coverage summary table (7A–7E)
+- Access control security matrix and role-vs-action table
+- What the suite proves and what it does **not** overclaim
+- Environment notes (port 5175, Vendor B in `.env.e2e`, event seeding)
+- Verification commands
+
+Per-spec detail, markers, and troubleshooting for 7A–7E remain in the sections below.
+
 ## Test 7E: Destructive action protection
 
 `access.destructive-action-protection.spec.js` verifies destructive and state-changing actions are protected against wrong roles, guests, wrong owners, terminal statuses, and duplicate payment attempts.
