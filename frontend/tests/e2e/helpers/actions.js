@@ -47,3 +47,11 @@ export function e2eT6DDoubleVerifyMarker() {
 export function e2eT7AStaffGuardMarker() {
   return `E2E-T7A-STAFF-GUARD-${Date.now()}`;
 }
+
+export function e2eT7BManagerApproveMarker() {
+  return `E2E-T7B-MANAGER-APPROVE-${Date.now()}`;
+}
+
+export function e2eT7BManagerRejectMarker() {
+  return `E2E-T7B-MANAGER-REJECT-${Date.now()}`;
+}

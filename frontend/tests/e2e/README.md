@@ -4,10 +4,84 @@ Phase 1 smoke tests for the CMart frontend using Selenium WebDriver, Mocha, and 
 
 ## Prerequisites
 
-1. **Backend running** — Laravel API at `http://127.0.0.1:8000` (or your local API URL).
-2. **Frontend running** — Vite dev server at `http://localhost:5173`.
-3. **Test user in database** — A community/vendor account must exist locally (e.g. after `php artisan db:seed`).
-4. **Google Chrome** — Installed on your machine. Selenium 4 downloads a matching ChromeDriver automatically.
+1. **MySQL running** — XAMPP MySQL (or equivalent) on `127.0.0.1:3306`. E2E login fails with HTTP 500 when the database is down.
+2. **Backend running** — Laravel API at `http://127.0.0.1:8000` (or your local API URL).
+3. **Frontend running** — E2E Vite dev server at `http://localhost:5175` (`npm run dev:e2e`). Do not use the default `npm run dev` port (5173) unless you update `E2E_BASE_URL`.
+4. **Test users seeded** — Run `cd backend && php artisan migrate --seed` so vendor/staff/manager accounts exist.
+5. **Upcoming bookable event** — Booking specs need at least one carboot event with `ends_at` in the future and status not `Closed`. The seeder creates events at +7, +14, and +21 days; re-run `php artisan db:seed` if dates go stale.
+6. **Google Chrome** — Installed on your machine. Selenium 4 downloads a matching ChromeDriver automatically.
+
+## E2E port and preflight
+
+The suite expects **`E2E_BASE_URL=http://localhost:5175`** in `tests/e2e/.env.e2e`.
+
+Start the dedicated E2E frontend server (do not rely on a random Vite port):
+
+```bash
+# Terminal 1 — backend
+cd backend && php artisan serve
+
+# Terminal 2 — E2E frontend on the expected port
+cd frontend && npm run dev:e2e
+```
+
+Before any spec runs, the suite performs a **preflight check** that:
+
+- validates required `.env.e2e` credentials and that `E2E_BASE_URL` uses port **5175**
+- confirms the frontend login page is reachable at `E2E_BASE_URL`
+- confirms the backend API is reachable at `E2E_API_BASE_URL` (default `http://127.0.0.1:8000/api`)
+- POSTs to `/api/auth/login` with the configured vendor credentials and fails fast when the backend returns HTTP 500 (database down) or 401/422 (wrong credentials)
+- when booking specs are included, GETs `/api/events` and fails fast if no upcoming bookable carboot events exist
+
+Login-only smoke specs (`auth.login.spec.js`, `auth.staff-login.spec.js`, `auth.manager-login.spec.js`) skip the bookable-event check. Full-suite and booking specs require upcoming events.
+
+If preflight fails, the run stops immediately with a clear message instead of failing every login spec.
+
+### Seeding for E2E booking specs
+
+From the `backend` folder:
+
+```bash
+php artisan migrate
+php artisan db:seed
+```
+
+The seeder uses **relative future dates** for carboot events (+7, +14, +21 days) and keeps rentable spaces available. Re-seed periodically if your local database events have passed.
+
+Always start the E2E frontend on port **5175**:
+
+```bash
+cd frontend && npm run dev:e2e
+```
+
+Do not use `npm run dev` (port 5173) unless you also update `E2E_BASE_URL` in `tests/e2e/.env.e2e`.
+
+### Troubleshooting: manager approve timeout
+
+| Symptom | Fix |
+|---------|-----|
+| Approve test hits **300s** timeout in full suite | Ensure `npm run dev:e2e` (5175) and Laravel are running; the suite uses **eager** page-load strategy and 60s page-load timeout to avoid Selenium's default ~300s hang |
+| Approve click but status stays **Awaiting Manager** | Re-run `php artisan db:seed`; check artifacts under `tests/e2e/artifacts/approve-*` for row/API status |
+| Preflight: `no upcoming bookable carboot events found` | `cd backend && php artisan db:seed` |
+
+### Troubleshooting: “No available event”
+
+| Symptom | Fix |
+|---------|-----|
+| Preflight: `no upcoming bookable carboot events found` | `cd backend && php artisan db:seed` |
+| Booking spec: `No available event found for E2E booking test` | Same — events in DB are past or `Closed`; re-seed or create an upcoming event in staff dashboard |
+| Login specs pass but booking specs fail | Confirm `GET http://127.0.0.1:8000/api/events` returns at least one event with future `ends_at` |
+
+### Session stability
+
+Between specs, the global setup clears cookies, `localStorage`, and `sessionStorage` to prevent vendor/staff/manager token bleed.
+
+Login helpers:
+
+- always open a clean `/login` page before authenticating
+- wait for the role-specific dashboard root test id
+- retry once on transient failure
+- save diagnostics under `tests/e2e/artifacts/` (screenshot + JSON) when login still fails
 
 ## Setup
 
@@ -26,7 +100,8 @@ cp tests/e2e/.env.e2e.example tests/e2e/.env.e2e
 Edit `tests/e2e/.env.e2e`:
 
 ```env
-E2E_BASE_URL=http://localhost:5173
+E2E_BASE_URL=http://localhost:5175
+E2E_API_BASE_URL=http://127.0.0.1:8000/api
 E2E_VENDOR_EMAIL=vendor@cmart.com
 E2E_VENDOR_PASSWORD=your-local-password
 ```
@@ -44,8 +119,9 @@ npm run test:e2e
 # Explicit headed mode
 npm run test:e2e:headed
 
-# Headless Chrome
-npm run test:e2e:headless
+# Focused spec (single or multiple)
+npm run test:e2e:headless -- auth.login.spec.js
+npm run test:e2e:headless -- auth.login.spec.js access.staff-action-guard.spec.js
 ```
 
 ## Current tests
@@ -53,6 +129,8 @@ npm run test:e2e:headless
 | Spec | What it checks |
 |------|----------------|
 | `auth.login.spec.js` | Vendor/community user logs in and reaches `/dashboard` |
+| `auth.staff-login.spec.js` | Staff user logs in and reaches `/admin` |
+| `auth.manager-login.spec.js` | Manager user logs in and reaches `/admin` |
 | `vendor.booking.spec.js` | Vendor logs in, submits a booking for an available event, and verifies it in My Bookings |
 | `staff.booking-review.spec.js` | Staff safely reviews an E2E-marked booking only |
 | `staff.booking-forward.spec.js` | Staff forwards an E2E-marked booking to the manager queue |
@@ -64,6 +142,32 @@ npm run test:e2e:headless
 | `vendor.receipt-pass-after-paid.spec.js` | Phase 5C: vendor sees Paid receipt/pass after staff verifies payment |
 | `vendor.payment-verification-pass-unlock.spec.js` | Test 6: full payment verification gate — receipt/pass locked until Verify Paid |
 | `access.staff-action-guard.spec.js` | Test 7A: staff can use staff-safe booking actions but cannot access manager-only/destructive controls or APIs |
+| `access.manager-confirmation.spec.js` | Test 7B: managers can access manager-only booking actions and API routes, including approve/reject |
+
+## Test 7B: Manager access confirmation
+
+`access.manager-confirmation.spec.js` verifies that a **manager** user can access the management workspace, use manager-level booking actions on forwarded bookings, and reach representative manager-only APIs.
+
+### What it checks
+
+| Area | Manager expectation |
+|------|---------------------|
+| Approve flow | `Pending_Staff` → staff forward → manager **Approve** → **Approved** |
+| Reject flow | Separate booking forwarded to manager → **Reject** → **Rejected** |
+| Manager queue UI | **Approve** and **Reject** visible for `Pending_Boss` bookings |
+| Registry UI | **Delete** control visible (not clicked) |
+| Manager-only APIs | `GET /api/boss/analytics/revenue` and `GET /api/boss/audit-logs` return **200** |
+
+### Markers
+
+- `E2E-T7B-MANAGER-APPROVE-{timestamp}`
+- `E2E-T7B-MANAGER-REJECT-{timestamp}`
+
+### Run focused
+
+```bash
+node node_modules/mocha/bin/mocha.js tests/e2e/specs/access.manager-confirmation.spec.js --timeout 300000 --file tests/e2e/setup.js
+```
 
 ## Test 7A: Staff vs manager action guard
 

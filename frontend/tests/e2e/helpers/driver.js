@@ -12,8 +12,16 @@ export async function createDriver() {
   options.addArguments('--window-size=1280,900');
   options.addArguments('--disable-gpu');
   options.addArguments('--no-sandbox');
+  // Do not wait for every asset; full-suite runs otherwise hit the ~300s page-load timeout.
+  options.setPageLoadStrategy('eager');
 
   const driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
+
+  await driver.manage().setTimeouts({
+    pageLoad: 60000,
+    script: 30000,
+    implicit: 0,
+  });
 
   try {
     await driver.sendDevToolsCommand('Page.addScriptToEvaluateOnNewDocument', {

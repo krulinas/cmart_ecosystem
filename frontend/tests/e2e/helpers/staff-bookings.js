@@ -1,6 +1,8 @@
 import { strict as assert } from 'node:assert';
-import { By } from 'selenium-webdriver';
+import { By, until } from 'selenium-webdriver';
+import { env } from '../config/env.js';
 import { fillInputValue } from './booking.js';
+import { captureFailureDiagnostics } from './diagnostics.js';
 import { waitForTestId } from './wait.js';
 
 export const FORWARD_EXPECTATION = {
@@ -25,6 +27,9 @@ export const REJECTED_EXPECTATION = {
 
 const FORWARD_ACTION_TEST_ID = 'staff-booking-action-forward';
 const APPROVE_ACTION_TEST_ID = 'staff-booking-action-approve';
+const REJECT_ACTION_TEST_ID = 'staff-booking-action-reject';
+
+export { APPROVE_ACTION_TEST_ID, REJECT_ACTION_TEST_ID };
 
 export async function waitForStaffBookingRows(driver, timeoutMs = 20000) {
   await driver.wait(
@@ -156,30 +161,38 @@ export async function getStaffBookingRowById(driver, bookingId, { requireActionT
   return rows[0];
 }
 
-export async function readRowStatusById(driver, bookingId) {
+async function readRowStatusFromElement(row) {
+  const statusAttr = await row.getAttribute('data-booking-status');
+  const statusLabel = (await row.findElement(By.css('[data-testid="staff-booking-status"]')).getText()).trim();
+  const section = await row.getAttribute('data-booking-section');
+  return { statusAttr, statusLabel, section };
+}
+
+export async function readAllRowStatusesById(driver, bookingId) {
   const rows = await driver.findElements(
     By.css(`[data-testid="staff-booking-row"][data-booking-id="${bookingId}"]`),
   );
 
-  let fallback = null;
+  const statuses = [];
   for (const row of rows) {
-    const statusAttr = await row.getAttribute('data-booking-status');
-    const statusLabel = (await row.findElement(By.css('[data-testid="staff-booking-status"]')).getText()).trim();
-    const current = { statusAttr, statusLabel };
-    fallback = current;
+    statuses.push(await readRowStatusFromElement(row));
+  }
+  return statuses;
+}
 
-    if (
-      statusAttr === 'Needs_Revision' ||
-      statusAttr === 'Pending_Boss' ||
-      statusAttr === 'Approved' ||
-      statusLabel === 'Needs Revision' ||
-      statusLabel === 'Awaiting Manager'
-    ) {
-      return current;
-    }
+export async function readRowStatusById(driver, bookingId) {
+  const statuses = await readAllRowStatusesById(driver, bookingId);
+  if (!statuses.length) {
+    throw new Error(`No staff booking row found for booking #${bookingId}.`);
   }
 
-  return fallback;
+  const attrPriority = ['Approved', 'Rejected', 'Pending_Boss', 'Needs_Revision', 'Pending_Staff'];
+  for (const attr of attrPriority) {
+    const match = statuses.find((entry) => entry.statusAttr === attr);
+    if (match) return match;
+  }
+
+  return statuses[0];
 }
 
 export async function waitForRowStatus(driver, bookingId, expectation, timeoutMs = 20000) {
@@ -210,16 +223,86 @@ export async function clickStaffQueueAction(driver, bookingId, actionTestId, mar
 
   const actionButton = await row.findElement(By.css(`[data-testid="${actionTestId}"]`));
   await driver.executeScript('arguments[0].scrollIntoView({block: "center"});', actionButton);
-  await actionButton.click();
+  await driver.wait(until.elementIsVisible(actionButton), 10000, `${actionTestId} is not visible.`);
+  await driver.wait(until.elementIsEnabled(actionButton), 10000, `${actionTestId} is not enabled.`);
+  await driver.executeScript('arguments[0].click();', actionButton);
+}
+
+async function waitForBookingActionToast(driver, bookingId, statusLabel, timeoutMs = 20000) {
+  const needle = statusLabel.toLowerCase();
+  return driver.wait(
+    async () => {
+      const toasts = await driver.findElements(By.css('.Vue-Toastification__toast-body'));
+      for (const toast of toasts) {
+        const text = (await toast.getText()).toLowerCase();
+        if (text.includes(`booking #${bookingId}`) && text.includes(needle)) {
+          return true;
+        }
+      }
+      return null;
+    },
+    timeoutMs,
+    `Toast for booking #${bookingId} (${statusLabel}) did not appear.`,
+  );
+}
+
+async function waitForApiBookingStatus(driver, bookingId, marker, expectation, timeoutMs = 20000) {
+  return driver.wait(
+    async () => {
+      const status = await readE2EBookingStatusViaApi(driver, bookingId, marker);
+      if (status && expectation.attrs.has(status)) {
+        return status;
+      }
+      return null;
+    },
+    timeoutMs,
+    `Booking #${bookingId} did not reach API status ${[...expectation.attrs].join('|')}.`,
+  );
+}
+
+async function reloadStaffBookingsPanel(driver, baseUrl, marker) {
+  await driver.get(`${baseUrl}/admin#bookings`);
+  await waitForTestId(driver, 'staff-dashboard-root');
+  await waitForTestId(driver, 'staff-bookings-root');
+  await waitForStaffBookingRows(driver);
+  await searchStaffBookings(driver, marker);
+}
+
+async function captureApproveFailureDiagnostics(driver, bookingId, marker, phase) {
+  const meta = await captureFailureDiagnostics(driver, `approve-${phase}-${bookingId}`);
+
+  try {
+    meta.bookingId = bookingId;
+    meta.marker = marker;
+    meta.rowStatuses = await readAllRowStatusesById(driver, bookingId);
+    meta.apiStatus = await readE2EBookingStatusViaApi(driver, bookingId, marker);
+
+    const approveButtons = await driver.findElements(
+      By.css(`[data-testid="${APPROVE_ACTION_TEST_ID}"][data-booking-id="${bookingId}"]`),
+    );
+    meta.approveButtons = [];
+
+    for (const button of approveButtons) {
+      meta.approveButtons.push({
+        displayed: await button.isDisplayed(),
+        enabled: await button.isEnabled(),
+      });
+    }
+  } catch (error) {
+    meta.approveContextError = error.message;
+  }
+
+  return meta;
 }
 
 export async function readE2EBookingStatusViaApi(driver, bookingId, marker) {
+  const apiBase = env.apiBaseUrl;
   return driver.executeScript(
-    async (id, markerText) => {
+    async (id, markerText, base) => {
       const token = localStorage.getItem('carboot_cmart_token');
       if (!token) return null;
 
-      const response = await fetch(`http://127.0.0.1:8000/api/bookings/${id}`, {
+      const response = await fetch(`${base}/bookings/${id}`, {
         headers: {
           Accept: 'application/json',
           Authorization: `Bearer ${token}`,
@@ -237,6 +320,7 @@ export async function readE2EBookingStatusViaApi(driver, bookingId, marker) {
     },
     bookingId,
     marker,
+    apiBase,
   );
 }
 
@@ -394,10 +478,11 @@ export async function forwardE2EBookingToManager(driver, marker, baseUrl) {
 }
 
 export async function applyApproveViaApi(driver, bookingId, marker) {
+  const apiBase = env.apiBaseUrl;
   await driver.executeScript(
-    async (id, markerText) => {
+    async (id, markerText, base) => {
       const token = localStorage.getItem('carboot_cmart_token');
-      const verifyResponse = await fetch(`http://127.0.0.1:8000/api/bookings/${id}`, {
+      const verifyResponse = await fetch(`${base}/bookings/${id}`, {
         headers: {
           Accept: 'application/json',
           Authorization: `Bearer ${token}`,
@@ -427,7 +512,7 @@ export async function applyApproveViaApi(driver, bookingId, marker) {
         );
       }
 
-      const response = await fetch(`http://127.0.0.1:8000/api/bookings/${id}`, {
+      const response = await fetch(`${base}/bookings/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -444,6 +529,7 @@ export async function applyApproveViaApi(driver, bookingId, marker) {
     },
     bookingId,
     marker,
+    apiBase,
   );
 }
 
@@ -474,30 +560,56 @@ export async function approveE2EBookingAsManager(driver, marker, baseUrl, { book
       `Current status: ${match.status}. Ensure manager credentials are used.`,
   );
 
-  const confirmedRow = await getStaffBookingRowById(driver, match.bookingId);
+  const confirmedRow = await getStaffBookingRowById(driver, match.bookingId, {
+    requireActionTestId: APPROVE_ACTION_TEST_ID,
+  });
   assertRowContainsMarker((await confirmedRow.getText()).toLowerCase(), marker, match.bookingId);
 
   let usedApiFallback = false;
   await clickStaffQueueAction(driver, match.bookingId, APPROVE_ACTION_TEST_ID, marker);
 
   try {
-    await searchStaffBookings(driver, marker);
-    await waitForRowStatus(driver, match.bookingId, APPROVED_EXPECTATION, 15000);
-  } catch (uiError) {
-    const current = await readRowStatusById(driver, match.bookingId);
-    if (statusMatchesExpectation(current.statusAttr, current.statusLabel, APPROVED_EXPECTATION)) {
-      return { bookingId: match.bookingId, ...current, usedApiFallback: false };
-    }
-
-    usedApiFallback = true;
-    await applyApproveViaApi(driver, match.bookingId, marker);
-    await driver.navigate().refresh();
-    await openStaffBookings(driver, baseUrl);
-    await searchStaffBookings(driver, marker);
+    await waitForBookingActionToast(driver, match.bookingId, 'Approved', 20000);
+  } catch {
+    // Toast may clear quickly; API poll below is authoritative.
   }
 
-  const updated = await waitForRowStatus(driver, match.bookingId, APPROVED_EXPECTATION, 30000);
-  return { bookingId: match.bookingId, ...updated, usedApiFallback };
+  let apiApproved = false;
+  try {
+    await waitForApiBookingStatus(driver, match.bookingId, marker, APPROVED_EXPECTATION, 25000);
+    apiApproved = true;
+  } catch {
+    apiApproved = false;
+  }
+
+  if (!apiApproved) {
+    usedApiFallback = true;
+    await applyApproveViaApi(driver, match.bookingId, marker);
+    await waitForApiBookingStatus(driver, match.bookingId, marker, APPROVED_EXPECTATION, 15000);
+  }
+
+  await reloadStaffBookingsPanel(driver, baseUrl, marker);
+
+  try {
+    const updated = await waitForRowStatus(driver, match.bookingId, APPROVED_EXPECTATION, 20000);
+    return { bookingId: match.bookingId, ...updated, usedApiFallback };
+  } catch (finalError) {
+    const apiStatus = await readE2EBookingStatusViaApi(driver, match.bookingId, marker);
+    if (apiStatus !== 'Approved') {
+      const diagnostics = await captureApproveFailureDiagnostics(driver, match.bookingId, marker, 'failed');
+      const current = await readRowStatusById(driver, match.bookingId);
+      throw new Error(
+        `Manager approve failed for booking #${match.bookingId}. ` +
+          `UI status: ${current.statusAttr || current.statusLabel}. API status: ${apiStatus || 'unknown'}. ` +
+          `Diagnostics: ${diagnostics.json}.`,
+        { cause: finalError },
+      );
+    }
+
+    await reloadStaffBookingsPanel(driver, baseUrl, marker);
+    const updated = await waitForRowStatus(driver, match.bookingId, APPROVED_EXPECTATION, 15000);
+    return { bookingId: match.bookingId, ...updated, usedApiFallback };
+  }
 }
 
 export async function applyRejectViaApi(driver, bookingId, marker) {
@@ -596,4 +708,58 @@ export async function rejectE2EBookingAsStaff(driver, marker, baseUrl) {
 
   const updated = await waitForRowStatus(driver, match.bookingId, REJECTED_EXPECTATION, 30000);
   return { bookingId: match.bookingId, ...updated };
+}
+
+export async function rejectE2EBookingAsManager(driver, marker, baseUrl, { bookingId: expectedBookingId } = {}) {
+  const match = await findE2EBookingRow(driver, marker, {
+    preferActionTestId: APPROVE_ACTION_TEST_ID,
+    bookingId: expectedBookingId,
+  });
+
+  const initial = await readRowStatusById(driver, match.bookingId);
+  if (statusMatchesExpectation(initial.statusAttr, initial.statusLabel, REJECTED_EXPECTATION)) {
+    const confirmedRow = await getStaffBookingRowById(driver, match.bookingId);
+    assertRowContainsMarker((await confirmedRow.getText()).toLowerCase(), marker, match.bookingId);
+    return { bookingId: match.bookingId, ...initial, usedApiFallback: false };
+  }
+
+  if (!statusMatchesExpectation(initial.statusAttr, initial.statusLabel, FORWARD_EXPECTATION)) {
+    throw new Error(
+      `Booking #${match.bookingId} is not manager-pending. ` +
+        `Current status: ${initial.statusAttr || initial.statusLabel}. ` +
+        'Forward the E2E booking to the manager queue before rejecting.',
+    );
+  }
+
+  assert.ok(
+    match.hasApproveAction,
+    `Booking #${match.bookingId} has no manager queue actions. Ensure manager credentials are used.`,
+  );
+
+  const confirmedRow = await getStaffBookingRowById(driver, match.bookingId, {
+    requireActionTestId: APPROVE_ACTION_TEST_ID,
+  });
+  assertRowContainsMarker((await confirmedRow.getText()).toLowerCase(), marker, match.bookingId);
+
+  let usedApiFallback = false;
+  await clickStaffQueueAction(driver, match.bookingId, REJECT_ACTION_TEST_ID, marker);
+
+  try {
+    await searchStaffBookings(driver, marker);
+    await waitForRowStatus(driver, match.bookingId, REJECTED_EXPECTATION, 15000);
+  } catch (uiError) {
+    const current = await readRowStatusById(driver, match.bookingId);
+    if (statusMatchesExpectation(current.statusAttr, current.statusLabel, REJECTED_EXPECTATION)) {
+      return { bookingId: match.bookingId, ...current, usedApiFallback: false };
+    }
+
+    usedApiFallback = true;
+    await applyRejectViaApi(driver, match.bookingId, marker);
+    await driver.navigate().refresh();
+    await openStaffBookings(driver, baseUrl);
+    await searchStaffBookings(driver, marker);
+  }
+
+  const updated = await waitForRowStatus(driver, match.bookingId, REJECTED_EXPECTATION, 30000);
+  return { bookingId: match.bookingId, ...updated, usedApiFallback };
 }

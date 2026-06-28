@@ -10,6 +10,7 @@ use App\Models\NewsPost;
 use App\Models\Booking;
 use App\Models\Invoice;
 use App\Models\ManagementProfile;
+use Illuminate\Support\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -106,11 +107,19 @@ class DatabaseSeeder extends Seeder
             'status' => 'Available'
         ]);
 
-        CarbootEvent::updateOrCreate(
+        // Upcoming events use relative dates so E2E booking specs stay bookable after re-seeding.
+        $weeklyStart = Carbon::now()->addDays(7)->setTime(8, 0, 0);
+        $weeklyEnd = $weeklyStart->copy()->addHours(6);
+        $almostFullStart = Carbon::now()->addDays(14)->setTime(8, 0, 0);
+        $almostFullEnd = $almostFullStart->copy()->addHours(6);
+        $megaStart = Carbon::now()->addDays(21)->setTime(8, 0, 0);
+        $megaEnd = $megaStart->copy()->addHours(10);
+
+        $weeklyEvent = CarbootEvent::updateOrCreate(
             ['title' => 'CMart Weekly Carboot'],
             [
-                'starts_at' => '2026-05-16 08:00:00',
-                'ends_at' => '2026-05-16 14:00:00',
+                'starts_at' => $weeklyStart,
+                'ends_at' => $weeklyEnd,
                 'status' => 'Available',
                 'description' => 'Standard weekend carboot at CMart Changlun.',
                 'max_slots' => 120,
@@ -120,8 +129,8 @@ class DatabaseSeeder extends Seeder
         CarbootEvent::updateOrCreate(
             ['title' => 'CMart Weekly Carboot (Almost Full)'],
             [
-                'starts_at' => '2026-05-17 08:00:00',
-                'ends_at' => '2026-05-17 14:00:00',
+                'starts_at' => $almostFullStart,
+                'ends_at' => $almostFullEnd,
                 'status' => 'Almost Full',
                 'description' => 'Limited slots remaining for Sunday carboot.',
                 'max_slots' => 120,
@@ -131,8 +140,8 @@ class DatabaseSeeder extends Seeder
         CarbootEvent::updateOrCreate(
             ['title' => 'Changlun Mega Carboot'],
             [
-                'starts_at' => '2026-05-23 08:00:00',
-                'ends_at' => '2026-05-23 18:00:00',
+                'starts_at' => $megaStart,
+                'ends_at' => $megaEnd,
                 'status' => 'Available',
                 'description' => 'Extended hours mega carboot event.',
                 'max_slots' => 200,
@@ -183,14 +192,15 @@ class DatabaseSeeder extends Seeder
         $vendor = User::where('email', 'vendor@cmart.com')->first();
         $standardSpace = Space::where('space_size', 'Standard (1 Parking Lot)')->first();
 
-        if ($vendor && $standardSpace) {
+        if ($vendor && $standardSpace && $weeklyEvent) {
             $demoBooking = Booking::updateOrCreate(
                 [
                     'user_id' => $vendor->id,
-                    'booking_date' => '2026-05-16',
+                    'carboot_event_id' => $weeklyEvent->id,
                 ],
                 [
                     'space_id' => $standardSpace->id,
+                    'booking_date' => $weeklyStart->toDateString(),
                     'product_category' => 'Food & Beverages',
                     'product_details' => 'Ayam Gunting, Ramen',
                     'approval_status' => 'Approved',

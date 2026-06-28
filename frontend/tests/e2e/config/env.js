@@ -16,7 +16,8 @@ const readBool = (value, defaultValue = false) => {
 };
 
 export const env = {
-  baseUrl: process.env.E2E_BASE_URL || 'http://localhost:5173',
+  baseUrl: process.env.E2E_BASE_URL || 'http://localhost:5175',
+  apiBaseUrl: process.env.E2E_API_BASE_URL || 'http://127.0.0.1:8000/api',
   headless: readBool(process.env.E2E_HEADLESS, false),
   vendorEmail: process.env.E2E_VENDOR_EMAIL || '',
   vendorPassword: process.env.E2E_VENDOR_PASSWORD || '',

@@ -101,7 +101,12 @@
                         >
                           Forward
                         </button>
-                        <button class="ml-btn-danger text-xs px-3 py-1.5" @click="updateStatus(b.id, 'Rejected')">
+                        <button
+                          class="ml-btn-danger text-xs px-3 py-1.5"
+                          data-testid="staff-booking-action-reject"
+                          :data-booking-id="b.id"
+                          @click="updateStatus(b.id, 'Rejected')"
+                        >
                           Reject
                         </button>
                         <button
@@ -122,7 +127,12 @@
                         >
                           Approve
                         </button>
-                        <button class="ml-btn-danger text-xs px-3 py-1.5" @click="updateStatus(b.id, 'Rejected')">
+                        <button
+                          class="ml-btn-danger text-xs px-3 py-1.5"
+                          data-testid="staff-booking-action-reject"
+                          :data-booking-id="b.id"
+                          @click="updateStatus(b.id, 'Rejected')"
+                        >
                           Reject
                         </button>
                         <button

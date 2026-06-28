@@ -1,24 +1,24 @@
 import { strict as assert } from 'node:assert';
-import { requireVendorCredentials } from '../config/env.js';
-import { loginAsVendor } from '../helpers/auth.js';
+import { requireStaffCredentials } from '../config/env.js';
+import { loginAsStaff } from '../helpers/auth.js';
 import { createDriver } from '../helpers/driver.js';
 import { waitForTestId } from '../helpers/wait.js';
 import { setActiveDriver } from '../setup.js';
 
-describe('Authentication', function () {
+describe('Staff authentication', function () {
   this.timeout(120000);
 
   let driver;
 
   before(async function () {
-    requireVendorCredentials();
+    requireStaffCredentials();
     driver = await createDriver();
     await setActiveDriver(driver);
   });
 
-  it('Vendor/community user can log in and reach dashboard', async function () {
-    await loginAsVendor(driver);
-    const dashboardRoot = await waitForTestId(driver, 'vendor-dashboard-root');
+  it('Staff user can log in and reach the admin workspace', async function () {
+    await loginAsStaff(driver);
+    const dashboardRoot = await waitForTestId(driver, 'staff-dashboard-root');
     assert.equal(await dashboardRoot.isDisplayed(), true);
   });
 });
