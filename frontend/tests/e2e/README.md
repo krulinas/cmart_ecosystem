@@ -143,6 +143,41 @@ npm run test:e2e:headless -- auth.login.spec.js access.staff-action-guard.spec.j
 | `vendor.payment-verification-pass-unlock.spec.js` | Test 6: full payment verification gate — receipt/pass locked until Verify Paid |
 | `access.staff-action-guard.spec.js` | Test 7A: staff can use staff-safe booking actions but cannot access manager-only/destructive controls or APIs |
 | `access.manager-confirmation.spec.js` | Test 7B: managers can access manager-only booking actions and API routes, including approve/reject |
+| `access.vendor-ownership-guard.spec.js` | Test 7C: vendor data ownership isolation — Vendor A cannot access Vendor B booking, receipt, pass, or payment resources |
+
+## Test 7C: Vendor data ownership guard
+
+`access.vendor-ownership-guard.spec.js` verifies vendor data ownership isolation. **Vendor A cannot access Vendor B booking, receipt, pass, or payment resources** by UI search or direct API ID guessing.
+
+### What it checks
+
+| Area | Vendor A expectation |
+|------|----------------------|
+| My Bookings UI | Vendor B marker and booking row are not visible |
+| List APIs | `GET /vendor/bookings`, `/vendor/history-receipts`, `/vendor/event-passes` exclude Vendor B data |
+| Direct booking access | `GET /vendor/bookings/{id}` denied (**403** or **404**) |
+| Event pass | `GET /vendor/event-passes/{id}` denied |
+| Receipt/PDF | `GET /bookings/{id}/pdf` denied |
+| Staff route probe | `GET /bookings/{id}` denied (community role) |
+| Payment proof | `POST /vendor/bookings/{id}/submit-payment` denied |
+| Vendor B integrity | Booking still exists for Vendor B after denied attempts |
+
+### Test users
+
+- **Vendor A** — existing `E2E_VENDOR_EMAIL` (default seed: `vendor@cmart.com`)
+- **Vendor B** — `E2E_VENDOR_B_EMAIL` / `E2E_VENDOR_B_PASSWORD` (seed: `vendor_b@cmart.com`)
+
+Run `php artisan db:seed` after pulling if Vendor B is missing.
+
+### Marker
+
+Uses `E2E-T7C-VENDOR-B-OWNERSHIP-{timestamp}` via `e2eT7CVendorBOwnershipMarker()`.
+
+### Run focused
+
+```bash
+npm run test:e2e:headless -- access.vendor-ownership-guard.spec.js
+```
 
 ## Test 7B: Manager access confirmation
 

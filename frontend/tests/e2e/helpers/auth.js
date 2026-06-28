@@ -3,6 +3,7 @@ import {
   env,
   requireManagerCredentials,
   requireStaffCredentials,
+  requireVendorBCredentials,
   requireVendorCredentials,
 } from '../config/env.js';
 import { captureFailureDiagnostics } from './diagnostics.js';
@@ -99,12 +100,21 @@ export async function logout(driver) {
 
 export async function loginAsVendor(driver) {
   const { email, password } = requireVendorCredentials();
+  await loginAsCommunityVendor(driver, { email, password }, { roleLabel: 'Vendor' });
+}
+
+export async function loginAsVendorB(driver) {
+  const { email, password } = requireVendorBCredentials();
+  await loginAsCommunityVendor(driver, { email, password }, { roleLabel: 'Vendor B' });
+}
+
+export async function loginAsCommunityVendor(driver, { email, password }, { roleLabel = 'Vendor' } = {}) {
   await loginWithRole(driver, {
     email,
     password,
     successUrlFragment: '/dashboard',
     dashboardTestId: 'vendor-dashboard-root',
-    roleLabel: 'Vendor',
+    roleLabel,
   });
 }
 

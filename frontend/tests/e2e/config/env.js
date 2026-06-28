@@ -21,6 +21,8 @@ export const env = {
   headless: readBool(process.env.E2E_HEADLESS, false),
   vendorEmail: process.env.E2E_VENDOR_EMAIL || '',
   vendorPassword: process.env.E2E_VENDOR_PASSWORD || '',
+  vendorBEmail: process.env.E2E_VENDOR_B_EMAIL || '',
+  vendorBPassword: process.env.E2E_VENDOR_B_PASSWORD || '',
   staffEmail: process.env.E2E_STAFF_EMAIL || '',
   staffPassword: process.env.E2E_STAFF_PASSWORD || '',
   managerEmail: process.env.E2E_MANAGER_EMAIL || '',
@@ -48,6 +50,25 @@ export function requireVendorCredentials() {
   return {
     email: env.vendorEmail,
     password: env.vendorPassword,
+  };
+}
+
+export function requireVendorBCredentials() {
+  const missing = [];
+
+  if (!env.vendorBEmail) missing.push('E2E_VENDOR_B_EMAIL');
+  if (!env.vendorBPassword) missing.push('E2E_VENDOR_B_PASSWORD');
+
+  if (missing.length) {
+    throw new Error(
+      `Missing required E2E vendor B credentials: ${missing.join(', ')}.\n` +
+        `Copy tests/e2e/.env.e2e.example to tests/e2e/.env.e2e and set vendor B values (seed: vendor_b@cmart.com).`,
+    );
+  }
+
+  return {
+    email: env.vendorBEmail,
+    password: env.vendorBPassword,
   };
 }
 

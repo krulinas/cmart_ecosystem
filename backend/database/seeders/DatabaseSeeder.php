@@ -25,6 +25,14 @@ class DatabaseSeeder extends Seeder
             'vendor_status' => 'approved',
         ]);
 
+        User::updateOrCreate(['email' => 'vendor_b@cmart.com'], [
+            'name' => 'Vendor B (E2E Test)',
+            'password' => bcrypt('password123'),
+            'phone_number' => '0123456790',
+            'role' => 'community',
+            'vendor_status' => 'approved',
+        ]);
+
         User::updateOrCreate(['email' => 'admin@cmart.com'], [
             'name' => 'CMart Manager',
             'password' => bcrypt('password123'),

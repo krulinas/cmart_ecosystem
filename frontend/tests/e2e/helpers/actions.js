@@ -55,3 +55,7 @@ export function e2eT7BManagerApproveMarker() {
 export function e2eT7BManagerRejectMarker() {
   return `E2E-T7B-MANAGER-REJECT-${Date.now()}`;
 }
+
+export function e2eT7CVendorBOwnershipMarker() {
+  return `E2E-T7C-VENDOR-B-OWNERSHIP-${Date.now()}`;
+}

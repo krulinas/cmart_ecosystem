@@ -1,6 +1,6 @@
 import { By } from 'selenium-webdriver';
 import { env } from '../config/env.js';
-import { loginAsVendor } from './auth.js';
+import { loginAsCommunityVendor, loginAsVendor } from './auth.js';
 import { uniqueTestMarker } from './actions.js';
 import { waitForTestId, waitForTestIdHidden, waitForUrlContains } from './wait.js';
 
@@ -213,15 +213,23 @@ async function prepareVendorBookingPage(driver) {
 /**
  * Creates a vendor booking with a unique E2E marker, or reuses an existing matching booking.
  */
-export async function ensureE2EBookingExists(driver, marker = uniqueTestMarker(env.bookingDetails), { allowReuse = true } = {}) {
-  await loginAsVendor(driver);
+export async function ensureE2EBookingExists(
+  driver,
+  marker = uniqueTestMarker(env.bookingDetails),
+  { allowReuse = true, vendorCredentials } = {},
+) {
+  if (vendorCredentials) {
+    await loginAsCommunityVendor(driver, vendorCredentials, { roleLabel: 'Vendor' });
+  } else {
+    await loginAsVendor(driver);
+  }
   await prepareVendorBookingPage(driver);
 
   if (await vendorBookingExists(driver, marker)) {
     return { marker };
   }
 
-  if (allowReuse) {
+  if (allowReuse && !vendorCredentials) {
     const reusableMarker = await findReusablePendingStaffMarker(driver);
     if (reusableMarker) {
       return { marker: reusableMarker };
