@@ -2,6 +2,12 @@
 
 Phase 1 smoke tests for the CMart frontend using Selenium WebDriver, Mocha, and Chrome.
 
+## Final E2E Testing Evidence Report
+
+**[E2E-TESTING-EVIDENCE-REPORT.md](./E2E-TESTING-EVIDENCE-REPORT.md)** is the consolidated evidence document for the full Selenium E2E automation layer — from login smokes and vendor booking (Phase 1–2) through payment/withdrawal workflows (Phases 4–6), access control (Test 7), and public route safety (Test 8A).
+
+**Latest verified checkpoint (29 June 2026):** full combined suite **`npm run test:e2e:headless`** — **34/34 passing** in **~18 minutes** (28 Test 7-era cases + 6 Test 8A cases). Use the report for internship/project evaluation, regression handoff, and verification commands.
+
 ## Prerequisites
 
 1. **MySQL running** — XAMPP MySQL (or equivalent) on `127.0.0.1:3306`. E2E login fails with HTTP 500 when the database is down.
@@ -152,7 +158,7 @@ npm run test:e2e:headless -- auth.login.spec.js access.staff-action-guard.spec.j
 
 **[TEST-7-ACCESS-CONTROL.md](./TEST-7-ACCESS-CONTROL.md)** is the final milestone document for Test 7. It includes:
 
-- Final verified status (28/28 E2E, login smokes, build, backend tests)
+- Final verified status (**34/34** full E2E suite, login smokes, build; backend tests from Test 7 milestone)
 - Coverage summary table (7A–7E)
 - Access control security matrix and role-vs-action table
 - What the suite proves and what it does **not** overclaim
@@ -162,6 +168,8 @@ npm run test:e2e:headless -- auth.login.spec.js access.staff-action-guard.spec.j
 Per-spec detail, markers, and troubleshooting for 7A–7E remain in the sections below.
 
 ## Test 8A — Public Route Safety & No Over-Locking
+
+**Verified status:** Included in full combined suite **34/34 passing** in **~18 minutes** (**29 June 2026**, `npm run test:e2e:headless`). Test 8A alone also passed **6/6** in a focused rerun (40s). Details in [E2E-TESTING-EVIDENCE-REPORT.md](./E2E-TESTING-EVIDENCE-REPORT.md).
 
 `public.public-route-safety.spec.js` verifies that **intended public pages remain accessible to guests** after Test 7 access-control hardening. It complements Test 7:
 
