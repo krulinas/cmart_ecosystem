@@ -71,10 +71,18 @@ export async function assertGuestRedirectedFromProtectedRoute(driver, path, { la
         return true;
       }
 
-      const loginInputs = await driver.findElements(By.css('[data-testid="login-email"]'));
-      for (const input of loginInputs) {
-        if (await input.isDisplayed()) {
-          return true;
+      const loginSelectors = [
+        '[data-testid="login-email"]',
+        '[data-testid="management-login-email"]',
+        '[data-testid="auth-continue-email"]',
+      ];
+
+      for (const selector of loginSelectors) {
+        const inputs = await driver.findElements(By.css(selector));
+        for (const input of inputs) {
+          if (await input.isDisplayed()) {
+            return true;
+          }
         }
       }
 
@@ -85,14 +93,22 @@ export async function assertGuestRedirectedFromProtectedRoute(driver, path, { la
   );
 
   const currentUrl = await driver.getCurrentUrl();
-  const loginVisible = await driver.findElements(By.css('[data-testid="login-email"]'));
+  const loginSelectors = [
+    '[data-testid="login-email"]',
+    '[data-testid="management-login-email"]',
+    '[data-testid="auth-continue-email"]',
+  ];
   let loginFormShown = false;
 
-  for (const input of loginVisible) {
-    if (await input.isDisplayed()) {
-      loginFormShown = true;
-      break;
+  for (const selector of loginSelectors) {
+    const loginVisible = await driver.findElements(By.css(selector));
+    for (const input of loginVisible) {
+      if (await input.isDisplayed()) {
+        loginFormShown = true;
+        break;
+      }
     }
+    if (loginFormShown) break;
   }
 
   assert.ok(

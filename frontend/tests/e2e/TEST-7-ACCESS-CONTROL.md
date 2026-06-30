@@ -168,6 +168,8 @@ php artisan db:seed
 
 The seeder creates carboot events at **+7, +14, +21 days** so booking specs do not fail on stale dates. Re-seed if events pass.
 
+**Warning:** Do **not** run `migrate:fresh --seed` on `cmart_db` if you keep manual demo data (feedback, custom events, uploaded images). Use a separate database such as `cmart_e2e_db` for destructive E2E resets. See [Database safety](./README.md#database-safety-read-before-seeding) in the main E2E README.
+
 ### Session cleanup
 
 Global setup clears **cookies**, **localStorage**, and **sessionStorage** between specs to prevent token bleed between vendor/staff/manager runs.

@@ -332,49 +332,7 @@
       </section>
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-gray-900 text-gray-300">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-14">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
-          <div>
-            <img src="/cmart_logo.png" alt="Carboot@CMart" class="h-12 w-auto mb-4 brightness-0 invert opacity-90" />
-            <p class="text-sm leading-relaxed text-gray-400">
-              Carboot@CMart — a community carboot market at CMart Kompleks Changlun. Events, vendors, and weekend fun for everyone.
-            </p>
-          </div>
-
-          <div>
-            <h3 class="text-white font-bold mb-4">Quick Links</h3>
-            <ul class="space-y-2 text-sm">
-              <li v-for="link in footerLinks" :key="link.to">
-                <router-link :to="link.to" class="hover:text-brand-400 transition">{{ link.label }}</router-link>
-              </li>
-              <li>
-                <router-link to="/calendar" class="hover:text-brand-400 transition">Event Calendar</router-link>
-              </li>
-              <li>
-                <router-link to="/login" class="hover:text-brand-400 transition">Vendor Login</router-link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 class="text-white font-bold mb-4">Contact</h3>
-            <ul class="space-y-2 text-sm text-gray-400">
-              <li>CMart Kompleks Changlun</li>
-              <li>Changlun, Kedah, Malaysia</li>
-              <li>
-                <a href="mailto:enquiries@cmart.com.my" class="hover:text-brand-400 transition">enquiries@cmart.com.my</a>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="mt-12 pt-8 border-t border-gray-800 text-center text-xs text-gray-500">
-          &copy; {{ currentYear }} Carboot@CMart · CMart Kompleks Changlun. All rights reserved.
-        </div>
-      </div>
-    </footer>
+    <SiteFooter />
 
     <EventDetailsModal
       v-model="showEventModal"
@@ -393,6 +351,7 @@
 <script setup>
 import { ref, computed, h, onMounted } from 'vue';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
+import SiteFooter from '../../components/layout/SiteFooter.vue';
 import EventDetailsModal from '../../components/EventDetailsModal.vue';
 import NewsDetailsModal from '../../components/NewsDetailsModal.vue';
 import MediaImageGallery from '../../components/MediaImageGallery.vue';
@@ -401,7 +360,6 @@ import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisp
 import { mapApiNewsToCard } from '../../utils/newsDisplay';
 import { vendorBookingLink } from '../../utils/vendorBooking';
 import { useAuthStore } from '../../stores/auth';
-import { PUBLIC_LINKS } from '../../config/navigation';
 import { useScrollReveal } from '../../composables/useScrollReveal';
 import { useHeroParallax } from '../../composables/useHeroParallax';
 
@@ -409,9 +367,6 @@ const auth = useAuthStore();
 const { contentStyle, videoStyle } = useHeroParallax();
 
 const bookingCtaLink = computed(() => vendorBookingLink(null, auth));
-
-const currentYear = new Date().getFullYear();
-const footerLinks = PUBLIC_LINKS.filter((link) => link.label !== 'Home');
 
 const DEFAULT_LOCATION = DEFAULT_EVENT_LOCATION;
 

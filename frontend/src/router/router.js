@@ -4,7 +4,8 @@ import PublicLanding from '../views/public/PublicLanding.vue';
 import CommunityPortal from '../views/public/CommunityPortal.vue';
 import Registration from '../views/auth/Registration.vue';
 import AdminDashboard from '../views/dashboards/AdminDashboard.vue';
-import Login from '../views/auth/Login.vue';
+import PublicLogin from '../views/auth/PublicLogin.vue';
+import ManagementLogin from '../views/auth/ManagementLogin.vue';
 import Register from '../views/auth/Register.vue';
 import UumDashboard from '../views/dashboards/UumDashboard.vue';
 import VendorDashboard from '../views/dashboards/VendorDashboard.vue';
@@ -17,6 +18,20 @@ import { useAuthStore } from '../stores/auth';
 import { useBossPreviewStore } from '../stores/bossPreview';
 import { ALL_WORKSPACE_HASHES, MANAGER_ONLY_HASHES } from '../config/workspaceNav';
 import { isManagerOrAbove, normalizeRole, ROLES, workflowRoleKey } from '../utils/managementRoles';
+
+const MANAGEMENT_PROTECTED_PREFIXES = ['/admin', '/staff/'];
+
+function isManagementProtectedRoute(path) {
+  return MANAGEMENT_PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+function loginRedirectFor(to) {
+  if (isManagementProtectedRoute(to.path)) {
+    return { path: '/management/login', query: { redirect: to.fullPath } };
+  }
+
+  return { path: '/login', query: { redirect: to.fullPath } };
+}
 
 const routes = [
   // Zone 1: Public face
@@ -35,8 +50,14 @@ const routes = [
   {
     path: '/login',
     name: 'login',
-    component: Login,
+    component: PublicLogin,
     meta: { guestOnly: true },
+  },
+  {
+    path: '/management/login',
+    name: 'management-login',
+    component: ManagementLogin,
+    meta: { guestOnly: true, managementGuestOnly: true, robots: 'noindex, nofollow' },
   },
   {
     path: '/register',
@@ -130,7 +151,7 @@ router.beforeEach(async (to) => {
     } catch {
       auth.clearSession();
       if (to.meta.requiresAuth) {
-        return { path: '/login', query: { redirect: to.fullPath } };
+        return loginRedirectFor(to);
       }
     }
   }
@@ -139,16 +160,24 @@ router.beforeEach(async (to) => {
     return auth.homeForUser();
   }
 
+  if (to.meta.managementGuestOnly && auth.isAuthenticated) {
+    if (auth.isCmartWorker) {
+      return auth.homeForUser();
+    }
+
+    return '/dashboard';
+  }
+
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    return { path: '/login', query: { redirect: to.fullPath } };
+    return loginRedirectFor(to);
   }
 
   if (to.meta.roles && !auth.hasAnyRole(to.meta.roles)) {
-    return auth.isAuthenticated ? auth.homeForUser() : '/login';
+    return auth.isAuthenticated ? auth.homeForUser() : loginRedirectFor(to);
   }
 
   if (to.meta.vendorApproved && !auth.isApprovedVendor) {
-    return auth.isAuthenticated ? auth.homeForUser() : '/login';
+    return auth.isAuthenticated ? auth.homeForUser() : loginRedirectFor(to);
   }
 
   if (to.meta.guestOnly && auth.isAuthenticated) {

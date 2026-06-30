@@ -17,6 +17,30 @@ Phase 1 smoke tests for the CMart frontend using Selenium WebDriver, Mocha, and 
 5. **Upcoming bookable event** — Booking specs need at least one carboot event with `ends_at` in the future and status not `Closed`. The seeder creates events at +7, +14, and +21 days; re-run `php artisan db:seed` if dates go stale.
 6. **Google Chrome** — Installed on your machine. Selenium 4 downloads a matching ChromeDriver automatically.
 
+## Database safety (read before seeding)
+
+**Do not run `php artisan migrate:fresh --seed` on `cmart_db` if that database contains manual demo data** (custom events, uploaded images, community feedback, or bookings you want to keep). `migrate:fresh` drops all tables and wipes everything except what the seeder recreates.
+
+| Database | Purpose | Safe commands |
+|----------|---------|---------------|
+| `cmart_db` | Day-to-day local dev + manual demo content | `php artisan migrate`, `php artisan db:seed` (additive upserts) |
+| `cmart_e2e_db` | Isolated E2E reset workflows | `migrate:fresh --seed` when you need a clean slate |
+
+**Recommended E2E setup with a separate database:**
+
+1. Create an empty MySQL database: `cmart_e2e_db`
+2. Copy `backend/.env` to `backend/.env.e2e.local` (or temporarily set `DB_DATABASE=cmart_e2e_db` in a dedicated terminal session)
+3. Run `php artisan migrate:fresh --seed` against **`cmart_e2e_db` only**
+4. Point Laravel at that database while running E2E, or use a second XAMPP vhost / env file
+
+See `tests/e2e/.env.e2e.example` for the optional `DB_DATABASE` note. The E2E frontend env file does **not** change Laravel's `.env` automatically — you must configure the backend database yourself.
+
+**Before any destructive migration on your main dev DB**, export a backup:
+
+```bash
+mysqldump -u root --databases cmart_db > backups/cmart_db_backup.sql
+```
+
 ## E2E port and preflight
 
 The suite expects **`E2E_BASE_URL=http://localhost:5175`** in `tests/e2e/.env.e2e`.

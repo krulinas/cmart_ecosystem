@@ -264,6 +264,7 @@ cd backend && php artisan migrate && php artisan db:seed
 
 - API default: `http://127.0.0.1:8000/api` (`E2E_API_BASE_URL`)
 - MySQL must be running — preflight fails fast on HTTP 500
+- **Do not** run `migrate:fresh --seed` on `cmart_db` when it contains manual demo data; use `cmart_e2e_db` for isolated E2E resets (see [Database safety](./README.md#database-safety-read-before-seeding))
 
 ### Session cleanup
 

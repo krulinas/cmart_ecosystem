@@ -55,7 +55,7 @@
             to="/login"
             class="px-4 py-2 rounded-lg border-2 border-brand-500 text-brand-600 hover:bg-brand-50 font-bold transition text-sm whitespace-nowrap"
           >
-            Vendor Login
+            Sign in
           </router-link>
         </template>
 
@@ -141,7 +141,7 @@
               class="border-2 border-brand-500 text-brand-600 px-4 py-3 rounded-lg text-center font-bold hover:bg-brand-50 transition"
               @click="closeMobile"
             >
-              Vendor Login
+              Sign in
             </router-link>
           </template>
 

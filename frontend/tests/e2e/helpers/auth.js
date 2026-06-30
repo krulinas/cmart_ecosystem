@@ -7,7 +7,7 @@ import {
   requireVendorCredentials,
 } from '../config/env.js';
 import { captureFailureDiagnostics } from './diagnostics.js';
-import { clearBrowserSession, ensureLoginPage } from './session.js';
+import { clearBrowserSession, ensureManagementLoginPage, ensurePublicLoginPage } from './session.js';
 import { waitForTestId, waitForUrlContains } from './wait.js';
 
 async function fillLoginField(driver, testId, value) {
@@ -28,9 +28,10 @@ async function fillLoginField(driver, testId, value) {
   }
 }
 
-async function submitLoginForm(driver) {
+async function submitLoginForm(driver, { management = false } = {}) {
+  const emailTestId = management ? 'management-login-email' : 'login-email';
   await driver.executeScript(`
-    const form = document.querySelector('[data-testid="login-email"]')?.closest('form');
+    const form = document.querySelector('[data-testid="${emailTestId}"]')?.closest('form');
     if (!form) throw new Error('Login form not found.');
     form.requestSubmit();
   `);
@@ -57,12 +58,16 @@ async function readLoginFailureContext(driver) {
   };
 }
 
-async function loginWithRole(driver, { email, password, successUrlFragment, dashboardTestId, roleLabel }) {
+async function loginWithRole(driver, { email, password, successUrlFragment, dashboardTestId, roleLabel, management = false }) {
+  const emailTestId = management ? 'management-login-email' : 'login-email';
+  const passwordTestId = management ? 'management-login-password' : 'login-password';
+  const ensurePage = management ? ensureManagementLoginPage : ensurePublicLoginPage;
+
   const attempt = async (retryCount) => {
-    await ensureLoginPage(driver);
-    await fillLoginField(driver, 'login-email', email);
-    await fillLoginField(driver, 'login-password', password);
-    await submitLoginForm(driver);
+    await ensurePage(driver);
+    await fillLoginField(driver, emailTestId, email);
+    await fillLoginField(driver, passwordTestId, password);
+    await submitLoginForm(driver, { management });
     await waitForAuthToken(driver, 25000);
     await waitForUrlContains(driver, successUrlFragment, 25000);
     await waitForTestId(driver, dashboardTestId, 25000);
@@ -93,8 +98,17 @@ async function loginWithRole(driver, { email, password, successUrlFragment, dash
   }
 }
 
-export async function logout(driver) {
-  await clearBrowserSession(driver);
+export async function logout(driver, { management = false } = {}) {
+  await clearBrowserSession(driver, management ? '/management/login' : '/login');
+  if (management) {
+    await waitForTestId(driver, 'management-login-email', 15000);
+    return;
+  }
+
+  const emailInputs = await driver.findElements(By.css('[data-testid="login-email"]'));
+  if (emailInputs.length === 0) {
+    await waitForTestId(driver, 'auth-continue-email', 15000);
+  }
   await waitForTestId(driver, 'login-email', 15000);
 }
 
@@ -126,6 +140,7 @@ export async function loginAsStaff(driver) {
     successUrlFragment: '/admin',
     dashboardTestId: 'staff-dashboard-root',
     roleLabel: 'Staff',
+    management: true,
   });
 }
 
@@ -137,5 +152,6 @@ export async function loginAsManager(driver) {
     successUrlFragment: '/admin',
     dashboardTestId: 'staff-dashboard-root',
     roleLabel: 'Manager',
+    management: true,
   });
 }

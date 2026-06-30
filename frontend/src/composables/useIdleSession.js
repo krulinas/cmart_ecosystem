@@ -28,7 +28,7 @@ export function useIdleSession() {
     clearTimer();
     await auth.logout();
     toast.info('Your session ended due to inactivity. Please log in again.');
-    router.push({ path: '/login', query: { reason: 'idle' } });
+    router.push({ path: '/management/login', query: { reason: 'idle' } });
   };
 
   const resetTimer = () => {
