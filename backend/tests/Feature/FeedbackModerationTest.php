@@ -157,6 +157,162 @@ class FeedbackModerationTest extends TestCase
         $publishedRow = collect($publishedResponse->json('data'))->firstWhere('id', $feedback->id);
         $this->assertNotNull($publishedRow);
         $this->assertSame('Draft reply should not appear publicly.', $publishedRow['official_reply']['text']);
-        $this->assertSame('published', $publishedRow['official_reply']['status']);
+        $this->assertArrayNotHasKey('status', $publishedRow['official_reply']);
+    }
+
+    public function test_public_endpoint_supports_rating_filter_and_summary(): void
+    {
+        $vendor = User::where('email', 'vendor@cmart.com')->first();
+        if (!$vendor) {
+            $this->markTestSkipped('Seeded vendor user not found.');
+        }
+
+        $high = Feedback::create([
+            'user_id' => $vendor->id,
+            'reviewer_role' => 'Shopper',
+            'comments' => 'Excellent carboot weekend with friendly vendors and great finds.',
+            'rating' => 5,
+            'service_rating' => 5,
+            'value_rating' => 5,
+            'helpful_count' => 0,
+            'is_hidden' => false,
+        ]);
+
+        $low = Feedback::create([
+            'user_id' => $vendor->id,
+            'reviewer_role' => 'Vendor',
+            'comments' => 'Parking was difficult during peak hours on Saturday morning.',
+            'rating' => 2,
+            'service_rating' => 2,
+            'value_rating' => 2,
+            'helpful_count' => 0,
+            'is_hidden' => false,
+        ]);
+
+        $response = $this->getJson('/api/feedbacks?rating=5');
+
+        $response->assertOk()
+            ->assertJsonStructure(['summary' => ['average_rating', 'total_reviews', 'distribution']]);
+
+        $ids = collect($response->json('data'))->pluck('id');
+        $this->assertTrue($ids->contains($high->id));
+        $this->assertFalse($ids->contains($low->id));
+
+        Feedback::whereIn('id', [$high->id, $low->id])->delete();
+    }
+
+    public function test_public_endpoint_search_matches_comment_text(): void
+    {
+        $vendor = User::where('email', 'vendor@cmart.com')->first();
+        if (!$vendor) {
+            $this->markTestSkipped('Seeded vendor user not found.');
+        }
+
+        $match = Feedback::create([
+            'user_id' => $vendor->id,
+            'reviewer_role' => 'Local Resident',
+            'comments' => 'UniqueSearchPhrase for public review explorer test case.',
+            'rating' => 4,
+            'service_rating' => 4,
+            'value_rating' => 4,
+            'helpful_count' => 0,
+            'is_hidden' => false,
+        ]);
+
+        $this->getJson('/api/feedbacks?search=UniqueSearchPhrase')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.id', $match->id);
+
+        Feedback::where('id', $match->id)->delete();
+    }
+
+    public function test_public_sort_is_stable_for_same_timestamp_rows(): void
+    {
+        $vendor = User::where('email', 'vendor@cmart.com')->first();
+        if (!$vendor) {
+            $this->markTestSkipped('Seeded vendor user not found.');
+        }
+
+        // Two rows sharing an identical created_at — id must break the tie.
+        $sharedTime = now();
+
+        $first = Feedback::create([
+            'user_id' => $vendor->id,
+            'reviewer_role' => 'Shopper',
+            'comments' => 'StableSortPhrase earlier row for deterministic ordering test.',
+            'rating' => 4,
+            'service_rating' => 4,
+            'value_rating' => 4,
+            'helpful_count' => 0,
+            'is_hidden' => false,
+            'created_at' => $sharedTime,
+            'updated_at' => $sharedTime,
+        ]);
+
+        $second = Feedback::create([
+            'user_id' => $vendor->id,
+            'reviewer_role' => 'Vendor',
+            'comments' => 'StableSortPhrase later row for deterministic ordering test.',
+            'rating' => 4,
+            'service_rating' => 4,
+            'value_rating' => 4,
+            'helpful_count' => 0,
+            'is_hidden' => false,
+            'created_at' => $sharedTime,
+            'updated_at' => $sharedTime,
+        ]);
+
+        // Newest: higher id first.
+        $newest = collect($this->getJson('/api/feedbacks?search=StableSortPhrase&sort=newest')->json('data'))
+            ->pluck('id')->values()->all();
+        $this->assertSame([$second->id, $first->id], $newest);
+
+        // Oldest: lower id first.
+        $oldest = collect($this->getJson('/api/feedbacks?search=StableSortPhrase&sort=oldest')->json('data'))
+            ->pluck('id')->values()->all();
+        $this->assertSame([$first->id, $second->id], $oldest);
+
+        Feedback::whereIn('id', [$first->id, $second->id])->delete();
+    }
+
+    public function test_public_highest_and_lowest_rating_sort(): void
+    {
+        $vendor = User::where('email', 'vendor@cmart.com')->first();
+        if (!$vendor) {
+            $this->markTestSkipped('Seeded vendor user not found.');
+        }
+
+        $low = Feedback::create([
+            'user_id' => $vendor->id,
+            'reviewer_role' => 'Shopper',
+            'comments' => 'RatingSortPhrase low rated row for ordering verification.',
+            'rating' => 1,
+            'service_rating' => 1,
+            'value_rating' => 1,
+            'helpful_count' => 0,
+            'is_hidden' => false,
+        ]);
+
+        $high = Feedback::create([
+            'user_id' => $vendor->id,
+            'reviewer_role' => 'Vendor',
+            'comments' => 'RatingSortPhrase high rated row for ordering verification.',
+            'rating' => 5,
+            'service_rating' => 5,
+            'value_rating' => 5,
+            'helpful_count' => 0,
+            'is_hidden' => false,
+        ]);
+
+        $highest = collect($this->getJson('/api/feedbacks?search=RatingSortPhrase&sort=highest_rating')->json('data'))
+            ->pluck('id')->values()->all();
+        $this->assertSame([$high->id, $low->id], $highest);
+
+        $lowest = collect($this->getJson('/api/feedbacks?search=RatingSortPhrase&sort=lowest_rating')->json('data'))
+            ->pluck('id')->values()->all();
+        $this->assertSame([$low->id, $high->id], $lowest);
+
+        Feedback::whereIn('id', [$low->id, $high->id])->delete();
     }
 }

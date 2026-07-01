@@ -122,7 +122,7 @@
         </div>
       </section>
 
-      <section class="max-w-5xl mx-auto">
+      <section class="max-w-6xl mx-auto">
         <div class="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
           <div class="relative pt-12 pb-8 px-8 text-center text-white z-10 bg-gradient-to-br from-brand-600 to-brand-400">
             <h2 class="text-3xl font-extrabold mb-3 tracking-tight">Share Your Voice</h2>
@@ -134,24 +134,132 @@
             <CommunityFeedback @submitted="onFeedbackSubmitted" />
           </div>
           <div ref="reviewsSection" class="p-8 md:p-12 bg-gray-50/50">
-            <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-6">
-              <div>
-                <h3 class="text-xl font-bold text-gray-900">
-                  Community Reviews
-                  <span class="text-brand-600">({{ reviewMeta.total }})</span>
-                </h3>
-                <p v-if="reviewMeta.total > 0" class="text-sm text-gray-500 mt-1">
-                  Showing {{ reviewMeta.from }}–{{ reviewMeta.to }} of {{ reviewMeta.total }}
-                </p>
+            <div class="mb-6">
+              <h3 class="text-2xl font-bold text-gray-900">Community Reviews</h3>
+              <p v-if="resultCountLabel" class="text-sm text-gray-500 mt-1">{{ resultCountLabel }}</p>
+            </div>
+
+            <div
+              v-if="reviewSummary.total_reviews > 0"
+              class="mb-6 rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm"
+            >
+              <div class="flex flex-col sm:flex-row sm:items-center gap-6">
+                <div class="shrink-0 text-center sm:text-left sm:min-w-[120px]">
+                  <p class="text-xs font-bold uppercase tracking-wider text-brand-600 mb-1">Community rating</p>
+                  <p class="text-4xl font-black text-gray-900 tabular-nums">
+                    {{ reviewSummary.average_rating.toFixed(1) }}
+                    <span class="text-lg font-bold text-gray-400">/ 5</span>
+                  </p>
+                  <p class="text-sm text-gray-500 mt-1">{{ reviewSummary.total_reviews }} reviews</p>
+                  <p class="text-xs text-gray-400 mt-1">Based on visible public reviews.</p>
+                </div>
+                <div class="flex-1 space-y-2">
+                  <div
+                    v-for="star in [5, 4, 3, 2, 1]"
+                    :key="`dist-${star}`"
+                    class="flex items-center gap-3 text-sm"
+                  >
+                    <span class="w-12 shrink-0 font-semibold text-gray-600">{{ star }} ★</span>
+                    <div class="h-2.5 flex-1 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        class="h-full rounded-full bg-brand-500 transition-all duration-300"
+                        :style="{ width: distributionPercent(star) }"
+                      />
+                    </div>
+                    <span class="w-8 shrink-0 text-right text-gray-500 tabular-nums">
+                      {{ reviewSummary.distribution[String(star)] ?? 0 }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-8 space-y-3">
+              <label class="sr-only" for="review-search">Search reviews</label>
+              <input
+                id="review-search"
+                v-model="reviewSearch"
+                type="search"
+                placeholder="Search reviews…"
+                class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                @input="debouncedFetchReviews"
+              />
+
+              <div class="flex flex-wrap items-center gap-3">
+                <label class="sr-only" for="review-sort">Sort reviews</label>
+                <select
+                  id="review-sort"
+                  v-model="reviewSort"
+                  class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  @change="fetchReviews(1)"
+                >
+                  <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+
+                <label class="sr-only" for="review-rating">Filter by rating</label>
+                <select
+                  id="review-rating"
+                  v-model="reviewRatingFilter"
+                  class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  @change="fetchReviews(1)"
+                >
+                  <option v-for="option in RATING_FILTERS" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+
+                <label class="sr-only" for="review-type">Filter by reviewer type</label>
+                <select
+                  id="review-type"
+                  v-model="reviewTypeFilter"
+                  class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  @change="fetchReviews(1)"
+                >
+                  <option v-for="option in REVIEWER_TYPE_FILTERS" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+
+                <label class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 cursor-pointer select-none">
+                  <input
+                    v-model="reviewWithPhoto"
+                    type="checkbox"
+                    class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                    @change="fetchReviews(1)"
+                  />
+                  <span class="text-sm font-semibold text-gray-700">With photos</span>
+                </label>
+
+                <button
+                  v-if="hasActiveReviewFilters"
+                  type="button"
+                  class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-50 transition"
+                  @click="clearReviewFilters"
+                >
+                  Clear filters
+                </button>
               </div>
             </div>
 
             <div v-if="loadingReviews" class="text-center py-8 text-gray-500">Loading reviews…</div>
-            <div v-else-if="!communityReviews.length" class="text-center text-gray-500 italic py-8">
+            <div v-else-if="!reviewSummary.total_reviews && !hasActiveReviewFilters" class="text-center text-gray-500 italic py-8">
               No reviews yet. Be the first to share your experience!
             </div>
+            <div v-else-if="!communityReviews.length" class="text-center py-10 rounded-2xl border border-dashed border-gray-200 bg-white">
+              <p class="text-base font-semibold text-gray-700">No reviews match your filters.</p>
+              <p class="text-sm text-gray-500 mt-2">Try clearing filters or choosing another rating.</p>
+              <button
+                type="button"
+                class="mt-4 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-600 transition"
+                @click="clearReviewFilters"
+              >
+                Clear filters
+              </button>
+            </div>
             <div v-else>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="mx-auto max-w-5xl space-y-4">
                 <article
                   v-for="review in communityReviews"
                   :key="review.id"
@@ -169,6 +277,12 @@
                           class="text-xs font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full"
                         >
                           {{ reviewRole(review) }}
+                        </span>
+                        <span
+                          v-if="reviewProofUrl(review)"
+                          class="ml-1 text-xs font-semibold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full"
+                        >
+                          Photo attached
                         </span>
                       </div>
                     </div>
@@ -318,7 +432,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import CommunityFeedback from '../../components/CommunityFeedback.vue';
@@ -328,6 +442,29 @@ import api from '../../services/api';
 import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
 import { vendorBookingLink } from '../../utils/vendorBooking';
 import { resolveStorageUrl } from '../../utils/imageUrl';
+
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'highest_rating', label: 'Highest rating' },
+  { value: 'lowest_rating', label: 'Lowest rating' },
+];
+
+const RATING_FILTERS = [
+  { value: 'all', label: 'All ratings' },
+  { value: '5', label: '5 stars' },
+  { value: '4', label: '4 stars' },
+  { value: '3', label: '3 stars' },
+  { value: '2_or_below', label: '2 stars & below' },
+];
+
+const REVIEWER_TYPE_FILTERS = [
+  { value: 'all', label: 'All reviewers' },
+  { value: 'Shopper', label: 'Shopper' },
+  { value: 'Vendor', label: 'Vendor' },
+  { value: 'UUM Student', label: 'UUM Student' },
+  { value: 'Local Resident', label: 'Local Resident' },
+];
 
 const auth = useAuthStore();
 const toast = useToast();
@@ -342,12 +479,56 @@ const reviewMeta = ref({
   from: 0,
   to: 0,
 });
+const reviewSummary = ref({
+  average_rating: 0,
+  total_reviews: 0,
+  distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+});
+const reviewSearch = ref('');
+const reviewSort = ref('newest');
+const reviewRatingFilter = ref('all');
+const reviewTypeFilter = ref('all');
+const reviewWithPhoto = ref(false);
 const selectedEvent = ref(null);
 const showEventModal = ref(false);
 const loadingEvents = ref(true);
 const loadingReviews = ref(true);
 const reviewsSection = ref(null);
 const proofLightbox = ref({ open: false, url: null, caption: '' });
+
+let searchDebounceTimer = null;
+
+const hasActiveReviewFilters = computed(() =>
+  reviewSearch.value.trim() !== ''
+  || reviewRatingFilter.value !== 'all'
+  || reviewTypeFilter.value !== 'all'
+  || reviewWithPhoto.value
+  || reviewSort.value !== 'newest',
+);
+
+const resultCountLabel = computed(() => {
+  const { total, from, to } = reviewMeta.value;
+  if (!total) return hasActiveReviewFilters.value ? 'Showing 0 reviews' : '';
+  if (from && to) return `Showing ${from}–${to} of ${total} reviews`;
+  return `Showing ${total} of ${total} reviews`;
+});
+
+const distributionPercent = (star) => {
+  const count = reviewSummary.value.distribution[String(star)] ?? 0;
+  const ratedTotal = Object.values(reviewSummary.value.distribution).reduce((sum, n) => sum + n, 0);
+  if (!ratedTotal) return '0%';
+  return `${Math.round((count / ratedTotal) * 100)}%`;
+};
+
+const buildReviewParams = (page = 1) => {
+  const params = { page, sort: reviewSort.value };
+  const search = reviewSearch.value.trim();
+  if (search) params.search = search;
+  if (reviewRatingFilter.value !== 'all') params.rating = reviewRatingFilter.value;
+  if (reviewTypeFilter.value !== 'all') params.reviewer_type = reviewTypeFilter.value;
+  if (reviewWithPhoto.value) params.with_photo = 1;
+  return params;
+};
 
 const openEventDetails = (event) => {
   selectedEvent.value = event;
@@ -370,10 +551,17 @@ const fetchEvents = async () => {
 const fetchReviews = async (page = 1) => {
   loadingReviews.value = true;
   try {
-    const response = await api.get('/feedbacks', { params: { page } });
+    const response = await api.get('/feedbacks', { params: buildReviewParams(page) });
     const payload = response.data;
 
     communityReviews.value = Array.isArray(payload?.data) ? payload.data : [];
+    if (payload?.summary) {
+      reviewSummary.value = {
+        average_rating: payload.summary.average_rating ?? 0,
+        total_reviews: payload.summary.total_reviews ?? 0,
+        distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0, ...payload.summary.distribution },
+      };
+    }
     reviewMeta.value = {
       current_page: payload?.current_page ?? 1,
       per_page: payload?.per_page ?? 6,
@@ -387,6 +575,20 @@ const fetchReviews = async (page = 1) => {
   } finally {
     loadingReviews.value = false;
   }
+};
+
+const debouncedFetchReviews = () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => fetchReviews(1), 300);
+};
+
+const clearReviewFilters = () => {
+  reviewSearch.value = '';
+  reviewSort.value = 'newest';
+  reviewRatingFilter.value = 'all';
+  reviewTypeFilter.value = 'all';
+  reviewWithPhoto.value = false;
+  fetchReviews(1);
 };
 
 const goToReviewPage = async (page) => {
@@ -413,10 +615,14 @@ const closeProofLightbox = () => {
 
 const onFeedbackSubmitted = async () => {
   toast.success('Feedback submitted successfully!');
-  await fetchReviews(1);
+  await clearReviewFilters();
 };
 
 onMounted(async () => {
   await Promise.all([fetchEvents(), fetchReviews()]);
+});
+
+onBeforeUnmount(() => {
+  clearTimeout(searchDebounceTimer);
 });
 </script>

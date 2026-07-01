@@ -71,15 +71,38 @@ class FeedbackController extends Controller
         ], 200);
     }
 
-    /** Public listing — visible reviews only, paginated. */
+    /** Public listing — visible reviews only, paginated with filters and summary. */
     public function index(Request $request)
     {
-        $paginated = Feedback::with('user')
-            ->where('is_hidden', false)
-            ->orderByDesc('created_at')
-            ->paginate(self::PER_PAGE);
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:100',
+            'sort' => 'nullable|in:newest,oldest,highest_rating,lowest_rating',
+            'rating' => 'nullable|in:5,4,3,2_or_below',
+            'reviewer_type' => 'nullable|string|max:50',
+            'with_photo' => 'nullable|boolean',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:24',
+        ]);
+
+        $query = Feedback::with('user')->where('is_hidden', false);
+
+        $this->applyPublicFilters($query, $validated, $request);
+
+        // Stable ordering: include id as a tiebreaker so rows sharing a
+        // created_at timestamp keep a deterministic, visible order.
+        $sort = $validated['sort'] ?? 'newest';
+        match ($sort) {
+            'oldest' => $query->orderBy('created_at')->orderBy('id'),
+            'highest_rating' => $query->orderByDesc('rating')->orderByDesc('created_at')->orderByDesc('id'),
+            'lowest_rating' => $query->orderBy('rating')->orderByDesc('created_at')->orderByDesc('id'),
+            default => $query->orderByDesc('created_at')->orderByDesc('id'),
+        };
+
+        $perPage = (int) ($validated['per_page'] ?? self::PER_PAGE);
+        $paginated = $query->paginate($perPage);
 
         return response()->json([
+            'summary' => $this->buildPublicSummary(),
             'data' => $paginated->getCollection()
                 ->map(fn ($review) => $this->formatFeedback($review))
                 ->values(),
@@ -235,6 +258,70 @@ class FeedbackController extends Controller
         ], 200);
     }
 
+    private function applyPublicFilters($query, array $validated, Request $request): void
+    {
+        $search = trim($validated['search'] ?? '');
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('comments', 'like', '%' . $search . '%')
+                    ->orWhere('reviewer_role', 'like', '%' . $search . '%');
+            });
+        }
+
+        $rating = $validated['rating'] ?? null;
+        if ($rating === '2_or_below') {
+            $query->where(function ($q) {
+                $q->whereBetween('rating', [1, 2])
+                    ->orWhere(function ($inner) {
+                        $inner->where('rating', 0)
+                            ->where(function ($legacy) {
+                                $legacy->whereBetween('service_rating', [1, 2])
+                                    ->orWhereBetween('value_rating', [1, 2]);
+                            });
+                    });
+            });
+        } elseif (in_array($rating, ['3', '4', '5'], true)) {
+            $query->where('rating', (int) $rating);
+        }
+
+        $reviewerType = trim($validated['reviewer_type'] ?? '');
+        if ($reviewerType !== '') {
+            $query->where('reviewer_role', $reviewerType);
+        }
+
+        if ($request->boolean('with_photo')) {
+            $query->whereNotNull('media_path')->where('media_path', '!=', '');
+        }
+    }
+
+    private function buildPublicSummary(): array
+    {
+        $visible = Feedback::query()
+            ->where('is_hidden', false)
+            ->get(['rating', 'service_rating', 'value_rating']);
+
+        $distribution = ['5' => 0, '4' => 0, '3' => 0, '2' => 0, '1' => 0];
+        $ratedValues = [];
+
+        foreach ($visible as $review) {
+            $rating = $this->resolveRating($review);
+            if ($rating === null || $rating < 1 || $rating > 5) {
+                continue;
+            }
+            $ratedValues[] = $rating;
+            $distribution[(string) $rating]++;
+        }
+
+        $ratedCount = count($ratedValues);
+        $average = $ratedCount > 0 ? round(array_sum($ratedValues) / $ratedCount, 1) : 0;
+
+        return [
+            'average_rating' => $average,
+            'total_reviews' => $visible->count(),
+            'distribution' => $distribution,
+        ];
+    }
+
     private function applyStaffFilter($query, string $filter): void
     {
         match ($filter) {
@@ -288,6 +375,12 @@ class FeedbackController extends Controller
 
         if (!$forManagement && $review->official_reply_status !== 'published') {
             return null;
+        }
+
+        if (!$forManagement) {
+            return [
+                'text' => $review->official_reply_text,
+            ];
         }
 
         return [
