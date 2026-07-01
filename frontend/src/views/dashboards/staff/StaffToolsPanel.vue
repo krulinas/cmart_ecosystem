@@ -39,7 +39,14 @@
       </div>
     </section>
 
+    <StaffOperationalSnapshot
+      v-if="isStaffView"
+      ref="snapshotRef"
+      class="rounded-2xl border border-ink-100 overflow-hidden shadow-sm"
+    />
+
     <ImpactDashboard
+      v-else
       :reused-items="impactMetrics.reusedItems"
       :economic-value-rm="impactMetrics.economicValueRm"
       :active-vendors="impactMetrics.activeVendors"
@@ -50,11 +57,15 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import ImpactDashboard from '../../../components/ImpactDashboard.vue';
+import StaffOperationalSnapshot from '../../../components/management/StaffOperationalSnapshot.vue';
 import { useManagementAccess } from '../../../composables/useManagementAccess';
 
 const { isStaffView, isSuperAdminView, canSeeManagerSections, workspaceTheme } = useManagementAccess();
 const theme = workspaceTheme;
+
+const snapshotRef = ref(null);
 
 const impactMetrics = {
   reusedItems: 12450,
@@ -63,7 +74,14 @@ const impactMetrics = {
   activeStudents: 89,
 };
 
+const refresh = async () => {
+  if (isStaffView.value) {
+    await snapshotRef.value?.refresh?.();
+    return;
+  }
+};
+
 defineExpose({
-  refresh: async () => {},
+  refresh,
 });
 </script>

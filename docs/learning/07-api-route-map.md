@@ -161,6 +161,7 @@ Dokumen ini ialah **peta semua REST API endpoint** yang Vue frontend consume. Se
 | Method | Path | Controller |
 |--------|------|------------|
 | GET | `/staff/bookings` | Staff registry |
+| GET | `/staff/operations-summary` | Operational counts for staff tools snapshot |
 | GET | `/staff/bookings/{booking}/verify` | Pass verification data |
 | POST | `/staff/bookings/{booking}/check-in` | Check-in vendor |
 | GET | `/bookings` | Full booking list |

@@ -187,7 +187,8 @@ Dokumen ini map **struktur frontend Vue SPA** — routes, pages, components, sto
 |-----------|--------|
 | `MultiImageUploadField.vue` | Staff events/news image upload |
 | `MediaImageGallery.vue` | Image gallery display |
-| `ImpactDashboard.vue` | Staff tools panel |
+| `StaffOperationalSnapshot.vue` | Tier 1 staff tools panel — operational counts |
+| `ImpactDashboard.vue` | Manager/HQ tools panel (not shown to Tier 1 staff) |
 
 ### Orphan components (wujud, tidak di-import)
 

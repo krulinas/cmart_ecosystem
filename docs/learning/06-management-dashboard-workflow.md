@@ -119,7 +119,7 @@ Publish announcements → public /api/news
 
 ### 7. Tools panel
 ```
-Operational shortcuts — ImpactDashboard, etc.
+Operational shortcuts — Tier 1 staff see `StaffOperationalSnapshot`; managers/HQ still see `ImpactDashboard` on the tools panel.
 ```
 
 ### 8. Boss preview mode

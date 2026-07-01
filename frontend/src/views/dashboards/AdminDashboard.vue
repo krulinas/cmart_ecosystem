@@ -283,9 +283,9 @@ const loadSection = async (section, { force = false } = {}) => {
   const state = sectionCache.value[section];
   if (state?.loading) return;
 
-  if (section === 'tools') {
-    markLoaded(section);
-    return;
+  if (section === 'tools' && !force) {
+    const toolsState = sectionCache.value.tools;
+    if (toolsState?.loaded) return;
   }
 
   markLoading(section);

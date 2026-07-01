@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\VendorItemController;
 use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\UserBookingPreferenceController;
+use App\Http\Controllers\Api\StaffOperationsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -103,6 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:staff,manager,super_admin,cmart_staff,cmart_admin,boss')->group(function () {
         Route::get('/staff/feedbacks', [FeedbackController::class, 'staffIndex']);
         Route::get('/staff/bookings', [BookingController::class, 'staffRegistry']);
+        Route::get('/staff/operations-summary', [StaffOperationsController::class, 'operationsSummary']);
 
         Route::get('/staff/bookings/{booking}/verify', [BookingPassVerificationController::class, 'verify']);
         Route::post('/staff/bookings/{booking}/check-in', [BookingPassVerificationController::class, 'checkIn']);
