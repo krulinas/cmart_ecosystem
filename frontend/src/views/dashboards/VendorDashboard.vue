@@ -2,13 +2,13 @@
   <div class="min-h-screen bg-gradient-to-br from-ink-50 via-brand-50/30 to-ink-50" data-testid="vendor-dashboard-root">
     <AppNavbar variant="vendor" />
 
-    <div class="max-w-6xl mx-auto py-10 px-4 sm:px-6 space-y-8">
-      <header class="rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
+    <div class="max-w-page mx-auto py-12 px-4 sm:px-6 lg:px-8 space-y-10">
+      <header class="rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-7 sm:p-9 shadow-xl shadow-brand-900/5">
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <span class="ml-badge bg-brand-100 text-brand-700">Vendor Hub</span>
-            <h1 class="mt-2 text-3xl font-black text-ink-900 tracking-tight">My Dashboard</h1>
-            <p class="mt-1 text-sm text-ink-500">
+            <h1 class="mt-2 text-3xl sm:text-4xl font-black text-ink-900 tracking-tight">My Dashboard</h1>
+            <p class="mt-2 text-base text-ink-500 leading-relaxed">
               Welcome back, {{ userDisplayName }}. Track approvals, booth details, and your vendor history in one place.
             </p>
           </div>
@@ -16,7 +16,7 @@
             v-if="auth.isApprovedVendor"
             to="/vendor-booking"
             data-testid="nav-booking-events"
-            class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand-500/25 hover:bg-brand-600 transition shrink-0"
+            class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-6 py-3 min-h-[44px] text-[15px] font-bold text-white shadow-lg shadow-brand-500/25 hover:bg-brand-600 transition shrink-0"
           >
             Book a Space
           </router-link>
@@ -24,17 +24,17 @@
       </header>
 
       <!-- My Bookings -->
-      <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5" data-testid="my-bookings-root">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+      <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-7 sm:p-9 shadow-xl shadow-brand-900/5" data-testid="my-bookings-root">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
-            <h2 class="text-xl font-extrabold text-ink-900">My Bookings</h2>
-            <p class="text-sm text-ink-500">Your booth requests at a glance. Open details for the full approval timeline.</p>
+            <h2 class="text-2xl font-extrabold text-ink-900">My Bookings</h2>
+            <p class="text-base text-ink-500 leading-relaxed">Your booth requests at a glance. Open details for the full approval timeline.</p>
           </div>
           <div class="flex flex-wrap gap-2">
             <router-link
               v-if="auth.isApprovedVendor"
               to="/vendor-booking"
-              class="ml-btn-primary text-sm"
+              class="ml-btn-primary"
             >
               New Booking
             </router-link>
@@ -158,6 +158,7 @@
         :load-error="insightsError"
         @retry="fetchVendorInsights"
         @edit-profile="scrollToBusinessProfile"
+        @manage-reuse="scrollToReuseListings"
       />
 
       <VendorHistoryReceipts
@@ -285,6 +286,10 @@ const onBusinessProfileUpdated = async (profile) => {
 const scrollToBusinessProfile = () => {
   document.getElementById('vendor-business-profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   profileManagerRef.value?.startEditing?.();
+};
+
+const scrollToReuseListings = () => {
+  document.getElementById('vendor-reuse-listings')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
 const onVendorItemsChanged = async () => {

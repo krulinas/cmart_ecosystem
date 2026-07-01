@@ -1,6 +1,6 @@
 <template>
   <nav class="bg-white/95 backdrop-blur-md shadow-md sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+    <div class="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
       <router-link :to="homeLink" class="flex items-center" @click="closeMobile">
         <img
           src="/cmart_logo.png"
@@ -14,7 +14,7 @@
           v-for="link in navLinks"
           :key="link.to"
           :to="link.to"
-          class="px-3 py-2 rounded-lg text-gray-600 hover:text-brand-600 hover:bg-brand-50 font-semibold transition text-sm"
+          class="px-3.5 py-2.5 rounded-lg text-gray-600 hover:text-brand-600 hover:bg-brand-50 font-semibold transition text-[15px]"
           :class="{ 'text-brand-600 bg-brand-50': isActive(link) }"
         >
           {{ link.label }}
@@ -25,7 +25,7 @@
         <template v-if="variant === 'public'">
           <router-link
             :to="auth.bookingPathForUser()"
-            class="bg-brand-500 text-white px-4 py-2 rounded-lg shadow hover:bg-brand-600 transition text-sm font-bold whitespace-nowrap"
+            class="bg-brand-500 text-white px-5 py-2.5 min-h-[40px] rounded-lg shadow hover:bg-brand-600 transition text-[15px] font-bold whitespace-nowrap"
           >
             Book a Space
           </router-link>
@@ -53,7 +53,7 @@
           <router-link
             v-else
             to="/login"
-            class="px-4 py-2 rounded-lg border-2 border-brand-500 text-brand-600 hover:bg-brand-50 font-bold transition text-sm whitespace-nowrap"
+            class="px-5 py-2.5 min-h-[40px] rounded-lg border-2 border-brand-500 text-brand-600 hover:bg-brand-50 font-bold transition text-[15px] whitespace-nowrap"
           >
             Sign in
           </router-link>

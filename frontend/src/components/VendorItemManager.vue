@@ -1,13 +1,13 @@
 <template>
-  <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+  <section id="vendor-reuse-listings" class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-7 sm:p-9 shadow-xl shadow-brand-900/5">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
       <div>
-        <h2 class="text-xl font-extrabold text-ink-900">Reuse Item Listings</h2>
-        <p class="text-sm text-ink-500">Manage pre-loved items customers can discover from your booth.</p>
+        <h2 class="text-2xl font-extrabold text-ink-900">Reuse Item Listings</h2>
+        <p class="text-base text-ink-500 leading-relaxed">Manage pre-loved items customers can discover from your booth.</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <button type="button" class="ml-btn-primary text-sm" @click="openCreateModal">Add Item</button>
-        <button type="button" class="ml-btn-ghost text-sm" :disabled="loading" @click="loadItems">
+        <button type="button" class="ml-btn-primary" @click="openCreateModal">Add Item</button>
+        <button type="button" class="ml-btn-ghost" :disabled="loading" @click="loadItems">
           {{ loading ? 'Refreshing…' : 'Refresh' }}
         </button>
       </div>

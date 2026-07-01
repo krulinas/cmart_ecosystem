@@ -39,6 +39,13 @@ export default {
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
+      maxWidth: {
+        page: '1200px',
+      },
+      fontSize: {
+        'readable-sm': ['0.9375rem', { lineHeight: '1.55' }],
+        'readable-base': ['1rem', { lineHeight: '1.6' }],
+      },
     },
   },
   plugins: [],

@@ -31,7 +31,7 @@
       </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-16 space-y-20 -mt-8">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-20 -mt-8">
       <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
           <div class="bg-brand-50 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 text-brand-600">
@@ -40,7 +40,7 @@
             </svg>
           </div>
           <h2 class="text-lg font-black text-gray-900 mb-2">Vibrant Community</h2>
-          <p class="text-sm text-gray-600">Shoppers, vendors, and locals united at CMart Kompleks Changlun every weekend.</p>
+          <p class="text-base text-gray-600 leading-relaxed">Shoppers, vendors, and locals united at CMart Kompleks Changlun every weekend.</p>
         </div>
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
           <div class="bg-emerald-50 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
@@ -49,8 +49,8 @@
             </svg>
           </div>
           <h2 class="text-lg font-black text-gray-900 mb-2">Vendor Marketplace</h2>
-          <p class="text-sm text-gray-600">Browse unique finds from approved micro-businesses and weekend traders.</p>
-          <router-link to="/marketplace" class="inline-block mt-4 text-sm font-bold text-brand-600 hover:underline">
+          <p class="text-base text-gray-600 leading-relaxed">Browse unique finds from approved micro-businesses and weekend traders.</p>
+          <router-link to="/marketplace" class="inline-block mt-4 text-base font-bold text-brand-600 hover:underline">
             Browse Reuse Marketplace →
           </router-link>
         </div>
@@ -61,7 +61,7 @@
             </svg>
           </div>
           <h2 class="text-lg font-black text-gray-900 mb-2">Community Reviews</h2>
-          <p class="text-sm text-gray-600">Real feedback from visitors shaping a better carboot experience for everyone.</p>
+          <p class="text-base text-gray-600 leading-relaxed">Real feedback from visitors shaping a better carboot experience for everyone.</p>
         </div>
       </section>
 
@@ -163,10 +163,10 @@
                         {{ reviewInitial(review) }}
                       </div>
                       <div class="min-w-0">
-                        <div class="font-bold text-gray-900 text-sm truncate">{{ reviewUserName(review) }}</div>
+                        <div class="font-bold text-gray-900 text-base truncate">{{ reviewUserName(review) }}</div>
                         <span
                           v-if="reviewRole(review)"
-                          class="text-[11px] font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full"
+                          class="text-xs font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full"
                         >
                           {{ reviewRole(review) }}
                         </span>
@@ -183,7 +183,7 @@
                     </div>
                   </div>
 
-                  <p v-if="reviewComment(review)" class="text-gray-600 text-sm line-clamp-4 flex-1">
+                  <p v-if="reviewComment(review)" class="text-gray-600 text-base leading-relaxed line-clamp-4 flex-1">
                     "{{ reviewComment(review) }}"
                   </p>
 
@@ -191,8 +191,8 @@
                     v-if="reviewOfficialReply(review)"
                     class="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 px-3 py-2.5"
                   >
-                    <p class="text-[11px] font-bold uppercase tracking-wide text-brand-700 mb-1">CMart Official Reply</p>
-                    <p class="text-sm text-gray-700">{{ reviewOfficialReply(review) }}</p>
+                    <p class="text-xs font-bold uppercase tracking-wide text-brand-700 mb-1">CMart Official Reply</p>
+                    <p class="text-base text-gray-700 leading-relaxed">{{ reviewOfficialReply(review) }}</p>
                   </div>
 
                   <button

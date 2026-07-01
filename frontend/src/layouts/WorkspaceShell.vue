@@ -7,7 +7,7 @@
           v-for="item in flatNavItems"
           :key="item.to"
           :to="item.to"
-          class="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition"
+          class="shrink-0 rounded-full px-3.5 py-2 text-sm font-semibold transition"
           :class="isActiveHash(item.hash) ? theme.navActive : 'bg-ink-100 text-ink-600'"
         >
           {{ item.label }}
@@ -63,7 +63,7 @@
               v-for="item in group.items"
               :key="item.to"
               :to="item.to"
-              class="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-ink-600 transition"
+              class="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[15px] text-ink-600 transition"
               :class="[theme.navHover, isActiveHash(item.hash) ? theme.navActive : '']"
             >
               <span

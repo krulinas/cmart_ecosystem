@@ -13,20 +13,24 @@
 
   html {
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px;
     -webkit-font-smoothing: antialiased;
   }
   body {
-    @apply bg-ink-50 text-ink-900;
+    @apply bg-ink-50 text-ink-900 text-base leading-relaxed;
   }
 }
 
 /* Reusable building blocks for the ecosystem UI */
 @layer components {
+  .page-container {
+    @apply max-w-page mx-auto px-4 sm:px-6 lg:px-8;
+  }
   .ml-card {
-    @apply bg-white rounded-2xl shadow-sm border border-ink-200 p-6;
+    @apply bg-white rounded-2xl shadow-sm border border-ink-200 p-7 sm:p-8;
   }
   .ml-btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[40px] rounded-xl font-semibold text-[15px] leading-snug
            transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .ml-btn-primary {
@@ -42,16 +46,19 @@
     @apply ml-btn bg-transparent text-ink-700 hover:bg-ink-100 focus:ring-ink-300;
   }
   .ml-input {
-    @apply w-full px-3 py-2 rounded-lg border border-ink-200 bg-white text-ink-900
+    @apply w-full px-4 py-2.5 rounded-lg border border-ink-200 bg-white text-[15px] text-ink-900
            focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent;
   }
   .ml-label {
-    @apply block text-sm font-medium text-ink-700 mb-1;
+    @apply block text-[15px] font-medium text-ink-700 mb-1.5;
   }
   .ml-badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    @apply inline-flex items-center px-2.5 py-1 rounded-full text-[13px] font-semibold leading-tight;
   }
   .ml-badge-pending  { @apply ml-badge bg-amber-100   text-amber-800; }
   .ml-badge-approved { @apply ml-badge bg-emerald-100 text-emerald-800; }
   .ml-badge-rejected { @apply ml-badge bg-rose-100    text-rose-800; }
+  .readable-muted {
+    @apply text-readable-sm text-ink-500 leading-relaxed;
+  }
 }

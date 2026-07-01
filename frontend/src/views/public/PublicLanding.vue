@@ -14,28 +14,28 @@
       </div>
 
       <div
-        class="relative z-10 text-center text-white px-6 py-20 max-w-4xl mx-auto will-change-transform motion-reduce:transform-none"
+        class="relative z-10 text-center text-white px-6 py-24 max-w-5xl mx-auto will-change-transform motion-reduce:transform-none"
         :style="contentStyle()"
       >
-        <p class="text-sm sm:text-base uppercase tracking-[0.2em] font-bold text-cyan-200 mb-4 drop-shadow-md">
+        <p class="text-base sm:text-lg uppercase tracking-[0.2em] font-bold text-cyan-200 mb-5 drop-shadow-md">
           CMart Kompleks Changlun
         </p>
         <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black mb-6 drop-shadow-2xl leading-tight tracking-tight">
           Carboot@CMart
         </h1>
-        <p class="text-lg sm:text-xl mb-10 font-medium max-w-2xl mx-auto text-white/95 leading-relaxed drop-shadow">
+        <p class="text-xl sm:text-2xl mb-12 font-medium max-w-3xl mx-auto text-white/95 leading-relaxed drop-shadow">
           Malaysia's favourite weekend carboot market — browse preloved finds, support local vendors, and enjoy community events at CMart Kompleks Changlun.
         </p>
         <div class="flex flex-col sm:flex-row justify-center gap-4">
           <router-link
             to="/#events"
-            class="w-full sm:w-auto bg-cyan-500 text-white font-extrabold py-4 px-10 rounded-full hover:bg-cyan-400 hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(6,182,212,0.4)] text-center text-lg"
+            class="w-full sm:w-auto bg-cyan-500 text-white font-extrabold py-4 px-12 min-h-[48px] rounded-full hover:bg-cyan-400 hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(6,182,212,0.4)] text-center text-lg"
           >
             View Upcoming Events
           </router-link>
           <router-link
             :to="bookingCtaLink"
-            class="w-full sm:w-auto bg-white/10 backdrop-blur border-2 border-white/40 text-white font-bold py-4 px-10 rounded-full hover:bg-white/20 hover:scale-105 transition-all duration-300 text-center text-lg"
+            class="w-full sm:w-auto bg-white/10 backdrop-blur border-2 border-white/40 text-white font-bold py-4 px-12 min-h-[48px] rounded-full hover:bg-white/20 hover:scale-105 transition-all duration-300 text-center text-lg"
           >
             Book a Vendor Space
           </router-link>
@@ -50,7 +50,7 @@
           <div class="mb-10 max-w-3xl" :class="eventsHeaderClass('fade')">
             <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">What's On</span>
             <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Upcoming Carboot Events</h2>
-            <p class="mt-2 text-gray-600 max-w-xl">Plan your visit — browse dates, times, and book a vendor space before slots fill up.</p>
+            <p class="mt-2 text-base text-gray-600 max-w-xl leading-relaxed">Plan your visit — browse dates, times, and book a vendor space before slots fill up.</p>
           </div>
 
           <div v-if="loadingEvents" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -70,7 +70,7 @@
               tabindex="0"
               role="button"
               :aria-label="`View details for ${event.title}`"
-              class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 hover:border-brand-200 hover:ring-2 hover:ring-brand-500/15 transition-all duration-300 ease-out relative overflow-hidden group flex flex-col cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+              class="bg-white rounded-2xl shadow-sm border border-gray-100 p-7 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 hover:border-brand-200 hover:ring-2 hover:ring-brand-500/15 transition-all duration-300 ease-out relative overflow-hidden group flex flex-col cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               :class="staggerCardClass(eventsVisible, index)"
               :style="staggerCardStyle(eventsVisible, index)"
               @click="openEventDetails(event)"
@@ -106,7 +106,7 @@
                   </p>
                 </div>
               </div>
-              <p v-if="event.description" class="text-sm text-gray-600 leading-relaxed mb-5 line-clamp-3 flex-grow pointer-events-none">
+              <p v-if="event.description" class="text-base text-gray-600 leading-relaxed mb-5 line-clamp-3 flex-grow pointer-events-none">
                 {{ event.description }}
               </p>
               <p class="text-xs text-brand-600 font-semibold mb-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -150,20 +150,20 @@
           <div class="text-center max-w-2xl mx-auto mb-12">
             <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">Why Visit</span>
             <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Carboot@CMart Is For Everyone</h2>
-            <p class="mt-3 text-gray-600">A relaxed weekend market where shoppers, families, and local entrepreneurs come together.</p>
+            <p class="mt-3 text-base text-gray-600 leading-relaxed">A relaxed weekend market where shoppers, families, and local entrepreneurs come together.</p>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div
               v-for="benefit in visitBenefits"
               :key="benefit.title"
-              class="bg-gray-50 rounded-2xl border border-gray-100 p-6 text-center hover:border-brand-200 hover:shadow-md transition-all duration-300"
+              class="bg-gray-50 rounded-2xl border border-gray-100 p-7 text-center hover:border-brand-200 hover:shadow-md transition-all duration-300"
             >
               <div :class="['w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4', benefit.iconBg]">
                 <component :is="benefit.icon" />
               </div>
               <h3 class="text-lg font-bold text-gray-900 mb-2">{{ benefit.title }}</h3>
-              <p class="text-sm text-gray-600 leading-relaxed">{{ benefit.description }}</p>
+              <p class="text-base text-gray-600 leading-relaxed">{{ benefit.description }}</p>
             </div>
           </div>
         </div>
@@ -219,7 +219,7 @@
           <div class="mb-10">
             <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">Stay Informed</span>
             <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">News &amp; Updates</h2>
-            <p class="mt-2 text-gray-600 max-w-xl">Announcements, promotions, event updates, and community highlights from Carboot@CMart.</p>
+            <p class="mt-2 text-base text-gray-600 max-w-xl leading-relaxed">Announcements, promotions, event updates, and community highlights from Carboot@CMart.</p>
           </div>
 
           <div v-if="loadingNews" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
