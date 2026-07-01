@@ -187,6 +187,14 @@
                     "{{ reviewComment(review) }}"
                   </p>
 
+                  <div
+                    v-if="reviewOfficialReply(review)"
+                    class="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 px-3 py-2.5"
+                  >
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-brand-700 mb-1">CMart Official Reply</p>
+                    <p class="text-sm text-gray-700">{{ reviewOfficialReply(review) }}</p>
+                  </div>
+
                   <button
                     v-if="reviewProofUrl(review)"
                     type="button"
@@ -392,6 +400,7 @@ const reviewRole = (review) => review.role || review.reviewer_role || null;
 const reviewComment = (review) => review.comment || review.comments || '';
 const reviewRating = (review) => review.rating || null;
 const reviewProofUrl = (review) => resolveStorageUrl(review.proof_url || review.media_path || null);
+const reviewOfficialReply = (review) => review.official_reply?.text || null;
 const reviewInitial = (review) => reviewUserName(review).charAt(0).toUpperCase();
 
 const openProofLightbox = (url, caption) => {

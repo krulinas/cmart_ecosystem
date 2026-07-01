@@ -21,6 +21,12 @@ class Feedback extends Model
         'media_path',
         'helpful_count',
         'is_hidden',
+        'reviewed_at',
+        'reviewed_by',
+        'official_reply_text',
+        'official_reply_status',
+        'official_reply_by',
+        'official_reply_published_at',
     ];
 
     protected $casts = [
@@ -29,10 +35,22 @@ class Feedback extends Model
         'service_rating' => 'integer',
         'value_rating' => 'integer',
         'rating' => 'integer',
+        'reviewed_at' => 'datetime',
+        'official_reply_published_at' => 'datetime',
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function reviewedByUser()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function officialReplyByUser()
+    {
+        return $this->belongsTo(User::class, 'official_reply_by');
     }
 }

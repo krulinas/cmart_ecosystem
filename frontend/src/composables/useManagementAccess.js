@@ -20,6 +20,8 @@ export function useManagementAccess() {
   const isSuperAdminView = computed(() => auth.isSuperAdmin && !bossPreview.viewAsStaff);
 
   const canDeleteBookings = computed(() => isManagerOrAbove(auth.role));
+  const canDeleteFeedback = computed(() => isManagerOrAbove(auth.role));
+  const canPublishOfficialReply = computed(() => isManagerOrAbove(auth.role));
   const canFinalApproveBookings = computed(() => isManagerView.value);
   const canSeeManagerSections = computed(() => isManagerView.value);
   const shouldLoadManagerPanels = computed(() => isManagerView.value);
@@ -45,6 +47,8 @@ export function useManagementAccess() {
     isManagerView,
     isSuperAdminView,
     canDeleteBookings,
+    canDeleteFeedback,
+    canPublishOfficialReply,
     canFinalApproveBookings,
     canSeeManagerSections,
     shouldLoadManagerPanels,

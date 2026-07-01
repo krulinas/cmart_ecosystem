@@ -36,6 +36,7 @@ class StaffOperationsController extends Controller
 
         $feedbackToReview = Feedback::query()
             ->where('is_hidden', false)
+            ->whereNull('reviewed_at')
             ->count();
 
         return response()->json([

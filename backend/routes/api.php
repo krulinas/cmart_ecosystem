@@ -116,7 +116,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/bookings/{booking}/verify-payment', [BookingController::class, 'verifyBookingPayment']);
 
         Route::apiResource('invoices', InvoiceController::class)->only(['index', 'show', 'update']);
-        Route::apiResource('feedbacks', FeedbackController::class)->except(['store', 'index']);
+
+        Route::get('/feedbacks/{feedback}', [FeedbackController::class, 'show']);
+        Route::put('/feedbacks/{feedback}', [FeedbackController::class, 'update']);
+        Route::patch('/feedbacks/{feedback}', [FeedbackController::class, 'update']);
+        Route::post('/feedbacks/{feedback}/reviewed', [FeedbackController::class, 'markReviewed']);
+        Route::put('/feedbacks/{feedback}/official-reply', [FeedbackController::class, 'updateOfficialReply']);
+
+        Route::middleware('role:manager,super_admin,cmart_admin,boss')->group(function () {
+            Route::post('/feedbacks/{feedback}/official-reply/publish', [FeedbackController::class, 'publishOfficialReply']);
+            Route::delete('/feedbacks/{feedback}', [FeedbackController::class, 'destroy']);
+        });
+
         Route::apiResource('carboot-events', CarbootEventController::class);
         Route::apiResource('news-posts', NewsPostController::class);
     });
