@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gradient-to-b from-sky-50/80 to-gray-50" data-testid="public-calendar-root">
-    <AppNavbar :variant="auth.isCommunityMember ? 'vendor' : 'public'" />
+    <AppNavbar :variant="auth.isVendorUser ? 'vendor' : 'public'" />
 
     <div class="py-8 px-4 sm:px-6 lg:px-8">
       <div class="max-w-6xl mx-auto space-y-6">

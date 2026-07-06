@@ -22,13 +22,13 @@
       </p>
       <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
         <router-link
-          to="/login"
+          :to="loginPath"
           class="w-full sm:w-auto bg-brand-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:bg-brand-600 transition transform hover:-translate-y-0.5"
         >
-          Log In
+          Leave a Review
         </router-link>
         <router-link
-          to="/register"
+          :to="registerPath"
           class="w-full sm:w-auto bg-white text-brand-600 font-bold py-3 px-8 rounded-xl border-2 border-brand-500 hover:bg-brand-50 transition"
         >
           Join Community
@@ -126,6 +126,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
+import { loginPathWithRedirect, registerPathWithRedirect, COMMUNITY_REVIEW_INTENT_PATH } from '../utils/postAuthRedirect';
 import api from '../services/api';
 
 const emit = defineEmits(['submitted']);
@@ -135,6 +136,10 @@ defineProps({
 });
 
 const auth = useAuthStore();
+
+const reviewIntentPath = COMMUNITY_REVIEW_INTENT_PATH;
+const loginPath = loginPathWithRedirect(reviewIntentPath);
+const registerPath = registerPathWithRedirect(reviewIntentPath);
 
 const REVIEWER_ROLES = ['Shopper', 'Vendor', 'UUM Student', 'Local Resident'];
 const MIN_WORDS = 5;

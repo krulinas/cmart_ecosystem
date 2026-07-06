@@ -20,8 +20,8 @@
       :class="placementClass"
       @keydown.escape.stop="close"
     >
-      <p class="text-sm leading-relaxed text-ink-700">{{ textEn }}</p>
-      <p v-if="textMs" class="mt-2 text-sm leading-relaxed text-ink-400">{{ textMs }}</p>
+      <p class="text-[15px] leading-7 text-slate-700">{{ textEn }}</p>
+      <p v-if="textMs" class="mt-2 text-[13px] leading-6 text-slate-500 font-normal">{{ textMs }}</p>
     </div>
   </span>
 </template>

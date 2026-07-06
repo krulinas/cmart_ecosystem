@@ -109,26 +109,34 @@
     <template #footer>
       <p class="text-center text-sm text-ink-500">
         Already have an account?
-        <router-link to="/login" class="font-semibold text-brand-600 hover:text-brand-700">Sign in</router-link>
+        <router-link :to="loginLink" class="font-semibold text-brand-600 hover:text-brand-700">Sign in</router-link>
       </p>
     </template>
   </AuthShell>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, reactive, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import AuthShell from '../../components/auth/AuthShell.vue';
 import AuthMethodButton from '../../components/auth/AuthMethodButton.vue';
 import GoogleIcon from '../../components/auth/GoogleIcon.vue';
 import { getGoogleAuthUrl, isGoogleLoginEnabled } from '../../config/auth';
+import { resolvePostAuthRedirect, COMMUNITY_REVIEW_INTENT_PATH } from '../../utils/postAuthRedirect';
 import { useAuthStore } from '../../stores/auth';
 
 const auth = useAuthStore();
+const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 
+const reviewIntentPath = COMMUNITY_REVIEW_INTENT_PATH;
+const loginLink = computed(() => {
+  const redirect = route.query.redirect;
+  const path = typeof redirect === 'string' && redirect.startsWith('/') ? redirect : reviewIntentPath;
+  return `/login?redirect=${encodeURIComponent(path)}`;
+});
 const googleEnabled = isGoogleLoginEnabled();
 const showPassword = ref(false);
 const showPasswordConfirmation = ref(false);
@@ -148,7 +156,7 @@ const submit = async () => {
   try {
     await auth.register(form);
     toast.success('Account created successfully.');
-    router.push(auth.homeForUser());
+    router.push(resolvePostAuthRedirect(auth, route.query.redirect));
   } catch (error) {
     const errors = error.response?.data?.errors;
     const firstError = errors ? Object.values(errors)[0]?.[0] : null;

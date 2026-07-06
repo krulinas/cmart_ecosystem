@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50" data-testid="marketplace-preview-root">
-    <AppNavbar :variant="auth.isCommunityMember ? 'vendor' : 'public'" />
+    <AppNavbar :variant="auth.isVendorUser ? 'vendor' : 'public'" />
 
     <header class="bg-gradient-to-br from-brand-700 via-brand-600 to-brand-500 pt-16 pb-20 px-6 relative overflow-hidden">
       <div

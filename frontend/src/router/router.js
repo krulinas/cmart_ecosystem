@@ -18,6 +18,7 @@ import { useAuthStore } from '../stores/auth';
 import { useBossPreviewStore } from '../stores/bossPreview';
 import { ALL_WORKSPACE_HASHES, MANAGER_ONLY_HASHES } from '../config/workspaceNav';
 import { isManagerOrAbove, normalizeRole, ROLES, workflowRoleKey } from '../utils/managementRoles';
+import { communityVisitorFallbackPath } from '../utils/postAuthRedirect';
 
 const MANAGEMENT_PROTECTED_PREFIXES = ['/admin', '/staff/'];
 
@@ -83,13 +84,13 @@ const routes = [
     path: '/dashboard',
     name: 'vendor-dashboard',
     component: VendorDashboard,
-    meta: { requiresAuth: true, roles: ['community'] },
+    meta: { requiresAuth: true, roles: ['community'], vendorUser: true },
   },
   {
     path: '/profile',
     name: 'vendor-profile',
     component: VendorProfile,
-    meta: { requiresAuth: true, roles: ['community'] },
+    meta: { requiresAuth: true, roles: ['community'], vendorUser: true },
   },
   {
     path: '/vendor-booking',
@@ -161,11 +162,7 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.managementGuestOnly && auth.isAuthenticated) {
-    if (auth.isCmartWorker) {
-      return auth.homeForUser();
-    }
-
-    return '/dashboard';
+    return auth.homeForUser();
   }
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
@@ -174,6 +171,10 @@ router.beforeEach(async (to) => {
 
   if (to.meta.roles && !auth.hasAnyRole(to.meta.roles)) {
     return auth.isAuthenticated ? auth.homeForUser() : loginRedirectFor(to);
+  }
+
+  if (to.meta.vendorUser && auth.role === 'community' && !auth.isVendorUser) {
+    return communityVisitorFallbackPath();
   }
 
   if (to.meta.vendorApproved && !auth.isApprovedVendor) {

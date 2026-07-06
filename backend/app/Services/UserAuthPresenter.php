@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ManagementProfile;
 use App\Models\User;
 use App\Models\VendorBusinessProfile;
+use App\Support\CommunityVendorIntent;
 use App\Support\ManagementRole;
 
 class UserAuthPresenter
@@ -36,7 +37,7 @@ class UserAuthPresenter
                 : null;
         }
 
-        return $payload;
+        return array_merge($payload, CommunityVendorIntent::resolve($user));
     }
 
     private static function presentManagementProfile(ManagementProfile $profile): array

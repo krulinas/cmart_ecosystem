@@ -130,18 +130,46 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isCommunityMember = computed(() => role.value === 'community');
 
+  const isVendorUser = computed(() => {
+    if (role.value !== 'community') {
+      return false;
+    }
+
+    if (typeof user.value?.is_vendor_user === 'boolean') {
+      return user.value.is_vendor_user;
+    }
+
+    const status = vendorStatus.value;
+    const hasVendorStatus = status && status !== 'none';
+    return Boolean(
+      hasVendorStatus
+      || user.value?.vendor_business_profile
+      || user.value?.vendor_signals?.length,
+    );
+  });
+
+  const communityMode = computed(() => {
+    if (role.value !== 'community') {
+      return null;
+    }
+
+    return user.value?.community_mode ?? (isVendorUser.value ? 'vendor' : 'visitor');
+  });
+
   const hasAnyRole = (roles = []) => hasAnyManagementRole(role.value, roles) || roles.includes(role.value);
 
   const homeForUser = () => {
     if (isCmartWorker.value) return '/admin';
     if (role.value === 'uum') return '/uum';
-    if (role.value === 'community') return '/dashboard';
+    if (role.value === 'community') {
+      return isVendorUser.value ? '/dashboard' : '/community';
+    }
     return '/';
   };
 
   const bookingPathForUser = () => {
     if (isApprovedVendor.value) return '/vendor-booking';
-    if (isAuthenticated.value) return '/login';
+    if (isAuthenticated.value) return '/#vendor';
     return '/login?redirect=/vendor-booking';
   };
 
@@ -156,6 +184,8 @@ export const useAuthStore = defineStore('auth', () => {
     vendorStatus,
     isApprovedVendor,
     isCommunityMember,
+    isVendorUser,
+    communityMode,
     isCmartWorker,
     isBoss,
     isStaff,

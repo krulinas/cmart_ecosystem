@@ -59,6 +59,7 @@ import { reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import AuthShell from '../../components/auth/AuthShell.vue';
+import { resolveManagementPostAuthRedirect } from '../../utils/postAuthRedirect';
 import { useAuthStore } from '../../stores/auth';
 
 const auth = useAuthStore();
@@ -84,8 +85,7 @@ const submit = async () => {
     }
 
     toast.success('Signed in successfully.');
-    const redirect = route.query.redirect;
-    router.push(typeof redirect === 'string' && redirect.startsWith('/admin') ? redirect : '/admin');
+    router.push(resolveManagementPostAuthRedirect(auth, route.query.redirect));
   } catch (error) {
     const message = error.response?.data?.message || 'Invalid email or password. Please try again.';
     toast.error(message);

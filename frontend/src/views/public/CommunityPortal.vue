@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <AppNavbar :variant="auth.isCommunityMember ? 'vendor' : 'public'" />
+    <AppNavbar :variant="auth.isVendorUser ? 'vendor' : 'public'" />
 
     <header class="bg-gradient-to-br from-brand-700 via-brand-600 to-brand-500 pt-16 pb-20 px-6 relative overflow-hidden">
       <div
@@ -130,7 +130,7 @@
               Help us improve the Carboot@CMart experience for shoppers and vendors alike.
             </p>
           </div>
-          <div class="relative bg-white z-20 rounded-t-[2.5rem] -mt-6 p-8 border-b border-gray-100">
+          <div id="share-feedback" class="relative bg-white z-20 rounded-t-[2.5rem] -mt-6 p-8 border-b border-gray-100">
             <CommunityFeedback @submitted="onFeedbackSubmitted" />
           </div>
           <div ref="reviewsSection" class="p-8 md:p-12 bg-gray-50/50">
@@ -358,20 +358,47 @@
       </section>
 
       <section
-        v-if="!auth.isAuthenticated"
+        v-if="!auth.isVendorUser"
+        id="become-vendor"
         class="bg-brand-600 rounded-3xl p-10 text-center text-white"
       >
         <h2 class="text-2xl font-black mb-3">Ready to become a vendor?</h2>
         <p class="text-brand-100 mb-6 max-w-lg mx-auto">
-          Create your free community account, then apply for a vendor booth at our next carboot event.
+          {{
+            auth.isAuthenticated
+              ? 'Apply for a vendor booth at our next carboot event and unlock your vendor dashboard.'
+              : 'Create your free community account, then apply for a vendor booth at our next carboot event.'
+          }}
         </p>
         <div class="flex flex-col sm:flex-row justify-center gap-4">
-          <router-link to="/register" class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition">
-            Create Account
-          </router-link>
-          <router-link to="/login" class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition">
-            Vendor Login
-          </router-link>
+          <template v-if="auth.isAuthenticated">
+            <router-link
+              :to="auth.bookingPathForUser()"
+              class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
+            >
+              Become a Vendor
+            </router-link>
+            <router-link
+              to="/community#share-feedback"
+              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
+            >
+              Leave a Review
+            </router-link>
+          </template>
+          <template v-else>
+            <router-link
+              :to="registerPathWithRedirect('/community#share-feedback')"
+              class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
+            >
+              Create Account
+            </router-link>
+            <router-link
+              :to="loginPathWithRedirect('/community#share-feedback')"
+              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
+            >
+              Sign in to Leave a Review
+            </router-link>
+          </template>
         </div>
       </section>
     </main>
@@ -441,6 +468,7 @@ import { useAuthStore } from '../../stores/auth';
 import api from '../../services/api';
 import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
 import { vendorBookingLink } from '../../utils/vendorBooking';
+import { loginPathWithRedirect, registerPathWithRedirect } from '../../utils/postAuthRedirect';
 import { resolveStorageUrl } from '../../utils/imageUrl';
 
 const SORT_OPTIONS = [

@@ -37,10 +37,11 @@
 
     <div class="rounded-2xl border border-sky-100 bg-sky-50/60 px-5 py-5 sm:px-6 sm:py-5">
       <BilingualHelpText
+        :collapsible-malay="false"
         text-en="This dashboard shows your own vendor activity at CMart, including booth bookings, verified payments, reuse listings, profile readiness, and current booth status. Use it to understand your progress and prepare for upcoming carboot events."
         text-ms="Dashboard ini menunjukkan aktiviti vendor anda sendiri di CMart, termasuk tempahan tapak, bayaran yang telah disahkan, listing reuse, kelengkapan profil, dan status tapak semasa. Ia membantu vendor memahami perkembangan dan bersedia untuk event carboot akan datang."
-        en-class="text-readable-base text-sky-900"
-        ms-class="text-sm text-sky-700/80 mt-1.5"
+        en-class="text-[15px] leading-7 text-sky-900"
+        ms-class="mt-2 text-[13px] leading-6 text-slate-500 font-normal"
       />
     </div>
 
@@ -48,10 +49,10 @@
       <summary class="cursor-pointer text-base font-bold text-ink-800 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-lg">
         How to read this dashboard
       </summary>
-      <ul class="mt-4 space-y-3 text-base text-ink-600 list-disc pl-5 leading-relaxed">
+      <ul class="mt-4 space-y-4 list-disc pl-5">
         <li v-for="item in dashboardGuideItems" :key="item.en">
-          <span>{{ item.en }}</span>
-          <span class="block text-sm text-ink-400 mt-1">{{ item.ms }}</span>
+          <span class="text-[15px] leading-7 text-slate-700">{{ item.en }}</span>
+          <span class="block mt-2 text-[13px] leading-6 text-slate-500 font-normal">{{ item.ms }}</span>
         </li>
       </ul>
     </details>
@@ -96,14 +97,14 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <div class="flex items-center gap-1.5">
-              <h3 class="text-xl font-extrabold text-ink-900">Profile Completion</h3>
+              <h3 class="text-xl font-bold text-slate-900">Profile Completion</h3>
               <InfoHelpTip
                 aria-label="About Profile Completion"
                 text-en="How complete your business profile is. A complete profile improves vendor trust and booth visibility."
                 text-ms="Menunjukkan tahap kelengkapan profil bisnes. Profil lengkap membantu meningkatkan kepercayaan dan visibility vendor."
               />
             </div>
-            <p class="text-base text-ink-500 leading-relaxed">Complete your business profile to improve booth visibility.</p>
+            <p class="text-[15px] leading-7 text-slate-700">Complete your business profile to improve booth visibility.</p>
           </div>
           <button type="button" class="ml-btn-ghost shrink-0" @click="$emit('edit-profile')">
             Edit Profile
@@ -128,8 +129,8 @@
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7">
-          <h3 class="text-xl font-extrabold text-ink-900 mb-1">Monthly Bookings</h3>
-          <p class="text-sm text-ink-500 mb-3">Last 6 months by event date</p>
+          <h3 class="text-xl font-bold text-slate-900 mb-1">Monthly Bookings</h3>
+          <p class="text-sm text-slate-500 mb-3">Last 6 months by event date</p>
           <BilingualHelpText
             class="mb-5"
             text-en="Shows how many booth bookings are linked to event dates each month. A line chart is used to make booking trends easier to see over time."
@@ -142,8 +143,8 @@
         </div>
 
         <div class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7">
-          <h3 class="text-xl font-extrabold text-ink-900 mb-1">Monthly Payments</h3>
-          <p class="text-sm text-ink-500 mb-3">Paid booth invoices over the last 6 months</p>
+          <h3 class="text-xl font-bold text-slate-900 mb-1">Monthly Payments</h3>
+          <p class="text-sm text-slate-500 mb-3">Paid booth invoices over the last 6 months</p>
           <BilingualHelpText
             class="mb-5"
             text-en="Shows the total verified booth payments received each month. A bar chart is used because monthly totals are easier to compare side by side."
@@ -156,7 +157,7 @@
         </div>
 
         <div class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7">
-          <h3 class="text-xl font-extrabold text-ink-900 mb-1">Booking Status</h3>
+          <h3 class="text-xl font-bold text-slate-900 mb-1">Booking Status</h3>
           <BilingualHelpText
             class="mb-5"
             text-en="Shows how your bookings are distributed by status, such as approved, pending, rejected, revision, or withdrawn. A donut chart shows each status as part of the total."
@@ -169,7 +170,7 @@
         </div>
 
         <div class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7">
-          <h3 class="text-xl font-extrabold text-ink-900 mb-1">Reuse Listing Status</h3>
+          <h3 class="text-xl font-bold text-slate-900 mb-1">Reuse Listing Status</h3>
           <BilingualHelpText
             class="mb-5"
             text-en="Shows the status of your reuse item listings once items are added."
@@ -182,8 +183,7 @@
             <BilingualHelpText
               text-en="No reuse listing data yet. Add reuse items to see listing status insights here."
               text-ms="Belum ada data listing reuse. Tambah barang reuse untuk melihat insight status listing di sini."
-              en-class="text-base text-ink-500"
-              ms-class="text-sm text-ink-400 mt-1.5"
+              en-class="text-[15px] leading-7 text-slate-600"
             />
             <button type="button" class="mt-5 ml-btn-ghost font-semibold" @click="$emit('manage-reuse')">
               Manage Reuse Listings
@@ -193,7 +193,7 @@
       </div>
 
       <div class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7">
-        <h3 class="text-xl font-extrabold text-ink-900 mb-1">Recent Activity</h3>
+        <h3 class="text-xl font-bold text-slate-900 mb-1">Recent Activity</h3>
         <BilingualHelpText
           class="mb-5"
           text-en="Recent Activity lists your latest booking and payment updates so you can quickly track what changed."
@@ -236,8 +236,8 @@
           class="mb-5"
           text-en="Shows the latest approved booth information for your upcoming or current event."
           text-ms="Menunjukkan maklumat tapak terkini yang telah diluluskan untuk event semasa atau akan datang."
-          en-class="text-readable-sm text-brand-800/90"
-          ms-class="text-sm text-brand-700/75"
+          en-class="text-[15px] leading-7 text-brand-800"
+          ms-class="mt-2 text-[13px] leading-6 text-slate-500 font-normal"
         />
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 text-base">
           <div>

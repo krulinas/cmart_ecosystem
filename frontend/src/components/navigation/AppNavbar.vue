@@ -27,7 +27,7 @@
             :to="auth.bookingPathForUser()"
             class="bg-brand-500 text-white px-5 py-2.5 min-h-[40px] rounded-lg shadow hover:bg-brand-600 transition text-[15px] font-bold whitespace-nowrap"
           >
-            Book a Space
+            {{ auth.isVendorUser ? 'Book a Space' : 'Become a Vendor' }}
           </router-link>
 
           <template v-if="auth.isAuthenticated">
@@ -121,7 +121,7 @@
               class="bg-brand-500 text-white px-4 py-3 rounded-lg text-center font-bold shadow hover:bg-brand-600 transition"
               @click="closeMobile"
             >
-              Book a Space
+              {{ auth.isVendorUser ? 'Book a Space' : 'Become a Vendor' }}
             </router-link>
 
             <template v-if="auth.isAuthenticated">
@@ -165,7 +165,7 @@
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
-import { PUBLIC_LINKS, VENDOR_LINKS } from '../../config/navigation';
+import { PUBLIC_LINKS, COMMUNITY_VISITOR_LINKS, VENDOR_LINKS } from '../../config/navigation';
 import { useLogout } from '../../composables/useLogout';
 
 const props = defineProps({
@@ -186,9 +186,10 @@ const { logout } = useLogout();
 const isMobileOpen = ref(false);
 
 const navLinks = computed(() => {
-  if (props.variant === 'vendor' && auth.isAuthenticated && auth.role === 'community') {
-    return VENDOR_LINKS;
+  if (auth.isAuthenticated && auth.role === 'community') {
+    return auth.isVendorUser ? VENDOR_LINKS : COMMUNITY_VISITOR_LINKS;
   }
+
   return PUBLIC_LINKS;
 });
 

@@ -28,7 +28,7 @@ class AuthController extends Controller
             'phone_number' => $validated['phone_number'] ?? null,
             'password' => Hash::make($validated['password']),
             'role' => 'community',
-            'vendor_status' => 'approved', // Default was 'none'; set to 'approved' for demo/testing
+            'vendor_status' => 'none',
         ]);
 
         return $this->respondWithToken($user, '201 Created: Account registered successfully.', 201);
@@ -95,16 +95,19 @@ class AuthController extends Controller
         try {
             $googleUser = Socialite::driver('google')->stateless()->user();
 
-            // Find user by email, or create a new account if none exists
-            $user = User::updateOrCreate(
-                ['email' => $googleUser->email],
-                [
+            $user = User::where('email', $googleUser->email)->first();
+
+            if (!$user) {
+                $user = User::create([
+                    'email' => $googleUser->email,
                     'name' => $googleUser->name,
-                    'vendor_status' => 'approved', // Auto-approve so Google users can book immediately
-                    'role' => 'community', 
-                    'password' => Hash::make(Str::random(16)) // Random password; users sign in via Google OAuth
-                ]
-            );
+                    'vendor_status' => 'none',
+                    'role' => 'community',
+                    'password' => Hash::make(Str::random(16)),
+                ]);
+            } else {
+                $user->update(['name' => $googleUser->name]);
+            }
 
             // Reuse respondWithToken() for a consistent JSON response shape
             return $this->respondWithToken($user, '200 OK: Google authentication successful.');

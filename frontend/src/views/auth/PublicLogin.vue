@@ -95,6 +95,7 @@ import AuthShell from '../../components/auth/AuthShell.vue';
 import AuthMethodButton from '../../components/auth/AuthMethodButton.vue';
 import GoogleIcon from '../../components/auth/GoogleIcon.vue';
 import { getGoogleAuthUrl, isGoogleLoginEnabled } from '../../config/auth';
+import { resolvePostAuthRedirect } from '../../utils/postAuthRedirect';
 import { useAuthStore } from '../../stores/auth';
 
 const auth = useAuthStore();
@@ -121,7 +122,7 @@ const submit = async () => {
   try {
     await auth.login(form);
     toast.success('Signed in successfully.');
-    router.push(route.query.redirect || auth.homeForUser());
+    router.push(resolvePostAuthRedirect(auth, route.query.redirect));
   } catch (error) {
     const message = error.response?.data?.message || 'Invalid email or password. Please try again.';
     toast.error(message);
