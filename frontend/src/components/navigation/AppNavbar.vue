@@ -9,17 +9,77 @@
         />
       </router-link>
 
+      <!-- Desktop navigation -->
       <div class="hidden md:flex items-center space-x-1">
-        <router-link
-          v-for="link in navLinks"
-          :key="linkNavKey(link)"
-          :to="linkDestination(link)"
-          :data-testid="link.testId || undefined"
-          class="px-3.5 py-2.5 rounded-lg text-gray-600 hover:text-brand-600 hover:bg-brand-50 font-semibold transition text-[15px]"
-          :class="{ 'text-brand-600 bg-brand-50': isActive(link) }"
-        >
-          {{ link.label }}
-        </router-link>
+        <template v-if="isVendorNav">
+          <router-link
+            :to="vendorDashboardLink.to"
+            :data-testid="vendorDashboardLink.testId"
+            class="px-3.5 py-2.5 rounded-lg text-gray-600 hover:text-brand-600 hover:bg-brand-50 font-semibold transition text-[15px]"
+            :class="{ 'text-brand-600 bg-brand-50': isDashboardActive }"
+          >
+            {{ vendorDashboardLink.label }}
+          </router-link>
+
+          <div
+            v-for="menu in vendorMenus"
+            :key="menu.id"
+            class="relative"
+            :data-testid="menu.testId"
+          >
+            <button
+              type="button"
+              class="px-3.5 py-2.5 rounded-lg text-gray-600 hover:text-brand-600 hover:bg-brand-50 font-semibold transition text-[15px] inline-flex items-center gap-1"
+              :class="{ 'text-brand-600 bg-brand-50': isMenuActive(menu) || openMenu === menu.id }"
+              :aria-expanded="openMenu === menu.id"
+              @click="toggleMenu(menu.id)"
+            >
+              {{ menu.label }}
+              <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            <div
+              v-show="openMenu === menu.id"
+              class="absolute right-0 mt-1 min-w-[12rem] rounded-xl border border-gray-100 bg-white py-1 shadow-lg ring-1 ring-black/5"
+            >
+              <router-link
+                v-for="item in menu.items"
+                :key="linkNavKey(item)"
+                :to="linkDestination(item)"
+                :data-testid="item.testId"
+                class="block px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-brand-50 hover:text-brand-700"
+                :class="{ 'text-brand-700 bg-brand-50': isActive(item) }"
+                @click="closeMenus"
+              >
+                {{ item.label }}
+              </router-link>
+              <button
+                v-if="menu.id === 'account'"
+                type="button"
+                class="block w-full text-left px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                data-testid="nav-logout"
+                @click="handleLogout"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <template v-else>
+          <router-link
+            v-for="link in navLinks"
+            :key="linkNavKey(link)"
+            :to="linkDestination(link)"
+            :data-testid="link.testId || undefined"
+            class="px-3.5 py-2.5 rounded-lg text-gray-600 hover:text-brand-600 hover:bg-brand-50 font-semibold transition text-[15px]"
+            :class="{ 'text-brand-600 bg-brand-50': isActive(link) }"
+          >
+            {{ link.label }}
+          </router-link>
+        </template>
 
         <div class="h-6 w-px bg-gray-200 mx-2"></div>
 
@@ -42,6 +102,7 @@
             <button
               type="button"
               class="text-gray-500 hover:text-red-600 font-bold text-sm transition flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50"
+              data-testid="nav-logout"
               @click="logout"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -60,7 +121,7 @@
           </router-link>
         </template>
 
-        <template v-else-if="auth.isAuthenticated">
+        <template v-else-if="auth.isAuthenticated && !isVendorNav">
           <span
             v-if="showUserBadge"
             class="hidden lg:inline text-xs font-bold text-gray-500 max-w-[140px] truncate px-2"
@@ -71,6 +132,7 @@
           <button
             type="button"
             class="text-gray-500 hover:text-red-600 font-bold text-sm transition flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50"
+            data-testid="nav-logout"
             @click="logout"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -94,6 +156,7 @@
       </button>
     </div>
 
+    <!-- Mobile navigation -->
     <transition
       enter-active-class="transition duration-200 ease-out"
       enter-from-class="transform -translate-y-4 opacity-0"
@@ -102,19 +165,57 @@
       leave-from-class="transform translate-y-0 opacity-100"
       leave-to-class="transform -translate-y-4 opacity-0"
     >
-      <div v-show="isMobileOpen" class="md:hidden bg-white border-t border-gray-100 absolute w-full shadow-lg">
+      <div v-show="isMobileOpen" class="md:hidden bg-white border-t border-gray-100 absolute w-full shadow-lg max-h-[80vh] overflow-y-auto">
         <div class="px-6 py-4 flex flex-col space-y-3">
-          <router-link
-            v-for="link in navLinks"
-            :key="'m-' + linkNavKey(link)"
-            :to="linkDestination(link)"
-            :data-testid="link.testId ? link.testId + '-mobile' : undefined"
-            class="text-gray-700 hover:text-brand-600 font-semibold text-lg py-1 rounded-lg px-2 -mx-2 transition"
-            :class="{ 'text-brand-600 bg-brand-50': isActive(link) }"
-            @click="closeMobile"
-          >
-            {{ link.label }}
-          </router-link>
+          <template v-if="isVendorNav">
+            <router-link
+              :to="vendorDashboardLink.to"
+              :data-testid="vendorDashboardLink.testId + '-mobile'"
+              class="text-gray-700 hover:text-brand-600 font-semibold text-lg py-1 rounded-lg px-2 -mx-2 transition"
+              :class="{ 'text-brand-600 bg-brand-50': isDashboardActive }"
+              @click="closeMobile"
+            >
+              {{ vendorDashboardLink.label }}
+            </router-link>
+
+            <div v-for="menu in vendorMenus" :key="'m-' + menu.id" class="space-y-1">
+              <p class="text-xs font-bold uppercase tracking-wider text-gray-400 px-2 pt-1">{{ menu.label }}</p>
+              <router-link
+                v-for="item in menu.items"
+                :key="'m-' + linkNavKey(item)"
+                :to="linkDestination(item)"
+                :data-testid="item.testId ? item.testId + '-mobile' : undefined"
+                class="block text-gray-700 hover:text-brand-600 font-semibold text-base py-1.5 rounded-lg px-4 transition"
+                :class="{ 'text-brand-600 bg-brand-50': isActive(item) }"
+                @click="closeMobile"
+              >
+                {{ item.label }}
+              </router-link>
+              <button
+                v-if="menu.id === 'account'"
+                type="button"
+                class="block w-full text-left text-red-600 font-bold text-base py-1.5 rounded-lg px-4 hover:bg-red-50"
+                data-testid="nav-logout-mobile"
+                @click="handleMobileLogout"
+              >
+                Logout
+              </button>
+            </div>
+          </template>
+
+          <template v-else>
+            <router-link
+              v-for="link in navLinks"
+              :key="'m-' + linkNavKey(link)"
+              :to="linkDestination(link)"
+              :data-testid="link.testId ? link.testId + '-mobile' : undefined"
+              class="text-gray-700 hover:text-brand-600 font-semibold text-lg py-1 rounded-lg px-2 -mx-2 transition"
+              :class="{ 'text-brand-600 bg-brand-50': isActive(link) }"
+              @click="closeMobile"
+            >
+              {{ link.label }}
+            </router-link>
+          </template>
 
           <hr class="border-gray-200" />
 
@@ -127,11 +228,12 @@
               {{ auth.isVendorUser ? 'Book a Space' : 'Start Vendor Booking' }}
             </router-link>
 
-            <template v-if="auth.isAuthenticated">
+            <template v-if="auth.isAuthenticated && !isVendorNav">
               <p class="text-sm text-gray-500 font-semibold">{{ auth.user?.name }}</p>
               <button
                 type="button"
                 class="text-left text-red-600 font-bold text-lg py-1"
+                data-testid="nav-logout-mobile"
                 @click="handleMobileLogout"
               >
                 Logout
@@ -139,7 +241,7 @@
             </template>
 
             <router-link
-              v-else
+              v-else-if="!auth.isAuthenticated"
               to="/login"
               class="border-2 border-brand-500 text-brand-600 px-4 py-3 rounded-lg text-center font-bold hover:bg-brand-50 transition"
               @click="closeMobile"
@@ -148,11 +250,12 @@
             </router-link>
           </template>
 
-          <template v-else-if="auth.isAuthenticated">
+          <template v-else-if="auth.isAuthenticated && !isVendorNav">
             <p class="text-sm text-gray-500 font-semibold">{{ auth.user?.name }}</p>
             <button
               type="button"
               class="text-left text-red-600 font-bold text-lg py-1"
+              data-testid="nav-logout-mobile"
               @click="handleMobileLogout"
             >
               Logout
@@ -165,13 +268,19 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
-import { PUBLIC_LINKS, COMMUNITY_VISITOR_LINKS, VENDOR_LINKS } from '../../config/navigation';
+import {
+  PUBLIC_LINKS,
+  COMMUNITY_VISITOR_LINKS,
+  VENDOR_DASHBOARD_LINK,
+  VENDOR_EXPLORE_MENU,
+  VENDOR_ACCOUNT_MENU,
+} from '../../config/navigation';
 import { useLogout } from '../../composables/useLogout';
 
-const props = defineProps({
+defineProps({
   variant: {
     type: String,
     default: 'public',
@@ -187,10 +296,18 @@ const auth = useAuthStore();
 const route = useRoute();
 const { logout } = useLogout();
 const isMobileOpen = ref(false);
+const openMenu = ref(null);
+
+const isVendorNav = computed(
+  () => auth.isAuthenticated && auth.role === 'community' && auth.isVendorUser,
+);
+
+const vendorDashboardLink = VENDOR_DASHBOARD_LINK;
+const vendorMenus = [VENDOR_EXPLORE_MENU, VENDOR_ACCOUNT_MENU];
 
 const navLinks = computed(() => {
   if (auth.isAuthenticated && auth.role === 'community') {
-    return auth.isVendorUser ? VENDOR_LINKS : COMMUNITY_VISITOR_LINKS;
+    return auth.isVendorUser ? [] : COMMUNITY_VISITOR_LINKS;
   }
 
   return PUBLIC_LINKS;
@@ -202,6 +319,10 @@ const homeLink = computed(() => {
   }
   return '/';
 });
+
+const isDashboardActive = computed(
+  () => route.path === '/dashboard' && !route.hash,
+);
 
 const linkDestination = (link) => {
   if (link.hash) {
@@ -222,12 +343,44 @@ const isActive = (link) => {
   return route.path === link.to || route.path.startsWith(`${link.to}/`);
 };
 
+const isMenuActive = (menu) => menu.items.some((item) => isActive(item));
+
+const toggleMenu = (menuId) => {
+  openMenu.value = openMenu.value === menuId ? null : menuId;
+};
+
+const closeMenus = () => {
+  openMenu.value = null;
+};
+
+const handleDocumentClick = (event) => {
+  if (!openMenu.value) return;
+  const target = event.target;
+  if (target instanceof Element && target.closest('[data-testid^="nav-"]')) return;
+  closeMenus();
+};
+
+const handleLogout = async () => {
+  closeMenus();
+  await logout();
+};
+
+onMounted(() => {
+  document.addEventListener('click', handleDocumentClick);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleDocumentClick);
+});
+
 const toggleMobile = () => {
   isMobileOpen.value = !isMobileOpen.value;
+  if (!isMobileOpen.value) closeMenus();
 };
 
 const closeMobile = () => {
   isMobileOpen.value = false;
+  closeMenus();
 };
 
 const handleMobileLogout = async () => {

@@ -29,8 +29,32 @@
         </div>
       </header>
 
+      <nav
+        aria-label="Dashboard sections"
+        class="flex flex-wrap gap-2"
+        data-testid="vendor-dashboard-section-nav"
+      >
+        <button
+          v-for="link in dashboardSectionLinks"
+          :key="link.targetId"
+          type="button"
+          class="rounded-full px-4 py-2 text-sm font-semibold transition border"
+          :class="activeSectionId === link.targetId
+            ? 'bg-brand-50 text-brand-700 border-brand-200 ring-1 ring-brand-200/80'
+            : 'bg-white/80 text-ink-600 border-ink-200 hover:bg-brand-50/60 hover:text-brand-700 hover:border-brand-200'"
+          :data-testid="link.testId"
+          @click="scrollToDashboardSection(link.targetId)"
+        >
+          {{ link.label }}
+        </button>
+      </nav>
+
       <!-- My Bookings -->
-      <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-7 sm:p-9 shadow-xl shadow-brand-900/5" data-testid="my-bookings-root">
+      <section
+        id="vendor-my-bookings"
+        class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-7 sm:p-9 shadow-xl shadow-brand-900/5"
+        data-testid="my-bookings-root"
+      >
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
             <h2 class="text-2xl font-extrabold text-ink-900">My Bookings</h2>
@@ -138,6 +162,8 @@
         </div>
       </section>
 
+      <VendorItemManager @changed="onVendorItemsChanged" />
+
       <!-- Event Passes & Business Profile -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2">
@@ -154,8 +180,6 @@
           @updated="onBusinessProfileUpdated"
         />
       </div>
-
-      <VendorItemManager @changed="onVendorItemsChanged" />
 
       <VendorAnalyticsDashboard
         :analytics="vendorAnalytics"
@@ -192,7 +216,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import VendorBusinessProfileManager from '../../components/VendorBusinessProfileManager.vue';
@@ -205,6 +230,7 @@ import VendorBookingDetailsModal from '../../components/VendorBookingDetailsModa
 import VendorPaymentModal from '../../components/VendorPaymentModal.vue';
 import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
+import { VENDOR_DASHBOARD_SECTION_LINKS } from '../../config/navigation';
 import {
   FILTER_TABS,
   boothTypeLabel,
@@ -219,7 +245,55 @@ import {
 import { resolveVendorOnboardingState } from '../../utils/vendorOnboarding';
 
 const toast = useToast();
+const route = useRoute();
 const auth = useAuthStore();
+
+const dashboardSectionLinks = VENDOR_DASHBOARD_SECTION_LINKS;
+const activeSectionId = ref('vendor-my-bookings');
+let sectionObserver = null;
+
+const scrollToDashboardSection = (targetId) => {
+  activeSectionId.value = targetId;
+  document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+const syncSectionFromHash = () => {
+  const hash = (route.hash || '').replace('#', '');
+  if (!hash) return;
+  const match = dashboardSectionLinks.find((link) => link.targetId === hash);
+  if (match) {
+    activeSectionId.value = match.targetId;
+    requestAnimationFrame(() => {
+      document.getElementById(match.targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+};
+
+const setupSectionObserver = () => {
+  if (sectionObserver) {
+    sectionObserver.disconnect();
+    sectionObserver = null;
+  }
+
+  if (typeof IntersectionObserver === 'undefined') return;
+
+  sectionObserver = new IntersectionObserver(
+    (entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+      if (visible[0]?.target?.id) {
+        activeSectionId.value = visible[0].target.id;
+      }
+    },
+    { rootMargin: '-20% 0px -55% 0px', threshold: [0.1, 0.35, 0.6] },
+  );
+
+  dashboardSectionLinks.forEach((link) => {
+    const el = document.getElementById(link.targetId);
+    if (el) sectionObserver.observe(el);
+  });
+};
 
 const VISIBLE_LIST_LIMIT = 5;
 
@@ -301,13 +375,11 @@ const onBusinessProfileUpdated = async (profile) => {
 };
 
 const scrollToBusinessProfile = () => {
-  document.getElementById('vendor-business-profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  scrollToDashboardSection('vendor-business-profile');
   profileManagerRef.value?.startEditing?.();
 };
 
-const scrollToReuseListings = () => {
-  document.getElementById('vendor-reuse-listings')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-};
+const scrollToReuseListings = () => scrollToDashboardSection('vendor-reuse-listings');
 
 const onVendorItemsChanged = async () => {
   await fetchVendorInsights();
@@ -419,7 +491,15 @@ onMounted(async () => {
     }
   }
   await Promise.all([fetchMyBookings(), fetchVendorInsights(), fetchPaymentHistory()]);
+  syncSectionFromHash();
+  setupSectionObserver();
 });
+
+onBeforeUnmount(() => {
+  sectionObserver?.disconnect();
+});
+
+watch(() => route.hash, syncSectionFromHash);
 
 const fetchPaymentHistory = async () => {
   loadingHistory.value = true;

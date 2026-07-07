@@ -1,9 +1,19 @@
 <template>
-  <section id="vendor-reuse-listings" class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-7 sm:p-9 shadow-xl shadow-brand-900/5">
+  <section
+    id="vendor-reuse-listings"
+    data-testid="vendor-item-preparation-root"
+    class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-7 sm:p-9 shadow-xl shadow-brand-900/5"
+  >
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
       <div>
-        <h2 class="text-2xl font-extrabold text-ink-900">Reuse Item Listings</h2>
-        <p class="text-base text-ink-500 leading-relaxed">Manage pre-loved items customers can discover from your booth.</p>
+        <h2 class="text-2xl font-extrabold text-ink-900">Item Preparation</h2>
+        <p class="text-base text-ink-500 leading-relaxed">
+          Prepare your item listings here. These records are private and are not publicly listed.
+        </p>
+        <p class="mt-2 text-sm text-ink-400 leading-relaxed">
+          Public item previews are disabled until a future event-day confirmation flow is available.
+          Booking approval or payment is not required to prepare items.
+        </p>
       </div>
       <div class="flex flex-wrap gap-2">
         <button type="button" class="ml-btn-primary" @click="openCreateModal">Add Item</button>
@@ -53,7 +63,7 @@
       v-else-if="!items.length"
       class="rounded-2xl border border-dashed border-ink-300 bg-ink-50/50 p-10 text-center text-ink-500"
     >
-      No reuse items yet. Add your first listing to showcase what you are bringing to the carboot.
+      No private items yet. Add your first preparation record for goods you plan to bring to the carboot.
     </div>
 
     <template v-else>
@@ -71,13 +81,20 @@
           class="rounded-2xl border border-ink-100 bg-white/70 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
         >
           <div class="h-36 bg-ink-50 border-b border-ink-100 overflow-hidden">
-            <img
+            <button
               v-if="itemImageSrc(item)"
-              :src="itemImageSrc(item)"
-              :alt="item.name"
-              class="h-full w-full object-cover object-center"
-              @error="onItemImageError(item.id)"
-            />
+              type="button"
+              class="group relative block h-full w-full cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset"
+              :aria-label="`View full image for ${item.name}`"
+              @click="openItemImagePreview(item)"
+            >
+              <img
+                :src="itemImageSrc(item)"
+                :alt="item.name"
+                class="pointer-events-none h-full w-full object-cover object-center transition duration-300 group-hover:opacity-90"
+                @error="onItemImageError(item.id)"
+              />
+            </button>
             <div v-else class="h-full flex items-center justify-center text-xs font-semibold uppercase tracking-wide text-ink-400">
               No image
             </div>
@@ -136,6 +153,14 @@
       :item="selectedItem"
       @edit="openEditFromDetails"
     />
+
+    <ImageLightbox
+      v-model:open="imageLightbox.open"
+      :images="imageLightbox.images"
+      :start-index="imageLightbox.startIndex"
+      :alt-text="imageLightbox.altText"
+      :caption="imageLightbox.caption"
+    />
   </section>
 </template>
 
@@ -144,10 +169,11 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 import VendorItemFormModal from './VendorItemFormModal.vue';
 import VendorItemDetailsModal from './VendorItemDetailsModal.vue';
+import ImageLightbox from './management/ImageLightbox.vue';
 import api from '../services/api';
 import { extractApiError } from '../utils/apiErrors';
 import { filterTabClass } from '../utils/bookingDisplay';
-import { resolveReuseItemImageUrl, normalizeReuseItem } from '../utils/imageUrl';
+import { resolveReuseItemGallery, resolveReuseItemImageUrl, normalizeReuseItem } from '../utils/imageUrl';
 import { formatItemPrice, ITEM_STATUS_TABS, marketplaceVisibilityLabel } from '../utils/vendorCatalog';
 
 const emit = defineEmits(['changed']);
@@ -167,6 +193,13 @@ const showDetailsModal = ref(false);
 const editingItem = ref(null);
 const selectedItem = ref(null);
 const brokenImageIds = ref(new Set());
+const imageLightbox = ref({
+  open: false,
+  images: [],
+  startIndex: 0,
+  altText: 'Item image',
+  caption: '',
+});
 
 const normalizeVendorItem = (item) => normalizeReuseItem(item);
 
@@ -177,6 +210,22 @@ const itemImageSrc = (item) => {
 
 const onItemImageError = (id) => {
   brokenImageIds.value = new Set([...brokenImageIds.value, id]);
+};
+
+const openItemImagePreview = (item) => {
+  const gallery = resolveReuseItemGallery(item).filter((image) => image.image_url);
+  if (!gallery.length) return;
+
+  const cardImageUrl = itemImageSrc(item);
+  const matchedIndex = gallery.findIndex((image) => image.image_url === cardImageUrl);
+
+  imageLightbox.value = {
+    open: true,
+    images: gallery.map((image) => image.image_url),
+    startIndex: matchedIndex >= 0 ? matchedIndex : 0,
+    altText: item.name,
+    caption: item.name,
+  };
 };
 
 const normalizeSearch = (value) => String(value ?? '').toLowerCase().trim();

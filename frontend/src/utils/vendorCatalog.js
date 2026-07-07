@@ -20,7 +20,9 @@ export const MARKETPLACE_SORT_OPTIONS = [
 ];
 
 export const marketplaceVisibilityLabel = (status) =>
-  status === 'active' ? 'Visible in Marketplace' : 'Hidden from Marketplace';
+  status === 'active'
+    ? 'Private prep · ready for your records'
+    : 'Private prep · inactive draft';
 
 export const formatItemPrice = (item) => {
   if (!item) return '—';

@@ -20,9 +20,11 @@
 
         <div class="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 p-6 max-h-[90vh] overflow-y-auto" @click.stop>
           <h2 :id="titleId" class="text-xl font-extrabold text-ink-900">
-            {{ item ? 'Edit Reuse Item' : 'Add Reuse Item' }}
+            {{ item ? 'Edit Item' : 'Add Item' }}
           </h2>
-          <p class="mt-1 text-sm text-ink-500">List pre-loved goods customers can find at your booth.</p>
+          <p class="mt-1 text-sm text-ink-500">
+            Private preparation record — not publicly listed. Public previews require a future event-day confirmation flow.
+          </p>
 
           <form class="mt-6 space-y-4" @submit.prevent="save">
             <div>

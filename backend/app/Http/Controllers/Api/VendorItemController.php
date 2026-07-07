@@ -12,6 +12,14 @@ use Illuminate\Validation\Rule;
 
 class VendorItemController extends Controller
 {
+    /**
+     * Private vendor item preparation — not public marketplace listing.
+     * Any authenticated community user may manage their own items without
+     * booking approval, payment, or event-day check-in.
+     *
+     * Public exposure remains disabled in MarketplaceController until a future
+     * event-day publishing flow exists.
+     */
     private const MAX_IMAGES = 5;
 
     public function index(Request $request)

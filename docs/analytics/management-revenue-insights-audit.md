@@ -410,6 +410,14 @@ Separate card, labeled **“What-if: Parking opportunity cost”**, manual input
 
 ---
 
+## Public item listing policy (Step 2b)
+
+**Date:** 8 July 2026
+
+**Decision:** Specific vendor item listings are intentionally hidden from the public Carboot Preview (`/marketplace`) and public API (`GET /api/marketplace/items`) until event-day check-in based publishing exists. Vendors retain private item management via `/api/vendor/items`. No dummy data or fake availability was added.
+
+---
+
 ## Step 2 Cleanup Applied
 
 **Date:** 8 July 2026

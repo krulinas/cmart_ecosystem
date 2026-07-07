@@ -1,5 +1,6 @@
 <template>
   <section
+    id="vendor-event-passes"
     class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5"
     data-testid="vendor-event-passes-root"
   >

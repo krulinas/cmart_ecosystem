@@ -1,5 +1,4 @@
 import { strict as assert } from 'node:assert';
-import { By } from 'selenium-webdriver';
 import { createDriver } from '../helpers/driver.js';
 import {
   assertGuestSessionClean,
@@ -94,17 +93,17 @@ describe('Public route safety and no over-locking', function () {
     }
   });
 
-  it('8A-4 Guest can access Carboot Reuse Preview marketplace without login', async function () {
+  it('8A-4 Guest can access Carboot Preview page without login', async function () {
     try {
       await assertPublicRouteAccessible(driver, '/marketplace', {
         rootTestId: 'marketplace-preview-root',
-        label: 'marketplace preview',
-        requiredText: ['Carboot Reuse Preview', 'Preview only: no online checkout'],
+        label: 'carboot preview',
+        requiredText: ['Carboot Preview', 'Specific item previews are not publicly listed yet'],
       });
 
       await assertPublicPageVisible(driver, {
         rootTestId: 'marketplace-preview-notice',
-        requiredText: ['Preview only: no online checkout'],
+        requiredText: ['Visit in person on event day'],
       });
 
       await assertPublicApiReturnsOk(driver, '/marketplace/items', { label: 'Public marketplace items' });
@@ -121,7 +120,6 @@ describe('Public route safety and no over-locking', function () {
     const opened = {
       event: false,
       news: false,
-      marketplaceItem: false,
     };
 
     try {
@@ -151,39 +149,15 @@ describe('Public route safety and no over-locking', function () {
         await closePublicDetailModal(driver);
       }
 
-      await visitPublicRoute(driver, '/marketplace');
-      await assertPublicPageVisible(driver, { rootTestId: 'marketplace-preview-root' });
-      await waitForOptionalPublicCards(driver, {
-        cardTestId: 'public-item-card',
-        emptyStateText: 'No preview items available yet',
-      });
-
-      const itemCards = await driver.findElements(By.css('[data-testid="public-item-card"]'));
-      if (itemCards.length > 0) {
-        const firstCard = itemCards[0];
-        const viewDetailsButton = await firstCard.findElement(By.css('button'));
-        await driver.executeScript('arguments[0].scrollIntoView({block: "center"});', viewDetailsButton);
-        await driver.executeScript('arguments[0].click();', viewDetailsButton);
-
-        await assertPublicDetailModalOpen(driver);
-        const bodyText = await driver.findElement(By.css('body')).getText();
-        assert.ok(
-          bodyText.includes('Preview only') || bodyText.includes('In-person only'),
-          'Marketplace item detail must communicate preview-only / in-person purchase.',
-        );
-        opened.marketplaceItem = true;
-        await closePublicDetailModal(driver);
-      }
-
-      if (!opened.event && !opened.news && !opened.marketplaceItem) {
+      if (!opened.event && !opened.news) {
         this.skip(
-          'No public event, news, or marketplace item cards available to open detail modals. ' +
-            'Seed events/news/marketplace items for full 8A-5 coverage.',
+          'No public event or news cards available to open detail modals. ' +
+            'Seed events/news for full 8A-5 coverage.',
         );
       }
 
       assert.ok(
-        opened.event || opened.news || opened.marketplaceItem,
+        opened.event || opened.news,
         'At least one public detail modal must open when seeded content exists.',
       );
     } catch (error) {
