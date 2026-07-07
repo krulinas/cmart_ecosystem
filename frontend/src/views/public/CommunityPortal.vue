@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gray-50" data-testid="community-portal-root">
     <AppNavbar :variant="auth.isVendorUser ? 'vendor' : 'public'" />
 
     <header class="bg-gradient-to-br from-brand-700 via-brand-600 to-brand-500 pt-16 pb-20 px-6 relative overflow-hidden">
@@ -13,7 +13,7 @@
         <p class="text-lg text-brand-100 max-w-2xl mx-auto mb-8">
           Discover local vendors, share your experience, and stay connected with Malaysia's favourite carboot marketplace.
         </p>
-        <div class="flex flex-col sm:flex-row justify-center gap-4">
+        <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
           <router-link
             v-if="!auth.isAuthenticated"
             to="/register"
@@ -21,13 +21,12 @@
           >
             Join the Community
           </router-link>
-          <router-link
-            to="/calendar"
-            class="bg-white/10 backdrop-blur border border-white/30 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/20 transition"
-          >
-            View Event Calendar
-          </router-link>
         </div>
+        <p class="mt-6">
+          <router-link to="/calendar" class="text-brand-100 hover:text-white font-semibold text-sm underline underline-offset-4 transition">
+            See upcoming dates →
+          </router-link>
+        </p>
       </div>
     </header>
 
@@ -66,21 +65,22 @@
       </section>
 
       <section class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-        <div class="flex justify-between items-center mb-8 border-b border-gray-100 pb-4">
+        <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
           <div>
-            <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">Upcoming Events</span>
-            <h2 class="text-2xl font-black text-gray-900">Market Activity</h2>
+            <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">Happening Soon</span>
+            <h2 class="text-2xl font-black text-gray-900">Next market dates</h2>
+            <p class="mt-1 text-sm text-gray-500">Plan your visit — see the full schedule on Events.</p>
           </div>
-          <router-link to="/calendar" class="text-sm font-bold text-brand-600 hover:underline">Full Calendar →</router-link>
+          <router-link to="/calendar" class="text-sm font-bold text-brand-600 hover:underline shrink-0">See all events →</router-link>
         </div>
 
         <div v-if="loadingEvents" class="text-center py-10 text-gray-500">Loading events…</div>
         <div v-else-if="!upcomingEvents.length" class="text-center py-10 text-gray-500 italic">
           No upcoming events scheduled. Check back soon!
         </div>
-        <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <article
-            v-for="event in upcomingEvents.slice(0, 4)"
+            v-for="event in upcomingEvents.slice(0, 3)"
             :key="event.id"
             tabindex="0"
             role="button"
@@ -94,29 +94,20 @@
               v-if="event.posterUrl"
               :src="event.posterUrl"
               :alt="`${event.title} poster preview`"
-              class="w-full h-[140px] object-cover object-top border-b border-gray-100 pointer-events-none"
+              class="w-full h-[120px] object-cover object-top border-b border-gray-100 pointer-events-none"
             />
             <div class="flex items-center justify-between p-4 gap-3">
-              <div class="flex items-center gap-4 min-w-0 pointer-events-none">
-                <div class="bg-gray-100 text-gray-700 rounded-lg p-2 text-center min-w-[60px] group-hover:bg-brand-500 group-hover:text-white transition">
-                  <span class="block text-2xl font-black leading-none">{{ event.day }}</span>
+              <div class="flex items-center gap-3 min-w-0 pointer-events-none">
+                <div class="bg-gray-100 text-gray-700 rounded-lg p-2 text-center min-w-[52px] group-hover:bg-brand-500 group-hover:text-white transition">
+                  <span class="block text-xl font-black leading-none">{{ event.day }}</span>
                   <span class="block text-[10px] uppercase font-bold">{{ event.month }}</span>
                 </div>
                 <div class="min-w-0">
-                  <h3 class="font-bold text-gray-900 truncate">{{ event.title }}</h3>
+                  <h3 class="font-bold text-gray-900 truncate text-sm">{{ event.title }}</h3>
                   <p class="text-xs text-gray-500">{{ event.time }}</p>
-                  <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 inline-block', event.statusClass]">
-                    {{ event.status }}
-                  </span>
                 </div>
               </div>
-              <router-link
-                :to="vendorBookingLink(event.id, auth)"
-                class="text-sm font-bold bg-brand-100 text-brand-700 px-4 py-2 rounded-lg hover:bg-brand-200 transition shrink-0"
-                @click.stop
-              >
-                {{ auth.isApprovedVendor ? 'Book' : 'Learn More' }}
-              </router-link>
+              <span class="text-xs font-bold text-brand-600 shrink-0 pointer-events-none">View details →</span>
             </div>
           </article>
         </div>
@@ -360,6 +351,7 @@
       <section
         v-if="!auth.isVendorUser"
         id="become-vendor"
+        data-testid="become-vendor-section"
         class="bg-brand-600 rounded-3xl p-10 text-center text-white"
       >
         <h2 class="text-2xl font-black mb-3">Ready to become a vendor?</h2>
@@ -373,24 +365,38 @@
         <div class="flex flex-col sm:flex-row justify-center gap-4">
           <template v-if="auth.isAuthenticated">
             <router-link
-              :to="auth.bookingPathForUser()"
+              :to="auth.startVendorBookingPath()"
+              data-testid="start-vendor-booking-cta"
               class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
             >
-              Become a Vendor
+              Start Vendor Booking
+            </router-link>
+            <router-link
+              to="/calendar"
+              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
+            >
+              Explore Events
             </router-link>
             <router-link
               to="/community#share-feedback"
               class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
             >
-              Leave a Review
+              Read Reviews
             </router-link>
           </template>
           <template v-else>
             <router-link
-              :to="registerPathWithRedirect('/community#share-feedback')"
+              :to="registerPathWithRedirect('/vendor-booking')"
+              data-testid="start-vendor-booking-cta"
               class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
             >
-              Create Account
+              Start Vendor Booking
+            </router-link>
+            <router-link
+              to="/calendar"
+              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
+            >
+              Explore Events
             </router-link>
             <router-link
               :to="loginPathWithRedirect('/community#share-feedback')"
@@ -406,8 +412,8 @@
     <EventDetailsModal
       v-model="showEventModal"
       :event="selectedEvent"
-      :booking-link="vendorBookingLink(selectedEvent?.id, auth)"
-      :booking-label="auth.isApprovedVendor ? 'Book Space' : 'Learn More'"
+      booking-link="/calendar"
+      booking-label="See full schedule →"
     />
 
     <Teleport to="body">
@@ -466,8 +472,7 @@ import CommunityFeedback from '../../components/CommunityFeedback.vue';
 import EventDetailsModal from '../../components/EventDetailsModal.vue';
 import { useAuthStore } from '../../stores/auth';
 import api from '../../services/api';
-import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
-import { vendorBookingLink } from '../../utils/vendorBooking';
+import { DEFAULT_EVENT_LOCATION, filterEventsByChip, mapApiEventToCard } from '../../utils/eventDisplay';
 import { loginPathWithRedirect, registerPathWithRedirect } from '../../utils/postAuthRedirect';
 import { resolveStorageUrl } from '../../utils/imageUrl';
 
@@ -568,7 +573,8 @@ const fetchEvents = async () => {
   try {
     const { data } = await api.get('/events');
     const events = Array.isArray(data) ? data : [];
-    upcomingEvents.value = events.map((ev) => mapApiEventToCard(ev, DEFAULT_EVENT_LOCATION));
+    const cards = events.map((ev) => mapApiEventToCard(ev, DEFAULT_EVENT_LOCATION));
+    upcomingEvents.value = filterEventsByChip(cards, 'upcoming');
   } catch (error) {
     console.error('Failed to load community events:', error);
   } finally {

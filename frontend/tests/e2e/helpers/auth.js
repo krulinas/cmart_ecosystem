@@ -58,6 +58,77 @@ async function readLoginFailureContext(driver) {
   };
 }
 
+async function waitForCommunityWorkspace(driver, timeoutMs = 25000) {
+  const workspaceTestIds = ['community-portal-root', 'vendor-dashboard-root'];
+
+  await driver.wait(
+    async () => {
+      for (const testId of workspaceTestIds) {
+        const elements = await driver.findElements(By.css(`[data-testid="${testId}"]`));
+        for (const element of elements) {
+          try {
+            if (await element.isDisplayed()) {
+              return true;
+            }
+          } catch (error) {
+            if (error.name !== 'StaleElementReferenceError') {
+              throw error;
+            }
+          }
+        }
+      }
+      return false;
+    },
+    timeoutMs,
+    'Community member login must reach community portal or vendor workspace.',
+  );
+}
+
+export async function loginAsCommunityMember(
+  driver,
+  { email, password },
+  { roleLabel = 'Community member', requireVisitorHome = false } = {},
+) {
+  const attempt = async () => {
+    await ensurePublicLoginPage(driver);
+    await fillLoginField(driver, 'login-email', email);
+    await fillLoginField(driver, 'login-password', password);
+    await submitLoginForm(driver);
+    await waitForAuthToken(driver, 25000);
+
+    if (requireVisitorHome) {
+      await waitForUrlContains(driver, '/community', 25000);
+      await waitForTestId(driver, 'community-portal-root', 25000);
+      return;
+    }
+
+    await waitForCommunityWorkspace(driver, 25000);
+  };
+
+  try {
+    await attempt();
+  } catch (firstError) {
+    const diagnostics = await captureFailureDiagnostics(driver, `${roleLabel}-login-attempt-1`);
+    const context = await readLoginFailureContext(driver);
+
+    try {
+      await clearBrowserSession(driver);
+      await attempt();
+    } catch (retryError) {
+      const retryDiagnostics = await captureFailureDiagnostics(driver, `${roleLabel}-login-failed`);
+      const retryContext = await readLoginFailureContext(driver);
+
+      throw new Error(
+        `${roleLabel} login failed after one retry. ` +
+          `First URL: ${context.currentUrl}. Retry URL: ${retryContext.currentUrl}. ` +
+          `Toasts: ${retryContext.toastMessages.join(' | ') || 'none'}. ` +
+          `Diagnostics: ${diagnostics.json}${retryDiagnostics.json ? `, ${retryDiagnostics.json}` : ''}.`,
+        { cause: retryError },
+      );
+    }
+  }
+}
+
 async function loginWithRole(driver, { email, password, successUrlFragment, dashboardTestId, roleLabel, management = false }) {
   const emailTestId = management ? 'management-login-email' : 'login-email';
   const passwordTestId = management ? 'management-login-password' : 'login-password';
@@ -130,6 +201,10 @@ export async function loginAsCommunityVendor(driver, { email, password }, { role
     dashboardTestId: 'vendor-dashboard-root',
     roleLabel,
   });
+}
+
+export async function loginAsCommunityVisitor(driver, { email, password }, { roleLabel = 'Community visitor' } = {}) {
+  await loginAsCommunityMember(driver, { email, password }, { roleLabel, requireVisitorHome: true });
 }
 
 export async function loginAsStaff(driver) {

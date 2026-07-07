@@ -86,9 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/vendor/items/{vendor_item}', [VendorItemController::class, 'show']);
         Route::put('/vendor/items/{vendor_item}', [VendorItemController::class, 'update']);
         Route::delete('/vendor/items/{vendor_item}', [VendorItemController::class, 'destroy']);
-    });
 
-    Route::middleware('vendor.approved')->group(function () {
         Route::get('/vendor/bookings', [BookingController::class, 'mine']);
         Route::get('/vendor/bookings/{booking}', [BookingController::class, 'vendorShow']);
         Route::patch('/vendor/bookings/{booking}', [BookingController::class, 'vendorUpdate']);

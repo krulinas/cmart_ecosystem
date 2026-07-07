@@ -1,20 +1,28 @@
 <template>
   <div class="min-h-screen bg-ink-50" data-testid="booking-page-root">
-    <AppNavbar variant="vendor" />
+    <AppNavbar :variant="auth.isVendorUser ? 'vendor' : 'public'" />
     <div class="py-12 px-4">
     <div class="max-w-2xl mx-auto">
-      <router-link to="/dashboard" class="inline-flex items-center text-sm text-ink-500 hover:text-brand-600 mb-6">
-        <span class="mr-1">←</span> Back to My Dashboard
+      <router-link
+        :to="auth.isVendorUser ? '/dashboard' : '/community'"
+        class="inline-flex items-center text-sm text-ink-500 hover:text-brand-600 mb-6"
+      >
+        <span class="mr-1">←</span> {{ auth.isVendorUser ? 'Back to My Dashboard' : 'Back to Community' }}
       </router-link>
 
       <div class="ml-card">
         <div class="mb-6">
-          <span class="ml-badge bg-brand-100 text-brand-700">Vendor Booking</span>
-          <h1 class="mt-2 text-2xl font-extrabold text-ink-900 tracking-tight">
-            Book your Carboot space
+          <span class="ml-badge bg-brand-100 text-brand-700">Vendor Onboarding</span>
+          <h1 class="mt-2 text-2xl font-extrabold text-ink-900 tracking-tight" data-testid="booking-onboarding-heading">
+            Start Vendor Booking
           </h1>
           <p class="text-sm text-ink-500 mt-1">
-            Reserve your booth for a specific Carboot@CMart event. Approval takes 3–5 working days.
+            Choose an event and submit your booth booking. CMart staff will review your application before participation is confirmed.
+          </p>
+          <p class="mt-3 text-sm">
+            <router-link to="/calendar" class="font-semibold text-brand-600 hover:text-brand-700 hover:underline">
+              View Events calendar →
+            </router-link>
           </p>
         </div>
 
@@ -424,6 +432,7 @@ const submitBooking = async () => {
     }
 
     resetBookingForm();
+    await auth.fetchMe();
     router.push('/dashboard');
   } catch (e) {
     console.error('500 Internal Server Error: Unable to communicate with the API.', e);

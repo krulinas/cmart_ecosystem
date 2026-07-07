@@ -12,8 +12,9 @@
       <div class="hidden md:flex items-center space-x-1">
         <router-link
           v-for="link in navLinks"
-          :key="link.to"
-          :to="link.to"
+          :key="linkNavKey(link)"
+          :to="linkDestination(link)"
+          :data-testid="link.testId || undefined"
           class="px-3.5 py-2.5 rounded-lg text-gray-600 hover:text-brand-600 hover:bg-brand-50 font-semibold transition text-[15px]"
           :class="{ 'text-brand-600 bg-brand-50': isActive(link) }"
         >
@@ -24,10 +25,10 @@
 
         <template v-if="variant === 'public'">
           <router-link
-            :to="auth.bookingPathForUser()"
+            :to="auth.startVendorBookingPath()"
             class="bg-brand-500 text-white px-5 py-2.5 min-h-[40px] rounded-lg shadow hover:bg-brand-600 transition text-[15px] font-bold whitespace-nowrap"
           >
-            {{ auth.isVendorUser ? 'Book a Space' : 'Become a Vendor' }}
+            {{ auth.isVendorUser ? 'Book a Space' : 'Start Vendor Booking' }}
           </router-link>
 
           <template v-if="auth.isAuthenticated">
@@ -105,9 +106,11 @@
         <div class="px-6 py-4 flex flex-col space-y-3">
           <router-link
             v-for="link in navLinks"
-            :key="'m-' + link.to"
-            :to="link.to"
-            class="text-gray-700 hover:text-brand-600 font-semibold text-lg py-1"
+            :key="'m-' + linkNavKey(link)"
+            :to="linkDestination(link)"
+            :data-testid="link.testId ? link.testId + '-mobile' : undefined"
+            class="text-gray-700 hover:text-brand-600 font-semibold text-lg py-1 rounded-lg px-2 -mx-2 transition"
+            :class="{ 'text-brand-600 bg-brand-50': isActive(link) }"
             @click="closeMobile"
           >
             {{ link.label }}
@@ -117,11 +120,11 @@
 
           <template v-if="variant === 'public'">
             <router-link
-              :to="auth.bookingPathForUser()"
+              :to="auth.startVendorBookingPath()"
               class="bg-brand-500 text-white px-4 py-3 rounded-lg text-center font-bold shadow hover:bg-brand-600 transition"
               @click="closeMobile"
             >
-              {{ auth.isVendorUser ? 'Book a Space' : 'Become a Vendor' }}
+              {{ auth.isVendorUser ? 'Book a Space' : 'Start Vendor Booking' }}
             </router-link>
 
             <template v-if="auth.isAuthenticated">
@@ -200,9 +203,18 @@ const homeLink = computed(() => {
   return '/';
 });
 
+const linkDestination = (link) => {
+  if (link.hash) {
+    return { path: link.to, hash: link.hash };
+  }
+  return link.to;
+};
+
+const linkNavKey = (link) => `${link.to}${link.hash || ''}`;
+
 const isActive = (link) => {
   if (link.hash) {
-    return route.path === '/' && route.hash === link.hash;
+    return route.path === link.to && route.hash === link.hash;
   }
   if (link.exact) {
     return route.path === link.to && !route.hash;

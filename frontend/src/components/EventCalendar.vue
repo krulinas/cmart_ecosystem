@@ -8,7 +8,7 @@
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <p class="text-xs font-bold uppercase tracking-wider text-brand-600 mb-1">Discover Events</p>
-            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900">CMart Carboot Schedule</h1>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900">Events &amp; Calendar</h1>
             <p class="mt-2 text-sm text-gray-600 max-w-xl">
               Browse upcoming carboot sales, preview event details, and book your vendor space.
             </p>
@@ -266,7 +266,10 @@ const auth = useAuthStore();
 const calendarRef = ref(null);
 
 const backLink = computed(() => (auth.isAuthenticated ? auth.homeForUser() : '/'));
-const backLabel = computed(() => (auth.isAuthenticated ? 'Back to Dashboard' : 'Back to Home'));
+const backLabel = computed(() => {
+  if (!auth.isAuthenticated) return 'Back to Home';
+  return auth.isVendorUser ? 'Back to Dashboard' : 'Back to Community';
+});
 
 const loading = ref(true);
 const hasLoaded = ref(false);

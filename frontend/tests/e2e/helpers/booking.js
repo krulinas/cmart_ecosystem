@@ -203,7 +203,7 @@ async function findReusablePendingStaffMarker(driver) {
   return null;
 }
 
-async function prepareVendorBookingPage(driver) {
+export async function prepareVendorBookingPage(driver) {
   await driver.get(`${env.baseUrl}/vendor-booking`);
   await waitForUrlContains(driver, '/vendor-booking');
   await waitForTestIdHidden(driver, 'booking-events-loading', 20000);

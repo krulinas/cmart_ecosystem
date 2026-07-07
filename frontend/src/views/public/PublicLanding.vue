@@ -50,7 +50,7 @@
           <div class="mb-10 max-w-3xl" :class="eventsHeaderClass('fade')">
             <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">What's On</span>
             <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Upcoming Carboot Events</h2>
-            <p class="mt-2 text-base text-gray-600 max-w-xl leading-relaxed">Plan your visit — browse dates, times, and book a vendor space before slots fill up.</p>
+            <p class="mt-2 text-base text-gray-600 max-w-xl leading-relaxed">Plan your visit — browse dates, times, and book a vendor space before slots fill up. For the full schedule, visit <router-link to="/calendar" class="font-semibold text-brand-600 hover:underline">Events</router-link>.</p>
           </div>
 
           <div v-if="loadingEvents" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -130,7 +130,7 @@
             class="mt-10 rounded-2xl border border-brand-100 bg-white px-6 py-8 text-center shadow-sm"
           >
             <p class="text-gray-700 font-medium">Want to see all available dates?</p>
-            <p class="mt-1 text-sm text-gray-500">Open the full calendar to check every upcoming carboot event.</p>
+            <p class="mt-1 text-sm text-gray-500">Open Events for the full calendar and every upcoming carboot date.</p>
             <router-link
               to="/calendar"
               class="mt-4 inline-flex items-center justify-center gap-2 rounded-full border-2 border-brand-600 bg-white px-5 py-2.5 text-sm font-bold text-brand-700 transition hover:bg-brand-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
@@ -138,7 +138,7 @@
               <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              View Full Calendar
+              View all events
             </router-link>
           </div>
         </div>
@@ -454,7 +454,7 @@ const fetchEvents = async () => {
   try {
     const { data } = await api.get('/events');
     const events = Array.isArray(data) ? data : [];
-    upcomingEvents.value = events.slice(0, 6).map((ev) => mapApiEventToCard(ev, DEFAULT_LOCATION));
+    upcomingEvents.value = events.slice(0, 3).map((ev) => mapApiEventToCard(ev, DEFAULT_LOCATION));
   } catch (error) {
     console.error('Failed to load events:', error);
   } finally {

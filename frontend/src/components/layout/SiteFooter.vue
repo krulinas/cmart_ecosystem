@@ -16,9 +16,6 @@
               <router-link :to="link.to" class="hover:text-brand-400 transition">{{ link.label }}</router-link>
             </li>
             <li>
-              <router-link to="/calendar" class="hover:text-brand-400 transition">Event Calendar</router-link>
-            </li>
-            <li>
               <router-link to="/login" class="hover:text-brand-400 transition">Sign in</router-link>
             </li>
           </ul>

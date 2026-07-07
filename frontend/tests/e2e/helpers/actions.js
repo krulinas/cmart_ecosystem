@@ -64,6 +64,10 @@ export function e2eT7DGuestProtectionMarker() {
   return `E2E-T7D-GUEST-PROTECTION-${Date.now()}`;
 }
 
+export function e2eT8BOpenVendorMarker() {
+  return `E2E-OPEN-VENDOR-ONBOARDING-${Date.now()}`;
+}
+
 export function e2eT7EStaffDeleteMarker() {
   return `E2E-T7E-STAFF-DELETE-GUARD-${Date.now()}`;
 }

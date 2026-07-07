@@ -61,7 +61,7 @@ describe('Public route safety and no over-locking', function () {
       await assertPublicRouteAccessible(driver, '/calendar', {
         rootTestId: 'public-calendar-root',
         label: 'public calendar',
-        requiredText: ['CMart Carboot Schedule', 'DISCOVER EVENTS'],
+        requiredText: ['Events & Calendar', 'DISCOVER EVENTS'],
       });
 
       await waitForPublicContentLoaded(driver, { loadingGoneText: 'Loading events…' });

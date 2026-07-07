@@ -13,6 +13,7 @@ import {
   managementWorkspaceLabel,
   managementTierLabel,
 } from '../utils/managementRoles';
+import { communityVisitorFallbackPath } from '../utils/postAuthRedirect';
 
 const readStoredUser = () => {
   try {
@@ -167,11 +168,17 @@ export const useAuthStore = defineStore('auth', () => {
     return '/';
   };
 
-  const bookingPathForUser = () => {
-    if (isApprovedVendor.value) return '/vendor-booking';
-    if (isAuthenticated.value) return '/#vendor';
-    return '/login?redirect=/vendor-booking';
+  /** Navbar orientation link — explains vendor journey on the community page. */
+  const becomeVendorNavPath = () => communityVisitorFallbackPath();
+
+  /** Primary CTA — starts the real vendor booking/application flow. */
+  const startVendorBookingPath = () => {
+    if (isAuthenticated.value) return '/vendor-booking';
+    return `/login?redirect=${encodeURIComponent('/vendor-booking')}`;
   };
+
+  /** @deprecated Use becomeVendorNavPath or startVendorBookingPath explicitly. */
+  const bookingPathForUser = () => startVendorBookingPath();
 
   return {
     token,
@@ -205,6 +212,8 @@ export const useAuthStore = defineStore('auth', () => {
     persistSession,
     hasAnyRole,
     homeForUser,
+    becomeVendorNavPath,
+    startVendorBookingPath,
     bookingPathForUser,
   };
 });

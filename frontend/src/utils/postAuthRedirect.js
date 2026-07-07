@@ -66,15 +66,7 @@ export function isRedirectAllowedForUser(auth, redirectCandidate) {
   }
 
   if (auth.role === 'community') {
-    if (isCommunityVendorPath(pathname)) {
-      if (pathname === '/vendor-booking') {
-        return true;
-      }
-
-      return auth.isVendorUser;
-    }
-
-    return false;
+    return isCommunityVendorPath(pathname);
   }
 
   return false;

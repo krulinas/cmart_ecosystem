@@ -1,8 +1,15 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-ink-50 via-brand-50/30 to-ink-50" data-testid="vendor-dashboard-root">
-    <AppNavbar variant="vendor" />
+    <AppNavbar :variant="auth.isVendorUser ? 'vendor' : 'public'" />
 
     <div class="max-w-page mx-auto py-12 px-4 sm:px-6 lg:px-8 space-y-10">
+      <VendorOnboardingBanner
+        v-if="onboardingState !== 'active'"
+        :state="onboardingState"
+        class="mb-2"
+        @review-booking="openLatestActionableBooking"
+      />
+
       <header class="rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-7 sm:p-9 shadow-xl shadow-brand-900/5">
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
@@ -13,12 +20,11 @@
             </p>
           </div>
           <router-link
-            v-if="auth.isApprovedVendor"
             to="/vendor-booking"
             data-testid="nav-booking-events"
             class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-6 py-3 min-h-[44px] text-[15px] font-bold text-white shadow-lg shadow-brand-500/25 hover:bg-brand-600 transition shrink-0"
           >
-            Book a Space
+            {{ validBookings.length ? 'Book a Space' : 'Start Vendor Booking' }}
           </router-link>
         </div>
       </header>
@@ -32,11 +38,10 @@
           </div>
           <div class="flex flex-wrap gap-2">
             <router-link
-              v-if="auth.isApprovedVendor"
               to="/vendor-booking"
               class="ml-btn-primary"
             >
-              New Booking
+              {{ validBookings.length ? 'New Booking' : 'Start Vendor Booking' }}
             </router-link>
             <button class="ml-btn-ghost" :disabled="loadingBookings" @click="fetchMyBookings">
               {{ loadingBookings ? 'Refreshing…' : 'Refresh' }}
@@ -195,6 +200,7 @@ import VendorEventPassesPanel from '../../components/VendorEventPassesPanel.vue'
 import VendorItemManager from '../../components/VendorItemManager.vue';
 import VendorAnalyticsDashboard from '../../components/VendorAnalyticsDashboard.vue';
 import VendorHistoryReceipts from '../../components/VendorHistoryReceipts.vue';
+import VendorOnboardingBanner from '../../components/vendor/VendorOnboardingBanner.vue';
 import VendorBookingDetailsModal from '../../components/VendorBookingDetailsModal.vue';
 import VendorPaymentModal from '../../components/VendorPaymentModal.vue';
 import api from '../../services/api';
@@ -210,6 +216,7 @@ import {
   statusBadgeClass,
   statusLabel,
 } from '../../utils/bookingDisplay';
+import { resolveVendorOnboardingState } from '../../utils/vendorOnboarding';
 
 const toast = useToast();
 const auth = useAuthStore();
@@ -269,6 +276,16 @@ const loadingHistory = ref(false);
 const historyError = ref(false);
 
 const userDisplayName = computed(() => businessProfile.value?.business_name || auth.user?.name || 'Vendor');
+
+const onboardingState = computed(() => resolveVendorOnboardingState(validBookings.value));
+
+const openLatestActionableBooking = () => {
+  const sorted = [...validBookings.value].sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
+  const latest = sorted[0];
+  if (latest?.id) {
+    openBookingDetails(latest.id);
+  }
+};
 
 const onBusinessProfileLoaded = (profile) => {
   businessProfile.value = profile;

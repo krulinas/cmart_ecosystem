@@ -18,8 +18,6 @@ import { useAuthStore } from '../stores/auth';
 import { useBossPreviewStore } from '../stores/bossPreview';
 import { ALL_WORKSPACE_HASHES, MANAGER_ONLY_HASHES } from '../config/workspaceNav';
 import { isManagerOrAbove, normalizeRole, ROLES, workflowRoleKey } from '../utils/managementRoles';
-import { communityVisitorFallbackPath } from '../utils/postAuthRedirect';
-
 const MANAGEMENT_PROTECTED_PREFIXES = ['/admin', '/staff/'];
 
 function isManagementProtectedRoute(path) {
@@ -32,6 +30,28 @@ function loginRedirectFor(to) {
   }
 
   return { path: '/login', query: { redirect: to.fullPath } };
+}
+
+const MANAGEMENT_ROLES = ['staff', 'manager', 'super_admin', 'cmart_staff', 'cmart_admin', 'boss'];
+
+function isManagementRole(auth) {
+  return auth.hasAnyRole(MANAGEMENT_ROLES);
+}
+
+function homeRedirectFor(auth, fromPath) {
+  const destination = auth.homeForUser();
+  const safePath = destination === fromPath ? '/community' : destination;
+  return { path: safePath, replace: true };
+}
+
+function managementAccessRedirect(auth, to) {
+  if (!auth.token || !auth.isAuthenticated) {
+    return loginRedirectFor(to);
+  }
+  if (!isManagementRole(auth)) {
+    return homeRedirectFor(auth, to.path);
+  }
+  return true;
 }
 
 const routes = [
@@ -84,19 +104,19 @@ const routes = [
     path: '/dashboard',
     name: 'vendor-dashboard',
     component: VendorDashboard,
-    meta: { requiresAuth: true, roles: ['community'], vendorUser: true },
+    meta: { requiresAuth: true, roles: ['community'] },
   },
   {
     path: '/profile',
     name: 'vendor-profile',
     component: VendorProfile,
-    meta: { requiresAuth: true, roles: ['community'], vendorUser: true },
+    meta: { requiresAuth: true, roles: ['community'] },
   },
   {
     path: '/vendor-booking',
     name: 'vendor-booking',
     component: Registration,
-    meta: { requiresAuth: true, roles: ['community'], vendorApproved: true },
+    meta: { requiresAuth: true, roles: ['community'] },
   },
 
   {
@@ -115,7 +135,11 @@ const routes = [
     path: '/admin',
     name: 'admin',
     component: AdminDashboard,
-    meta: { requiresAuth: true, roles: ['staff', 'manager', 'super_admin', 'cmart_staff', 'cmart_admin', 'boss'] },
+    meta: { requiresAuth: true, roles: MANAGEMENT_ROLES },
+    beforeEnter: (to) => {
+      const auth = useAuthStore();
+      return managementAccessRedirect(auth, to);
+    },
   },
 
   // Zone 4: UUM oversight
@@ -146,9 +170,13 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
 
-  if (auth.token && !auth.user) {
+  if (isManagementProtectedRoute(to.path) && auth.token && auth.user && !isManagementRole(auth)) {
+    return homeRedirectFor(auth, to.path);
+  }
+
+  if (auth.token) {
     try {
-      await auth.fetchMe();
+      await auth.ensureSession();
     } catch {
       auth.clearSession();
       if (to.meta.requiresAuth) {
@@ -157,7 +185,7 @@ router.beforeEach(async (to) => {
     }
   }
 
-  if (to.meta.redirectIfAuthenticated && auth.isAuthenticated) {
+  if (to.meta.redirectIfAuthenticated && auth.isAuthenticated && !to.hash) {
     return auth.homeForUser();
   }
 
@@ -170,22 +198,17 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.roles && !auth.hasAnyRole(to.meta.roles)) {
-    return auth.isAuthenticated ? auth.homeForUser() : loginRedirectFor(to);
-  }
-
-  if (to.meta.vendorUser && auth.role === 'community' && !auth.isVendorUser) {
-    return communityVisitorFallbackPath();
-  }
-
-  if (to.meta.vendorApproved && !auth.isApprovedVendor) {
-    return auth.isAuthenticated ? auth.homeForUser() : loginRedirectFor(to);
+    if (!auth.isAuthenticated) {
+      return loginRedirectFor(to);
+    }
+    return homeRedirectFor(auth, to.path);
   }
 
   if (to.meta.guestOnly && auth.isAuthenticated) {
     return auth.homeForUser();
   }
 
-  if (to.path === '/admin') {
+  if (to.path === '/admin' && isManagementRole(auth)) {
     const bossPreview = useBossPreviewStore();
     const hash = (to.hash || '#bookings').replace('#', '');
     const effectiveRole =

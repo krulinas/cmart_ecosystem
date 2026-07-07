@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-ink-50 via-brand-50/30 to-ink-50">
-    <AppNavbar variant="vendor" />
+  <div class="min-h-screen bg-gradient-to-br from-ink-50 via-brand-50/30 to-ink-50" data-testid="vendor-profile-root">
+    <AppNavbar :variant="auth.isVendorUser ? 'vendor' : 'public'" />
 
     <div class="max-w-4xl mx-auto py-10 px-4 sm:px-6 space-y-8">
       <header class="rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
@@ -98,8 +98,7 @@
         <p class="text-sm text-ink-500 mb-6">Common vendor tasks from your profile.</p>
         <div class="flex flex-col sm:flex-row flex-wrap gap-3">
           <router-link to="/dashboard" class="ml-btn-ghost">View Dashboard</router-link>
-          <router-link v-if="auth.isApprovedVendor" to="/vendor-booking" class="ml-btn-primary">Book a Space</router-link>
-          <router-link v-else to="/dashboard" class="ml-btn-primary">Check Booking Status</router-link>
+          <router-link to="/vendor-booking" class="ml-btn-primary">Book a Space</router-link>
           <button type="button" class="ml-btn-ghost text-red-600 hover:bg-red-50" @click="logout">Logout</button>
         </div>
       </section>

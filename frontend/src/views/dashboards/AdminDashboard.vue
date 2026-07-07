@@ -1,5 +1,6 @@
 <template>
   <WorkspaceShell
+    v-if="authorized"
     :theme="workspaceTheme"
     :nav-groups="groupedNavItems"
     :flat-nav-items="filteredNavItems"
@@ -172,6 +173,10 @@ const toolsPanel = ref(null);
 const revenuePanel = ref(null);
 const wordCloudPanel = ref(null);
 const auditPanel = ref(null);
+
+const authorized = computed(() =>
+  auth.hasAnyRole(['staff', 'manager', 'super_admin', 'cmart_staff', 'cmart_admin', 'boss']),
+);
 
 const heroTitle = computed(() => workspaceTheme.value.workspaceTitle);
 const heroSubtitle = computed(() => workspaceTheme.value.workspaceSubtitle);
@@ -348,6 +353,11 @@ watch(() => bossPreview.viewAsStaff, async () => {
 });
 
 onMounted(async () => {
+  if (!auth.hasAnyRole(['staff', 'manager', 'super_admin', 'cmart_staff', 'cmart_admin', 'boss'])) {
+    router.replace(auth.homeForUser());
+    return;
+  }
+
   await auth.ensureSession({ refresh: true });
   sessionReady.value = auth.sessionReady;
 });
