@@ -432,7 +432,6 @@ const toast = useToast();
 const {
   isStaffView,
   isManagerView,
-  isSuperAdminView,
   canDeleteBookings,
   canFinalApproveBookings,
   bookingsListEndpoint,
@@ -495,7 +494,7 @@ const paymentStatusBadgeClass = (status) => {
 const paymentProofUrl = (path) => `/storage/${String(path || '').replace(/^\/+/, '')}`;
 
 const canVerifyPayments = computed(() =>
-  isStaffView.value || isManagerView.value || isSuperAdminView.value,
+  isStaffView.value || isManagerView.value,
 );
 
 const canVerifyPayment = (booking) =>
@@ -566,15 +565,6 @@ const kpiCards = computed(() => {
     ];
   }
 
-  if (isSuperAdminView.value) {
-    return [
-      { key: 'manager', title: 'Awaiting Manager Decision', description: 'Escalated bookings pending final approval.', value: kpi.value.pendingManager, icon: 'M2', accent: 'sky' },
-      { key: 'staff', title: 'Awaiting Staff Review', description: 'First-level screening across the system.', value: kpi.value.pendingStaff, icon: 'S1', accent: 'cyan' },
-      { key: 'revision', title: 'Needs Vendor Revision', description: 'Active revision requests system-wide.', value: kpi.value.needsRevision, icon: 'Rv', accent: 'amber' },
-      { key: 'approved', title: 'Approved Bookings', description: 'Total confirmed vendor bookings.', value: kpi.value.approved, icon: 'HQ', accent: 'emerald' },
-    ];
-  }
-
   return [
     { key: 'manager', title: 'Awaiting Manager Decision', description: 'Your final approval queue.', value: kpi.value.pendingManager, icon: 'M2', accent: 'sky' },
     { key: 'staff', title: 'In Staff Review', description: 'Still undergoing Tier 1 screening.', value: kpi.value.pendingStaff, icon: 'S1', accent: 'cyan' },
@@ -585,7 +575,6 @@ const kpiCards = computed(() => {
 
 const overviewHint = computed(() => {
   if (isStaffView.value) return 'Tier 1 operations desk — focus on screening and escalation.';
-  if (isSuperAdminView.value) return 'HQ command centre — system-wide booking pipeline visibility.';
   return 'Branch control — monitor escalations and final decisions.';
 });
 
@@ -597,24 +586,17 @@ const queueDescription = computed(() => {
   if (isStaffView.value) {
     return 'Review new vendor submissions, request revisions, or forward valid bookings to manager review.';
   }
-  if (isSuperAdminView.value) {
-    return 'Final decision queue for bookings escalated from operations staff across the network.';
-  }
   return 'Bookings forwarded by staff that require your final approve, reject, or revision decision.';
 });
 
 const emptyQueueTitle = computed(() => {
   if (isStaffView.value) return 'Queue clear — no staff reviews pending';
-  if (isSuperAdminView.value) return 'No pending approvals in this workspace';
   return 'Queue clear — no manager decisions pending';
 });
 
 const emptyQueueDescription = computed(() => {
   if (isStaffView.value) {
     return 'No bookings awaiting staff review. New vendor requests will appear here for first-level screening.';
-  }
-  if (isSuperAdminView.value) {
-    return 'No pending approvals across this workspace. Escalated bookings will surface here automatically.';
   }
   return 'No bookings awaiting manager decision. Bookings forwarded by staff will appear here.';
 });

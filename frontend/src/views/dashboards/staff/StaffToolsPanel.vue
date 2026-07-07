@@ -7,9 +7,6 @@
           <template v-if="isStaffView">
             Operational shortcuts for Tier 1 staff. Advanced revenue and audit tools are available to managers in the Insights section.
           </template>
-          <template v-else-if="isSuperAdminView">
-            HQ-level utilities and ecosystem overview panels for command centre oversight.
-          </template>
           <template v-else>
             Branch management utilities. Open <strong>Revenue</strong> or <strong>Audit Log</strong> from Insights for advanced reporting.
           </template>
@@ -45,39 +42,36 @@
       class="rounded-2xl border border-ink-100 overflow-hidden shadow-sm"
     />
 
-    <ImpactDashboard
+    <section
       v-else
-      :reused-items="impactMetrics.reusedItems"
-      :economic-value-rm="impactMetrics.economicValueRm"
-      :active-vendors="impactMetrics.activeVendors"
-      :active-students="impactMetrics.activeStudents"
-      class="rounded-2xl border border-ink-100 overflow-hidden shadow-sm"
-    />
+      class="rounded-2xl border border-ink-100 bg-gray-50 px-6 py-12 text-center shadow-sm"
+      data-testid="manager-tools-analytics-placeholder"
+    >
+      <div class="mx-auto max-w-lg">
+        <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-2 block">Management Tools</span>
+        <h3 class="text-xl font-extrabold text-gray-900">Analytics modules</h3>
+        <p class="mt-3 text-sm text-gray-600 leading-relaxed">
+          Management tools and reports will appear here as analytics modules are connected to live data.
+          Use <strong>Insights → Revenue</strong> in the sidebar for current branch revenue and payment breakdowns.
+        </p>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue';
-import ImpactDashboard from '../../../components/ImpactDashboard.vue';
 import StaffOperationalSnapshot from '../../../components/management/StaffOperationalSnapshot.vue';
 import { useManagementAccess } from '../../../composables/useManagementAccess';
 
-const { isStaffView, isSuperAdminView, canSeeManagerSections, workspaceTheme } = useManagementAccess();
+const { isStaffView, canSeeManagerSections, workspaceTheme } = useManagementAccess();
 const theme = workspaceTheme;
 
 const snapshotRef = ref(null);
 
-const impactMetrics = {
-  reusedItems: 12450,
-  economicValueRm: 892000,
-  activeVendors: 156,
-  activeStudents: 89,
-};
-
 const refresh = async () => {
   if (isStaffView.value) {
     await snapshotRef.value?.refresh?.();
-    return;
   }
 };
 

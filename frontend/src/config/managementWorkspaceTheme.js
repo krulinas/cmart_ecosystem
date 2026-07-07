@@ -53,22 +53,24 @@ export const WORKSPACE_THEMES = {
   },
   manager: {
     key: 'manager',
-    workspaceTitle: 'CMart Branch Control',
-    workspaceSubtitle: 'Final approval workspace for vendor slot bookings.',
+    workspaceTitle: 'CMart Management Control',
+    workspaceSubtitle: 'Management workspace for booking approval, branch monitoring, and operational control.',
     roleBadge: 'Tier 2 · Branch Manager',
     tierLabel: 'Tier 2',
     registryLabel: 'Full-access registry',
     registryDescription: 'Complete branch booking registry with manager-level actions.',
     ...CMART_BLUE_VISUAL,
   },
+  // Reserved for future HQ governance (multi-branch oversight, audit, global reports).
+  // Not used for the active operational dashboard — see resolveWorkspaceThemeKey.
   super_admin: {
     key: 'super_admin',
-    workspaceTitle: 'CMart HQ Command Centre',
-    workspaceSubtitle: 'System-wide management and oversight.',
-    roleBadge: 'Tier 3 · HQ Administrator',
+    workspaceTitle: 'CMart Management Control',
+    workspaceSubtitle: 'Management workspace for booking approval, branch monitoring, and operational control.',
+    roleBadge: 'Tier 3 · Reserved HQ Access',
     tierLabel: 'Tier 3',
-    registryLabel: 'System-wide registry',
-    registryDescription: 'HQ-level visibility across all branch bookings and administrative actions.',
+    registryLabel: 'Full-access registry',
+    registryDescription: 'Complete branch booking registry with manager-level actions.',
     ...CMART_BLUE_VISUAL,
   },
 };
@@ -77,7 +79,9 @@ export const resolveWorkspaceThemeKey = (role, { previewAsStaff = false } = {}) 
   if (previewAsStaff) return ROLES.STAFF;
   if (role === ROLES.LEGACY_STAFF) return ROLES.STAFF;
   if (role === ROLES.LEGACY_MANAGER || role === ROLES.LEGACY_BOSS) return ROLES.MANAGER;
-  if (role === ROLES.SUPER_ADMIN) return ROLES.SUPER_ADMIN;
+  // Tier 3 is reserved for future HQ governance; reuse the manager operational dashboard
+  // so approval workflows are not duplicated in the UI during active operations.
+  if (role === ROLES.SUPER_ADMIN) return ROLES.MANAGER;
   if (role === ROLES.MANAGER) return ROLES.MANAGER;
   return ROLES.STAFF;
 };

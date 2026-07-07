@@ -73,12 +73,6 @@
                 {{ item.shortIcon }}
               </span>
               <span class="truncate">{{ item.label }}</span>
-              <span
-                v-if="item.managerOnly"
-                class="ml-auto text-[9px] font-bold uppercase tracking-wide text-ink-400"
-              >
-                Mgr
-              </span>
             </router-link>
           </div>
         </div>

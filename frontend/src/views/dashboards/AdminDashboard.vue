@@ -17,6 +17,13 @@
   >
     <template #previewBanner>
       <div
+        v-if="sessionReady && showReservedHqNotice"
+        class="mb-5 flex flex-col gap-2 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-cyan-50 px-4 py-3 text-sm text-sky-950"
+      >
+        <div class="font-bold">Tier 3 · Reserved HQ Access</div>
+        <div class="text-xs text-sky-800/80">Currently using Admin Management Mode</div>
+      </div>
+      <div
         v-if="sessionReady && auth.isBoss && bossPreview.viewAsStaff"
         class="mb-5 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between"
       >
@@ -60,7 +67,7 @@
 
     <div v-if="!sessionReady" class="flex flex-col items-center justify-center rounded-2xl border border-ink-200 bg-white py-20 text-center shadow-sm">
       <div class="h-10 w-10 animate-pulse rounded-full bg-ink-200" />
-      <p class="mt-4 text-sm font-medium text-ink-500">Preparing your command centre…</p>
+      <p class="mt-4 text-sm font-medium text-ink-500">Preparing your management workspace…</p>
     </div>
 
     <template v-else>
@@ -180,17 +187,16 @@ const authorized = computed(() =>
 
 const heroTitle = computed(() => workspaceTheme.value.workspaceTitle);
 const heroSubtitle = computed(() => workspaceTheme.value.workspaceSubtitle);
-const roleBadge = computed(() => workspaceTheme.value.roleBadge);
+const showReservedHqNotice = computed(() => auth.isSuperAdmin && !bossPreview.viewAsStaff);
+const roleBadge = computed(() => {
+  if (showReservedHqNotice.value) return 'Tier 3 · Reserved HQ Access';
+  return workspaceTheme.value.roleBadge;
+});
 const tierBadge = computed(() => {
   const fromProfile = managementTierLabel(auth.managementProfile, auth.role);
   return fromProfile || workspaceTheme.value.tierLabel;
 });
-const branchName = computed(() => {
-  if (auth.isSuperAdmin && !bossPreview.viewAsStaff) {
-    return auth.managementProfile?.branch_name || 'CMart HQ';
-  }
-  return auth.managementProfile?.branch_name || 'CMart Main Branch';
-});
+const branchName = computed(() => auth.managementProfile?.branch_name || 'CMart Main Branch');
 
 const userRoleLabel = computed(() => {
   if (auth.isBoss && bossPreview.viewAsStaff) {

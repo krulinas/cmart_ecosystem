@@ -17,6 +17,7 @@ export function useManagementAccess() {
   const effectiveRole = computed(() => bossPreview.effectiveRole);
   const isStaffView = computed(() => effectiveRole.value === ROLES.STAFF);
   const isManagerView = computed(() => workflowRoleKey(effectiveRole.value) === ROLES.MANAGER);
+  // Identity-only flag for Tier 3 reserved-access notice; operational UI follows manager view.
   const isSuperAdminView = computed(() => auth.isSuperAdmin && !bossPreview.viewAsStaff);
 
   const canDeleteBookings = computed(() => isManagerOrAbove(auth.role));

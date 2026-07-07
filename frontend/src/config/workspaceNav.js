@@ -22,7 +22,7 @@ export const SECTION_SUBTITLES = {
   events: 'Schedule and maintain carboot event dates for the community calendar.',
   news: 'Publish announcements and operational updates on the community portal.',
   tools: 'Workspace utilities and operational shortcuts for CMart staff.',
-  revenue: 'Branch revenue analytics, space quotas, and payment breakdown.',
+  revenue: 'Branch expected and collected revenue, payment breakdown, and what-if profit simulator.',
   analytics: 'Text analytics from community feedback and vendor product listings.',
   audit: 'Trace staff and manager approval actions across the booking pipeline.',
 };
