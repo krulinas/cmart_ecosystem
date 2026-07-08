@@ -61,6 +61,7 @@ class VendorBookingPresenter
 
         return array_merge($booking->toArray(), [
             'can_withdraw' => self::canVendorWithdraw($booking, $viewerUserId),
+            'event_label' => self::eventLabel($booking),
         ]);
     }
 }

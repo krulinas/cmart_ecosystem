@@ -98,7 +98,7 @@ describe('Public route safety and no over-locking', function () {
       await assertPublicRouteAccessible(driver, '/marketplace', {
         rootTestId: 'marketplace-preview-root',
         label: 'carboot preview',
-        requiredText: ['Carboot Preview', 'Specific item previews are not publicly listed yet'],
+        requiredText: ['Carboot Preview', 'Visit in person on event day'],
       });
 
       await assertPublicPageVisible(driver, {

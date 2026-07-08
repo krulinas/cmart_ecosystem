@@ -25,17 +25,20 @@
       </div>
       <div
         v-if="sessionReady && auth.isBoss && bossPreview.viewAsStaff"
+        data-testid="staff-portal-assist-banner"
         class="mb-5 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between"
       >
         <div class="flex items-start gap-3">
-          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-200 text-xs font-bold">Pv</span>
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-200 text-xs font-bold">SP</span>
           <div>
-            <div class="font-bold">Staff preview mode</div>
-            <div class="text-xs text-amber-800/80">You are viewing the Tier 1 operations desk as staff would see it.</div>
+            <div class="font-bold">Staff Portal Assist Mode</div>
+            <div class="text-xs text-amber-800/80">
+              You are assisting Tier 1 operations from the Staff Portal view. Actions are recorded under your manager account.
+            </div>
           </div>
         </div>
         <button type="button" class="ml-btn-ghost shrink-0 text-sm ring-1 ring-amber-200" @click="bossPreview.toggle()">
-          Exit preview
+          Return to Manager Portal
         </button>
       </div>
     </template>
@@ -44,12 +47,13 @@
       <button
         v-if="sessionReady && auth.isBoss"
         type="button"
+        data-testid="staff-portal-assist-toggle"
         class="ml-btn-ghost text-sm"
         :class="bossPreview.viewAsStaff ? 'ring-2 ring-amber-300 bg-amber-50' : ''"
         @click="bossPreview.toggle()"
-        :title="bossPreview.viewAsStaff ? 'Return to your role view' : 'Preview as Staff'"
+        :title="bossPreview.viewAsStaff ? 'Return to the Manager Portal' : 'Open the Staff Portal to assist Tier 1 operations'"
       >
-        {{ bossPreview.viewAsStaff ? 'Exit staff view' : 'View as Staff' }}
+        {{ bossPreview.viewAsStaff ? 'Return to Manager Portal' : 'Open Staff Portal' }}
       </button>
       <button
         class="ml-btn-ghost text-sm ring-1 ring-ink-200/80 bg-white/70"
@@ -200,7 +204,7 @@ const branchName = computed(() => auth.managementProfile?.branch_name || 'CMart 
 
 const userRoleLabel = computed(() => {
   if (auth.isBoss && bossPreview.viewAsStaff) {
-    return `${roleDisplayLabel(auth.role, auth.managementProfile)} · previewing Staff`;
+    return `${roleDisplayLabel(auth.role, auth.managementProfile)} · Staff Portal Assist`;
   }
   return auth.roleLabel;
 });

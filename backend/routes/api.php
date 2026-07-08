@@ -96,6 +96,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/vendor/bookings/{booking}/request-change', [BookingController::class, 'vendorRequestChange']);
         Route::post('/vendor/bookings/{booking}/request-cancellation', [BookingController::class, 'vendorRequestCancellation']);
         Route::post('/vendor/bookings/{booking}/submit-payment', [BookingController::class, 'vendorSubmitPayment']);
+        Route::post('/vendor/bookings/{booking}/demo-payment', [BookingController::class, 'vendorDemoPayment']);
         Route::post('/bookings', [BookingController::class, 'store']);
     });
 

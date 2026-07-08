@@ -10,6 +10,7 @@ import Register from '../views/auth/Register.vue';
 import UumDashboard from '../views/dashboards/UumDashboard.vue';
 import VendorDashboard from '../views/dashboards/VendorDashboard.vue';
 import VendorProfile from '../views/vendor/VendorProfile.vue';
+import VendorCheckoutPage from '../views/vendor/VendorCheckoutPage.vue';
 import ReuseMarketplace from '../views/public/ReuseMarketplace.vue';
 import EventCalendar from '../components/EventCalendar.vue';
 import StaffVerifyBooking from '../views/staff/StaffVerifyBooking.vue';
@@ -110,6 +111,12 @@ const routes = [
     path: '/profile',
     name: 'vendor-profile',
     component: VendorProfile,
+    meta: { requiresAuth: true, roles: ['community'] },
+  },
+  {
+    path: '/dashboard/checkout/:bookingId',
+    name: 'vendor-checkout',
+    component: VendorCheckoutPage,
     meta: { requiresAuth: true, roles: ['community'] },
   },
   {

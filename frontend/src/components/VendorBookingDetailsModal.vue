@@ -95,7 +95,10 @@
                     <p class="text-xs font-bold uppercase tracking-wider text-emerald-600">Assigned Booth</p>
                     <p class="mt-2 text-2xl font-black text-ink-900">{{ boothLabelForBooking(booking) }}</p>
                   </div>
-                  <div class="flex flex-col items-center justify-center rounded-xl border border-emerald-100 bg-white p-4">
+                  <div
+                    v-if="isBookingPaymentPaid(booking)"
+                    class="flex flex-col items-center justify-center rounded-xl border border-emerald-100 bg-white p-4"
+                  >
                     <div class="flex h-28 w-28 items-center justify-center rounded-xl border-2 border-dashed border-ink-300 bg-ink-50">
                       <svg class="h-20 w-20 text-ink-800" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">
                         <rect x="8" y="8" width="24" height="24" rx="2" />
@@ -106,8 +109,60 @@
                       </svg>
                     </div>
                     <p class="mt-2 text-xs font-bold uppercase tracking-wider text-ink-500">Vendor QR Pass</p>
+                    <p class="mt-1 text-xs text-emerald-700">View your scannable pass in Event Passes.</p>
+                  </div>
+                  <div
+                    v-else
+                    class="flex flex-col items-center justify-center rounded-xl border border-amber-100 bg-amber-50/60 p-4 text-center"
+                    data-testid="vendor-pass-locked-message"
+                  >
+                    <div class="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                      <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </div>
+                    <p class="mt-3 text-sm font-semibold text-amber-900">Complete payment to unlock your vendor QR pass and receipt.</p>
                   </div>
                 </div>
+              </section>
+
+              <section
+                v-if="canVendorAccessWhatsAppGroup(booking)"
+                class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5 space-y-3"
+                data-testid="vendor-whatsapp-group-section"
+              >
+                <h3 class="font-bold text-emerald-900">Vendor WhatsApp Group</h3>
+                <p class="text-sm text-emerald-800 leading-relaxed">
+                  You are now confirmed as a paid vendor. Join the vendor group for event updates, booth setup instructions, and announcements.
+                </p>
+                <a
+                  :href="VENDOR_WHATSAPP_GROUP_URL"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex ml-btn-primary"
+                  data-testid="vendor-whatsapp-group-link"
+                >
+                  Join WhatsApp Group
+                </a>
+              </section>
+
+              <section
+                v-if="canVendorProceedToDemoPayment(booking)"
+                class="rounded-xl border border-brand-200 bg-brand-50/50 p-5 space-y-3"
+                data-testid="vendor-booking-payment-cta"
+              >
+                <h3 class="font-bold text-ink-900">Payment Required</h3>
+                <p class="text-sm text-ink-600 leading-relaxed">
+                  Your booking has been approved. Complete payment to unlock your vendor pass and receipt.
+                </p>
+                <button
+                  type="button"
+                  class="ml-btn-primary"
+                  data-testid="vendor-booking-proceed-payment"
+                  @click="goToCheckout"
+                >
+                  Proceed to Payment
+                </button>
               </section>
 
               <section>
@@ -238,6 +293,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch, onUnmounted, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import api from '../services/api';
 import WithdrawBookingModal from './WithdrawBookingModal.vue';
@@ -246,13 +302,17 @@ import {
   PRODUCT_CATEGORIES,
   boothLabelForBooking,
   boothTypeLabel,
+  canVendorAccessWhatsAppGroup,
   canVendorEdit,
+  canVendorProceedToDemoPayment,
   canVendorRequestChange,
   canVendorResubmit,
   canVendorWithdraw,
   formatBookingDate,
   formatWithdrawnDate,
+  isBookingPaymentPaid,
   isWithdrawnBooking,
+  VENDOR_WHATSAPP_GROUP_URL,
   progressBarClass,
   progressWidth,
   statusBadgeClass,
@@ -268,6 +328,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'refreshed']);
 
 const toast = useToast();
+const router = useRouter();
 const panelRef = ref(null);
 const booking = ref(null);
 const loading = ref(false);
@@ -285,6 +346,12 @@ const titleId = computed(() =>
 );
 
 const close = () => emit('update:modelValue', false);
+
+const goToCheckout = () => {
+  const id = props.bookingId;
+  close();
+  router.push(`/dashboard/checkout/${id}`);
+};
 
 const populateEditForm = () => {
   if (!booking.value) return;

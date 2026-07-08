@@ -8,11 +8,7 @@
       <div>
         <h2 class="text-2xl font-extrabold text-ink-900">Item Preparation</h2>
         <p class="text-base text-ink-500 leading-relaxed">
-          Prepare your item listings here. These records are private and are not publicly listed.
-        </p>
-        <p class="mt-2 text-sm text-ink-400 leading-relaxed">
-          Public item previews are disabled until a future event-day confirmation flow is available.
-          Booking approval or payment is not required to prepare items.
+          Prepare item previews here. Active items may appear publicly after your booking is approved.
         </p>
       </div>
       <div class="flex flex-wrap gap-2">

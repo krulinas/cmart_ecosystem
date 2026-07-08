@@ -431,15 +431,18 @@ const emit = defineEmits(['refreshed']);
 const toast = useToast();
 const {
   isStaffView,
+  isStaffPortalAssist,
   isManagerView,
   canDeleteBookings,
   canFinalApproveBookings,
   bookingsListEndpoint,
+  queueStatusForView,
   workspaceTheme,
 } = useManagementAccess();
 
 const theme = computed(() => workspaceTheme.value);
 const themeAccent = computed(() => 'cyan');
+const STAFF_PORTAL_ASSIST_QUEUE_LIMIT = 100;
 
 const summary = ref({
   pending_staff: 0,
@@ -637,7 +640,21 @@ const buildQueryParams = () => {
   return params;
 };
 
-const applyResponse = (payload) => {
+const buildStaffPortalAssistQueueParams = () => ({
+  page: 1,
+  per_page: STAFF_PORTAL_ASSIST_QUEUE_LIMIT,
+  sort: 'newest',
+  status: queueStatusForView.value,
+});
+
+const fetchStaffPortalAssistQueue = async () => {
+  if (!isStaffPortalAssist.value) return null;
+
+  const { data } = await api.get(bookingsListEndpoint.value, { params: buildStaffPortalAssistQueueParams() });
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
+const applyResponse = (payload, { queueOverride = null } = {}) => {
   registryBookings.value = payload.data ?? [];
   pagination.value = {
     current_page: payload.meta?.current_page ?? 1,
@@ -648,7 +665,7 @@ const applyResponse = (payload) => {
     to: payload.meta?.to ?? null,
   };
   summary.value = payload.summary ?? summary.value;
-  queueBookings.value = payload.queue ?? [];
+  queueBookings.value = queueOverride ?? payload.queue ?? [];
 };
 
 const loadEventOptions = async () => {
@@ -668,7 +685,8 @@ const fetchRegistry = async () => {
 
   try {
     const { data } = await api.get(bookingsListEndpoint.value, { params: buildQueryParams() });
-    applyResponse(data);
+    const queueOverride = await fetchStaffPortalAssistQueue();
+    applyResponse(data, { queueOverride });
   } catch (e) {
     registryError.value = e.forbiddenMessage || e.response?.data?.message || 'Unable to load registry results.';
     if (!e.forbiddenMessage) {
@@ -688,7 +706,8 @@ const fetchBookings = async () => {
   try {
     debouncedSearch.value = searchQuery.value.trim();
     const { data } = await api.get(bookingsListEndpoint.value, { params: buildQueryParams() });
-    applyResponse(data);
+    const queueOverride = await fetchStaffPortalAssistQueue();
+    applyResponse(data, { queueOverride });
     hasLoaded.value = true;
     emit('refreshed');
 

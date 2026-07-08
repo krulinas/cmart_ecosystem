@@ -199,6 +199,23 @@ export const filterEventsByChip = (events, filter, monthKey = null) => {
   return list;
 };
 
+/** Upcoming public events sorted by start date (matches calendar upcoming filter). */
+export const getUpcomingPublicEvents = (events) => {
+  const upcoming = filterEventsByChip(events, 'upcoming');
+
+  return [...upcoming].sort((a, b) => {
+    const ta = parseEventInstant(a.startsAt ?? a.starts_at)?.getTime() ?? 0;
+    const tb = parseEventInstant(b.startsAt ?? b.starts_at)?.getTime() ?? 0;
+    return ta - tb;
+  });
+};
+
+/** Map raw API events to sorted upcoming public cards. */
+export const mapApiEventsToUpcomingCards = (rawEvents, location = DEFAULT_EVENT_LOCATION) => {
+  const cards = (Array.isArray(rawEvents) ? rawEvents : []).map((ev) => mapApiEventToCard(ev, location));
+  return getUpcomingPublicEvents(cards);
+};
+
 /** Build a downloadable .ics file for an event card object. */
 export const buildEventIcsContent = (event) => {
   if (!event) return '';

@@ -47,7 +47,9 @@
                   <p class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ item.category }}</p>
                   <h2 id="marketplace-item-details-title" class="mt-1 text-2xl font-extrabold text-ink-900">{{ item.name }}</h2>
                   <p class="mt-2 text-sm text-emerald-700 font-medium">
-                    Available at CMart Carboot. Purchase: In-person only.
+                    Available at CMart Carboot
+                    <span v-if="item.event?.date_label"> · {{ item.event.date_label }}</span>
+                    . Purchase: In-person only.
                   </p>
                 </div>
                 <p class="text-lg font-black text-brand-700 shrink-0">

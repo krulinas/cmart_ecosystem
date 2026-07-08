@@ -151,27 +151,23 @@ class VendorPrivateItemsAccessTest extends TestCase
         $this->assertVendorCanCreateAndListItem($vendor, 'approved-paid');
     }
 
-    public function test_approved_paid_booking_does_not_publish_items_publicly(): void
+    public function test_approved_booking_publishes_active_items_publicly(): void
     {
         $vendor = $this->createCommunityVendor(['vendor_status' => 'approved']);
         $this->createBookingFor($vendor, 'Approved', 'Paid');
 
         Sanctum::actingAs($vendor);
 
-        $create = $this->postJson('/api/vendor/items', $this->createPrivateItemPayload('should-stay-private'));
+        $create = $this->postJson('/api/vendor/items', $this->createPrivateItemPayload('should-appear-publicly'));
         $create->assertCreated();
         $this->createdItemIds[] = $create->json('item.id');
 
         $public = $this->getJson('/api/marketplace/items');
         $public->assertOk()
-            ->assertJsonPath('public_listing_enabled', false)
-            ->assertJsonPath('meta.total', 0)
-            ->assertJsonPath('data', []);
+            ->assertJsonPath('public_listing_enabled', true);
 
-        $this->assertStringNotContainsString(
-            'should-stay-private',
-            json_encode($public->json()),
-        );
+        $names = collect($public->json('data'))->pluck('name');
+        $this->assertTrue($names->contains('Private Prep Item should-appear-publicly'));
     }
 
     public function test_vendor_cannot_access_another_vendors_private_item(): void

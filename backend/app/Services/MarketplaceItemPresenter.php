@@ -14,6 +14,7 @@ class MarketplaceItemPresenter
         $vendor = self::publicVendorSummary($profile, $item);
         $images = $item->galleryImagesForApi();
         $primaryPath = $item->primaryImagePath();
+        $event = MarketplaceEligibility::upcomingApprovedEventForUser((int) $item->user_id);
 
         $payload = [
             'id' => $item->id,
@@ -30,6 +31,12 @@ class MarketplaceItemPresenter
             'images' => $images,
             'listed_at' => $item->created_at?->toIso8601String(),
             'vendor' => $vendor,
+            'purchase_mode' => 'in-person only',
+            'event' => $event ? [
+                'title' => $event->title,
+                'starts_at' => $event->starts_at?->toIso8601String(),
+                'date_label' => $event->starts_at?->format('j M Y'),
+            ] : null,
         ];
 
         if ($detailed) {

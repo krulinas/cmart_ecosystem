@@ -22,12 +22,19 @@ class BookingController extends Controller
      *
      * Strict permitted transitions per role. Any attempt outside this matrix
      * is rejected with HTTP 422 Unprocessable Entity.
+     *
+     * Staff Portal Assist: managers (and super admins via workflowRoleKey) may
+     * also perform Tier 1 staff-stage transitions on Pending_Staff bookings.
+     * This is NOT impersonation — the action is recorded under the real
+     * authenticated manager account. Direct Pending_Staff -> Approved remains
+     * forbidden for every role.
      */
     private const STATE_TRANSITIONS = [
         'staff' => [
             'Pending_Staff' => ['Pending_Boss', 'Needs_Revision', 'Rejected'],
         ],
         'manager' => [
+            'Pending_Staff' => ['Pending_Boss', 'Needs_Revision', 'Rejected'],
             'Pending_Boss' => ['Approved', 'Needs_Revision', 'Rejected'],
         ],
     ];
@@ -104,7 +111,8 @@ class BookingController extends Controller
      *
      * Permitted transitions:
      *   staff:   Pending_Staff -> Pending_Boss | Needs_Revision | Rejected
-     *   manager: Pending_Boss  -> Approved     | Needs_Revision | Rejected
+     *   manager: Pending_Staff -> Pending_Boss | Needs_Revision | Rejected (Staff Portal Assist)
+     *            Pending_Boss  -> Approved     | Needs_Revision | Rejected
      */
     public function update(Request $request, Booking $booking)
     {
@@ -148,6 +156,12 @@ class BookingController extends Controller
                 : null,
         ]);
 
+        // Manager acting on a Tier 1 staff-stage booking (Staff Portal Assist).
+        // The actor stays the real authenticated manager; only the audit action
+        // label distinguishes assisted Tier 1 review from a normal status change.
+        $isManagerAssistedTier1 = $workflowRole === ManagementRole::MANAGER
+            && $current === 'Pending_Staff';
+
         BookingAuditLogger::log(
             $booking,
             $user,
@@ -155,6 +169,7 @@ class BookingController extends Controller
             $target,
             $target === 'Needs_Revision' ? ($validated['revision_comment'] ?? null) : null,
             $request,
+            $isManagerAssistedTier1 ? 'manager_assisted_tier1_review' : 'status_change',
         );
 
         return response()->json([
@@ -500,7 +515,7 @@ class BookingController extends Controller
             return response()->json(['message' => '404 Not Found: Booking record is unavailable.'], 404);
         }
 
-        $booking->load(['space', 'invoice', 'auditLogs.actor']);
+        $booking->load(['space', 'invoice', 'auditLogs.actor', 'carbootEvent']);
 
         return response()->json(
             VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
@@ -765,6 +780,66 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => 'Payment proof submitted successfully. Awaiting CMart verification.',
+            'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
+            'invoice' => $invoice->fresh(),
+        ]);
+    }
+
+    public function vendorDemoPayment(Request $request, Booking $booking)
+    {
+        if ($denied = $this->authorizeVendorBooking($request, $booking)) {
+            return $denied;
+        }
+
+        if (in_array($booking->approval_status, ['Withdrawn', 'Rejected', 'Cancelled'], true)) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Payment cannot be completed for withdrawn, rejected, or cancelled bookings.',
+                'current_status' => $booking->approval_status,
+            ], 422);
+        }
+
+        if ($booking->approval_status !== 'Approved') {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Payment can only be completed for approved bookings.',
+                'current_status' => $booking->approval_status,
+            ], 422);
+        }
+
+        $invoice = $booking->invoice;
+        if (!$invoice) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: No invoice is available for this booking yet.',
+            ], 422);
+        }
+
+        if ($invoice->payment_status === 'Paid') {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: This booking has already been paid.',
+                'current_payment_status' => $invoice->payment_status,
+            ], 422);
+        }
+
+        if ($invoice->payment_status !== 'Unpaid') {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Demo payment is only available for unpaid invoices awaiting payment.',
+                'current_payment_status' => $invoice->payment_status,
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'payment_method' => 'required|string|in:demo_fpx,demo_ewallet,demo_card,demo_manual_transfer',
+        ]);
+
+        $invoice->update([
+            'payment_status' => 'Paid',
+            'payment_submitted_at' => now(),
+            'payment_proof_path' => 'demo-gateway/' . $validated['payment_method'],
+        ]);
+
+        $booking->load(['space', 'invoice', 'carbootEvent']);
+
+        return response()->json([
+            'message' => 'Payment successful. Your vendor pass is now unlocked.',
             'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
             'invoice' => $invoice->fresh(),
         ]);

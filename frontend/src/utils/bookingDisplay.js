@@ -173,3 +173,18 @@ export const productSummary = (booking) => {
   const details = booking?.product_details?.trim();
   return details ? `${category} · ${details}` : category;
 };
+
+export const normalizePaymentStatus = (booking) =>
+  String(booking?.invoice?.payment_status || booking?.payment_status || '').trim();
+
+export const isBookingPaymentPaid = (booking) =>
+  normalizePaymentStatus(booking).toLowerCase() === 'paid';
+
+export const canVendorProceedToDemoPayment = (booking) =>
+  booking?.approval_status === 'Approved'
+  && normalizePaymentStatus(booking).toLowerCase() === 'unpaid';
+
+export const canVendorAccessWhatsAppGroup = (booking) =>
+  booking?.approval_status === 'Approved' && isBookingPaymentPaid(booking);
+
+export const VENDOR_WHATSAPP_GROUP_URL = 'https://chat.whatsapp.com/CMartVendorDemoGroup';

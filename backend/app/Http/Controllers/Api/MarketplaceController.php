@@ -4,28 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\VendorItem;
+use App\Services\MarketplaceEligibility;
 use App\Services\MarketplaceItemPresenter;
 use Illuminate\Http\Request;
 
 class MarketplaceController extends Controller
 {
-    /**
-     * Public vendor-item listing is intentionally disabled until event-day publishing exists.
-     *
-     * Future public visibility should require ALL of:
-     * - vendor booking Approved
-     * - invoice payment Paid
-     * - event day has arrived
-     * - vendor checked in / attendance confirmed
-     * - item marked available for that event
-     *
-     * Vendors may still manage items privately via /api/vendor/items.
-     */
-    private function publicListingsEnabled(): bool
-    {
-        return false;
-    }
-
     public function index(Request $request)
     {
         $validated = $request->validate([
@@ -40,23 +24,9 @@ class MarketplaceController extends Controller
 
         $perPage = min((int) ($validated['per_page'] ?? 12), 48);
 
-        if (!$this->publicListingsEnabled()) {
-            return response()->json([
-                'data' => [],
-                'meta' => [
-                    'current_page' => 1,
-                    'last_page' => 1,
-                    'per_page' => $perPage,
-                    'total' => 0,
-                ],
-                'public_listing_enabled' => false,
-                'message' => 'Specific vendor item previews are not publicly listed yet.',
-            ]);
-        }
-
-        $query = VendorItem::query()
-            ->active()
-            ->with(['user.businessProfile', 'images']);
+        $query = MarketplaceEligibility::applyToVendorItemQuery(
+            VendorItem::query()->with(['user.businessProfile', 'images']),
+        );
 
         if ($search = trim((string) ($validated['search'] ?? ''))) {
             $needle = mb_strtolower($search);
@@ -106,15 +76,9 @@ class MarketplaceController extends Controller
 
     public function show(VendorItem $vendor_item)
     {
-        if (!$this->publicListingsEnabled()) {
+        if (!MarketplaceEligibility::isItemPubliclyPreviewable($vendor_item)) {
             return response()->json([
-                'message' => '404 Not Found: Public item previews are not available yet.',
-            ], 404);
-        }
-
-        if ($vendor_item->status !== 'active') {
-            return response()->json([
-                'message' => '404 Not Found: Marketplace listing is unavailable.',
+                'message' => '404 Not Found: Public item preview is unavailable.',
             ], 404);
         }
 

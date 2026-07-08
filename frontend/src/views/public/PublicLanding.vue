@@ -54,7 +54,7 @@
           </div>
 
           <div v-if="loadingEvents" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div v-for="n in 3" :key="n" class="bg-white rounded-2xl border border-gray-100 p-6 animate-pulse h-52"></div>
+            <div v-for="n in 3" :key="n" class="bg-white rounded-2xl border border-gray-100 p-6 animate-pulse h-80"></div>
           </div>
 
           <div v-else-if="!upcomingEvents.length" class="text-center py-16 bg-white rounded-2xl border border-gray-100">
@@ -62,68 +62,11 @@
             <p class="text-gray-400 text-sm mt-2">Check back soon or follow our news for the next market date.</p>
           </div>
 
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <article
-              v-for="(event, index) in upcomingEvents"
-              :key="event.id"
-              data-testid="public-event-card"
-              tabindex="0"
-              role="button"
-              :aria-label="`View details for ${event.title}`"
-              class="bg-white rounded-2xl shadow-sm border border-gray-100 p-7 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 hover:border-brand-200 hover:ring-2 hover:ring-brand-500/15 transition-all duration-300 ease-out relative overflow-hidden group flex flex-col cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-              :class="staggerCardClass(eventsVisible, index)"
-              :style="staggerCardStyle(eventsVisible, index)"
-              @click="openEventDetails(event)"
-              @keydown.enter.prevent="openEventDetails(event)"
-              @keydown.space.prevent="openEventDetails(event)"
-            >
-              <div class="absolute top-0 left-0 w-full h-1 bg-brand-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <img
-                v-if="event.posterUrl"
-                :src="event.posterUrl"
-                :alt="`${event.title} poster preview`"
-                class="w-full h-[140px] object-cover object-top rounded-xl mb-4 border border-gray-100 pointer-events-none"
-              />
-              <div class="flex items-start space-x-4 mb-4 pointer-events-none">
-                <div class="bg-brand-50 text-brand-600 rounded-xl p-3 text-center min-w-[70px] border border-brand-100 group-hover:bg-brand-500 group-hover:text-white transition-colors duration-300">
-                  <span class="block text-3xl font-black leading-none mb-1">{{ event.day }}</span>
-                  <span class="block text-xs uppercase font-bold tracking-widest">{{ event.month }}</span>
-                </div>
-                <div class="pt-1 min-w-0">
-                  <h3 class="text-xl font-bold text-gray-900 mb-1">{{ event.title }}</h3>
-                  <p class="text-sm text-gray-500 flex items-center font-medium mb-1">
-                    <svg class="w-4 h-4 mr-1 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {{ event.time }}
-                  </p>
-                  <p class="text-sm text-gray-500 flex items-start font-medium">
-                    <svg class="w-4 h-4 mr-1 mt-0.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {{ event.location }}
-                  </p>
-                </div>
-              </div>
-              <p v-if="event.description" class="text-base text-gray-600 leading-relaxed mb-5 line-clamp-3 flex-grow pointer-events-none">
-                {{ event.description }}
-              </p>
-              <p class="text-xs text-brand-600 font-semibold mb-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                Click to view full poster and details
-              </p>
-              <div class="flex justify-between items-center mt-auto pt-5 border-t border-gray-100/80" @click.stop>
-                <span :class="['text-xs font-bold px-4 py-1.5 rounded-full pointer-events-none', event.statusClass]">{{ event.status }}</span>
-                <router-link
-                  :to="vendorBookingLink(event.id, auth)"
-                  class="inline-flex items-center text-sm font-bold text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-4 py-1.5 rounded-full transition-colors"
-                  @click.stop
-                >
-                  Book Space <span class="ml-1">→</span>
-                </router-link>
-              </div>
-            </article>
-          </div>
+          <UpcomingEventsCarousel
+            v-else
+            :events="upcomingEvents"
+            @select="openEventDetails"
+          />
 
           <div
             v-if="!loadingEvents && upcomingEvents.length"
@@ -355,8 +298,9 @@ import SiteFooter from '../../components/layout/SiteFooter.vue';
 import EventDetailsModal from '../../components/EventDetailsModal.vue';
 import NewsDetailsModal from '../../components/NewsDetailsModal.vue';
 import MediaImageGallery from '../../components/MediaImageGallery.vue';
+import UpcomingEventsCarousel from '../../components/public/UpcomingEventsCarousel.vue';
 import api from '../../services/api';
-import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
+import { mapApiEventsToUpcomingCards } from '../../utils/eventDisplay';
 import { mapApiNewsToCard } from '../../utils/newsDisplay';
 import { vendorBookingLink } from '../../utils/vendorBooking';
 import { useAuthStore } from '../../stores/auth';
@@ -368,8 +312,6 @@ const { contentStyle, videoStyle } = useHeroParallax();
 
 const bookingCtaLink = computed(() => vendorBookingLink(null, auth));
 
-const DEFAULT_LOCATION = DEFAULT_EVENT_LOCATION;
-
 const upcomingEvents = ref([]);
 const newsPosts = ref([]);
 const selectedEvent = ref(null);
@@ -380,15 +322,6 @@ const loadingEvents = ref(true);
 const loadingNews = ref(true);
 
 const { targetRef: eventsSectionRef, isVisible: eventsVisible, revealClass: eventsHeaderClass } = useScrollReveal({ threshold: 0.08 });
-
-const staggerCardClass = (visible, index) => {
-  const motionSafe = 'motion-reduce:opacity-100 motion-reduce:translate-y-0';
-  return visible ? `opacity-100 translate-y-0 ${motionSafe}` : `opacity-0 translate-y-8 ${motionSafe}`;
-};
-
-const staggerCardStyle = (visible, index) => ({
-  transitionDelay: visible ? `${Math.min(index * 75, 400)}ms` : '0ms',
-});
 
 const openEventDetails = (event) => {
   selectedEvent.value = event;
@@ -453,8 +386,7 @@ const fetchEvents = async () => {
   loadingEvents.value = true;
   try {
     const { data } = await api.get('/events');
-    const events = Array.isArray(data) ? data : [];
-    upcomingEvents.value = events.slice(0, 3).map((ev) => mapApiEventToCard(ev, DEFAULT_LOCATION));
+    upcomingEvents.value = mapApiEventsToUpcomingCards(data);
   } catch (error) {
     console.error('Failed to load events:', error);
   } finally {
