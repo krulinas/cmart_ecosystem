@@ -8,6 +8,9 @@ class ManagementRole
     public const MANAGER = 'manager';
     public const SUPER_ADMIN = 'super_admin';
 
+    /** Prepared for Phase 2 — not yet in users.role ENUM. */
+    public const ORGANIZER = 'organizer';
+
     public const LEGACY_STAFF = 'cmart_staff';
     public const LEGACY_MANAGER = 'cmart_admin';
 
@@ -45,9 +48,7 @@ class ManagementRole
 
     public static function canAccessManagerRoutes(?string $role): bool
     {
-        $normalized = self::normalize($role);
-
-        return in_array($normalized, [self::MANAGER, self::SUPER_ADMIN], true);
+        return ManagementCapability::canAccessCarbootOperationalAnalytics($role);
     }
 
     /**

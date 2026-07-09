@@ -7,8 +7,15 @@ import {
   isManagerOrAbove,
   workflowRoleKey,
 } from '../utils/managementRoles';
+import {
+  canManageCmartActivities,
+  hasCapability,
+  mapsToFutureOrganizer,
+  CAPABILITIES,
+} from '../utils/managementCapabilities';
+
 /**
- * Centralized role-aware access helpers for the CMart management workspace.
+ * Centralized role-aware access helpers for the Carboot@CMart management workspace.
  */
 export function useManagementAccess() {
   const auth = useAuthStore();
@@ -18,15 +25,32 @@ export function useManagementAccess() {
   const isStaffView = computed(() => effectiveRole.value === ROLES.STAFF);
   const isManagerView = computed(() => workflowRoleKey(effectiveRole.value) === ROLES.MANAGER);
   const isStaffPortalAssist = computed(() => isManagerOrAbove(auth.role) && bossPreview.viewAsStaff);
-  // Identity-only flag for Tier 3 reserved-access notice; operational UI follows manager view.
   const isSuperAdminView = computed(() => auth.isSuperAdmin && !bossPreview.viewAsStaff);
+  const isFutureOrganizerView = computed(() => mapsToFutureOrganizer(auth.role));
+
+  const governanceCapabilities = computed(
+    () => auth.user?.governance_capabilities ?? null,
+  );
+
+  const canAccessCarbootAnalytics = computed(() => {
+    if (isStaffView.value) return false;
+    return hasCapability(
+      auth.role,
+      CAPABILITIES.CARBOOT_OPERATIONAL_ANALYTICS,
+      governanceCapabilities.value,
+    );
+  });
+
+  const canManageActivities = computed(() =>
+    hasCapability(auth.role, CAPABILITIES.CMART_ACTIVITY_MANAGEMENT, governanceCapabilities.value),
+  );
 
   const canDeleteBookings = computed(() => isManagerView.value);
   const canDeleteFeedback = computed(() => isManagerView.value);
   const canPublishOfficialReply = computed(() => isManagerView.value);
   const canFinalApproveBookings = computed(() => isManagerView.value);
-  const canSeeManagerSections = computed(() => isManagerView.value);
-  const shouldLoadManagerPanels = computed(() => isManagerView.value);
+  const canSeeManagerSections = computed(() => canAccessCarbootAnalytics.value);
+  const shouldLoadManagerPanels = computed(() => canAccessCarbootAnalytics.value);
 
   const bookingsListEndpoint = computed(() =>
     isStaffView.value ? '/staff/bookings' : '/bookings',
@@ -49,6 +73,9 @@ export function useManagementAccess() {
     isStaffPortalAssist,
     isManagerView,
     isSuperAdminView,
+    isFutureOrganizerView,
+    canAccessCarbootAnalytics,
+    canManageCmartActivities: canManageActivities,
     canDeleteBookings,
     canDeleteFeedback,
     canPublishOfficialReply,
@@ -60,5 +87,6 @@ export function useManagementAccess() {
     staffQueueStatus,
     managerQueueStatus,
     workspaceTheme,
+    governanceCapabilities,
   };
 }

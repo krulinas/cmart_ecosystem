@@ -4,7 +4,7 @@
 
     <template v-else-if="data">
       <div
-        data-testid="management-analytics-guide"
+        data-testid="carboot-analytics-guide"
         class="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-cyan-50 px-5 py-4"
       >
         <h2 class="text-sm font-bold text-sky-950">How to read this dashboard</h2>
@@ -64,7 +64,7 @@
         data-testid="revenue-insight-summary"
         class="ml-card border-sky-100 bg-gradient-to-br from-white to-sky-50/40"
       >
-        <h3 class="text-lg font-extrabold text-ink-900">Management Insight</h3>
+        <h3 class="text-lg font-extrabold text-ink-900">Carboot Operations Insight</h3>
         <ul class="mt-3 space-y-2 text-sm text-ink-700">
           <li v-for="(line, index) in insightLines" :key="index" class="flex gap-2">
             <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden="true" />

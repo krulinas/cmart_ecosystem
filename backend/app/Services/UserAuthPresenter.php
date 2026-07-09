@@ -6,6 +6,7 @@ use App\Models\ManagementProfile;
 use App\Models\User;
 use App\Models\VendorBusinessProfile;
 use App\Support\CommunityVendorIntent;
+use App\Support\ManagementCapability;
 use App\Support\ManagementRole;
 
 class UserAuthPresenter
@@ -29,6 +30,8 @@ class UserAuthPresenter
             $payload['management_profile'] = $user->managementProfile
                 ? self::presentManagementProfile($user->managementProfile)
                 : null;
+            $payload['governance_capabilities'] = ManagementCapability::resolveForRole($user->role);
+            $payload['maps_to_future_organizer'] = ManagementCapability::mapsToFutureOrganizer($user->role);
         }
 
         if ($user->role === 'community') {

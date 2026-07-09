@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 
 class EnsureVendorApproved
 {
+    /**
+     * Registered but intentionally not applied in Phase 1.
+     * Pending community vendors must retain /dashboard access during onboarding.
+     */
     public function handle(Request $request, Closure $next)
     {
         $user = $request->user();

@@ -2,6 +2,7 @@ export const ROLES = {
   STAFF: 'staff',
   MANAGER: 'manager',
   SUPER_ADMIN: 'super_admin',
+  ORGANIZER: 'organizer',
   LEGACY_STAFF: 'cmart_staff',
   LEGACY_MANAGER: 'cmart_admin',
   LEGACY_BOSS: 'boss',
@@ -56,8 +57,9 @@ export const roleDisplayLabel = (role, managementProfile = null) => {
   }
 
   const normalized = normalizeRole(role);
-  if (normalized === ROLES.STAFF) return 'CMart Staff';
-  if (normalized === ROLES.MANAGER) return 'CMart Manager';
+  if (normalized === ROLES.STAFF) return 'Carboot Operations Staff';
+  if (normalized === ROLES.MANAGER) return 'Carboot Organizer';
+  if (normalized === ROLES.ORGANIZER) return 'Carboot Organizer';
   if (normalized === ROLES.SUPER_ADMIN) return 'Reserved HQ Access';
   return role || 'User';
 };
@@ -68,16 +70,16 @@ export const managementWorkspaceLabel = (role, managementProfile = null) => {
   }
 
   const normalized = normalizeRole(role);
-  if (normalized === ROLES.SUPER_ADMIN) return 'CMart · Reserved HQ';
-  if (normalized === ROLES.MANAGER) return 'CMart · Tier 2';
-  if (managementProfile?.tier) return `CMart · Tier ${managementProfile.tier}`;
-  return 'CMart · Tier 1';
+  if (normalized === ROLES.SUPER_ADMIN) return 'Carboot@CMart · Reserved HQ';
+  if (normalized === ROLES.MANAGER || normalized === ROLES.ORGANIZER) return 'Carboot@CMart · Organizer';
+  if (managementProfile?.tier) return `Carboot@CMart · Tier ${managementProfile.tier}`;
+  return 'Carboot@CMart · Tier 1';
 };
 
 export const managementTierLabel = (managementProfile = null, role = null) => {
   if (managementProfile?.tier) return `Tier ${managementProfile.tier}`;
   const normalized = normalizeRole(role);
-  if (normalized === ROLES.MANAGER) return 'Tier 2';
+  if (normalized === ROLES.MANAGER || normalized === ROLES.ORGANIZER) return 'Tier 2';
   if (normalized === ROLES.SUPER_ADMIN) return 'Tier 3';
   if (normalized === ROLES.STAFF) return 'Tier 1';
   return null;

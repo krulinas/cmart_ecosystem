@@ -2,13 +2,18 @@ import { ROLES } from '../utils/managementRoles';
 
 export const WORKSPACE_NAV_GROUPS = [
   {
-    id: 'operations',
-    label: 'Operations',
-    items: ['bookings', 'feedback', 'events', 'news'],
+    id: 'carboot_operations',
+    label: 'Carboot Operations',
+    items: ['bookings', 'feedback'],
   },
   {
-    id: 'insights',
-    label: 'Insights',
+    id: 'cmart_activities',
+    label: 'CMart Activities',
+    items: ['events', 'news'],
+  },
+  {
+    id: 'carboot_analytics',
+    label: 'Carboot Analytics',
     managerOnly: true,
     items: ['revenue', 'analytics', 'audit'],
   },
@@ -43,9 +48,9 @@ const CMART_BLUE_VISUAL = {
 export const WORKSPACE_THEMES = {
   staff: {
     key: 'staff',
-    workspaceTitle: 'CMart Operations Desk',
-    workspaceSubtitle: 'Tier 1 staff review for vendor booking requests.',
-    roleBadge: 'Tier 1 · Operations Staff',
+    workspaceTitle: 'Carboot@CMart Operations Desk',
+    workspaceSubtitle: 'Tier 1 staff assist for vendor booking queues and walk-in coordination.',
+    roleBadge: 'Tier 1 · Carboot Operations Staff',
     tierLabel: 'Tier 1',
     registryLabel: 'Read-only registry',
     registryDescription: 'View booking history across the branch. Editing and deletion require manager access.',
@@ -53,9 +58,9 @@ export const WORKSPACE_THEMES = {
   },
   manager: {
     key: 'manager',
-    workspaceTitle: 'CMart Management Control',
-    workspaceSubtitle: 'Management workspace for booking approval, branch monitoring, and operational control.',
-    roleBadge: 'Tier 2 · Branch Manager',
+    workspaceTitle: 'Carboot@CMart Organizer Control',
+    workspaceSubtitle: 'Organizer-led workspace for booking approval, vendor coordination, and Carboot operations.',
+    roleBadge: 'Tier 2 · Carboot Organizer',
     tierLabel: 'Tier 2',
     registryLabel: 'Full-access registry',
     registryDescription: 'Complete branch booking registry with manager-level actions.',
@@ -65,8 +70,8 @@ export const WORKSPACE_THEMES = {
   // Not used for the active operational dashboard — see resolveWorkspaceThemeKey.
   super_admin: {
     key: 'super_admin',
-    workspaceTitle: 'CMart Management Control',
-    workspaceSubtitle: 'Management workspace for booking approval, branch monitoring, and operational control.',
+    workspaceTitle: 'Carboot@CMart Organizer Control',
+    workspaceSubtitle: 'Reserved HQ access — operational mode reuses organizer workflows during active Carboot events.',
     roleBadge: 'Tier 3 · Reserved HQ Access',
     tierLabel: 'Tier 3',
     registryLabel: 'Full-access registry',

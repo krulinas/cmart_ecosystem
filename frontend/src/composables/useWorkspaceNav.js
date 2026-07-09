@@ -2,13 +2,22 @@ import { computed } from 'vue';
 import { WORKSPACE_NAV_GROUPS } from '../config/managementWorkspaceTheme';
 import { WORKSPACE_NAV_ITEMS } from '../config/workspaceNav';
 import { useManagementAccess } from './useManagementAccess';
+import { hasCapability } from '../utils/managementCapabilities';
+import { useAuthStore } from '../stores/auth';
 
 export function useWorkspaceNav() {
-  const { canSeeManagerSections, canDeleteBookings } = useManagementAccess();
+  const auth = useAuthStore();
+  const { canSeeManagerSections, canDeleteBookings, governanceCapabilities } = useManagementAccess();
 
   const visibleItems = computed(() =>
     WORKSPACE_NAV_ITEMS.filter((item) => {
-      if (!canSeeManagerSections.value && item.managerOnly) return false;
+      if (item.managerOnly && !canSeeManagerSections.value) return false;
+      if (
+        item.requiredCapability &&
+        !hasCapability(auth.role, item.requiredCapability, governanceCapabilities.value)
+      ) {
+        return false;
+      }
       return true;
     }),
   );
@@ -22,6 +31,7 @@ export function useWorkspaceNav() {
       id: item.id,
       hash: item.hash,
       group: item.group,
+      domain: item.domain,
       managerOnly: item.managerOnly,
       bossOnly: item.managerOnly,
     })),
@@ -47,6 +57,12 @@ export function useWorkspaceNav() {
     const item = WORKSPACE_NAV_ITEMS.find((i) => i.hash === hash);
     if (!item) return false;
     if (item.managerOnly && !canSeeManagerSections.value) return false;
+    if (
+      item.requiredCapability &&
+      !hasCapability(auth.role, item.requiredCapability, governanceCapabilities.value)
+    ) {
+      return false;
+    }
     return true;
   };
 
