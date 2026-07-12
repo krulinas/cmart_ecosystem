@@ -459,9 +459,6 @@ class BookingController extends Controller
             'rejected' => (int) ($counts->rejected ?? 0),
             'cancelled' => (int) ($counts->cancelled ?? 0),
             'withdrawn' => (int) ($counts->withdrawn ?? 0),
-            // Deprecated aliases for PR3 frontend compatibility.
-            'pending_staff' => $pendingOrganizer,
-            'pending_boss' => 0,
         ];
     }
 

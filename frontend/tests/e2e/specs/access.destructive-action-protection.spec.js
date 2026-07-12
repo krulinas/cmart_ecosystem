@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import {
-  requireManagerCredentials,
-  requireStaffCredentials,
+  requireCmartManagementCredentials,
+  requireOrganizerCredentials,
   requireVendorBCredentials,
   requireVendorCredentials,
 } from '../config/env.js';
@@ -15,10 +15,10 @@ import {
 } from '../helpers/actions.js';
 import { createDriver } from '../helpers/driver.js';
 import {
+  assertCmartManagementDeleteGuard,
   assertDuplicateApproveDenied,
   assertDuplicatePaymentSubmitDenied,
   assertGuestDeleteGuard,
-  assertStaffDeleteGuard,
   assertTerminalWithdrawDenied,
   assertWrongVendorMutationGuard,
   captureDestructiveFailureDiagnostics,
@@ -36,20 +36,20 @@ describe('Destructive action protection', function () {
 
   before(async function () {
     requireVendorCredentials();
-    requireStaffCredentials();
-    requireManagerCredentials();
+    requireCmartManagementCredentials();
+    requireOrganizerCredentials();
     driver = await createDriver();
     await setActiveDriver(driver);
   });
 
-  it('7E-A - Staff cannot delete bookings via API or UI', async function () {
+  it('7E-A - cmart_management cannot access or delete bookings via API', async function () {
     const marker = e2eT7EStaffDeleteMarker();
 
     try {
-      const result = await assertStaffDeleteGuard(driver, marker);
+      const result = await assertCmartManagementDeleteGuard(driver, marker);
       assert.equal(result.deleteStatus, 403);
     } catch (error) {
-      const diagnostics = await captureDestructiveFailureDiagnostics(driver, 't7e-staff-delete-failed', {
+      const diagnostics = await captureDestructiveFailureDiagnostics(driver, 't7e-cmart-mgmt-delete-failed', {
         marker,
         flow: '7E-A',
       });
@@ -140,7 +140,7 @@ describe('Destructive action protection', function () {
     }
   });
 
-  it('7E-F - Manager cannot duplicate-approve an already Approved booking', async function () {
+  it('7E-F - Organizer cannot duplicate-approve an already Approved booking', async function () {
     const marker = e2eT7EDuplicateApproveMarker();
 
     try {

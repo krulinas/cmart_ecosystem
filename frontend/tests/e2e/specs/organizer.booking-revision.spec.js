@@ -8,27 +8,25 @@ import { uniqueTestMarker } from '../helpers/actions.js';
 import { loginAsOrganizer, loginAsVendor, logout } from '../helpers/auth.js';
 import { ensureE2EBookingExists } from '../helpers/booking.js';
 import { createDriver } from '../helpers/driver.js';
+import { resolveVendorBookingIdByMarker } from '../helpers/vendor-ownership.js';
 import {
-  APPROVED_EXPECTATION,
-  approveOrganizerBooking,
+  PENDING_ORGANIZER_EXPECTATION,
+  REVISION_EXPECTATION,
   openOrganizerBookings,
+  requestOrganizerRevision,
+  resubmitVendorBookingAfterRevision,
   statusMatchesExpectation,
 } from '../helpers/organizer-bookings.js';
-import {
-  VENDOR_APPROVED_EXPECTATION,
-  assertVendorBookingApproved,
-  goToMyBookings,
-  vendorStatusMatches,
-} from '../helpers/vendor-bookings.js';
 import { setActiveDriver } from '../setup.js';
 
 const E2E_MARKER_BASE = env.bookingDetails;
 
-describe('Vendor booking approved confirmation', function () {
+describe('Organizer booking revision', function () {
   this.timeout(300000);
 
   let driver;
   let marker;
+  let bookingId;
 
   before(async function () {
     requireVendorCredentials();
@@ -37,33 +35,29 @@ describe('Vendor booking approved confirmation', function () {
     await setActiveDriver(driver);
   });
 
-  it('Vendor user can see an E2E-marked booking as Approved after organizer approval', async function () {
+  it('Organizer requests revision and vendor resubmits to Pending_Organizer', async function () {
     marker = uniqueTestMarker(E2E_MARKER_BASE);
     const ensured = await ensureE2EBookingExists(driver, marker, { allowReuse: false });
     marker = ensured.marker;
+    bookingId = await resolveVendorBookingIdByMarker(driver, marker);
     await logout(driver);
 
     await loginAsOrganizer(driver);
     await openOrganizerBookings(driver, env.baseUrl);
-    const approved = await approveOrganizerBooking(driver, marker, env.baseUrl);
+    const revised = await requestOrganizerRevision(driver, marker, env.baseUrl, { bookingId });
 
     assert.ok(
-      statusMatchesExpectation(approved.statusAttr, approved.statusLabel, APPROVED_EXPECTATION),
-      `Organizer approval did not reach Approved for booking #${approved.bookingId}.`,
+      statusMatchesExpectation(revised.statusAttr, revised.statusLabel, REVISION_EXPECTATION),
+      `Booking #${revised.bookingId} did not reach Needs_Revision.`,
     );
-
     await logout(driver);
 
     await loginAsVendor(driver);
-    await goToMyBookings(driver, env.baseUrl);
-
-    const vendorView = await assertVendorBookingApproved(driver, marker, {
-      bookingId: approved.bookingId,
-    });
+    const resubmitted = await resubmitVendorBookingAfterRevision(driver, marker, { bookingId });
 
     assert.ok(
-      vendorStatusMatches(vendorView.statusAttr, vendorView.statusLabel, VENDOR_APPROVED_EXPECTATION),
-      `Vendor My Bookings shows "${vendorView.statusAttr || vendorView.statusLabel}" for booking #${vendorView.bookingId}; expected Approved.`,
+      statusMatchesExpectation(resubmitted.statusAttr, resubmitted.statusLabel, PENDING_ORGANIZER_EXPECTATION),
+      `Booking #${resubmitted.bookingId} did not return to Pending_Organizer after vendor resubmit.`,
     );
   });
 });

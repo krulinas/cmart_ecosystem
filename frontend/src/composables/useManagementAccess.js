@@ -1,12 +1,7 @@
 import { computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
-import { useBossPreviewStore } from '../stores/bossPreview';
 import { getWorkspaceTheme } from '../config/managementWorkspaceTheme';
-import {
-  ROLES,
-  isOrganizerEquivalent,
-  workflowRoleKey,
-} from '../utils/managementRoles';
+import { isOrganizerEquivalent } from '../utils/managementRoles';
 import {
   canManageCmartActivities,
   hasCapability,
@@ -14,78 +9,79 @@ import {
   CAPABILITIES,
 } from '../utils/managementCapabilities';
 
+/** Canonical Organizer queue status (Phase 1.3C PR3). */
+export const ORGANIZER_QUEUE_STATUS = 'Pending_Organizer';
+
 /**
- * Centralized role-aware access helpers for the Carboot@CMart management workspace.
+ * Role-aware access helpers for the Carboot@CMart management workspace.
  */
 export function useManagementAccess() {
   const auth = useAuthStore();
-  const bossPreview = useBossPreviewStore();
 
-  const effectiveRole = computed(() => bossPreview.effectiveRole);
-  const isStaffView = computed(() => effectiveRole.value === ROLES.STAFF);
-  const isManagerView = computed(() => workflowRoleKey(effectiveRole.value) === ROLES.MANAGER);
-  const isStaffPortalAssist = computed(() => isOrganizerEquivalent(auth.role) && bossPreview.viewAsStaff);
-  const isSuperAdminView = computed(() => auth.isSuperAdmin && !bossPreview.viewAsStaff);
+  const isOrganizerView = computed(() => isOrganizerEquivalent(auth.role));
+  const isSuperAdminView = computed(() => auth.isSuperAdmin);
   const isFutureOrganizerView = computed(() => mapsToFutureOrganizer(auth.role));
 
   const governanceCapabilities = computed(
     () => auth.user?.governance_capabilities ?? null,
   );
 
-  const canAccessCarbootAnalytics = computed(() => {
-    if (isStaffView.value) return false;
-    return hasCapability(
+  const canAccessCarbootAnalytics = computed(() =>
+    hasCapability(
       auth.role,
       CAPABILITIES.CARBOOT_OPERATIONAL_ANALYTICS,
       governanceCapabilities.value,
-    );
-  });
+    ),
+  );
+
+  const canPerformCarbootOperations = computed(() =>
+    hasCapability(auth.role, CAPABILITIES.CARBOOT_OPERATIONS, governanceCapabilities.value),
+  );
 
   const canManageActivities = computed(() =>
     hasCapability(auth.role, CAPABILITIES.CMART_ACTIVITY_MANAGEMENT, governanceCapabilities.value),
   );
 
-  const canDeleteBookings = computed(() => isManagerView.value);
-  const canDeleteFeedback = computed(() => isManagerView.value);
-  const canPublishOfficialReply = computed(() => isManagerView.value);
-  const canFinalApproveBookings = computed(() => isManagerView.value);
-  const canSeeManagerSections = computed(() => canAccessCarbootAnalytics.value);
-  const shouldLoadManagerPanels = computed(() => canAccessCarbootAnalytics.value);
+  const canDeleteBookings = computed(() => isOrganizerView.value);
+  const canDeleteFeedback = computed(() => isOrganizerView.value);
+  const canPublishOfficialReply = computed(() => isOrganizerView.value);
+  const canApproveBookings = computed(() => isOrganizerView.value);
+  const canVerifyPayments = computed(() => isOrganizerView.value);
+  const canSeeOrganizerAnalytics = computed(() => canAccessCarbootAnalytics.value);
+  const shouldLoadOrganizerAnalyticsPanels = computed(() => canAccessCarbootAnalytics.value);
 
-  const bookingsListEndpoint = computed(() =>
-    isStaffView.value ? '/staff/bookings' : '/bookings',
-  );
+  const bookingsListEndpoint = '/bookings';
+  const operationsSummaryEndpoint = '/organizer/operations-summary';
+  const feedbackListEndpoint = '/organizer/feedbacks';
 
-  const staffQueueStatus = 'Pending_Staff';
-  const managerQueueStatus = 'Pending_Boss';
+  const queueStatusForView = computed(() => ORGANIZER_QUEUE_STATUS);
 
-  const queueStatusForView = computed(() =>
-    isManagerView.value ? managerQueueStatus : staffQueueStatus,
-  );
-
-  const workspaceTheme = computed(() =>
-    getWorkspaceTheme(auth.role, { previewAsStaff: bossPreview.viewAsStaff }),
-  );
+  const workspaceTheme = computed(() => getWorkspaceTheme(auth.role));
 
   return {
-    effectiveRole,
-    isStaffView,
-    isStaffPortalAssist,
-    isManagerView,
+    isOrganizerView,
     isSuperAdminView,
     isFutureOrganizerView,
     canAccessCarbootAnalytics,
+    canPerformCarbootOperations,
     canManageCmartActivities: canManageActivities,
     canDeleteBookings,
     canDeleteFeedback,
     canPublishOfficialReply,
-    canFinalApproveBookings,
-    canSeeManagerSections,
-    shouldLoadManagerPanels,
+    canApproveBookings,
+    canVerifyPayments,
+    canSeeOrganizerAnalytics,
+    shouldLoadOrganizerAnalyticsPanels,
+    /** @deprecated Use canSeeOrganizerAnalytics */
+    canSeeManagerSections: canSeeOrganizerAnalytics,
+    /** @deprecated Use shouldLoadOrganizerAnalyticsPanels */
+    shouldLoadManagerPanels: shouldLoadOrganizerAnalyticsPanels,
+    /** @deprecated Use canApproveBookings */
+    canFinalApproveBookings: canApproveBookings,
     bookingsListEndpoint,
+    operationsSummaryEndpoint,
+    feedbackListEndpoint,
     queueStatusForView,
-    staffQueueStatus,
-    managerQueueStatus,
     workspaceTheme,
     governanceCapabilities,
   };

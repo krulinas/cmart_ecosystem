@@ -1,12 +1,11 @@
 import { strict as assert } from 'node:assert';
-import { env, requireManagerCredentials, requireStaffCredentials } from '../config/env.js';
+import { env, requireCmartManagementCredentials, requireOrganizerCredentials } from '../config/env.js';
 import {
-  assertManagerOnlyBookingActionsAbsent,
-  assertStaffCannotDeleteBooking,
+  assertCmartManagementCannotAccessBookings,
   managerApiRequest,
-  staffApiRequest,
+  organizerApiRequest,
 } from './access-guards.js';
-import { loginAsManager, loginAsStaff, loginAsVendor, loginAsVendorB, logout } from './auth.js';
+import { loginAsCmartManagement, loginAsOrganizer, loginAsVendor, loginAsVendorB, logout } from './auth.js';
 import { ensureE2EBookingExists } from './booking.js';
 import { captureFailureDiagnostics } from './diagnostics.js';
 import { runE2EApprovalPipeline } from './approval-pipeline.js';
@@ -19,11 +18,9 @@ import {
   guestApiRequest,
 } from './guest-access.js';
 import {
-  openStaffBookings,
-  searchStaffBookings,
-  forwardE2EBookingToManager,
-  approveE2EBookingAsManager,
-} from './staff-bookings.js';
+  approveOrganizerBooking,
+  openOrganizerBookings,
+} from './organizer-bookings.js';
 import { createWithdrawnE2EBooking } from './vendor-bookings.js';
 import {
   attemptVendorPaymentSubmitForBookingId,
@@ -91,14 +88,19 @@ export async function fetchVendorBookingSnapshot(driver, bookingId) {
   return extractBookingSnapshot(parseBookingRecord(response.body));
 }
 
-export async function fetchStaffBookingSnapshot(driver, bookingId) {
-  const response = await staffApiRequest(driver, 'GET', `/bookings/${bookingId}`);
+export async function fetchOrganizerBookingSnapshot(driver, bookingId) {
+  const response = await organizerApiRequest(driver, 'GET', `/bookings/${bookingId}`);
   assert.equal(
     response.status,
     200,
     `GET /bookings/${bookingId} failed: ${response.body?.slice(0, 240)}`,
   );
   return extractBookingSnapshot(parseBookingRecord(response.body));
+}
+
+/** @deprecated Use fetchOrganizerBookingSnapshot */
+export async function fetchStaffBookingSnapshot(driver, bookingId) {
+  return fetchOrganizerBookingSnapshot(driver, bookingId);
 }
 
 export function assertSnapshotUnchanged(before, after, { label, bookingId }) {
@@ -145,37 +147,22 @@ export async function attemptManagerDuplicateApprove(driver, bookingId) {
   });
 }
 
-export async function assertStaffDeleteGuard(driver, marker, { bookingId } = {}) {
+export async function assertCmartManagementDeleteGuard(driver, marker, { bookingId } = {}) {
   const ensured = await ensureE2EBookingExists(driver, marker, { allowReuse: false });
   marker = ensured.marker;
+  const resolvedId = bookingId ?? (await resolveVendorBookingIdByMarker(driver, marker));
   await logout(driver);
 
-  await loginAsStaff(driver);
-  await openStaffBookings(driver, env.baseUrl);
-  await searchStaffBookings(driver, marker);
-  const resolvedId = bookingId ?? (await resolveStaffBookingIdByMarker(driver, marker));
-  await assertManagerOnlyBookingActionsAbsent(driver, marker, { bookingId: resolvedId });
-  const result = await assertStaffCannotDeleteBooking(driver, resolvedId, marker);
+  await loginAsCmartManagement(driver);
+  const result = await assertCmartManagementCannotAccessBookings(driver, resolvedId);
   await logout(driver);
 
   return { marker, bookingId: resolvedId, deleteStatus: result.deleteStatus };
 }
 
-async function resolveStaffBookingIdByMarker(driver, marker) {
-  const response = await staffApiRequest(driver, 'GET', '/staff/bookings');
-  assert.equal(response.status, 200, `GET /staff/bookings failed: ${response.body?.slice(0, 240)}`);
-
-  const payload = JSON.parse(response.body);
-  const bookings = payload.data ?? payload.bookings ?? payload;
-
-  for (const booking of bookings) {
-    const details = String(booking.product_details || '').toLowerCase();
-    if (details.includes(marker.toLowerCase())) {
-      return Number(booking.id ?? booking.booking_id);
-    }
-  }
-
-  throw new Error(`No staff booking found with marker "${marker}".`);
+/** @deprecated Use assertCmartManagementDeleteGuard */
+export async function assertStaffDeleteGuard(driver, marker, options = {}) {
+  return assertCmartManagementDeleteGuard(driver, marker, options);
 }
 
 export async function assertGuestDeleteGuard(driver, marker, { bookingId } = {}) {
@@ -306,8 +293,7 @@ export async function prepareWithdrawnBooking(driver, marker) {
 }
 
 export async function preparePaidVendorBooking(driver, marker) {
-  requireStaffCredentials();
-  requireManagerCredentials();
+  requireOrganizerCredentials();
 
   const pipeline = await runE2EApprovalPipeline(driver, marker);
   marker = pipeline.marker;
@@ -320,7 +306,7 @@ export async function preparePaidVendorBooking(driver, marker) {
   await submitVendorPayment(driver, { bookingId });
   await logout(driver);
 
-  await loginAsStaff(driver);
+  await loginAsOrganizer(driver);
   await verifyPaymentAsPaid(driver, marker, { bookingId, baseUrl: env.baseUrl });
   await logout(driver);
 
@@ -363,32 +349,25 @@ export async function assertDuplicatePaymentSubmitDenied(driver, marker) {
 }
 
 export async function assertDuplicateApproveDenied(driver, marker) {
-  requireManagerCredentials();
+  requireOrganizerCredentials();
 
   const ensured = await ensureE2EBookingExists(driver, marker, { allowReuse: false });
   marker = ensured.marker;
   await logout(driver);
 
-  await loginAsStaff(driver);
-  await openStaffBookings(driver, env.baseUrl);
-  const forwarded = await forwardE2EBookingToManager(driver, marker, env.baseUrl);
-  await logout(driver);
-
-  await loginAsManager(driver);
-  await openStaffBookings(driver, env.baseUrl);
-  const approved = await approveE2EBookingAsManager(driver, marker, env.baseUrl, {
-    bookingId: forwarded.bookingId,
-  });
+  await loginAsOrganizer(driver);
+  await openOrganizerBookings(driver, env.baseUrl);
+  const approved = await approveOrganizerBooking(driver, marker, env.baseUrl);
   const bookingId = approved.bookingId;
 
-  const before = await fetchStaffBookingSnapshot(driver, bookingId);
+  const before = await fetchOrganizerBookingSnapshot(driver, bookingId);
   assert.equal(before.approvalStatus, 'Approved');
 
   const response = await attemptManagerDuplicateApprove(driver, bookingId);
   assertMutationDenied(response, {
     endpoint: `/bookings/${bookingId}`,
     method: 'PATCH',
-    label: 'Duplicate manager approve on Approved booking',
+    label: 'Duplicate organizer approve on Approved booking',
   });
   assert.equal(
     response.status,
@@ -396,7 +375,7 @@ export async function assertDuplicateApproveDenied(driver, marker) {
     `Expected HTTP 422 for duplicate approve on booking #${bookingId}, got ${response.status}.`,
   );
 
-  const after = await fetchStaffBookingSnapshot(driver, bookingId);
+  const after = await fetchOrganizerBookingSnapshot(driver, bookingId);
   assertSnapshotUnchanged(before, after, {
     label: 'Duplicate manager approve guard',
     bookingId,

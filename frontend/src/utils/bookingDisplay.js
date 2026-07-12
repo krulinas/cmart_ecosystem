@@ -1,14 +1,12 @@
 const MY_TZ = 'Asia/Kuala_Lumpur';
 
 export const PIPELINE_STEPS = [
-  { index: 1, status: 'Pending_Organizer', label: 'Organizer Review' },
-  { index: 2, status: 'Approved', label: 'Approved' },
-  // Legacy (historical audit rows / PR3 UI cleanup):
-  { index: 1, status: 'Pending_Staff', label: 'Staff Review' },
-  { index: 2, status: 'Pending_Boss', label: 'Manager Review' },
+  { index: 1, status: 'Submitted', label: 'Submitted' },
+  { index: 2, status: 'Pending_Organizer', label: 'Organizer Review' },
+  { index: 3, status: 'Approved', label: 'Approved' },
 ];
 
-export const PENDING_STATUSES = ['Pending_Organizer', 'Pending_Staff', 'Pending_Boss', 'Needs_Revision'];
+export const PENDING_STATUSES = ['Pending_Organizer', 'Needs_Revision'];
 
 export const TERMINAL_BOOKING_STATUSES = ['Withdrawn', 'Rejected', 'Cancelled'];
 
@@ -51,26 +49,26 @@ export const formatBookingDate = (dateStr) => {
 
 export const statusLabel = (status) =>
   ({
-    Pending_Organizer: 'Pending',
-    Pending_Staff: 'Pending',
+    Pending_Organizer: 'Pending Organizer Review',
     Needs_Revision: 'Needs Revision',
-    Pending_Boss: 'Pending',
     Approved: 'Approved',
     Rejected: 'Rejected',
     Cancelled: 'Cancelled',
     Withdrawn: 'Withdrawn',
+    Pending_Staff: 'Pending Organizer Review (legacy)',
+    Pending_Boss: 'Pending Organizer Review (legacy)',
   }[status] || status);
 
 export const statusBadgeClass = (status) =>
   ({
     Pending_Organizer: 'ml-badge bg-brand-100 text-brand-800',
-    Pending_Staff: 'ml-badge bg-brand-100 text-brand-800',
-    Pending_Boss: 'ml-badge bg-purple-100 text-purple-800',
     Needs_Revision: 'ml-badge bg-amber-100 text-amber-800',
     Approved: 'ml-badge bg-emerald-100 text-emerald-800',
     Rejected: 'ml-badge bg-rose-100 text-rose-800',
     Cancelled: 'ml-badge bg-ink-100 text-ink-700',
     Withdrawn: 'ml-badge bg-slate-100 text-slate-700 border border-slate-200',
+    Pending_Staff: 'ml-badge bg-brand-100 text-brand-800',
+    Pending_Boss: 'ml-badge bg-brand-100 text-brand-800',
   }[status] || 'ml-badge bg-ink-100 text-ink-700');
 
 export const filterTabClass = (active) =>
@@ -97,24 +95,20 @@ export const boothLabelForBooking = (booking) => {
 
 export const progressIndex = (status) => {
   if (status === 'Cancelled' || status === 'Rejected' || status === 'Withdrawn') return 0;
-  if (status === 'Pending_Organizer' || status === 'Pending_Staff' || status === 'Needs_Revision') return 1;
-  if (status === 'Pending_Boss') return 2;
-  if (status === 'Approved') return 2;
-  return 0;
+  if (status === 'Pending_Organizer' || status === 'Needs_Revision') return 2;
+  if (status === 'Approved') return 3;
+  return 1;
 };
 
 export const progressWidth = (status) => {
   if (status === 'Approved') return '100%';
-  if (status === 'Pending_Boss') return '50%';
-  if (status === 'Pending_Organizer' || status === 'Pending_Staff' || status === 'Needs_Revision') return '16%';
-  return '0%';
+  if (status === 'Pending_Organizer' || status === 'Needs_Revision') return '66%';
+  return '33%';
 };
 
 export const progressBarClass = (status) =>
   ({
     Pending_Organizer: 'bg-brand-500',
-    Pending_Staff: 'bg-brand-500',
-    Pending_Boss: 'bg-purple-500',
     Needs_Revision: 'bg-amber-500',
     Approved: 'bg-emerald-500',
     Rejected: 'bg-rose-500',
@@ -127,8 +121,6 @@ export const stepClass = (currentStatus, stepStatus) => {
   if (!active) return 'border-ink-200 text-ink-400';
   return {
     Pending_Organizer: 'border-brand-500 text-brand-700',
-    Pending_Staff: 'border-brand-500 text-brand-700',
-    Pending_Boss: 'border-purple-500 text-purple-700',
     Needs_Revision: 'border-amber-500 text-amber-700',
     Approved: 'border-emerald-500 text-emerald-700',
     Rejected: 'border-rose-500 text-rose-700',
@@ -150,7 +142,7 @@ export const formatWithdrawnDate = (value) => {
 };
 
 export const canVendorEdit = (booking) =>
-  ['Pending_Organizer', 'Pending_Staff', 'Needs_Revision'].includes(booking?.approval_status);
+  ['Pending_Organizer', 'Needs_Revision'].includes(booking?.approval_status);
 
 export const canVendorWithdraw = (booking) => {
   if (typeof booking?.can_withdraw === 'boolean') {

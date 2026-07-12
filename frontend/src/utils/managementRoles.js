@@ -1,50 +1,24 @@
 /**
- * Phase 1.3C PR2 — canonical role identity (final).
- *
- * Canonical roles: community, organizer, cmart_management, super_admin.
- * Legacy strings (staff, manager, uum) normalize at read time for API payloads.
+ * Phase 1.3C PR3 — canonical role identity (final).
  */
 export const ROLES = {
   ORGANIZER: 'organizer',
   CMART_MANAGEMENT: 'cmart_management',
   SUPER_ADMIN: 'super_admin',
-  // Legacy (normalize only — not valid DB roles after PR2):
-  STAFF: 'staff',
-  MANAGER: 'manager',
-  LEGACY_UUM: 'uum',
-  LEGACY_STAFF: 'cmart_staff',
-  LEGACY_MANAGER: 'cmart_admin',
-  LEGACY_BOSS: 'boss',
 };
 
 export const MANAGEMENT_WORKSPACE_ROLES = [
   ROLES.ORGANIZER,
   ROLES.CMART_MANAGEMENT,
   ROLES.SUPER_ADMIN,
-  ROLES.MANAGER,
-  ROLES.LEGACY_STAFF,
-  ROLES.LEGACY_MANAGER,
-  ROLES.LEGACY_BOSS,
 ];
 
+/** Normalize legacy API/session strings at read time only. */
 export const normalizeRole = (role) => {
-  if (role === ROLES.LEGACY_STAFF || role === ROLES.STAFF) return ROLES.CMART_MANAGEMENT;
-  if (
-    role === ROLES.MANAGER
-    || role === ROLES.LEGACY_UUM
-    || role === ROLES.LEGACY_MANAGER
-    || role === ROLES.LEGACY_BOSS
-  ) {
-    return ROLES.ORGANIZER;
-  }
+  if (role === 'staff' || role === 'cmart_staff') return ROLES.CMART_MANAGEMENT;
+  if (['manager', 'uum', 'cmart_admin', 'boss'].includes(role)) return ROLES.ORGANIZER;
   return role;
 };
-
-/** @deprecated Staff role removed in PR2. Always false. */
-export const isStaffRole = () => false;
-
-/** @deprecated Manager role removed in PR2. Always false. */
-export const isManagerRole = () => false;
 
 export const isOrganizerRole = (role) => normalizeRole(role) === ROLES.ORGANIZER;
 
@@ -53,18 +27,10 @@ export const isCmartManagementRole = (role) => normalizeRole(role) === ROLES.CMA
 export const isSuperAdminRole = (role) => normalizeRole(role) === ROLES.SUPER_ADMIN;
 
 export const isManagementUser = (role) =>
-  [ROLES.ORGANIZER, ROLES.CMART_MANAGEMENT, ROLES.SUPER_ADMIN].includes(
-    normalizeRole(role),
-  );
-
-/** @deprecated Use isManagementUser() */
-export const isCmartWorkerRole = isManagementUser;
+  MANAGEMENT_WORKSPACE_ROLES.includes(normalizeRole(role));
 
 export const isOrganizerEquivalent = (role) =>
   [ROLES.ORGANIZER, ROLES.SUPER_ADMIN].includes(normalizeRole(role));
-
-/** @deprecated Use isOrganizerEquivalent() */
-export const isManagerOrAbove = isOrganizerEquivalent;
 
 export const matchesRole = (userRole, requiredRole) => {
   if (!userRole) return false;
@@ -88,15 +54,6 @@ export const matchesRole = (userRole, requiredRole) => {
 export const hasAnyManagementRole = (userRole, roles = []) =>
   roles.some((requiredRole) => matchesRole(userRole, requiredRole));
 
-/** @deprecated Direct Organizer workflow — returns organizer for organizer/super_admin. */
-export const workflowRoleKey = (role) => {
-  const normalized = normalizeRole(role);
-  if ([ROLES.ORGANIZER, ROLES.SUPER_ADMIN].includes(normalized)) {
-    return ROLES.ORGANIZER;
-  }
-  return normalized;
-};
-
 export const roleDisplayLabel = (role, managementProfile = null) => {
   if (managementProfile?.position_title) {
     return managementProfile.position_title;
@@ -118,8 +75,7 @@ export const managementWorkspaceLabel = (role, managementProfile = null) => {
   if (normalized === ROLES.SUPER_ADMIN) return 'Carboot@CMart · Reserved HQ';
   if (normalized === ROLES.ORGANIZER) return 'Carboot@CMart · Organizer';
   if (normalized === ROLES.CMART_MANAGEMENT) return 'Carboot@CMart · Venue & Activities';
-  if (managementProfile?.tier) return `Carboot@CMart · Tier ${managementProfile.tier}`;
-  return 'Carboot@CMart · Tier 2';
+  return 'Carboot@CMart';
 };
 
 export const managementTierLabel = (managementProfile = null, role = null) => {
@@ -133,5 +89,14 @@ export const managementTierLabel = (managementProfile = null, role = null) => {
 export const defaultManagementHashForRole = (role) => {
   const normalized = normalizeRole(role);
   if (normalized === ROLES.CMART_MANAGEMENT) return 'news';
-  return 'bookings';
+  if (normalized === ROLES.ORGANIZER || normalized === ROLES.SUPER_ADMIN) return 'bookings';
+  return 'news';
+};
+
+/** Map legacy audit log status labels for display only. */
+export const legacyBookingStatusLabel = (status) => {
+  if (status === 'Pending_Staff' || status === 'Pending_Boss') {
+    return 'Pending Organizer Review (legacy)';
+  }
+  return status;
 };

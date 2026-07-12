@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6 pb-10" data-testid="staff-bookings-root">
+  <div class="space-y-6 pb-10" data-testid="organizer-bookings-root">
     <div v-if="loading && !hasLoaded" class="rounded-2xl border border-ink-200 bg-white py-16 text-center shadow-sm">
       <div class="mx-auto h-10 w-10 animate-pulse rounded-full bg-gradient-to-br from-cyan-100 to-sky-100" />
       <p class="mt-4 text-sm font-medium text-ink-500">Loading bookings…</p>
@@ -70,7 +70,7 @@
                 <tr
                   v-for="b in queueBookings"
                   :key="'q-' + b.id"
-                  data-testid="staff-booking-row"
+                  data-testid="organizer-booking-row"
                   data-booking-section="queue"
                   :data-booking-id="b.id"
                   :data-booking-status="b.approval_status"
@@ -87,41 +87,15 @@
                   <td class="px-4 py-3.5 text-ink-700">{{ b.space?.space_size || b.space_id }}</td>
                   <td class="px-4 py-3.5 whitespace-nowrap text-ink-700">{{ formatBookingDate(b.booking_date) }}</td>
                   <td class="px-4 py-3.5">
-                    <ManagementStatusChip :status="b.approval_status" data-testid="staff-booking-status" />
+                    <ManagementStatusChip :status="b.approval_status" data-testid="organizer-booking-status" />
                   </td>
                   <td class="px-4 py-3.5">
                     <div class="flex justify-end gap-1.5 flex-wrap">
                       <button class="ml-btn-ghost text-xs px-3 py-1.5" @click="viewPdf(b.id)">PDF</button>
-                      <template v-if="isStaffView && !isTerminalBookingStatus(b.approval_status)">
+                      <template v-if="canApproveBookings && !isTerminalBookingStatus(b.approval_status)">
                         <button
                           class="ml-btn-success text-xs px-3 py-1.5"
-                          data-testid="staff-booking-action-forward"
-                          :data-booking-id="b.id"
-                          @click="updateStatus(b.id, 'Pending_Boss')"
-                        >
-                          Forward
-                        </button>
-                        <button
-                          class="ml-btn-danger text-xs px-3 py-1.5"
-                          data-testid="staff-booking-action-reject"
-                          :data-booking-id="b.id"
-                          @click="updateStatus(b.id, 'Rejected')"
-                        >
-                          Reject
-                        </button>
-                        <button
-                          class="inline-flex items-center rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
-                          data-testid="staff-booking-action-needs-revision"
-                          :data-booking-id="b.id"
-                          @click="requestRevision(b.id)"
-                        >
-                          Revision
-                        </button>
-                      </template>
-                      <template v-if="canFinalApproveBookings && !isTerminalBookingStatus(b.approval_status)">
-                        <button
-                          class="ml-btn-success text-xs px-3 py-1.5"
-                          data-testid="staff-booking-action-approve"
+                          data-testid="organizer-booking-action-approve"
                           :data-booking-id="b.id"
                           @click="updateStatus(b.id, 'Approved')"
                         >
@@ -129,7 +103,7 @@
                         </button>
                         <button
                           class="ml-btn-danger text-xs px-3 py-1.5"
-                          data-testid="staff-booking-action-reject"
+                          data-testid="organizer-booking-action-reject"
                           :data-booking-id="b.id"
                           @click="updateStatus(b.id, 'Rejected')"
                         >
@@ -137,7 +111,7 @@
                         </button>
                         <button
                           class="inline-flex items-center rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
-                          data-testid="staff-booking-action-needs-revision"
+                          data-testid="organizer-booking-action-needs-revision"
                           :data-booking-id="b.id"
                           @click="requestRevision(b.id)"
                         >
@@ -190,14 +164,13 @@
                   v-model="searchQuery"
                   type="search"
                   placeholder="Search vendor, booth, ID, status…"
-                  data-testid="staff-bookings-search"
+                  data-testid="organizer-bookings-search"
                   class="ml-input w-full pl-8 text-sm"
                 />
               </div>
               <select v-model="statusFilter" class="ml-input text-sm">
                 <option value="all">All statuses</option>
-                <option value="Pending_Staff">Staff queue</option>
-                <option value="Pending_Boss">Manager queue</option>
+                <option value="Pending_Organizer">Organizer queue</option>
                 <option value="Needs_Revision">Needs revision</option>
                 <option value="Approved">Approved</option>
                 <option value="Rejected">Rejected</option>
@@ -262,7 +235,7 @@
               <tr
                 v-for="b in registryBookings"
                 :key="b.id"
-                data-testid="staff-booking-row"
+                data-testid="organizer-booking-row"
                 data-booking-section="registry"
                 :data-booking-id="b.id"
                 :data-booking-status="b.approval_status"
@@ -276,7 +249,7 @@
                 <td class="px-4 py-3.5 text-ink-700">{{ b.space?.space_size || b.space_id }}</td>
                 <td class="px-4 py-3.5 whitespace-nowrap text-ink-700">{{ formatBookingDate(b.booking_date) }}</td>
                 <td class="px-4 py-3.5">
-                  <ManagementStatusChip :status="b.approval_status" data-testid="staff-booking-status" />
+                  <ManagementStatusChip :status="b.approval_status" data-testid="organizer-booking-status" />
                 </td>
                 <td class="px-4 py-3.5">
                   <div class="flex flex-col items-start gap-2">
@@ -314,7 +287,7 @@
                 <td v-if="canDeleteBookings" class="px-4 py-3.5 text-right">
                   <button
                     class="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
-                    data-testid="staff-booking-action-delete"
+                    data-testid="organizer-booking-action-delete"
                     :data-booking-id="b.id"
                     @click="deleteBooking(b.id)"
                   >
@@ -392,7 +365,7 @@
         <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
           <h3 class="text-lg font-extrabold text-ink-900">Verify payment as Paid?</h3>
           <p class="mt-2 text-sm text-ink-600">
-            Confirm that CMart has verified the submitted payment proof for booking
+            Confirm that the organizer will verify the submitted payment proof for booking
             <span class="font-semibold text-ink-900">#{{ paymentVerifyTarget.id }}</span>.
             The vendor receipt and event pass will unlock after confirmation.
           </p>
@@ -430,27 +403,23 @@ const emit = defineEmits(['refreshed']);
 
 const toast = useToast();
 const {
-  isStaffView,
-  isStaffPortalAssist,
-  isManagerView,
+  canApproveBookings,
+  canVerifyPayments,
   canDeleteBookings,
-  canFinalApproveBookings,
   bookingsListEndpoint,
-  queueStatusForView,
   workspaceTheme,
 } = useManagementAccess();
 
 const theme = computed(() => workspaceTheme.value);
 const themeAccent = computed(() => 'cyan');
-const STAFF_PORTAL_ASSIST_QUEUE_LIMIT = 100;
 
 const summary = ref({
-  pending_staff: 0,
-  pending_boss: 0,
+  pending_organizer: 0,
   needs_revision: 0,
   approved: 0,
   rejected: 0,
   cancelled: 0,
+  withdrawn: 0,
 });
 const queueBookings = ref([]);
 const registryBookings = ref([]);
@@ -495,10 +464,6 @@ const paymentStatusBadgeClass = (status) => {
 };
 
 const paymentProofUrl = (path) => `/storage/${String(path || '').replace(/^\/+/, '')}`;
-
-const canVerifyPayments = computed(() =>
-  isStaffView.value || isManagerView.value,
-);
 
 const canVerifyPayment = (booking) =>
   canVerifyPayments.value
@@ -550,61 +515,60 @@ const hasActiveFilters = computed(() =>
 );
 
 const kpi = computed(() => ({
-  pendingStaff: summary.value.pending_staff ?? 0,
-  pendingManager: summary.value.pending_boss ?? 0,
+  pendingOrganizer: summary.value.pending_organizer ?? 0,
   needsRevision: summary.value.needs_revision ?? 0,
   approved: summary.value.approved ?? 0,
   rejected: summary.value.rejected ?? 0,
-  cancelled: summary.value.cancelled ?? 0,
 }));
 
-const kpiCards = computed(() => {
-  if (isStaffView.value) {
-    return [
-      { key: 'staff', title: 'Awaiting Staff Review', description: 'New vendor requests in your Tier 1 queue.', value: kpi.value.pendingStaff, icon: 'S1', accent: 'cyan' },
-      { key: 'forwarded', title: 'Forwarded to Manager', description: 'Bookings you escalated for final decision.', value: kpi.value.pendingManager, icon: 'FM', accent: 'sky' },
-      { key: 'revision', title: 'Needs Vendor Revision', description: 'Returned to vendors for corrections.', value: kpi.value.needsRevision, icon: 'Rv', accent: 'amber' },
-      { key: 'approved', title: 'Approved Bookings', description: 'Confirmed vendor slots in the registry.', value: kpi.value.approved, icon: 'Ok', accent: 'emerald' },
-    ];
-  }
+const kpiCards = computed(() => [
+  {
+    key: 'organizer',
+    title: 'Awaiting Organizer Review',
+    description: 'New vendor requests in your direct review queue.',
+    value: kpi.value.pendingOrganizer,
+    icon: 'O1',
+    accent: 'cyan',
+  },
+  {
+    key: 'revision',
+    title: 'Needs Vendor Revision',
+    description: 'Returned to vendors for corrections.',
+    value: kpi.value.needsRevision,
+    icon: 'Rv',
+    accent: 'amber',
+  },
+  {
+    key: 'approved',
+    title: 'Approved Bookings',
+    description: 'Confirmed vendor slots in the registry.',
+    value: kpi.value.approved,
+    icon: 'Ok',
+    accent: 'emerald',
+  },
+  {
+    key: 'rejected',
+    title: 'Rejected Bookings',
+    description: 'Declined vendor slot requests.',
+    value: kpi.value.rejected,
+    icon: 'X',
+    accent: 'rose',
+  },
+]);
 
-  return [
-    { key: 'manager', title: 'Awaiting Manager Decision', description: 'Your final approval queue.', value: kpi.value.pendingManager, icon: 'M2', accent: 'sky' },
-    { key: 'staff', title: 'In Staff Review', description: 'Still undergoing Tier 1 screening.', value: kpi.value.pendingStaff, icon: 'S1', accent: 'cyan' },
-    { key: 'revision', title: 'Needs Vendor Revision', description: 'Awaiting vendor resubmission.', value: kpi.value.needsRevision, icon: 'Rv', accent: 'amber' },
-    { key: 'approved', title: 'Approved Bookings', description: 'Confirmed slots for this branch.', value: kpi.value.approved, icon: 'Ok', accent: 'emerald' },
-  ];
-});
+const overviewHint = 'Direct organizer operations — review submissions and verify payments.';
 
-const overviewHint = computed(() => {
-  if (isStaffView.value) return 'Tier 1 operations desk — focus on screening and escalation.';
-  return 'Branch control — monitor escalations and final decisions.';
-});
+const queueTitle = 'Organizer Review Queue';
 
-const queueTitle = computed(() =>
-  isManagerView.value && !isStaffView.value ? 'Manager Approval Queue' : 'Staff Approval Queue',
-);
+const queueDescription =
+  'Review new vendor submissions directly — approve, reject, or request revisions without staff escalation.';
 
-const queueDescription = computed(() => {
-  if (isStaffView.value) {
-    return 'Review new vendor submissions, request revisions, or forward valid bookings to manager review.';
-  }
-  return 'Bookings forwarded by staff that require your final approve, reject, or revision decision.';
-});
+const emptyQueueTitle = 'Queue clear — no organizer reviews pending';
 
-const emptyQueueTitle = computed(() => {
-  if (isStaffView.value) return 'Queue clear — no staff reviews pending';
-  return 'Queue clear — no manager decisions pending';
-});
+const emptyQueueDescription =
+  'No bookings awaiting organizer review. New vendor requests will appear here.';
 
-const emptyQueueDescription = computed(() => {
-  if (isStaffView.value) {
-    return 'No bookings awaiting staff review. New vendor requests will appear here for first-level screening.';
-  }
-  return 'No bookings awaiting manager decision. Bookings forwarded by staff will appear here.';
-});
-
-const emptyQueueIcon = computed(() => (isStaffView.value ? '✓' : '—'));
+const emptyQueueIcon = '✓';
 
 const registryLabel = computed(() => theme.value.registryLabel);
 const registryDescription = computed(() => theme.value.registryDescription);
@@ -640,21 +604,7 @@ const buildQueryParams = () => {
   return params;
 };
 
-const buildStaffPortalAssistQueueParams = () => ({
-  page: 1,
-  per_page: STAFF_PORTAL_ASSIST_QUEUE_LIMIT,
-  sort: 'newest',
-  status: queueStatusForView.value,
-});
-
-const fetchStaffPortalAssistQueue = async () => {
-  if (!isStaffPortalAssist.value) return null;
-
-  const { data } = await api.get(bookingsListEndpoint.value, { params: buildStaffPortalAssistQueueParams() });
-  return Array.isArray(data?.data) ? data.data : [];
-};
-
-const applyResponse = (payload, { queueOverride = null } = {}) => {
+const applyResponse = (payload) => {
   registryBookings.value = payload.data ?? [];
   pagination.value = {
     current_page: payload.meta?.current_page ?? 1,
@@ -665,7 +615,7 @@ const applyResponse = (payload, { queueOverride = null } = {}) => {
     to: payload.meta?.to ?? null,
   };
   summary.value = payload.summary ?? summary.value;
-  queueBookings.value = queueOverride ?? payload.queue ?? [];
+  queueBookings.value = payload.queue ?? [];
 };
 
 const loadEventOptions = async () => {
@@ -684,9 +634,8 @@ const fetchRegistry = async () => {
   registryError.value = null;
 
   try {
-    const { data } = await api.get(bookingsListEndpoint.value, { params: buildQueryParams() });
-    const queueOverride = await fetchStaffPortalAssistQueue();
-    applyResponse(data, { queueOverride });
+    const { data } = await api.get(bookingsListEndpoint, { params: buildQueryParams() });
+    applyResponse(data);
   } catch (e) {
     registryError.value = e.forbiddenMessage || e.response?.data?.message || 'Unable to load registry results.';
     if (!e.forbiddenMessage) {
@@ -705,9 +654,8 @@ const fetchBookings = async () => {
 
   try {
     debouncedSearch.value = searchQuery.value.trim();
-    const { data } = await api.get(bookingsListEndpoint.value, { params: buildQueryParams() });
-    const queueOverride = await fetchStaffPortalAssistQueue();
-    applyResponse(data, { queueOverride });
+    const { data } = await api.get(bookingsListEndpoint, { params: buildQueryParams() });
+    applyResponse(data);
     hasLoaded.value = true;
     emit('refreshed');
 

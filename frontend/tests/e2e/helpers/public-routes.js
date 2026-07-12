@@ -14,8 +14,8 @@ import { waitForTestId } from './wait.js';
 
 export const PROTECTED_DASHBOARD_TEST_IDS = [
   'vendor-dashboard-root',
-  'staff-dashboard-root',
-  'staff-bookings-root',
+  'management-dashboard-root',
+  'organizer-bookings-root',
   'booking-form',
 ];
 

@@ -180,7 +180,7 @@ async function vendorBookingExists(driver, marker) {
   return false;
 }
 
-async function findReusablePendingStaffMarker(driver) {
+async function findReusablePendingOrganizerMarker(driver) {
   await driver.get(`${env.baseUrl}/dashboard`);
   await waitForTestId(driver, 'vendor-dashboard-root');
   await fillInputValue(driver, 'booking-search', env.bookingDetails);
@@ -190,7 +190,7 @@ async function findReusablePendingStaffMarker(driver) {
     const text = await row.getText();
     const status = await row.getAttribute('data-booking-status');
     if (!text.toLowerCase().includes(env.bookingDetails.toLowerCase())) continue;
-    if (status !== 'Pending_Staff') continue;
+    if (status !== 'Pending_Organizer') continue;
 
     const parts = text.split('·');
     if (parts.length >= 2) {
@@ -230,7 +230,7 @@ export async function ensureE2EBookingExists(
   }
 
   if (allowReuse && !vendorCredentials) {
-    const reusableMarker = await findReusablePendingStaffMarker(driver);
+    const reusableMarker = await findReusablePendingOrganizerMarker(driver);
     if (reusableMarker) {
       return { marker: reusableMarker };
     }
@@ -250,7 +250,7 @@ export async function ensureE2EBookingExists(
     if (await vendorBookingExists(driver, marker)) {
       return { marker };
     }
-    const fallbackMarker = await findReusablePendingStaffMarker(driver);
+    const fallbackMarker = await findReusablePendingOrganizerMarker(driver);
     if (fallbackMarker) {
       return { marker: fallbackMarker };
     }

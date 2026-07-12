@@ -53,7 +53,7 @@ describe('Guest / unauthenticated protection', function () {
           `/staff/verify-booking/${guestTestBookingId}`,
           {
             label: 'Staff verify booking page',
-            forbiddenTestIds: ['staff-dashboard-root', 'staff-bookings-root'],
+            forbiddenTestIds: ['management-dashboard-root', 'organizer-bookings-root'],
           },
         );
       }

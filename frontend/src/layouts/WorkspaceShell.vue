@@ -129,12 +129,6 @@
               >
                 {{ branchName }}
               </span>
-              <span
-                v-if="previewMode"
-                class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-900 ring-1 ring-amber-200"
-              >
-                Staff Portal Assist
-              </span>
             </div>
             <div>
               <h1 class="text-xl font-extrabold tracking-tight sm:text-2xl" :class="theme.heroTitle">

@@ -7,7 +7,6 @@ import AdminDashboard from '../views/dashboards/AdminDashboard.vue';
 import PublicLogin from '../views/auth/PublicLogin.vue';
 import ManagementLogin from '../views/auth/ManagementLogin.vue';
 import Register from '../views/auth/Register.vue';
-import UumDashboard from '../views/dashboards/UumDashboard.vue';
 import VendorDashboard from '../views/dashboards/VendorDashboard.vue';
 import VendorProfile from '../views/vendor/VendorProfile.vue';
 import VendorCheckoutPage from '../views/vendor/VendorCheckoutPage.vue';
@@ -16,10 +15,11 @@ import EventCalendar from '../components/EventCalendar.vue';
 import StaffVerifyBooking from '../views/staff/StaffVerifyBooking.vue';
 
 import { useAuthStore } from '../stores/auth';
-import { useBossPreviewStore } from '../stores/bossPreview';
-import { ALL_WORKSPACE_HASHES, MANAGER_ONLY_HASHES } from '../config/workspaceNav';
-import { isOrganizerEquivalent, MANAGEMENT_WORKSPACE_ROLES, normalizeRole, ROLES, workflowRoleKey } from '../utils/managementRoles';
-const MANAGEMENT_PROTECTED_PREFIXES = ['/admin', '/staff/'];
+import { ALL_WORKSPACE_HASHES, CARBOOT_ANALYTICS_HASHES } from '../config/workspaceNav';
+import { hasCapability, CAPABILITIES } from '../utils/managementCapabilities';
+import { isOrganizerEquivalent, MANAGEMENT_WORKSPACE_ROLES, normalizeRole } from '../utils/managementRoles';
+
+const MANAGEMENT_PROTECTED_PREFIXES = ['/admin', '/organizer/'];
 
 function isManagementProtectedRoute(path) {
   return MANAGEMENT_PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
@@ -56,7 +56,6 @@ function managementAccessRedirect(auth, to) {
 }
 
 const routes = [
-  // Zone 1: Public face
   {
     path: '/',
     name: 'home',
@@ -99,8 +98,6 @@ const routes = [
     component: EventCalendar,
     meta: { public: true },
   },
-
-  // Zone 2: Vendor hub
   {
     path: '/dashboard',
     name: 'vendor-dashboard',
@@ -125,19 +122,20 @@ const routes = [
     component: Registration,
     meta: { requiresAuth: true, roles: ['community'] },
   },
-
+  {
+    path: '/organizer/verify-booking/:bookingId',
+    name: 'organizer-verify-booking',
+    component: StaffVerifyBooking,
+    meta: { requiresAuth: true, roles: MANAGEMENT_ROLES, organizerOnly: true },
+  },
   {
     path: '/staff/verify-booking/:bookingId',
-    name: 'staff-verify-booking',
-    component: StaffVerifyBooking,
-    meta: { requiresAuth: true, roles: MANAGEMENT_ROLES },
+    redirect: (to) => `/organizer/verify-booking/${to.params.bookingId}`,
   },
   {
     path: '/verify-booking/:bookingId',
-    redirect: (to) => `/staff/verify-booking/${to.params.bookingId}`,
+    redirect: (to) => `/organizer/verify-booking/${to.params.bookingId}`,
   },
-
-  // Zone 3: CMart back-office
   {
     path: '/admin',
     name: 'admin',
@@ -148,15 +146,16 @@ const routes = [
       return managementAccessRedirect(auth, to);
     },
   },
-
-  // Zone 4: UUM oversight
   {
     path: '/uum',
-    name: 'uum',
-    component: UumDashboard,
-    meta: { requiresAuth: true, roles: ['uum'] },
+    redirect: () => {
+      const auth = useAuthStore();
+      if (auth.isAuthenticated && isOrganizerEquivalent(auth.role)) {
+        return '/admin';
+      }
+      return '/management/login';
+    },
   },
-
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
@@ -211,24 +210,28 @@ router.beforeEach(async (to) => {
     return homeRedirectFor(auth, to.path);
   }
 
+  if (to.meta.organizerOnly && !hasCapability(auth.role, CAPABILITIES.CARBOOT_OPERATIONS)) {
+    return homeRedirectFor(auth, to.path);
+  }
+
   if (to.meta.guestOnly && auth.isAuthenticated) {
     return auth.homeForUser();
   }
 
   if (to.path === '/admin' && isManagementRole(auth)) {
-    const bossPreview = useBossPreviewStore();
     const hash = (to.hash || '#bookings').replace('#', '');
-    const effectiveRole =
-      isOrganizerEquivalent(auth.role) && bossPreview.viewAsStaff
-        ? ROLES.STAFF
-        : normalizeRole(auth.role);
 
-    if (MANAGER_ONLY_HASHES.includes(hash) && workflowRoleKey(effectiveRole) !== ROLES.MANAGER) {
-      return { path: '/admin', hash: '#bookings' };
+    if (
+      CARBOOT_ANALYTICS_HASHES.includes(hash)
+      && !hasCapability(auth.role, CAPABILITIES.CARBOOT_OPERATIONAL_ANALYTICS)
+    ) {
+      const fallback = normalizeRole(auth.role) === 'cmart_management' ? 'news' : 'bookings';
+      return { path: '/admin', hash: `#${fallback}` };
     }
 
     if (hash && !ALL_WORKSPACE_HASHES.includes(hash)) {
-      return { path: '/admin', hash: '#bookings' };
+      const fallback = normalizeRole(auth.role) === 'cmart_management' ? 'news' : 'bookings';
+      return { path: '/admin', hash: `#${fallback}` };
     }
   }
 

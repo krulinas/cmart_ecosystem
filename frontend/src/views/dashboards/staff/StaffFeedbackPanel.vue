@@ -213,7 +213,7 @@ const load = async () => {
   loadError.value = null;
   try {
     const params = activeFilter.value !== 'all' ? { filter: activeFilter.value } : {};
-    const { data } = await api.get('/staff/feedbacks', { params });
+    const { data } = await api.get('/organizer/feedbacks', { params });
     items.value = Array.isArray(data) ? data : [];
     hasLoaded.value = true;
 

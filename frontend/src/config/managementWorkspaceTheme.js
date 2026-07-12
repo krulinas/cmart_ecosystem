@@ -1,10 +1,10 @@
-import { ROLES } from '../utils/managementRoles';
+import { ROLES, normalizeRole } from '../utils/managementRoles';
 
 export const WORKSPACE_NAV_GROUPS = [
   {
     id: 'carboot_operations',
     label: 'Carboot Operations',
-    items: ['bookings', 'feedback'],
+    items: ['bookings', 'feedback', 'events'],
   },
   {
     id: 'cmart_activities',
@@ -19,17 +19,11 @@ export const WORKSPACE_NAV_GROUPS = [
   {
     id: 'carboot_analytics',
     label: 'Carboot Analytics',
-    managerOnly: true,
+    analyticsOnly: true,
     items: ['revenue', 'analytics', 'audit'],
-  },
-  {
-    id: 'system',
-    label: 'System',
-    items: ['tools'],
   },
 ];
 
-/** Shared CMart blue visual language for all management tiers. */
 const CMART_BLUE_VISUAL = {
   accentName: 'cyan',
   logoBg: 'bg-gradient-to-br from-cyan-500 to-sky-600',
@@ -51,30 +45,10 @@ const CMART_BLUE_VISUAL = {
 };
 
 export const WORKSPACE_THEMES = {
-  staff: {
-    key: 'staff',
-    workspaceTitle: 'Carboot@CMart Operations Desk',
-    workspaceSubtitle: 'Tier 1 staff assist for vendor booking queues and walk-in coordination.',
-    roleBadge: 'Tier 1 · Carboot Operations Staff',
-    tierLabel: 'Tier 1',
-    registryLabel: 'Read-only registry',
-    registryDescription: 'View booking history across the branch. Editing and deletion require manager access.',
-    ...CMART_BLUE_VISUAL,
-  },
-  manager: {
-    key: 'manager',
-    workspaceTitle: 'Carboot@CMart Organizer Control',
-    workspaceSubtitle: 'Legacy manager bridge — organizer-led workspace for booking approval and Carboot operations.',
-    roleBadge: 'Tier 2 · Carboot Organizer (Legacy)',
-    tierLabel: 'Tier 2',
-    registryLabel: 'Full-access registry',
-    registryDescription: 'Complete branch booking registry with manager-level actions.',
-    ...CMART_BLUE_VISUAL,
-  },
   organizer: {
     key: 'organizer',
     workspaceTitle: 'Carboot@CMart Organizer Control',
-    workspaceSubtitle: 'Organizer-led workspace for vendor coordination, booking approval, and Carboot operations.',
+    workspaceSubtitle: 'Direct vendor booking review, payment verification, and Carboot operations.',
     roleBadge: 'Tier 2 · Carboot Organizer',
     tierLabel: 'Tier 2',
     registryLabel: 'Full-access registry',
@@ -84,39 +58,34 @@ export const WORKSPACE_THEMES = {
   cmart_management: {
     key: 'cmart_management',
     workspaceTitle: 'CMart Venue & Activities',
-    workspaceSubtitle: 'Manage venue announcements and CMart activities. Generated reports only — no raw Carboot analytics.',
-    roleBadge: 'Tier 2 · CMart Venue Manager',
+    workspaceSubtitle: 'Manage venue announcements and CMart side activities. Generated reports only.',
+    roleBadge: 'Tier 2 · CMart Management',
     tierLabel: 'Tier 2',
     registryLabel: 'Activity workspace',
     registryDescription: 'Venue and promotional content management for non-carboot CMart activities.',
     ...CMART_BLUE_VISUAL,
   },
-  // Reserved for future HQ governance (multi-branch oversight, audit, global reports).
-  // Not used for the active operational dashboard — see resolveWorkspaceThemeKey.
   super_admin: {
     key: 'super_admin',
     workspaceTitle: 'Carboot@CMart Organizer Control',
-    workspaceSubtitle: 'Reserved HQ access — operational mode reuses organizer workflows during active Carboot events.',
+    workspaceSubtitle: 'Reserved HQ access — technical override for Carboot operations and analytics.',
     roleBadge: 'Tier 3 · Reserved HQ Access',
     tierLabel: 'Tier 3',
     registryLabel: 'Full-access registry',
-    registryDescription: 'Complete branch booking registry with manager-level actions.',
+    registryDescription: 'Complete branch booking registry with organizer-level actions.',
     ...CMART_BLUE_VISUAL,
   },
 };
 
-export const resolveWorkspaceThemeKey = (role, { previewAsStaff = false } = {}) => {
-  if (previewAsStaff) return ROLES.STAFF;
-  if (role === ROLES.LEGACY_STAFF) return ROLES.STAFF;
-  if (role === ROLES.LEGACY_MANAGER || role === ROLES.LEGACY_BOSS) return ROLES.MANAGER;
-  if (role === ROLES.SUPER_ADMIN) return ROLES.MANAGER;
-  if (role === ROLES.ORGANIZER) return ROLES.ORGANIZER;
-  if (role === ROLES.CMART_MANAGEMENT) return ROLES.CMART_MANAGEMENT;
-  if (role === ROLES.MANAGER) return ROLES.MANAGER;
-  return ROLES.STAFF;
+export const resolveWorkspaceThemeKey = (role) => {
+  const normalized = normalizeRole(role);
+  if (normalized === ROLES.SUPER_ADMIN) return ROLES.SUPER_ADMIN;
+  if (normalized === ROLES.ORGANIZER) return ROLES.ORGANIZER;
+  if (normalized === ROLES.CMART_MANAGEMENT) return ROLES.CMART_MANAGEMENT;
+  return ROLES.ORGANIZER;
 };
 
-export const getWorkspaceTheme = (role, options = {}) => {
-  const key = resolveWorkspaceThemeKey(role, options);
-  return WORKSPACE_THEMES[key] ?? WORKSPACE_THEMES.staff;
+export const getWorkspaceTheme = (role) => {
+  const key = resolveWorkspaceThemeKey(role);
+  return WORKSPACE_THEMES[key] ?? WORKSPACE_THEMES.organizer;
 };

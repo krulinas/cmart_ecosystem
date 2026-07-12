@@ -1,7 +1,7 @@
 import {
   env,
-  requireManagerCredentials,
-  requireStaffCredentials,
+  requireOrganizerCredentials,
+  requireCmartManagementCredentials,
   requireVendorCredentials,
 } from '../config/env.js';
 
@@ -149,13 +149,13 @@ export function validateE2EEnvConfig() {
   }
 
   try {
-    requireStaffCredentials();
+    requireCmartManagementCredentials();
   } catch (error) {
     issues.push(error.message);
   }
 
   try {
-    requireManagerCredentials();
+    requireOrganizerCredentials();
   } catch (error) {
     issues.push(error.message);
   }

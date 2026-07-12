@@ -50,13 +50,13 @@ export const VENDOR_ONBOARDING_COPY = {
   pending: {
     title: 'Your vendor booking is under review',
     message:
-      'CMart staff will review your submission. You can continue exploring CMart and preparing your vendor profile while waiting.',
+      'The Carboot Organizer will review your submission. You can continue exploring CMart and preparing your vendor profile while waiting.',
     tone: 'info',
   },
   needs_revision: {
     title: 'Action needed',
     message:
-      'Your booking needs revision. Please review the staff note and update your submission.',
+      'Your booking needs revision. Please review the organizer note and update your submission.',
     tone: 'warning',
   },
   rejected: {

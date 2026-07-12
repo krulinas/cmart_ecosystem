@@ -38,7 +38,7 @@ const loading = ref(false);
 const data = ref(null);
 
 const cards = computed(() => [
-  { key: 'pending_staff_review', label: 'Pending Staff Review' },
+  { key: 'pending_organizer_review', label: 'Pending Organizer Review' },
   { key: 'needs_revision', label: 'Needs Revision' },
   { key: 'payment_proofs_to_check', label: 'Payment Proofs To Check' },
   { key: 'upcoming_events', label: 'Upcoming Events' },

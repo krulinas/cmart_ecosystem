@@ -1,8 +1,7 @@
 import { strict as assert } from 'node:assert';
 import {
   env,
-  requireManagerCredentials,
-  requireStaffCredentials,
+  requireOrganizerCredentials,
   requireVendorCredentials,
 } from '../config/env.js';
 import { uniqueTestMarker } from '../helpers/actions.js';
@@ -30,8 +29,7 @@ describe('Vendor payment submission', function () {
 
   before(async function () {
     requireVendorCredentials();
-    requireStaffCredentials();
-    requireManagerCredentials();
+    requireOrganizerCredentials();
     driver = await createDriver();
     await setActiveDriver(driver);
   });

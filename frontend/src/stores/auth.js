@@ -6,8 +6,6 @@ import {
   hasAnyManagementRole,
   isManagementUser,
   isOrganizerEquivalent,
-  isStaffRole,
-  isManagerRole,
   isSuperAdminRole,
   normalizeRole,
   roleDisplayLabel,
@@ -36,10 +34,8 @@ export const useAuthStore = defineStore('auth', () => {
   const vendorStatus = computed(() => user.value?.vendor_status || 'none');
   const isApprovedVendor = computed(() => role.value === 'community' && vendorStatus.value === 'approved');
   const isCmartWorker = computed(() => isManagementUser(role.value));
-  const isStaff = computed(() => isStaffRole(role.value));
-  const isManager = computed(() => isManagerRole(role.value));
+  const isOrganizer = computed(() => isOrganizerEquivalent(role.value));
   const isSuperAdmin = computed(() => isSuperAdminRole(role.value));
-  const isBoss = computed(() => isOrganizerEquivalent(role.value));
   const managementProfile = computed(() => user.value?.management_profile ?? null);
   const vendorBusinessProfile = computed(() => user.value?.vendor_business_profile ?? null);
   const roleLabel = computed(() => roleDisplayLabel(role.value, managementProfile.value));
@@ -162,23 +158,19 @@ export const useAuthStore = defineStore('auth', () => {
 
   const homeForUser = () => {
     if (isCmartWorker.value) return '/admin';
-    if (role.value === 'uum') return '/uum';
     if (role.value === 'community') {
       return isVendorUser.value ? '/dashboard' : '/community';
     }
     return '/';
   };
 
-  /** Navbar orientation link — explains vendor journey on the community page. */
   const becomeVendorNavPath = () => communityVisitorFallbackPath();
 
-  /** Primary CTA — starts the real vendor booking/application flow. */
   const startVendorBookingPath = () => {
     if (isAuthenticated.value) return '/vendor-booking';
     return `/login?redirect=${encodeURIComponent('/vendor-booking')}`;
   };
 
-  /** @deprecated Use becomeVendorNavPath or startVendorBookingPath explicitly. */
   const bookingPathForUser = () => startVendorBookingPath();
 
   return {
@@ -195,9 +187,8 @@ export const useAuthStore = defineStore('auth', () => {
     isVendorUser,
     communityMode,
     isCmartWorker,
-    isBoss,
-    isStaff,
-    isManager,
+    isOrganizer,
+    isBoss: isOrganizer,
     isSuperAdmin,
     roleLabel,
     managementProfile,

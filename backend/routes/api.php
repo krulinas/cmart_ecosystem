@@ -104,10 +104,19 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('role:' . ManagementRole::routeRoleList(ManagementRole::carbootOperationalRoles()))->group(function () {
+        // Canonical Organizer operations routes (Phase 1.3C PR3).
+        Route::prefix('organizer')->group(function () {
+            Route::get('/feedbacks', [FeedbackController::class, 'staffIndex']);
+            Route::get('/bookings/registry', [BookingController::class, 'staffRegistry']);
+            Route::get('/operations-summary', [StaffOperationsController::class, 'operationsSummary']);
+            Route::get('/bookings/{booking}/verify', [BookingPassVerificationController::class, 'verify']);
+            Route::post('/bookings/{booking}/check-in', [BookingPassVerificationController::class, 'checkIn']);
+        });
+
+        // Deprecated PR2 compatibility — remove after external clients migrate.
         Route::get('/staff/feedbacks', [FeedbackController::class, 'staffIndex']);
         Route::get('/staff/bookings', [BookingController::class, 'staffRegistry']);
         Route::get('/staff/operations-summary', [StaffOperationsController::class, 'operationsSummary']);
-
         Route::get('/staff/bookings/{booking}/verify', [BookingPassVerificationController::class, 'verify']);
         Route::post('/staff/bookings/{booking}/check-in', [BookingPassVerificationController::class, 'checkIn']);
 

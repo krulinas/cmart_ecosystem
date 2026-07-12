@@ -32,7 +32,7 @@ function isPublicPath(pathname) {
 }
 
 function isManagementPath(pathname) {
-  return pathname === '/admin' || pathname.startsWith('/staff/');
+  return pathname === '/admin' || pathname.startsWith('/organizer/');
 }
 
 function isCommunityVendorPath(pathname) {

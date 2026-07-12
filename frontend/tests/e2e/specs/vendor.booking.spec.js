@@ -23,13 +23,14 @@ const NO_EVENTS_MESSAGE =
   'No available event found for E2E booking test. Please create an upcoming active event from staff dashboard first.';
 
 const ACCEPTABLE_STATUSES = new Set([
-  'Pending_Staff',
-  'Pending_Boss',
+  'Pending_Organizer',
   'Needs_Revision',
   'Approved',
 ]);
 
 const ACCEPTABLE_STATUS_LABELS = new Set([
+  'Pending Organizer Review',
+  'Organizer Review',
   'Pending',
   'Needs Revision',
   'Approved',

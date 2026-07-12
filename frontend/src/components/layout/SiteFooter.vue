@@ -36,7 +36,7 @@
       <div class="mt-12 pt-8 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
         <p>&copy; {{ currentYear }} Carboot@CMart · CMart Kompleks Changlun. All rights reserved.</p>
         <router-link to="/management/login" class="hover:text-brand-400 transition font-medium">
-          Staff Portal
+          Management Login
         </router-link>
       </div>
     </div>

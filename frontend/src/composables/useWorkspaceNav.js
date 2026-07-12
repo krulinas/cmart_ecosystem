@@ -7,11 +7,11 @@ import { useAuthStore } from '../stores/auth';
 
 export function useWorkspaceNav() {
   const auth = useAuthStore();
-  const { canSeeManagerSections, canDeleteBookings, governanceCapabilities } = useManagementAccess();
+  const { canSeeOrganizerAnalytics, canDeleteBookings, governanceCapabilities } = useManagementAccess();
 
   const visibleItems = computed(() =>
     WORKSPACE_NAV_ITEMS.filter((item) => {
-      if (item.managerOnly && !canSeeManagerSections.value) return false;
+      if (item.analyticsOnly && !canSeeOrganizerAnalytics.value) return false;
       if (
         item.hideWhenCapability
         && hasCapability(auth.role, item.hideWhenCapability, governanceCapabilities.value)
@@ -38,8 +38,7 @@ export function useWorkspaceNav() {
       hash: item.hash,
       group: item.group,
       domain: item.domain,
-      managerOnly: item.managerOnly,
-      bossOnly: item.managerOnly,
+      analyticsOnly: item.analyticsOnly,
     })),
   );
 
@@ -54,7 +53,7 @@ export function useWorkspaceNav() {
           shortIcon: item.shortIcon,
           id: item.id,
           hash: item.hash,
-          managerOnly: item.managerOnly,
+          analyticsOnly: item.analyticsOnly,
         })),
     })).filter((group) => group.items.length > 0),
   );
@@ -62,7 +61,7 @@ export function useWorkspaceNav() {
   const canAccessHash = (hash) => {
     const item = WORKSPACE_NAV_ITEMS.find((i) => i.hash === hash);
     if (!item) return false;
-    if (item.managerOnly && !canSeeManagerSections.value) return false;
+    if (item.analyticsOnly && !canSeeOrganizerAnalytics.value) return false;
     if (
       item.hideWhenCapability
       && hasCapability(auth.role, item.hideWhenCapability, governanceCapabilities.value)
@@ -83,6 +82,8 @@ export function useWorkspaceNav() {
     groupedNavItems,
     canAccessHash,
     canDeleteBookings,
-    canSeeManagerSections,
+    canSeeOrganizerAnalytics,
+    /** @deprecated */
+    canSeeManagerSections: canSeeOrganizerAnalytics,
   };
 }

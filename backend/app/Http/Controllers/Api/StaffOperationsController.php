@@ -45,8 +45,6 @@ class StaffOperationsController extends Controller
             'payment_proofs_to_check' => $paymentProofsToCheck,
             'upcoming_events' => $upcomingEvents,
             'feedback_to_review' => $feedbackToReview,
-            // Deprecated aliases for PR3 frontend compatibility.
-            'pending_staff_review' => $pendingOrganizerReview,
         ]);
     }
 }

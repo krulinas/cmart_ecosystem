@@ -432,7 +432,7 @@ async function findVisibleSafeRoot(driver) {
 }
 
 async function isStaffDashboardVisible(driver) {
-  const staffRoots = await driver.findElements(By.css('[data-testid="staff-dashboard-root"]'));
+  const staffRoots = await driver.findElements(By.css('[data-testid="management-dashboard-root"]'));
   for (const root of staffRoots) {
     try {
       if (await root.isDisplayed()) {

@@ -7,13 +7,12 @@
     :workspace-title="heroTitle"
     :workspace-subtitle="heroSubtitle"
     :section-subtitle="sectionSubtitle"
-    :user-name="auth.user?.name || 'CMart Staff'"
+    :user-name="auth.user?.name || 'Management User'"
     :user-role-label="userRoleLabel"
     :role-badge="roleBadge"
     :tier-badge="tierBadge"
     :branch-name="branchName"
     :department="auth.managementProfile?.department || ''"
-    :preview-mode="auth.isBoss && bossPreview.viewAsStaff"
   >
     <template #previewBanner>
       <div
@@ -21,40 +20,11 @@
         class="mb-5 flex flex-col gap-2 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-cyan-50 px-4 py-3 text-sm text-sky-950"
       >
         <div class="font-bold">Tier 3 · Reserved HQ Access</div>
-        <div class="text-xs text-sky-800/80">Currently using Admin Management Mode</div>
-      </div>
-      <div
-        v-if="sessionReady && auth.isBoss && bossPreview.viewAsStaff"
-        data-testid="staff-portal-assist-banner"
-        class="mb-5 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between"
-      >
-        <div class="flex items-start gap-3">
-          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-200 text-xs font-bold">SP</span>
-          <div>
-            <div class="font-bold">Staff Portal Assist Mode</div>
-            <div class="text-xs text-amber-800/80">
-              You are assisting Tier 1 operations from the Staff Portal view. Actions are recorded under your manager account.
-            </div>
-          </div>
-        </div>
-        <button type="button" class="ml-btn-ghost shrink-0 text-sm ring-1 ring-amber-200" @click="bossPreview.toggle()">
-          Return to Manager Portal
-        </button>
+        <div class="text-xs text-sky-800/80">Technical override mode for Carboot operations and analytics.</div>
       </div>
     </template>
 
     <template #actions>
-      <button
-        v-if="sessionReady && auth.isBoss"
-        type="button"
-        data-testid="staff-portal-assist-toggle"
-        class="ml-btn-ghost text-sm"
-        :class="bossPreview.viewAsStaff ? 'ring-2 ring-amber-300 bg-amber-50' : ''"
-        @click="bossPreview.toggle()"
-        :title="bossPreview.viewAsStaff ? 'Return to the Manager Portal' : 'Open the Staff Portal to assist Tier 1 operations'"
-      >
-        {{ bossPreview.viewAsStaff ? 'Return to Manager Portal' : 'Open Staff Portal' }}
-      </button>
       <button
         class="ml-btn-ghost text-sm ring-1 ring-ink-200/80 bg-white/70"
         @click="refreshActiveSection"
@@ -75,13 +45,13 @@
     </div>
 
     <template v-else>
-      <div data-testid="staff-dashboard-root">
+      <div data-testid="management-dashboard-root">
       <ManagementSectionLoader
         v-if="showSectionLoader"
         :message="sectionLoadingMessage"
       />
 
-      <StaffBookingsPanel
+      <OrganizerBookingsPanel
         v-show="activeSection === 'bookings' && !showSectionLoader"
         ref="bookingsPanel"
         @refreshed="onBookingsRefreshed"
@@ -98,17 +68,13 @@
         v-show="activeSection === 'news' && !showSectionLoader"
         ref="newsPanel"
       />
-      <StaffToolsPanel
-        v-show="activeSection === 'tools'"
-        ref="toolsPanel"
-      />
 
       <ManagementReportsPanel
         v-show="activeSection === 'reports' && !showSectionLoader"
         ref="reportsPanel"
       />
 
-      <template v-if="shouldLoadManagerPanels">
+      <template v-if="shouldLoadOrganizerAnalyticsPanels">
         <BossRevenuePanel
           v-show="activeSection === 'revenue' && !showSectionLoader"
           ref="revenuePanel"
@@ -133,29 +99,26 @@ import { useRouter, useRoute } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import WorkspaceShell from '../../layouts/WorkspaceShell.vue';
 import ManagementSectionLoader from '../../components/management/ManagementSectionLoader.vue';
-import StaffBookingsPanel from './staff/StaffBookingsPanel.vue';
+import OrganizerBookingsPanel from './organizer/OrganizerBookingsPanel.vue';
 import StaffFeedbackPanel from './staff/StaffFeedbackPanel.vue';
 import StaffEventsPanel from './staff/StaffEventsPanel.vue';
 import StaffNewsPanel from './staff/StaffNewsPanel.vue';
-import StaffToolsPanel from './staff/StaffToolsPanel.vue';
 import BossRevenuePanel from './boss/BossRevenuePanel.vue';
 import BossWordCloudPanel from './boss/BossWordCloudPanel.vue';
 import BossAuditLogsPanel from './boss/BossAuditLogsPanel.vue';
 import ManagementReportsPanel from './management/ManagementReportsPanel.vue';
 import { useAuthStore } from '../../stores/auth';
-import { useBossPreviewStore } from '../../stores/bossPreview';
 import { useWorkspaceNav } from '../../composables/useWorkspaceNav';
 import { useManagementAccess } from '../../composables/useManagementAccess';
 import { useSectionCache } from '../../composables/useSectionCache';
-import { ALL_WORKSPACE_HASHES, MANAGER_ONLY_HASHES, SECTION_SUBTITLES } from '../../config/workspaceNav';
-import { MANAGEMENT_WORKSPACE_ROLES, roleDisplayLabel, managementTierLabel, defaultManagementHashForRole } from '../../utils/managementRoles';
+import { ALL_WORKSPACE_HASHES, CARBOOT_ANALYTICS_HASHES, SECTION_SUBTITLES } from '../../config/workspaceNav';
+import { MANAGEMENT_WORKSPACE_ROLES, managementTierLabel, defaultManagementHashForRole } from '../../utils/managementRoles';
 
 const SECTION_LABELS = {
   bookings: 'Bookings',
   feedback: 'Feedback',
   events: 'Events',
   news: 'News',
-  tools: 'Tools',
   revenue: 'Revenue',
   analytics: 'Word Cloud',
   audit: 'Audit Log',
@@ -166,9 +129,8 @@ const toast = useToast();
 const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
-const bossPreview = useBossPreviewStore();
 const { filteredNavItems, groupedNavItems, canAccessHash } = useWorkspaceNav();
-const { shouldLoadManagerPanels, workspaceTheme } = useManagementAccess();
+const { shouldLoadOrganizerAnalyticsPanels, workspaceTheme } = useManagementAccess();
 const {
   sections: sectionCache,
   shouldAutoLoad,
@@ -187,7 +149,6 @@ const bookingsPanel = ref(null);
 const feedbackPanel = ref(null);
 const eventsPanel = ref(null);
 const newsPanel = ref(null);
-const toolsPanel = ref(null);
 const revenuePanel = ref(null);
 const wordCloudPanel = ref(null);
 const reportsPanel = ref(null);
@@ -197,7 +158,7 @@ const authorized = computed(() => auth.hasAnyRole(MANAGEMENT_WORKSPACE_ROLES));
 
 const heroTitle = computed(() => workspaceTheme.value.workspaceTitle);
 const heroSubtitle = computed(() => workspaceTheme.value.workspaceSubtitle);
-const showReservedHqNotice = computed(() => auth.isSuperAdmin && !bossPreview.viewAsStaff);
+const showReservedHqNotice = computed(() => auth.isSuperAdmin);
 const roleBadge = computed(() => {
   if (showReservedHqNotice.value) return 'Tier 3 · Reserved HQ Access';
   return workspaceTheme.value.roleBadge;
@@ -208,12 +169,7 @@ const tierBadge = computed(() => {
 });
 const branchName = computed(() => auth.managementProfile?.branch_name || 'CMart Main Branch');
 
-const userRoleLabel = computed(() => {
-  if (auth.isBoss && bossPreview.viewAsStaff) {
-    return `${roleDisplayLabel(auth.role, auth.managementProfile)} · Staff Portal Assist`;
-  }
-  return auth.roleLabel;
-});
+const userRoleLabel = computed(() => auth.roleLabel);
 
 const sectionSubtitle = computed(() => SECTION_SUBTITLES[activeSection.value] || SECTION_SUBTITLES.bookings);
 
@@ -258,7 +214,6 @@ const panelRefForSection = (section) => {
     feedback: feedbackPanel,
     events: eventsPanel,
     news: newsPanel,
-    tools: toolsPanel,
     revenue: revenuePanel,
     analytics: wordCloudPanel,
     audit: auditPanel,
@@ -267,12 +222,12 @@ const panelRefForSection = (section) => {
   return map[section] ?? null;
 };
 
-const isManagerOnlySection = (section) => MANAGER_ONLY_HASHES.includes(section);
+const isAnalyticsSection = (section) => CARBOOT_ANALYTICS_HASHES.includes(section);
 
 const canLoadSection = (section) => {
   if (!sessionReady.value) return false;
   if (!canAccessHash(section)) return false;
-  if (isManagerOnlySection(section) && !shouldLoadManagerPanels.value) return false;
+  if (isAnalyticsSection(section) && !shouldLoadOrganizerAnalyticsPanels.value) return false;
   return true;
 };
 
@@ -291,11 +246,6 @@ const invokePanelLoad = async (section, instance) => {
     return;
   }
 
-  if (section === 'tools') {
-    await instance.refresh?.();
-    return;
-  }
-
   await instance.load?.();
 };
 
@@ -305,11 +255,6 @@ const loadSection = async (section, { force = false } = {}) => {
 
   const state = sectionCache.value[section];
   if (state?.loading) return;
-
-  if (section === 'tools' && !force) {
-    const toolsState = sectionCache.value.tools;
-    if (toolsState?.loaded) return;
-  }
 
   markLoading(section);
   if (section === activeSection.value) {
@@ -338,13 +283,12 @@ const refreshActiveSection = () => loadSection(activeSection.value, { force: tru
 
 const onBookingsRefreshed = () => {
   invalidate('revenue');
-  if (shouldLoadManagerPanels.value && activeSection.value === 'revenue') {
+  if (shouldLoadOrganizerAnalyticsPanels.value && activeSection.value === 'revenue') {
     loadSection('revenue', { force: true });
   }
 };
 
 const logout = async () => {
-  bossPreview.reset();
   invalidateAll();
   await auth.logout();
   toast.success('200 OK: Session terminated successfully.');
@@ -362,12 +306,6 @@ watch(sessionReady, (ready) => {
   if (!ready) return;
   syncSectionFromHash();
   loadSection(activeSection.value);
-});
-
-watch(() => bossPreview.viewAsStaff, async () => {
-  invalidateAll();
-  syncSectionFromHash();
-  await loadSection(activeSection.value, { force: true });
 });
 
 onMounted(async () => {

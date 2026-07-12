@@ -25,17 +25,15 @@ class StaffOperationsSummaryTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $response = $this->getJson('/api/staff/operations-summary');
+        $response = $this->getJson('/api/organizer/operations-summary');
 
         $response->assertOk();
-        $response->assertJsonStructure(array_merge(self::OPERATIONAL_KEYS, ['pending_staff_review']));
+        $response->assertJsonStructure(self::OPERATIONAL_KEYS);
 
         $payload = $response->json();
         foreach (self::OPERATIONAL_KEYS as $key) {
             $this->assertIsInt($payload[$key]);
         }
-
-        $this->assertSame($payload['pending_organizer_review'], $payload['pending_staff_review']);
 
         $this->assertArrayNotHasKey('revenue', $payload);
         $this->assertArrayNotHasKey('economic_value', $payload);
@@ -52,7 +50,7 @@ class StaffOperationsSummaryTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $this->getJson('/api/staff/operations-summary')
+        $this->getJson('/api/organizer/operations-summary')
             ->assertOk()
             ->assertJsonStructure(self::OPERATIONAL_KEYS);
     }
@@ -66,7 +64,7 @@ class StaffOperationsSummaryTest extends TestCase
 
         Sanctum::actingAs($venue);
 
-        $this->getJson('/api/staff/operations-summary')
+        $this->getJson('/api/organizer/operations-summary')
             ->assertForbidden();
     }
 
@@ -79,13 +77,13 @@ class StaffOperationsSummaryTest extends TestCase
 
         Sanctum::actingAs($vendor);
 
-        $this->getJson('/api/staff/operations-summary')
+        $this->getJson('/api/organizer/operations-summary')
             ->assertForbidden();
     }
 
     public function test_guest_cannot_fetch_operations_summary(): void
     {
-        $this->getJson('/api/staff/operations-summary')
+        $this->getJson('/api/organizer/operations-summary')
             ->assertUnauthorized();
     }
 }

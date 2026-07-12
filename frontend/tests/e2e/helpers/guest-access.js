@@ -32,12 +32,12 @@ export const PROTECTED_FRONTEND_ROUTES = [
   {
     path: '/admin',
     label: 'Admin workspace',
-    forbiddenTestIds: ['staff-dashboard-root', 'staff-bookings-root'],
+    forbiddenTestIds: ['management-dashboard-root', 'organizer-bookings-root'],
   },
   {
     path: '/admin#bookings',
     label: 'Admin bookings panel',
-    forbiddenTestIds: ['staff-dashboard-root', 'staff-bookings-root'],
+    forbiddenTestIds: ['management-dashboard-root', 'organizer-bookings-root'],
   },
 ];
 

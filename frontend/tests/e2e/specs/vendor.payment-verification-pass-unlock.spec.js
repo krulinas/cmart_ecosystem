@@ -1,8 +1,7 @@
 import { strict as assert } from 'node:assert';
 import {
   env,
-  requireManagerCredentials,
-  requireStaffCredentials,
+  requireOrganizerCredentials,
   requireVendorCredentials,
 } from '../config/env.js';
 import {
@@ -12,7 +11,8 @@ import {
   e2eT6CNotPendingMarker,
   e2eT6DDoubleVerifyMarker,
 } from '../helpers/actions.js';
-import { loginAsManager, loginAsStaff, loginAsVendor, logout } from '../helpers/auth.js';
+import { loginAsOrganizer, loginAsVendor, logout } from '../helpers/auth.js';
+import { runE2EApprovalPipeline } from '../helpers/approval-pipeline.js';
 import { ensureE2EBookingExists } from '../helpers/booking.js';
 import { createDriver } from '../helpers/driver.js';
 import { createRejectedE2EBooking } from '../helpers/payment-guards.js';
@@ -22,14 +22,6 @@ import {
   assertCannotVerifyPaymentUnlessPending,
   verifyPaymentAsPaid,
 } from '../helpers/payment-verification.js';
-import {
-  APPROVED_EXPECTATION,
-  FORWARD_EXPECTATION,
-  approveE2EBookingAsManager,
-  forwardE2EBookingToManager,
-  openStaffBookings,
-  statusMatchesExpectation,
-} from '../helpers/staff-bookings.js';
 import {
   VENDOR_APPROVED_EXPECTATION,
   assertVendorBookingApproved,
@@ -57,13 +49,12 @@ describe('Vendor payment verification and pass unlock', function () {
 
   before(async function () {
     requireVendorCredentials();
-    requireStaffCredentials();
-    requireManagerCredentials();
+    requireOrganizerCredentials();
     driver = await createDriver();
     await setActiveDriver(driver);
   });
 
-  it('6A - Vendor cannot unlock receipt or pass until staff verifies payment as Paid', async function () {
+  it('6A - Vendor cannot unlock receipt or pass until organizer verifies payment as Paid', async function () {
     let marker = e2eT6APayPassMarker();
     let bookingId;
 
@@ -71,29 +62,9 @@ describe('Vendor payment verification and pass unlock', function () {
     marker = ensured.marker;
     await logout(driver);
 
-    await loginAsStaff(driver);
-    await openStaffBookings(driver, env.baseUrl);
-    const forwarded = await forwardE2EBookingToManager(driver, marker, env.baseUrl);
-
-    assert.ok(
-      statusMatchesExpectation(forwarded.statusAttr, forwarded.statusLabel, FORWARD_EXPECTATION),
-      `Staff forward did not reach manager queue for booking #${forwarded.bookingId}.`,
-    );
-    bookingId = forwarded.bookingId;
-    await logout(driver);
-
-    await loginAsManager(driver);
-    await openStaffBookings(driver, env.baseUrl);
-    const approved = await approveE2EBookingAsManager(driver, marker, env.baseUrl, {
-      bookingId,
-    });
-
-    assert.ok(
-      statusMatchesExpectation(approved.statusAttr, approved.statusLabel, APPROVED_EXPECTATION),
-      `Manager approval did not reach Approved for booking #${approved.bookingId}.`,
-    );
+    const approved = await runE2EApprovalPipeline(driver, marker);
+    marker = approved.marker;
     bookingId = approved.bookingId;
-    await logout(driver);
 
     await loginAsVendor(driver);
     await goToMyBookings(driver, env.baseUrl);
@@ -135,7 +106,7 @@ describe('Vendor payment verification and pass unlock', function () {
 
     await logout(driver);
 
-    await loginAsStaff(driver);
+    await loginAsOrganizer(driver);
     const verified = await verifyPaymentAsPaid(driver, marker, { bookingId, baseUrl: env.baseUrl });
 
     assert.equal(
@@ -191,29 +162,17 @@ describe('Vendor payment verification and pass unlock', function () {
     await logout(driver);
   });
 
-  it('6C - Staff cannot verify payment unless status is Pending Verification', async function () {
+  it('6C - Organizer cannot verify payment unless status is Pending Verification', async function () {
     await logout(driver);
 
     let marker = e2eT6CNotPendingMarker();
     let bookingId;
 
-    const ensured = await ensureE2EBookingExists(driver, marker, { allowReuse: false });
-    marker = ensured.marker;
-    await logout(driver);
-
-    await loginAsStaff(driver);
-    await openStaffBookings(driver, env.baseUrl);
-    const forwarded = await forwardE2EBookingToManager(driver, marker, env.baseUrl);
-    bookingId = forwarded.bookingId;
-    await logout(driver);
-
-    await loginAsManager(driver);
-    await openStaffBookings(driver, env.baseUrl);
-    const approved = await approveE2EBookingAsManager(driver, marker, env.baseUrl, { bookingId });
+    const approved = await runE2EApprovalPipeline(driver, marker);
+    marker = approved.marker;
     bookingId = approved.bookingId;
-    await logout(driver);
 
-    await loginAsStaff(driver);
+    await loginAsOrganizer(driver);
     const guard = await assertCannotVerifyPaymentUnlessPending(driver, marker, {
       bookingId,
       baseUrl: env.baseUrl,
@@ -231,21 +190,9 @@ describe('Vendor payment verification and pass unlock', function () {
     let marker = e2eT6DDoubleVerifyMarker();
     let bookingId;
 
-    const ensured = await ensureE2EBookingExists(driver, marker, { allowReuse: false });
-    marker = ensured.marker;
-    await logout(driver);
-
-    await loginAsStaff(driver);
-    await openStaffBookings(driver, env.baseUrl);
-    const forwarded = await forwardE2EBookingToManager(driver, marker, env.baseUrl);
-    bookingId = forwarded.bookingId;
-    await logout(driver);
-
-    await loginAsManager(driver);
-    await openStaffBookings(driver, env.baseUrl);
-    const approved = await approveE2EBookingAsManager(driver, marker, env.baseUrl, { bookingId });
+    const approved = await runE2EApprovalPipeline(driver, marker);
+    marker = approved.marker;
     bookingId = approved.bookingId;
-    await logout(driver);
 
     await loginAsVendor(driver);
     await goToVendorPaymentRecords(driver, env.baseUrl);
@@ -254,7 +201,7 @@ describe('Vendor payment verification and pass unlock', function () {
     await submitVendorPayment(driver, { bookingId });
     await logout(driver);
 
-    await loginAsStaff(driver);
+    await loginAsOrganizer(driver);
     const verified = await verifyPaymentAsPaid(driver, marker, { bookingId, baseUrl: env.baseUrl });
     assert.equal(verified.paymentStatus, MANAGEMENT_PAID_STATUS);
 

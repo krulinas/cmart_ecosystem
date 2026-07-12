@@ -83,7 +83,7 @@ const verify = async () => {
   error.value = '';
 
   try {
-    const { data } = await api.get(`/staff/bookings/${bookingId}/verify`);
+    const { data } = await api.get(`/organizer/bookings/${bookingId}/verify`);
     result.value = data;
   } catch (err) {
     if (err.response?.data) {
@@ -99,7 +99,7 @@ const verify = async () => {
 const checkIn = async () => {
   checkingIn.value = true;
   try {
-    const { data } = await api.post(`/staff/bookings/${bookingId}/check-in`);
+    const { data } = await api.post(`/organizer/bookings/${bookingId}/check-in`);
     toast.success(data.message || 'Vendor checked in.');
     await verify();
   } catch (err) {

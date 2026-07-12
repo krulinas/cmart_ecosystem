@@ -8,7 +8,7 @@
         <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">Operations</span>
         <h2 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">Operational Snapshot</h2>
         <p class="mt-2 text-gray-600 max-w-2xl">
-          Quick overview of items that may need staff attention.
+          Quick overview of items that may need organizer attention.
         </p>
       </div>
 
@@ -98,9 +98,9 @@ const cardAriaLabel = (card) => `Open ${card.linkLabel} for ${card.label}`;
 
 const cardDefinitions = [
   {
-    key: 'pending_staff_review',
-    label: 'Pending Staff Review',
-    description: 'Booking requests waiting for first review.',
+    key: 'pending_organizer_review',
+    label: 'Pending Organizer Review',
+    description: 'Booking requests awaiting direct organizer review.',
     icon: 'Bk',
     iconClass: 'bg-cyan-50 text-cyan-600 border-cyan-100',
     hash: 'bookings',
@@ -160,7 +160,7 @@ const load = async () => {
   loadError.value = null;
 
   try {
-    const { data } = await api.get('/staff/operations-summary');
+    const { data } = await api.get('/organizer/operations-summary');
     summary.value = data;
     hasLoaded.value = true;
   } catch (error) {

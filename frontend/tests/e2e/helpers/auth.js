@@ -1,8 +1,8 @@
 import { By } from 'selenium-webdriver';
 import {
   env,
-  requireManagerCredentials,
-  requireStaffCredentials,
+  requireCmartManagementCredentials,
+  requireOrganizerCredentials,
   requireVendorBCredentials,
   requireVendorCredentials,
 } from '../config/env.js';
@@ -207,26 +207,72 @@ export async function loginAsCommunityVisitor(driver, { email, password }, { rol
   await loginAsCommunityMember(driver, { email, password }, { roleLabel, requireVisitorHome: true });
 }
 
-export async function loginAsStaff(driver) {
-  const { email, password } = requireStaffCredentials();
+export async function loginAsOrganizer(driver) {
+  const { email, password } = requireOrganizerCredentials();
   await loginWithRole(driver, {
     email,
     password,
     successUrlFragment: '/admin',
-    dashboardTestId: 'staff-dashboard-root',
-    roleLabel: 'Staff',
+    dashboardTestId: 'management-dashboard-root',
+    roleLabel: 'Organizer',
     management: true,
   });
 }
 
-export async function loginAsManager(driver) {
-  const { email, password } = requireManagerCredentials();
+export async function loginAsCmartManagement(driver) {
+  const { email, password } = requireCmartManagementCredentials();
   await loginWithRole(driver, {
     email,
     password,
     successUrlFragment: '/admin',
-    dashboardTestId: 'staff-dashboard-root',
-    roleLabel: 'Manager',
+    dashboardTestId: 'management-dashboard-root',
+    roleLabel: 'CMart Management',
     management: true,
   });
+}
+
+/** @deprecated Use loginAsCmartManagement */
+export async function loginAsStaff(driver) {
+  return loginAsCmartManagement(driver);
+}
+
+/** @deprecated Use loginAsOrganizer */
+export async function loginAsManager(driver) {
+  return loginAsOrganizer(driver);
+}
+
+export async function managementApiRequest(driver, method, endpoint, { body } = {}) {
+  return driver.executeScript(
+    async (httpMethod, path, payload, base) => {
+      const token = localStorage.getItem('carboot_cmart_token');
+      if (!token) {
+        throw new Error('No auth token available for management API request.');
+      }
+
+      const options = {
+        method: httpMethod,
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      };
+
+      if (payload != null) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(payload);
+      }
+
+      const response = await fetch(`${base}${path}`, options);
+
+      return {
+        ok: response.ok,
+        status: response.status,
+        body: await response.text(),
+      };
+    },
+    method,
+    endpoint,
+    body ?? null,
+    env.apiBaseUrl,
+  );
 }

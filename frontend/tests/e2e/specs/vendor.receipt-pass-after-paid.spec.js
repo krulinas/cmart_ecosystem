@@ -1,12 +1,11 @@
 import { strict as assert } from 'node:assert';
 import {
   env,
-  requireManagerCredentials,
-  requireStaffCredentials,
+  requireOrganizerCredentials,
   requireVendorCredentials,
 } from '../config/env.js';
 import { uniqueTestMarker } from '../helpers/actions.js';
-import { loginAsStaff, logout } from '../helpers/auth.js';
+import { loginAsOrganizer, logout } from '../helpers/auth.js';
 import { loginVendorForApprovedBooking, runE2EApprovalPipeline } from '../helpers/approval-pipeline.js';
 import { createDriver } from '../helpers/driver.js';
 import { verifyPaymentAsPaid } from '../helpers/payment-verification.js';
@@ -33,13 +32,12 @@ describe('Vendor receipt and pass after paid verification', function () {
 
   before(async function () {
     requireVendorCredentials();
-    requireStaffCredentials();
-    requireManagerCredentials();
+    requireOrganizerCredentials();
     driver = await createDriver();
     await setActiveDriver(driver);
   });
 
-  it('Vendor sees Paid receipt and unlocked event pass after staff verifies payment', async function () {
+  it('Vendor sees Paid receipt and unlocked event pass after organizer verifies payment', async function () {
     marker = uniqueTestMarker(E2E_MARKER_BASE);
     const approved = await runE2EApprovalPipeline(driver, marker);
     marker = approved.marker;
@@ -65,7 +63,7 @@ describe('Vendor receipt and pass after paid verification', function () {
 
     await logout(driver);
 
-    await loginAsStaff(driver);
+    await loginAsOrganizer(driver);
     const verified = await verifyPaymentAsPaid(driver, marker, { bookingId, baseUrl: env.baseUrl });
 
     assert.equal(

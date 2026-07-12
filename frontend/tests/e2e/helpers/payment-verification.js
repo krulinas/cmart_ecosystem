@@ -3,27 +3,27 @@ import { By } from 'selenium-webdriver';
 import { env } from '../config/env.js';
 import {
   assertRowContainsMarker,
-  getStaffBookingRowById,
-  openStaffBookings,
-  searchStaffBookings,
-} from './staff-bookings.js';
+  getOrganizerBookingRowById,
+  openOrganizerBookings,
+  searchOrganizerBookings,
+} from './organizer-bookings.js';
 import { waitForTestId, waitForTestIdHidden } from './wait.js';
 
 export const MANAGEMENT_PAID_STATUS = 'Paid';
 export const MANAGEMENT_PENDING_VERIFICATION_STATUS = 'Pending Verification';
 
 export async function goToManagementPaymentRecords(driver, baseUrl = env.baseUrl) {
-  await openStaffBookings(driver, baseUrl);
+  await openOrganizerBookings(driver, baseUrl);
   const root = await waitForTestId(driver, 'management-payment-records-root', 20000);
   await driver.executeScript('arguments[0].scrollIntoView({block: "center"});', root);
 }
 
 export async function searchManagementPaymentRecord(driver, markerOrBookingId) {
-  await searchStaffBookings(driver, String(markerOrBookingId));
+  await searchOrganizerBookings(driver, String(markerOrBookingId));
 }
 
 export async function readManagementPaymentStatus(driver, bookingId) {
-  const row = await getStaffBookingRowById(driver, bookingId);
+  const row = await getOrganizerBookingRowById(driver, bookingId);
   const statusElements = await row.findElements(By.css('[data-testid="management-payment-status"]'));
 
   for (const element of statusElements) {
@@ -115,7 +115,7 @@ export async function verifyPaymentAsPaid(driver, marker, { bookingId, baseUrl =
   await goToManagementPaymentRecords(driver, baseUrl);
   await searchManagementPaymentRecord(driver, marker);
 
-  const row = await getStaffBookingRowById(driver, bookingId);
+  const row = await getOrganizerBookingRowById(driver, bookingId);
   const rowText = (await row.getText()).toLowerCase();
   assertRowContainsMarker(rowText, marker, bookingId);
 
@@ -133,7 +133,7 @@ export async function verifyPaymentAsPaid(driver, marker, { bookingId, baseUrl =
   await driver.wait(
     async () => {
       return driver.executeScript(
-        `const row = document.querySelector('[data-testid="staff-booking-row"][data-booking-id="${bookingId}"]');
+        `const row = document.querySelector('[data-testid="organizer-booking-row"][data-booking-id="${bookingId}"]');
          if (!row) return false;
          const button = row.querySelector('[data-testid="verify-payment-button"]');
          if (!button) return false;
@@ -234,7 +234,7 @@ export async function assertCannotVerifyPaymentUnlessPending(
   await goToManagementPaymentRecords(driver, baseUrl);
   await searchManagementPaymentRecord(driver, marker);
 
-  const row = await getStaffBookingRowById(driver, bookingId);
+  const row = await getOrganizerBookingRowById(driver, bookingId);
   const rowText = (await row.getText()).toLowerCase();
   assertRowContainsMarker(rowText, marker, bookingId);
 
@@ -295,7 +295,7 @@ export async function assertCannotVerifyPaidTwice(
   await goToManagementPaymentRecords(driver, baseUrl);
   await searchManagementPaymentRecord(driver, marker);
 
-  const row = await getStaffBookingRowById(driver, bookingId);
+  const row = await getOrganizerBookingRowById(driver, bookingId);
   const rowText = (await row.getText()).toLowerCase();
   assertRowContainsMarker(rowText, marker, bookingId);
 

@@ -66,7 +66,7 @@ export const buildVerifyUrl = (bookingId, origin = typeof window !== 'undefined'
 
 export const buildStaffVerifyUrl = (bookingId, origin = typeof window !== 'undefined' ? window.location.origin : '') => {
   if (!bookingId) return '';
-  return `${origin}/staff/verify-booking/${bookingId}`;
+  return `${origin}/organizer/verify-booking/${bookingId}`;
 };
 
 export const buildQrImageUrl = (bookingId, origin) => {
