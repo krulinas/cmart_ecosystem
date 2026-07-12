@@ -3,10 +3,18 @@
 namespace App\Support;
 
 /**
- * Phase 1 governance boundaries for Carboot@CMart vs CMart venue/activity management.
+ * Governance boundaries for Carboot@CMart vs CMart venue/activity management.
  *
- * The organizer role is prepared here but not yet stored in the users.role ENUM.
- * Until Phase 2, manager operational access maps to future organizer boundaries.
+ * Canonical (Phase 1.3C):
+ * - Carboot operations + raw analytics: organizer, super_admin
+ * - CMart activities: organizer, cmart_management, super_admin
+ * - Generated reports: organizer, cmart_management, super_admin
+ *
+ * TEMPORARY compatibility (removed in PR2): the `staff` role keeps Carboot
+ * queue/operations capabilities because the two-stage booking pipeline
+ * (Pending_Staff -> Pending_Boss) still exists. This is NOT final governance.
+ * Legacy manager/uum identities normalize to organizer in ManagementRole and
+ * therefore inherit organizer capabilities without being listed here.
  */
 class ManagementCapability
 {
@@ -15,9 +23,6 @@ class ManagementCapability
     public const CMART_ACTIVITY_MANAGEMENT = 'cmart_activity_management';
     public const GENERATED_REPORTS = 'generated_reports';
     public const STAFF_QUEUE_ASSIST = 'staff_queue_assist';
-
-    /** Prepared for Phase 2 — not yet persisted in users.role. */
-    public const ROLE_ORGANIZER = 'organizer';
 
     /**
      * @return list<string>
@@ -43,15 +48,21 @@ class ManagementCapability
      */
     public static function resolveForRole(?string $role): array
     {
-        if (!ManagementRole::isCmartWorker($role)) {
+        if (!ManagementRole::isManagementUser($role)) {
             return [];
         }
 
-        $normalized = ManagementRole::normalize($role);
-        $capabilities = [self::STAFF_QUEUE_ASSIST];
+        $capabilities = [];
 
-        if (in_array($normalized, [ManagementRole::STAFF, ManagementRole::MANAGER, ManagementRole::SUPER_ADMIN], true)) {
+        if (self::canAssistCarbootOperations($role)) {
+            $capabilities[] = self::STAFF_QUEUE_ASSIST;
+        }
+
+        if (self::canPerformCarbootOperations($role)) {
             $capabilities[] = self::CARBOOT_OPERATIONS;
+        }
+
+        if (self::canManageCmartActivities($role)) {
             $capabilities[] = self::CMART_ACTIVITY_MANAGEMENT;
         }
 
@@ -67,41 +78,54 @@ class ManagementCapability
     }
 
     /**
+     * Carboot booking queues, vendor coordination, and carboot event management.
+     * Canonical: organizer + super_admin. `staff` is a TEMPORARY entry until
+     * PR2 removes the staff pipeline stage — cmart_management must never appear here.
+     */
+    public static function canPerformCarbootOperations(?string $role): bool
+    {
+        return in_array(ManagementRole::normalize($role), [
+            ManagementRole::STAFF,
+            ManagementRole::ORGANIZER,
+            ManagementRole::SUPER_ADMIN,
+        ], true);
+    }
+
+    /**
      * Raw Carboot analytics (revenue, word cloud, audit trail).
-     * Phase 1: manager + super_admin. Phase 2: organizer + super_admin only.
+     * Organizer-owned; CMart Management and staff are explicitly excluded.
      */
     public static function canAccessCarbootOperationalAnalytics(?string $role): bool
     {
-        $normalized = ManagementRole::normalize($role);
-
-        if ($normalized === self::ROLE_ORGANIZER) {
-            return true;
-        }
-
-        return in_array($normalized, [ManagementRole::MANAGER, ManagementRole::SUPER_ADMIN], true);
+        return in_array(ManagementRole::normalize($role), [
+            ManagementRole::ORGANIZER,
+            ManagementRole::SUPER_ADMIN,
+        ], true);
     }
 
     /**
-     * CMart venue/activity CRUD (events, news, promotions).
+     * CMart venue/activity CRUD (news, promotions, non-carboot venue events).
      */
     public static function canManageCmartActivities(?string $role): bool
     {
-        return ManagementRole::isCmartWorker($role);
+        return in_array(ManagementRole::normalize($role), [
+            ManagementRole::STAFF,
+            ManagementRole::ORGANIZER,
+            ManagementRole::CMART_MANAGEMENT,
+            ManagementRole::SUPER_ADMIN,
+        ], true);
     }
 
     /**
-     * Consumable reports without full raw analytics dashboards.
-     * Phase 1: manager + super_admin retain access while organizer role is introduced.
+     * Consumable operational reports without raw analytics dashboards.
      */
     public static function canAccessGeneratedReports(?string $role): bool
     {
-        $normalized = ManagementRole::normalize($role);
-
-        if ($normalized === self::ROLE_ORGANIZER) {
-            return true;
-        }
-
-        return in_array($normalized, [ManagementRole::MANAGER, ManagementRole::SUPER_ADMIN], true);
+        return in_array(ManagementRole::normalize($role), [
+            ManagementRole::ORGANIZER,
+            ManagementRole::CMART_MANAGEMENT,
+            ManagementRole::SUPER_ADMIN,
+        ], true);
     }
 
     /**
@@ -109,17 +133,15 @@ class ManagementCapability
      */
     public static function canAssistCarbootOperations(?string $role): bool
     {
-        return ManagementRole::isCmartWorker($role);
+        return self::canPerformCarbootOperations($role);
     }
 
     /**
-     * Whether this role maps to future Organizer operational ownership.
-     * Phase 1 bridge: manager carries organizer duties until organizer is migrated.
+     * Whether this role maps to Organizer operational ownership.
+     * Legacy manager/uum identities normalize to organizer, so they map too.
      */
     public static function mapsToFutureOrganizer(?string $role): bool
     {
-        $normalized = ManagementRole::normalize($role);
-
-        return in_array($normalized, [ManagementRole::MANAGER, ManagementRole::SUPER_ADMIN, self::ROLE_ORGANIZER], true);
+        return ManagementRole::isOrganizerEquivalent($role);
     }
 }

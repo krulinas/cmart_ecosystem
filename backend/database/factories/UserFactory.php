@@ -37,4 +37,40 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /**
+     * Canonical role states (Phase 1.3C). Do not add states for the legacy
+     * manager/uum/staff roles — tests should use these canonical states.
+     */
+    public function community(string $vendorStatus = 'none')
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'community',
+            'vendor_status' => $vendorStatus,
+        ]);
+    }
+
+    public function organizer()
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'organizer',
+            'vendor_status' => 'none',
+        ]);
+    }
+
+    public function cmartManagement()
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'cmart_management',
+            'vendor_status' => 'none',
+        ]);
+    }
+
+    public function superAdmin()
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'super_admin',
+            'vendor_status' => 'none',
+        ]);
+    }
 }

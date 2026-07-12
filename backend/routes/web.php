@@ -18,12 +18,14 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::prefix('admin')->group(function () {
-    Route::get('/analytics', [AnalyticsController::class, 'index']);
-});
+Route::middleware(['auth:sanctum', 'boss'])->group(function () {
+    Route::prefix('admin')->group(function () {
+        Route::get('/analytics', [AnalyticsController::class, 'index']);
+    });
 
-Route::prefix('api/proxy/analytics')->group(function () {
-    Route::get('/summary', [AnalyticsController::class, 'getStatusSummary']);
-    Route::get('/feedback', [AnalyticsController::class, 'getFeedbackCloud']);
-    Route::get('/products', [AnalyticsController::class, 'getProductCloud']);
+    Route::prefix('api/proxy/analytics')->group(function () {
+        Route::get('/summary', [AnalyticsController::class, 'getStatusSummary']);
+        Route::get('/feedback', [AnalyticsController::class, 'getFeedbackCloud']);
+        Route::get('/products', [AnalyticsController::class, 'getProductCloud']);
+    });
 });

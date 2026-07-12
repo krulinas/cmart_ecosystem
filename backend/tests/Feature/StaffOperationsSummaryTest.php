@@ -41,14 +41,15 @@ class StaffOperationsSummaryTest extends TestCase
         $this->assertArrayNotHasKey('audit_logs', $payload);
     }
 
-    public function test_manager_can_fetch_operations_summary(): void
+    public function test_organizer_can_fetch_operations_summary(): void
     {
-        $manager = User::where('email', 'admin@cmart.com')->first();
-        if (!$manager) {
-            $this->markTestSkipped('Seeded manager user (admin@cmart.com) not found. Run database seeders.');
+        // admin@cmart.com holds the canonical organizer role after the PR1 remap.
+        $organizer = User::where('email', 'admin@cmart.com')->first();
+        if (!$organizer) {
+            $this->markTestSkipped('Seeded organizer user (admin@cmart.com) not found. Run database seeders.');
         }
 
-        Sanctum::actingAs($manager);
+        Sanctum::actingAs($organizer);
 
         $this->getJson('/api/staff/operations-summary')
             ->assertOk()

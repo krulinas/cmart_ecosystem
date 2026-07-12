@@ -18,7 +18,7 @@ import StaffVerifyBooking from '../views/staff/StaffVerifyBooking.vue';
 import { useAuthStore } from '../stores/auth';
 import { useBossPreviewStore } from '../stores/bossPreview';
 import { ALL_WORKSPACE_HASHES, MANAGER_ONLY_HASHES } from '../config/workspaceNav';
-import { isManagerOrAbove, normalizeRole, ROLES, workflowRoleKey } from '../utils/managementRoles';
+import { isOrganizerEquivalent, MANAGEMENT_WORKSPACE_ROLES, normalizeRole, ROLES, workflowRoleKey } from '../utils/managementRoles';
 const MANAGEMENT_PROTECTED_PREFIXES = ['/admin', '/staff/'];
 
 function isManagementProtectedRoute(path) {
@@ -33,7 +33,7 @@ function loginRedirectFor(to) {
   return { path: '/login', query: { redirect: to.fullPath } };
 }
 
-const MANAGEMENT_ROLES = ['staff', 'manager', 'super_admin', 'cmart_staff', 'cmart_admin', 'boss'];
+const MANAGEMENT_ROLES = MANAGEMENT_WORKSPACE_ROLES;
 
 function isManagementRole(auth) {
   return auth.hasAnyRole(MANAGEMENT_ROLES);
@@ -130,7 +130,7 @@ const routes = [
     path: '/staff/verify-booking/:bookingId',
     name: 'staff-verify-booking',
     component: StaffVerifyBooking,
-    meta: { requiresAuth: true, roles: ['staff', 'manager', 'super_admin', 'cmart_staff', 'cmart_admin', 'boss'] },
+    meta: { requiresAuth: true, roles: MANAGEMENT_ROLES },
   },
   {
     path: '/verify-booking/:bookingId',
@@ -219,7 +219,7 @@ router.beforeEach(async (to) => {
     const bossPreview = useBossPreviewStore();
     const hash = (to.hash || '#bookings').replace('#', '');
     const effectiveRole =
-      isManagerOrAbove(auth.role) && bossPreview.viewAsStaff
+      isOrganizerEquivalent(auth.role) && bossPreview.viewAsStaff
         ? ROLES.STAFF
         : normalizeRole(auth.role);
 

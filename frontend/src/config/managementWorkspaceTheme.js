@@ -9,7 +9,12 @@ export const WORKSPACE_NAV_GROUPS = [
   {
     id: 'cmart_activities',
     label: 'CMart Activities',
-    items: ['events', 'news'],
+    items: ['news'],
+  },
+  {
+    id: 'generated_reports',
+    label: 'Generated Reports',
+    items: ['reports'],
   },
   {
     id: 'carboot_analytics',
@@ -59,11 +64,31 @@ export const WORKSPACE_THEMES = {
   manager: {
     key: 'manager',
     workspaceTitle: 'Carboot@CMart Organizer Control',
-    workspaceSubtitle: 'Organizer-led workspace for booking approval, vendor coordination, and Carboot operations.',
-    roleBadge: 'Tier 2 · Carboot Organizer',
+    workspaceSubtitle: 'Legacy manager bridge — organizer-led workspace for booking approval and Carboot operations.',
+    roleBadge: 'Tier 2 · Carboot Organizer (Legacy)',
     tierLabel: 'Tier 2',
     registryLabel: 'Full-access registry',
     registryDescription: 'Complete branch booking registry with manager-level actions.',
+    ...CMART_BLUE_VISUAL,
+  },
+  organizer: {
+    key: 'organizer',
+    workspaceTitle: 'Carboot@CMart Organizer Control',
+    workspaceSubtitle: 'Organizer-led workspace for vendor coordination, booking approval, and Carboot operations.',
+    roleBadge: 'Tier 2 · Carboot Organizer',
+    tierLabel: 'Tier 2',
+    registryLabel: 'Full-access registry',
+    registryDescription: 'Complete Carboot booking registry with organizer-level actions.',
+    ...CMART_BLUE_VISUAL,
+  },
+  cmart_management: {
+    key: 'cmart_management',
+    workspaceTitle: 'CMart Venue & Activities',
+    workspaceSubtitle: 'Manage venue announcements and CMart activities. Generated reports only — no raw Carboot analytics.',
+    roleBadge: 'Tier 2 · CMart Venue Manager',
+    tierLabel: 'Tier 2',
+    registryLabel: 'Activity workspace',
+    registryDescription: 'Venue and promotional content management for non-carboot CMart activities.',
     ...CMART_BLUE_VISUAL,
   },
   // Reserved for future HQ governance (multi-branch oversight, audit, global reports).
@@ -84,9 +109,9 @@ export const resolveWorkspaceThemeKey = (role, { previewAsStaff = false } = {}) 
   if (previewAsStaff) return ROLES.STAFF;
   if (role === ROLES.LEGACY_STAFF) return ROLES.STAFF;
   if (role === ROLES.LEGACY_MANAGER || role === ROLES.LEGACY_BOSS) return ROLES.MANAGER;
-  // Tier 3 is reserved for future HQ governance; reuse the manager operational dashboard
-  // so approval workflows are not duplicated in the UI during active operations.
   if (role === ROLES.SUPER_ADMIN) return ROLES.MANAGER;
+  if (role === ROLES.ORGANIZER) return ROLES.ORGANIZER;
+  if (role === ROLES.CMART_MANAGEMENT) return ROLES.CMART_MANAGEMENT;
   if (role === ROLES.MANAGER) return ROLES.MANAGER;
   return ROLES.STAFF;
 };

@@ -65,6 +65,7 @@ class Kernel extends HttpKernel
         'role' => \App\Http\Middleware\EnsureRole::class,
         'boss' => \App\Http\Middleware\EnsureBossOnly::class,
         'manager' => \App\Http\Middleware\EnsureBossOnly::class,
+        'capability' => \App\Http\Middleware\EnsureCapability::class,
         'vendor.approved' => \App\Http\Middleware\EnsureVendorApproved::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
     ];

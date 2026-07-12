@@ -33,14 +33,20 @@ class DatabaseSeeder extends Seeder
             'vendor_status' => 'approved',
         ]);
 
+        // Legacy demo login retained for continuity; the role is canonical
+        // organizer now (manager was the legacy Organizer bridge).
         User::updateOrCreate(['email' => 'admin@cmart.com'], [
-            'name' => 'CMart Manager',
+            'name' => 'Carboot Organizer (Ops)',
             'password' => bcrypt('password123'),
             'phone_number' => '0111111111',
-            'role' => 'manager',
+            'role' => 'organizer',
             'vendor_status' => 'none',
         ]);
 
+        // TEMPORARY (PR2 removes): staff role is kept only because the
+        // two-stage booking pipeline (Pending_Staff stage) and its tests/E2E
+        // still need a staff-stage actor until the PR2 workflow cutover.
+        // PR2 remaps this account to cmart_management.
         User::updateOrCreate(['email' => 'staff@cmart.com'], [
             'name' => 'CMart Staff',
             'password' => bcrypt('password123'),
@@ -54,6 +60,22 @@ class DatabaseSeeder extends Seeder
             'password' => bcrypt('password123'),
             'phone_number' => '0133333333',
             'role' => 'super_admin',
+            'vendor_status' => 'none',
+        ]);
+
+        User::updateOrCreate(['email' => 'organizer@cmart.com'], [
+            'name' => 'Carboot Organizer',
+            'password' => bcrypt('password123'),
+            'phone_number' => '0144444444',
+            'role' => 'organizer',
+            'vendor_status' => 'none',
+        ]);
+
+        User::updateOrCreate(['email' => 'venue@cmart.com'], [
+            'name' => 'CMart Venue Manager',
+            'password' => bcrypt('password123'),
+            'phone_number' => '0155555555',
+            'role' => 'cmart_management',
             'vendor_status' => 'none',
         ]);
 
@@ -72,15 +94,15 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        $manager = User::where('email', 'admin@cmart.com')->first();
-        if ($manager) {
+        $legacyOrganizer = User::where('email', 'admin@cmart.com')->first();
+        if ($legacyOrganizer) {
             ManagementProfile::updateOrCreate(
-                ['user_id' => $manager->id],
+                ['user_id' => $legacyOrganizer->id],
                 [
                     'staff_code' => 'CM-MGR-001',
                     'tier' => 2,
-                    'position_title' => 'Branch Manager',
-                    'department' => 'Management',
+                    'position_title' => 'Carboot Organizer',
+                    'department' => 'Carboot Operations',
                     'branch_name' => 'CMart Main Branch',
                     'is_active' => true,
                 ]
@@ -97,6 +119,36 @@ class DatabaseSeeder extends Seeder
                     'position_title' => 'HQ Administrator',
                     'department' => 'Headquarters',
                     'branch_name' => 'HQ',
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        $organizer = User::where('email', 'organizer@cmart.com')->first();
+        if ($organizer) {
+            ManagementProfile::updateOrCreate(
+                ['user_id' => $organizer->id],
+                [
+                    'staff_code' => 'CM-ORG-001',
+                    'tier' => 2,
+                    'position_title' => 'Carboot Organizer',
+                    'department' => 'Carboot Operations',
+                    'branch_name' => 'CMart Main Branch',
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        $venueManager = User::where('email', 'venue@cmart.com')->first();
+        if ($venueManager) {
+            ManagementProfile::updateOrCreate(
+                ['user_id' => $venueManager->id],
+                [
+                    'staff_code' => 'CM-VEN-001',
+                    'tier' => 2,
+                    'position_title' => 'CMart Venue Manager',
+                    'department' => 'Venue & Activities',
+                    'branch_name' => 'CMart Main Branch',
                     'is_active' => true,
                 ]
             );

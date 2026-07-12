@@ -2,9 +2,10 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import api from '../services/api';
 import {
+  defaultManagementHashForRole,
   hasAnyManagementRole,
-  isCmartWorkerRole,
-  isManagerOrAbove,
+  isManagementUser,
+  isOrganizerEquivalent,
   isStaffRole,
   isManagerRole,
   isSuperAdminRole,
@@ -34,11 +35,11 @@ export const useAuthStore = defineStore('auth', () => {
   const normalizedRole = computed(() => normalizeRole(role.value));
   const vendorStatus = computed(() => user.value?.vendor_status || 'none');
   const isApprovedVendor = computed(() => role.value === 'community' && vendorStatus.value === 'approved');
-  const isCmartWorker = computed(() => isCmartWorkerRole(role.value));
+  const isCmartWorker = computed(() => isManagementUser(role.value));
   const isStaff = computed(() => isStaffRole(role.value));
   const isManager = computed(() => isManagerRole(role.value));
   const isSuperAdmin = computed(() => isSuperAdminRole(role.value));
-  const isBoss = computed(() => isManagerOrAbove(role.value));
+  const isBoss = computed(() => isOrganizerEquivalent(role.value));
   const managementProfile = computed(() => user.value?.management_profile ?? null);
   const vendorBusinessProfile = computed(() => user.value?.vendor_business_profile ?? null);
   const roleLabel = computed(() => roleDisplayLabel(role.value, managementProfile.value));

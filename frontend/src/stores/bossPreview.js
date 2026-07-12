@@ -1,14 +1,14 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useAuthStore } from './auth';
-import { isManagerOrAbove, normalizeRole, ROLES, workflowRoleKey } from '../utils/managementRoles';
+import { isOrganizerEquivalent, normalizeRole, ROLES, workflowRoleKey } from '../utils/managementRoles';
 
 export const useBossPreviewStore = defineStore('bossPreview', () => {
   const viewAsStaff = ref(false);
 
   const effectiveRole = computed(() => {
     const auth = useAuthStore();
-    if (isManagerOrAbove(auth.role) && viewAsStaff.value) {
+    if (isOrganizerEquivalent(auth.role) && viewAsStaff.value) {
       return ROLES.STAFF;
     }
     return normalizeRole(auth.role);
@@ -21,7 +21,7 @@ export const useBossPreviewStore = defineStore('bossPreview', () => {
 
   const toggle = () => {
     const auth = useAuthStore();
-    if (isManagerOrAbove(auth.role)) {
+    if (isOrganizerEquivalent(auth.role)) {
       viewAsStaff.value = !viewAsStaff.value;
     }
   };

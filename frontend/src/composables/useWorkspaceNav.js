@@ -13,8 +13,14 @@ export function useWorkspaceNav() {
     WORKSPACE_NAV_ITEMS.filter((item) => {
       if (item.managerOnly && !canSeeManagerSections.value) return false;
       if (
-        item.requiredCapability &&
-        !hasCapability(auth.role, item.requiredCapability, governanceCapabilities.value)
+        item.hideWhenCapability
+        && hasCapability(auth.role, item.hideWhenCapability, governanceCapabilities.value)
+      ) {
+        return false;
+      }
+      if (
+        item.requiredCapability
+        && !hasCapability(auth.role, item.requiredCapability, governanceCapabilities.value)
       ) {
         return false;
       }
@@ -58,8 +64,14 @@ export function useWorkspaceNav() {
     if (!item) return false;
     if (item.managerOnly && !canSeeManagerSections.value) return false;
     if (
-      item.requiredCapability &&
-      !hasCapability(auth.role, item.requiredCapability, governanceCapabilities.value)
+      item.hideWhenCapability
+      && hasCapability(auth.role, item.hideWhenCapability, governanceCapabilities.value)
+    ) {
+      return false;
+    }
+    if (
+      item.requiredCapability
+      && !hasCapability(auth.role, item.requiredCapability, governanceCapabilities.value)
     ) {
       return false;
     }

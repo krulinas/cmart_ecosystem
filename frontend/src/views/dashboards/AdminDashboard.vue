@@ -103,6 +103,11 @@
         ref="toolsPanel"
       />
 
+      <ManagementReportsPanel
+        v-show="activeSection === 'reports' && !showSectionLoader"
+        ref="reportsPanel"
+      />
+
       <template v-if="shouldLoadManagerPanels">
         <BossRevenuePanel
           v-show="activeSection === 'revenue' && !showSectionLoader"
@@ -136,13 +141,14 @@ import StaffToolsPanel from './staff/StaffToolsPanel.vue';
 import BossRevenuePanel from './boss/BossRevenuePanel.vue';
 import BossWordCloudPanel from './boss/BossWordCloudPanel.vue';
 import BossAuditLogsPanel from './boss/BossAuditLogsPanel.vue';
+import ManagementReportsPanel from './management/ManagementReportsPanel.vue';
 import { useAuthStore } from '../../stores/auth';
 import { useBossPreviewStore } from '../../stores/bossPreview';
 import { useWorkspaceNav } from '../../composables/useWorkspaceNav';
 import { useManagementAccess } from '../../composables/useManagementAccess';
 import { useSectionCache } from '../../composables/useSectionCache';
 import { ALL_WORKSPACE_HASHES, MANAGER_ONLY_HASHES, SECTION_SUBTITLES } from '../../config/workspaceNav';
-import { roleDisplayLabel, managementTierLabel } from '../../utils/managementRoles';
+import { MANAGEMENT_WORKSPACE_ROLES, roleDisplayLabel, managementTierLabel, defaultManagementHashForRole } from '../../utils/managementRoles';
 
 const SECTION_LABELS = {
   bookings: 'Bookings',
@@ -153,6 +159,7 @@ const SECTION_LABELS = {
   revenue: 'Revenue',
   analytics: 'Word Cloud',
   audit: 'Audit Log',
+  reports: 'Reports',
 };
 
 const toast = useToast();
@@ -183,11 +190,10 @@ const newsPanel = ref(null);
 const toolsPanel = ref(null);
 const revenuePanel = ref(null);
 const wordCloudPanel = ref(null);
+const reportsPanel = ref(null);
 const auditPanel = ref(null);
 
-const authorized = computed(() =>
-  auth.hasAnyRole(['staff', 'manager', 'super_admin', 'cmart_staff', 'cmart_admin', 'boss']),
-);
+const authorized = computed(() => auth.hasAnyRole(MANAGEMENT_WORKSPACE_ROLES));
 
 const heroTitle = computed(() => workspaceTheme.value.workspaceTitle);
 const heroSubtitle = computed(() => workspaceTheme.value.workspaceSubtitle);
@@ -234,15 +240,16 @@ const refreshButtonTitle = computed(() => {
 });
 
 const syncSectionFromHash = () => {
-  const hash = (route.hash || '#bookings').replace('#', '');
+  const hash = (route.hash || `#${defaultManagementHashForRole(auth.role)}`).replace('#', '');
   if (!canAccessHash(hash)) {
-    activeSection.value = 'bookings';
-    if (route.hash && route.hash !== '#bookings') {
-      router.replace({ path: '/admin', hash: '#bookings' });
+    const fallback = defaultManagementHashForRole(auth.role);
+    activeSection.value = canAccessHash(fallback) ? fallback : 'news';
+    if (route.hash && route.hash !== `#${activeSection.value}`) {
+      router.replace({ path: '/admin', hash: `#${activeSection.value}` });
     }
     return;
   }
-  activeSection.value = ALL_WORKSPACE_HASHES.includes(hash) ? hash : 'bookings';
+  activeSection.value = ALL_WORKSPACE_HASHES.includes(hash) ? hash : defaultManagementHashForRole(auth.role);
 };
 
 const panelRefForSection = (section) => {
@@ -255,6 +262,7 @@ const panelRefForSection = (section) => {
     revenue: revenuePanel,
     analytics: wordCloudPanel,
     audit: auditPanel,
+    reports: reportsPanel,
   };
   return map[section] ?? null;
 };
@@ -363,7 +371,7 @@ watch(() => bossPreview.viewAsStaff, async () => {
 });
 
 onMounted(async () => {
-  if (!auth.hasAnyRole(['staff', 'manager', 'super_admin', 'cmart_staff', 'cmart_admin', 'boss'])) {
+  if (!auth.hasAnyRole(MANAGEMENT_WORKSPACE_ROLES)) {
     router.replace(auth.homeForUser());
     return;
   }

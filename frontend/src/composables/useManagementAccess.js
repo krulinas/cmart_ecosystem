@@ -4,7 +4,7 @@ import { useBossPreviewStore } from '../stores/bossPreview';
 import { getWorkspaceTheme } from '../config/managementWorkspaceTheme';
 import {
   ROLES,
-  isManagerOrAbove,
+  isOrganizerEquivalent,
   workflowRoleKey,
 } from '../utils/managementRoles';
 import {
@@ -24,7 +24,7 @@ export function useManagementAccess() {
   const effectiveRole = computed(() => bossPreview.effectiveRole);
   const isStaffView = computed(() => effectiveRole.value === ROLES.STAFF);
   const isManagerView = computed(() => workflowRoleKey(effectiveRole.value) === ROLES.MANAGER);
-  const isStaffPortalAssist = computed(() => isManagerOrAbove(auth.role) && bossPreview.viewAsStaff);
+  const isStaffPortalAssist = computed(() => isOrganizerEquivalent(auth.role) && bossPreview.viewAsStaff);
   const isSuperAdminView = computed(() => auth.isSuperAdmin && !bossPreview.viewAsStaff);
   const isFutureOrganizerView = computed(() => mapsToFutureOrganizer(auth.role));
 

@@ -14,9 +14,14 @@ use Tests\TestCase;
 /**
  * Staff Portal Assist Mode — booking transition policy.
  *
- * Managers (and super admins) may assist Tier 1 staff-stage transitions on
+ * Organizers (and super admins) may assist Tier 1 staff-stage transitions on
  * Pending_Staff bookings. Actions stay recorded under the real authenticated
- * manager account. Direct Pending_Staff -> Approved is forbidden for all roles.
+ * organizer account. Direct Pending_Staff -> Approved is forbidden for all roles.
+ *
+ * NOTE (PR2): the two-stage pipeline (Pending_Staff -> Pending_Boss) and the
+ * temporary `staff` role are removed in the PR2 direct-Organizer cutover;
+ * this test file is rewritten then. PR1 only migrated actor identity from the
+ * legacy `manager` role to the canonical `organizer` role.
  */
 class BookingStaffStageAssistTest extends TestCase
 {
@@ -109,12 +114,12 @@ class BookingStaffStageAssistTest extends TestCase
             ->assertJsonPath('booking.approval_status', 'Pending_Boss');
     }
 
-    public function test_manager_can_assist_forward_pending_staff_to_pending_boss(): void
+    public function test_organizer_can_assist_forward_pending_staff_to_pending_boss(): void
     {
-        $manager = $this->createUser('manager');
+        $organizer = $this->createUser('organizer');
         $booking = $this->createBooking('Pending_Staff');
 
-        Sanctum::actingAs($manager);
+        Sanctum::actingAs($organizer);
 
         $this->putJson("/api/bookings/{$booking->id}", ['approval_status' => 'Pending_Boss'])
             ->assertOk()
@@ -133,12 +138,12 @@ class BookingStaffStageAssistTest extends TestCase
             ->assertJsonPath('booking.approval_status', 'Pending_Boss');
     }
 
-    public function test_manager_can_assist_revision_pending_staff_to_needs_revision(): void
+    public function test_organizer_can_assist_revision_pending_staff_to_needs_revision(): void
     {
-        $manager = $this->createUser('manager');
+        $organizer = $this->createUser('organizer');
         $booking = $this->createBooking('Pending_Staff');
 
-        Sanctum::actingAs($manager);
+        Sanctum::actingAs($organizer);
 
         $this->putJson("/api/bookings/{$booking->id}", [
             'approval_status' => 'Needs_Revision',
@@ -148,24 +153,24 @@ class BookingStaffStageAssistTest extends TestCase
             ->assertJsonPath('booking.approval_status', 'Needs_Revision');
     }
 
-    public function test_manager_can_assist_reject_pending_staff(): void
+    public function test_organizer_can_assist_reject_pending_staff(): void
     {
-        $manager = $this->createUser('manager');
+        $organizer = $this->createUser('organizer');
         $booking = $this->createBooking('Pending_Staff');
 
-        Sanctum::actingAs($manager);
+        Sanctum::actingAs($organizer);
 
         $this->putJson("/api/bookings/{$booking->id}", ['approval_status' => 'Rejected'])
             ->assertOk()
             ->assertJsonPath('booking.approval_status', 'Rejected');
     }
 
-    public function test_manager_cannot_directly_approve_pending_staff(): void
+    public function test_organizer_cannot_directly_approve_pending_staff(): void
     {
-        $manager = $this->createUser('manager');
+        $organizer = $this->createUser('organizer');
         $booking = $this->createBooking('Pending_Staff');
 
-        Sanctum::actingAs($manager);
+        Sanctum::actingAs($organizer);
 
         $this->putJson("/api/bookings/{$booking->id}", ['approval_status' => 'Approved'])
             ->assertStatus(422);
@@ -209,12 +214,12 @@ class BookingStaffStageAssistTest extends TestCase
         $this->assertSame('Pending_Staff', $booking->fresh()->approval_status);
     }
 
-    public function test_manager_assisted_forward_records_manager_as_actor(): void
+    public function test_organizer_assisted_forward_records_organizer_as_actor(): void
     {
-        $manager = $this->createUser('manager');
+        $organizer = $this->createUser('organizer');
         $booking = $this->createBooking('Pending_Staff');
 
-        Sanctum::actingAs($manager);
+        Sanctum::actingAs($organizer);
 
         $this->putJson("/api/bookings/{$booking->id}", ['approval_status' => 'Pending_Boss'])
             ->assertOk();
@@ -225,7 +230,7 @@ class BookingStaffStageAssistTest extends TestCase
             ->first();
 
         $this->assertNotNull($log);
-        $this->assertSame($manager->id, $log->actor_user_id);
+        $this->assertSame($organizer->id, $log->actor_user_id);
         $this->assertSame('manager_assisted_tier1_review', $log->action);
         $this->assertSame('Pending_Staff', $log->from_status);
         $this->assertSame('Pending_Boss', $log->to_status);
@@ -251,12 +256,12 @@ class BookingStaffStageAssistTest extends TestCase
         $this->assertSame('status_change', $log->action);
     }
 
-    public function test_manager_final_approval_from_pending_boss_still_works(): void
+    public function test_organizer_final_approval_from_pending_boss_still_works(): void
     {
-        $manager = $this->createUser('manager');
+        $organizer = $this->createUser('organizer');
         $booking = $this->createBooking('Pending_Boss');
 
-        Sanctum::actingAs($manager);
+        Sanctum::actingAs($organizer);
 
         $this->putJson("/api/bookings/{$booking->id}", ['approval_status' => 'Approved'])
             ->assertOk()

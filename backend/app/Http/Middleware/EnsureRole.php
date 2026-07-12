@@ -13,7 +13,10 @@ class EnsureRole
         $user = $request->user();
 
         if (!$user || !ManagementRole::userHasAnyRole($user->role, $roles)) {
-            $managerRoles = ['manager', 'cmart_admin', 'boss', 'super_admin', ManagementRole::LEGACY_MANAGER];
+            $managerRoles = array_merge(
+                ManagementRole::organizerEquivalentRoles(),
+                [ManagementRole::ORGANIZER, ManagementRole::CMART_MANAGEMENT],
+            );
             $requiresManager = !empty(array_intersect($roles, $managerRoles));
 
             $message = $requiresManager && ManagementRole::isStaffRole($user?->role)

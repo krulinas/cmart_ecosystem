@@ -23,6 +23,9 @@ use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\UserBookingPreferenceController;
 use App\Http\Controllers\Api\StaffOperationsController;
+use App\Http\Controllers\Api\ManagementReportsController;
+use App\Support\ManagementCapability;
+use App\Support\ManagementRole;
 
 /*
 |--------------------------------------------------------------------------
@@ -100,7 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/bookings', [BookingController::class, 'store']);
     });
 
-    Route::middleware('role:staff,manager,super_admin,cmart_staff,cmart_admin,boss')->group(function () {
+    Route::middleware('role:' . ManagementRole::routeRoleList(ManagementRole::carbootOperationalRoles()))->group(function () {
         Route::get('/staff/feedbacks', [FeedbackController::class, 'staffIndex']);
         Route::get('/staff/bookings', [BookingController::class, 'staffRegistry']);
         Route::get('/staff/operations-summary', [StaffOperationsController::class, 'operationsSummary']);
@@ -122,13 +125,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/feedbacks/{feedback}/reviewed', [FeedbackController::class, 'markReviewed']);
         Route::put('/feedbacks/{feedback}/official-reply', [FeedbackController::class, 'updateOfficialReply']);
 
-        Route::middleware('role:manager,super_admin,cmart_admin,boss')->group(function () {
+        Route::middleware('role:' . ManagementRole::routeRoleList(ManagementRole::organizerEquivalentRoles()))->group(function () {
             Route::post('/feedbacks/{feedback}/official-reply/publish', [FeedbackController::class, 'publishOfficialReply']);
             Route::delete('/feedbacks/{feedback}', [FeedbackController::class, 'destroy']);
         });
 
         Route::apiResource('carboot-events', CarbootEventController::class);
+    });
+
+    Route::middleware('role:' . ManagementRole::routeRoleList(ManagementRole::cmartActivityRoles()))->group(function () {
         Route::apiResource('news-posts', NewsPostController::class);
+    });
+
+    Route::middleware('capability:' . ManagementCapability::GENERATED_REPORTS)->group(function () {
+        Route::get('/management/reports/operational-overview', [ManagementReportsController::class, 'operationalOverview']);
     });
 
     Route::middleware('boss')->group(function () {
