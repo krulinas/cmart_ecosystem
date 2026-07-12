@@ -31,14 +31,14 @@ class GovernanceAccessBoundaryTest extends TestCase
         ]);
     }
 
-    public function test_staff_cannot_access_carboot_operational_analytics_endpoints(): void
+    public function test_cmart_management_cannot_access_carboot_operational_analytics_endpoints(): void
     {
-        $staff = User::where('email', 'staff@cmart.com')->first();
-        if (!$staff) {
-            $this->markTestSkipped('Seeded staff user (staff@cmart.com) not found. Run database seeders.');
+        $venue = User::where('email', 'staff@cmart.com')->first();
+        if (!$venue) {
+            $this->markTestSkipped('Seeded cmart_management demo (staff@cmart.com) not found. Run database seeders.');
         }
 
-        Sanctum::actingAs($staff);
+        Sanctum::actingAs($venue);
 
         $this->getJson('/api/boss/analytics/revenue')->assertForbidden();
         $this->getJson('/api/boss/analytics/wordcloud/feedback')->assertForbidden();
@@ -56,12 +56,12 @@ class GovernanceAccessBoundaryTest extends TestCase
         $this->getJson('/api/boss/audit-logs')->assertOk();
     }
 
-    public function test_no_users_hold_legacy_manager_or_uum_roles_after_migration(): void
+    public function test_no_users_hold_legacy_staff_manager_or_uum_roles_after_pr2(): void
     {
         $this->assertSame(
             0,
-            User::whereIn('role', ['manager', 'uum'])->count(),
-            'Legacy manager/uum roles must be remapped to organizer by the PR1 role migration.',
+            User::whereIn('role', ['staff', 'manager', 'uum'])->count(),
+            'Legacy staff/manager/uum roles must be remapped by PR1/PR2 role migrations.',
         );
     }
 

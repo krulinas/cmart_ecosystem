@@ -10,6 +10,8 @@ export const CAPABILITIES = {
   CARBOOT_OPERATIONAL_ANALYTICS: 'carboot_operational_analytics',
   CMART_ACTIVITY_MANAGEMENT: 'cmart_activity_management',
   GENERATED_REPORTS: 'generated_reports',
+  ORGANIZER_QUEUE: 'organizer_queue',
+  /** @deprecated PR3 — use ORGANIZER_QUEUE */
   STAFF_QUEUE_ASSIST: 'staff_queue_assist',
 };
 
@@ -18,7 +20,8 @@ export const resolveCapabilitiesForRole = (role) => {
 
   const capabilities = [];
 
-  if (canAssistCarbootOperations(role)) {
+  if (canPerformCarbootOperations(role)) {
+    capabilities.push(CAPABILITIES.ORGANIZER_QUEUE);
     capabilities.push(CAPABILITIES.STAFF_QUEUE_ASSIST);
   }
   if (canPerformCarbootOperations(role)) {
@@ -45,20 +48,13 @@ export const hasCapability = (role, capability, governanceCapabilities = null) =
   return resolveCapabilitiesForRole(role).includes(capability);
 };
 
-/**
- * Canonical: organizer + super_admin. `staff` is TEMPORARY until the PR2
- * direct-Organizer booking cutover. Legacy manager/uum identities normalize
- * to organizer in managementRoles.js and are covered implicitly.
- * cmart_management must never appear in Carboot operations lists.
- */
-export const canPerformCarbootOperations = (role) =>
-  [ROLES.STAFF, ROLES.ORGANIZER, ROLES.SUPER_ADMIN].includes(normalizeRole(role));
+/** Carboot ops: organizer + super_admin only (PR2). */
+export const canPerformCarbootOperations = (role) => isOrganizerEquivalent(role);
 
 export const canAccessCarbootOperationalAnalytics = (role) => isOrganizerEquivalent(role);
 
 export const canManageCmartActivities = (role) =>
   [
-    ROLES.STAFF,
     ROLES.ORGANIZER,
     ROLES.CMART_MANAGEMENT,
     ROLES.SUPER_ADMIN,

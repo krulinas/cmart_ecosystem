@@ -18,29 +18,21 @@ use Illuminate\Validation\Rule;
 class BookingController extends Controller
 {
     /**
-     * 2-Tier Corporate Approval Pipeline state machine.
+     * Direct Organizer review workflow (Phase 1.3C PR2).
      *
-     * Strict permitted transitions per role. Any attempt outside this matrix
-     * is rejected with HTTP 422 Unprocessable Entity.
-     *
-     * Staff Portal Assist: managers (and super admins via workflowRoleKey) may
-     * also perform Tier 1 staff-stage transitions on Pending_Staff bookings.
-     * This is NOT impersonation — the action is recorded under the real
-     * authenticated manager account. Direct Pending_Staff -> Approved remains
-     * forbidden for every role.
+     * Vendor submissions enter Pending_Organizer. Only organizer and super_admin
+     * may approve, reject, or request revision. No staff/manager pipeline stages.
      */
     private const STATE_TRANSITIONS = [
-        'staff' => [
-            'Pending_Staff' => ['Pending_Boss', 'Needs_Revision', 'Rejected'],
-        ],
-        'manager' => [
-            'Pending_Staff' => ['Pending_Boss', 'Needs_Revision', 'Rejected'],
-            'Pending_Boss' => ['Approved', 'Needs_Revision', 'Rejected'],
+        'organizer' => [
+            'Pending_Organizer' => ['Approved', 'Needs_Revision', 'Rejected'],
         ],
     ];
 
+    private const PENDING_ORGANIZER = 'Pending_Organizer';
+
     /**
-     * FR1 & FR2: Submit a new vendor booking. Initial status is Pending_Staff.
+     * Submit a new vendor booking. Initial status is Pending_Organizer.
      */
     public function store(Request $request)
     {
@@ -88,7 +80,7 @@ class BookingController extends Controller
             'booking_date' => $event->starts_at->toDateString(),
             'product_category' => $validated['product_category'],
             'product_details' => $validated['product_details'],
-            'approval_status' => 'Pending_Staff',
+            'approval_status' => self::PENDING_ORGANIZER,
             'revision_comment' => null,
             'whatsapp_link' => 'https://chat.whatsapp.com/CMART_OFFICIAL_GROUP_INVITE',
         ]);
@@ -100,24 +92,25 @@ class BookingController extends Controller
         ]);
 
         return response()->json([
-            'message' => '201 Created: Booking submitted successfully. Awaiting Tier 1 staff review.',
+            'message' => '201 Created: Booking submitted successfully. Awaiting Organizer review.',
             'booking' => $booking,
             'invoice' => $invoice,
         ], 201);
     }
 
     /**
-     * Tier-aware status update. Enforces the corporate approval pipeline.
-     *
-     * Permitted transitions:
-     *   staff:   Pending_Staff -> Pending_Boss | Needs_Revision | Rejected
-     *   manager: Pending_Staff -> Pending_Boss | Needs_Revision | Rejected (Staff Portal Assist)
-     *            Pending_Boss  -> Approved     | Needs_Revision | Rejected
+     * Organizer review status update. Direct Pending_Organizer transitions only.
      */
     public function update(Request $request, Booking $booking)
     {
+        if (!ManagementRole::isOrganizerEquivalent($request->user()->role)) {
+            return response()->json([
+                'message' => '403 Forbidden: Organizer access required for booking review.',
+            ], 403);
+        }
+
         $validated = $request->validate([
-            'approval_status' => 'required|in:Pending_Boss,Needs_Revision,Approved,Rejected',
+            'approval_status' => 'required|in:Needs_Revision,Approved,Rejected',
             'revision_comment' => 'required_if:approval_status,Needs_Revision|nullable|string|max:2000',
         ]);
 
@@ -156,12 +149,6 @@ class BookingController extends Controller
                 : null,
         ]);
 
-        // Manager acting on a Tier 1 staff-stage booking (Staff Portal Assist).
-        // The actor stays the real authenticated manager; only the audit action
-        // label distinguishes assisted Tier 1 review from a normal status change.
-        $isManagerAssistedTier1 = $workflowRole === ManagementRole::MANAGER
-            && $current === 'Pending_Staff';
-
         BookingAuditLogger::log(
             $booking,
             $user,
@@ -169,7 +156,12 @@ class BookingController extends Controller
             $target,
             $target === 'Needs_Revision' ? ($validated['revision_comment'] ?? null) : null,
             $request,
-            $isManagerAssistedTier1 ? 'manager_assisted_tier1_review' : 'status_change',
+            match ($target) {
+                'Approved' => 'organizer_approved_booking',
+                'Rejected' => 'organizer_rejected_booking',
+                'Needs_Revision' => 'organizer_requested_revision',
+                default => 'status_change',
+            },
         );
 
         return response()->json([
@@ -266,12 +258,12 @@ class BookingController extends Controller
         ]);
 
         $booking->update(array_merge($validated, [
-            'approval_status' => 'Pending_Staff',
+            'approval_status' => self::PENDING_ORGANIZER,
             'revision_comment' => null,
         ]));
 
         return response()->json([
-            'message' => '200 OK: Booking resubmitted successfully. Awaiting Tier 1 staff review.',
+            'message' => '200 OK: Booking resubmitted successfully. Awaiting Organizer review.',
             'booking' => $booking->fresh(['space', 'invoice']),
         ]);
     }
@@ -282,20 +274,17 @@ class BookingController extends Controller
     }
 
     /**
-     * Staff-safe read-only booking registry and queue data source.
-     * Tier 1 staff use this endpoint instead of manager-only actions.
+     * @deprecated Legacy URL — same registry as /bookings for Organizer/Super Admin.
      */
     public function staffRegistry(Request $request)
     {
-        if (!ManagementRole::isCmartWorker($request->user()->role)) {
+        if (!ManagementRole::isOrganizerEquivalent($request->user()->role)) {
             return response()->json([
-                'message' => '403 Forbidden: The authenticated user does not have permission to access this resource.',
+                'message' => '403 Forbidden: Organizer access required.',
             ], 403);
         }
 
-        $access = ManagementRole::isStaffRole($request->user()->role) ? 'read_only' : 'full';
-
-        return $this->paginatedBookingListResponse($request, $access);
+        return $this->paginatedBookingListResponse($request, 'full');
     }
 
     /**
@@ -334,7 +323,7 @@ class BookingController extends Controller
     {
         $validated = $request->validate([
             'search' => 'nullable|string|max:200',
-            'status' => 'nullable|string|in:Pending_Staff,Pending_Boss,Needs_Revision,Approved,Rejected,Cancelled,Withdrawn',
+            'status' => 'nullable|string|in:Pending_Organizer,Needs_Revision,Approved,Rejected,Cancelled,Withdrawn',
             'payment_status' => 'nullable|string|in:Paid,Unpaid,Pending Verification',
             'event_id' => 'nullable|integer|exists:carboot_events,id',
             'event' => 'nullable|integer|exists:carboot_events,id',
@@ -452,8 +441,7 @@ class BookingController extends Controller
         $counts = Booking::query()
             ->where('booking_date', '>', '1970-01-01')
             ->selectRaw("
-                SUM(CASE WHEN approval_status = 'Pending_Staff' THEN 1 ELSE 0 END) as pending_staff,
-                SUM(CASE WHEN approval_status = 'Pending_Boss' THEN 1 ELSE 0 END) as pending_boss,
+                SUM(CASE WHEN approval_status = 'Pending_Organizer' THEN 1 ELSE 0 END) as pending_organizer,
                 SUM(CASE WHEN approval_status = 'Needs_Revision' THEN 1 ELSE 0 END) as needs_revision,
                 SUM(CASE WHEN approval_status = 'Approved' THEN 1 ELSE 0 END) as approved,
                 SUM(CASE WHEN approval_status = 'Rejected' THEN 1 ELSE 0 END) as rejected,
@@ -462,22 +450,24 @@ class BookingController extends Controller
             ")
             ->first();
 
+        $pendingOrganizer = (int) ($counts->pending_organizer ?? 0);
+
         return [
-            'pending_staff' => (int) ($counts->pending_staff ?? 0),
-            'pending_boss' => (int) ($counts->pending_boss ?? 0),
+            'pending_organizer' => $pendingOrganizer,
             'needs_revision' => (int) ($counts->needs_revision ?? 0),
             'approved' => (int) ($counts->approved ?? 0),
             'rejected' => (int) ($counts->rejected ?? 0),
             'cancelled' => (int) ($counts->cancelled ?? 0),
             'withdrawn' => (int) ($counts->withdrawn ?? 0),
+            // Deprecated aliases for PR3 frontend compatibility.
+            'pending_staff' => $pendingOrganizer,
+            'pending_boss' => 0,
         ];
     }
 
     private function queueStatusForUser($user): string
     {
-        return ManagementRole::workflowRoleKey($user->role) === ManagementRole::MANAGER
-            ? 'Pending_Boss'
-            : 'Pending_Staff';
+        return self::PENDING_ORGANIZER;
     }
 
     private function fetchQueueBookings($user)
@@ -528,7 +518,7 @@ class BookingController extends Controller
             return $denied;
         }
 
-        if (!in_array($booking->approval_status, ['Pending_Staff', 'Needs_Revision'], true)) {
+        if (!in_array($booking->approval_status, [self::PENDING_ORGANIZER, 'Needs_Revision'], true)) {
             return response()->json([
                 'message' => '422 Unprocessable Entity: Only pending bookings can be edited by vendors.',
                 'current_status' => $booking->approval_status,
@@ -567,7 +557,7 @@ class BookingController extends Controller
             return $denied;
         }
 
-        $cancellable = ['Pending_Staff', 'Pending_Boss', 'Needs_Revision'];
+        $cancellable = [self::PENDING_ORGANIZER, 'Needs_Revision'];
         if (!in_array($booking->approval_status, $cancellable, true)) {
             return response()->json([
                 'message' => '422 Unprocessable Entity: Only pending bookings can be withdrawn by vendors.',
@@ -847,6 +837,12 @@ class BookingController extends Controller
 
     public function verifyBookingPayment(Request $request, Booking $booking)
     {
+        if (!ManagementRole::isOrganizerEquivalent($request->user()->role)) {
+            return response()->json([
+                'message' => '403 Forbidden: Organizer access required for payment verification.',
+            ], 403);
+        }
+
         $invoice = $booking->invoice;
         if (!$invoice) {
             return response()->json([
@@ -878,6 +874,16 @@ class BookingController extends Controller
         $invoice->update([
             'payment_status' => 'Paid',
         ]);
+
+        BookingAuditLogger::log(
+            $booking,
+            $request->user(),
+            'Approved',
+            'Approved',
+            'Payment verified as Paid.',
+            $request,
+            'organizer_verified_payment',
+        );
 
         $booking->load(['space', 'invoice', 'user.businessProfile']);
 
@@ -917,9 +923,9 @@ class BookingController extends Controller
     {
         $user = request()->user();
 
-        if (!$user || !ManagementRole::canAccessManagerRoutes($user->role)) {
+        if (!$user || !ManagementRole::canAccessOrganizerRoutes($user->role)) {
             return response()->json([
-                'message' => '403 Forbidden: Manager access required.',
+                'message' => '403 Forbidden: Organizer access required.',
             ], 403);
         }
 

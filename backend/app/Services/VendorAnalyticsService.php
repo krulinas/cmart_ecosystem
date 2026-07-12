@@ -174,7 +174,7 @@ class VendorAnalyticsService
             return 'Approved';
         }
 
-        if (in_array($booking->approval_status, ['Pending_Staff', 'Pending_Boss', 'Needs_Revision'], true)) {
+        if (in_array($booking->approval_status, ['Pending_Organizer', 'Needs_Revision'], true)) {
             return 'Pending';
         }
 

@@ -238,7 +238,7 @@ class VendorEventPassService
             return self::STATUS_CANCELLED;
         }
 
-        if (in_array($booking->approval_status, ['Pending_Staff', 'Pending_Boss', 'Needs_Revision'], true)) {
+        if (in_array($booking->approval_status, ['Pending_Organizer', 'Needs_Revision'], true)) {
             return self::STATUS_PENDING;
         }
 

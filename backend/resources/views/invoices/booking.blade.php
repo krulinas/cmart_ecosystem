@@ -63,6 +63,7 @@
             text-transform: uppercase;
             letter-spacing: 0.7px;
         }
+        .status-Pending_Organizer { background: #fef3c7; color: #92400e; }
         .status-Pending_Staff   { background: #fef3c7; color: #92400e; }
         .status-Pending_Boss    { background: #dbeafe; color: #1e40af; }
         .status-Needs_Revision  { background: #fde68a; color: #78350f; }
@@ -158,9 +159,9 @@
     <div class="section">
         <h3>Approval Pipeline</h3>
         <div class="field" style="color: #64748b;">
-            Tier 1 (CMart Staff) reviews submissions in <span class="value">Pending_Staff</span>.
-            Cleared submissions move to manager review for Tier 2 (CMart Manager) final approval.
-            Rejected submissions are returned as <span class="value">Needs_Revision</span>.
+            Submissions enter <span class="value">Pending_Organizer</span> for direct Carboot Organizer review.
+            Approved bookings proceed to payment; rejected or revision requests return as
+            <span class="value">Needs_Revision</span> when changes are required.
         </div>
     </div>
 

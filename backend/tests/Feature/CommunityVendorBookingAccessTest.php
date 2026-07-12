@@ -91,6 +91,6 @@ class CommunityVendorBookingAccessTest extends TestCase
             'product_details' => 'Ayam Gunting',
         ])
             ->assertCreated()
-            ->assertJsonPath('booking.approval_status', 'Pending_Staff');
+            ->assertJsonPath('booking.approval_status', 'Pending_Organizer');
     }
 }

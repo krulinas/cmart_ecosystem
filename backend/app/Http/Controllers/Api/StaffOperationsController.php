@@ -12,12 +12,12 @@ use Illuminate\Http\JsonResponse;
 class StaffOperationsController extends Controller
 {
     /**
-     * Operational counts for Tier 1 staff — no revenue, audit, or strategic analytics.
+     * Operational counts for generated reports — no raw revenue or analytics.
      */
     public function operationsSummary(): JsonResponse
     {
-        $pendingStaffReview = Booking::query()
-            ->where('approval_status', 'Pending_Staff')
+        $pendingOrganizerReview = Booking::query()
+            ->where('approval_status', 'Pending_Organizer')
             ->count();
 
         $needsRevision = Booking::query()
@@ -40,11 +40,13 @@ class StaffOperationsController extends Controller
             ->count();
 
         return response()->json([
-            'pending_staff_review' => $pendingStaffReview,
+            'pending_organizer_review' => $pendingOrganizerReview,
             'needs_revision' => $needsRevision,
             'payment_proofs_to_check' => $paymentProofsToCheck,
             'upcoming_events' => $upcomingEvents,
             'feedback_to_review' => $feedbackToReview,
+            // Deprecated aliases for PR3 frontend compatibility.
+            'pending_staff_review' => $pendingOrganizerReview,
         ]);
     }
 }

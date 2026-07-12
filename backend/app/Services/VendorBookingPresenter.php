@@ -7,7 +7,7 @@ use App\Models\CarbootEvent;
 
 class VendorBookingPresenter
 {
-    private const WITHDRAWABLE_STATUSES = ['Pending_Staff', 'Pending_Boss', 'Needs_Revision'];
+    private const WITHDRAWABLE_STATUSES = ['Pending_Organizer', 'Needs_Revision'];
 
     public static function eventLabel(Booking $booking): string
     {

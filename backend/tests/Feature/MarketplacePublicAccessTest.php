@@ -143,7 +143,7 @@ class MarketplacePublicAccessTest extends TestCase
     {
         $vendor = $this->createVendor();
         $event = $this->createUpcomingEvent();
-        $this->createBooking($vendor, $event, 'Pending_Staff');
+        $this->createBooking($vendor, $event, 'Pending_Organizer');
         $item = $this->createItem($vendor, 'Pending Vendor Item');
 
         $this->getJson('/api/marketplace/items')

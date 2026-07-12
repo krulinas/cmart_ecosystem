@@ -126,7 +126,7 @@ class VendorDemoPaymentTest extends TestCase
     public function test_pending_booking_cannot_complete_demo_payment(): void
     {
         $vendor = $this->createUser();
-        $booking = $this->createBooking($vendor, 'Pending_Staff', 'Unpaid');
+        $booking = $this->createBooking($vendor, 'Pending_Organizer', 'Unpaid');
 
         Sanctum::actingAs($vendor);
 
@@ -134,7 +134,7 @@ class VendorDemoPaymentTest extends TestCase
             'payment_method' => 'demo_card',
         ])
             ->assertStatus(422)
-            ->assertJsonPath('current_status', 'Pending_Staff');
+            ->assertJsonPath('current_status', 'Pending_Organizer');
     }
 
     public function test_rejected_booking_cannot_complete_demo_payment(): void

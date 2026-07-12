@@ -162,12 +162,13 @@ class CommunityVendorIntentTest extends TestCase
 
     public function test_management_user_payload_has_no_community_mode(): void
     {
-        $staff = User::where('email', 'staff@cmart.com')->first();
-        if (!$staff) {
-            $this->markTestSkipped('Seeded staff user not found.');
+        // staff@cmart.com is the CMart Management demo account after PR2.
+        $management = User::where('email', 'staff@cmart.com')->first();
+        if (!$management) {
+            $this->markTestSkipped('Seeded management demo user not found.');
         }
 
-        Sanctum::actingAs($staff);
+        Sanctum::actingAs($management);
 
         $this->getJson('/api/auth/me')
             ->assertOk()

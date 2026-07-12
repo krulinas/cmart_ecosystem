@@ -42,16 +42,16 @@ class FeedbackModerationTest extends TestCase
         return $this->testFeedback;
     }
 
-    public function test_staff_can_hide_and_unhide_feedback(): void
+    public function test_organizer_can_hide_and_unhide_feedback(): void
     {
-        $staff = User::where('email', 'staff@cmart.com')->first();
-        if (!$staff) {
-            $this->markTestSkipped('Seeded staff user not found.');
+        $organizer = User::where('email', 'admin@cmart.com')->first();
+        if (!$organizer) {
+            $this->markTestSkipped('Seeded organizer user not found.');
         }
 
         $feedback = $this->createTestFeedback();
 
-        Sanctum::actingAs($staff);
+        Sanctum::actingAs($organizer);
 
         $this->putJson("/api/feedbacks/{$feedback->id}", ['is_hidden' => true])
             ->assertOk()
@@ -62,35 +62,52 @@ class FeedbackModerationTest extends TestCase
             ->assertJsonPath('feedback.is_hidden', false);
     }
 
-    public function test_staff_can_mark_feedback_reviewed(): void
+    public function test_organizer_can_mark_feedback_reviewed(): void
     {
-        $staff = User::where('email', 'staff@cmart.com')->first();
-        if (!$staff) {
-            $this->markTestSkipped('Seeded staff user not found.');
+        $organizer = User::where('email', 'admin@cmart.com')->first();
+        if (!$organizer) {
+            $this->markTestSkipped('Seeded organizer user not found.');
         }
 
         $feedback = $this->createTestFeedback();
 
-        Sanctum::actingAs($staff);
+        Sanctum::actingAs($organizer);
 
         $this->postJson("/api/feedbacks/{$feedback->id}/reviewed")
             ->assertOk()
-            ->assertJsonPath('feedback.reviewed_by', $staff->id)
-            ->assertJsonPath('feedback.reviewed_by_name', $staff->name);
+            ->assertJsonPath('feedback.reviewed_by', $organizer->id)
+            ->assertJsonPath('feedback.reviewed_by_name', $organizer->name);
 
         $this->assertNotNull($this->testFeedback->fresh()->reviewed_at);
     }
 
-    public function test_staff_cannot_delete_feedback(): void
+    public function test_cmart_management_cannot_hide_feedback(): void
     {
-        $staff = User::where('email', 'staff@cmart.com')->first();
-        if (!$staff) {
-            $this->markTestSkipped('Seeded staff user not found.');
+        $venue = User::where('email', 'venue@cmart.com')->first();
+        if (!$venue) {
+            $this->markTestSkipped('Seeded cmart_management user not found.');
         }
 
         $feedback = $this->createTestFeedback();
 
-        Sanctum::actingAs($staff);
+        Sanctum::actingAs($venue);
+
+        $this->putJson("/api/feedbacks/{$feedback->id}", ['is_hidden' => true])
+            ->assertForbidden();
+
+        $this->assertFalse((bool) $feedback->fresh()->is_hidden);
+    }
+
+    public function test_cmart_management_cannot_delete_feedback(): void
+    {
+        $venue = User::where('email', 'venue@cmart.com')->first();
+        if (!$venue) {
+            $this->markTestSkipped('Seeded cmart_management user not found.');
+        }
+
+        $feedback = $this->createTestFeedback();
+
+        Sanctum::actingAs($venue);
 
         $this->deleteJson("/api/feedbacks/{$feedback->id}")
             ->assertForbidden();
@@ -131,15 +148,15 @@ class FeedbackModerationTest extends TestCase
 
     public function test_public_endpoint_only_shows_published_official_reply(): void
     {
-        $manager = User::where('email', 'admin@cmart.com')->first();
-        if (!$manager) {
-            $this->markTestSkipped('Seeded manager user not found.');
+        $organizer = User::where('email', 'admin@cmart.com')->first();
+        if (!$organizer) {
+            $this->markTestSkipped('Seeded organizer user not found.');
         }
 
         $feedback = $this->createTestFeedback([
             'official_reply_text' => 'Draft reply should not appear publicly.',
             'official_reply_status' => 'draft',
-            'official_reply_by' => $manager->id,
+            'official_reply_by' => $organizer->id,
         ]);
 
         $draftResponse = $this->getJson('/api/feedbacks');

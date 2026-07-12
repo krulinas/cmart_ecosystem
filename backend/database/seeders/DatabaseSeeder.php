@@ -33,8 +33,7 @@ class DatabaseSeeder extends Seeder
             'vendor_status' => 'approved',
         ]);
 
-        // Legacy demo login retained for continuity; the role is canonical
-        // organizer now (manager was the legacy Organizer bridge).
+        // Legacy demo login retained; canonical Organizer role.
         User::updateOrCreate(['email' => 'admin@cmart.com'], [
             'name' => 'Carboot Organizer (Ops)',
             'password' => bcrypt('password123'),
@@ -43,15 +42,12 @@ class DatabaseSeeder extends Seeder
             'vendor_status' => 'none',
         ]);
 
-        // TEMPORARY (PR2 removes): staff role is kept only because the
-        // two-stage booking pipeline (Pending_Staff stage) and its tests/E2E
-        // still need a staff-stage actor until the PR2 workflow cutover.
-        // PR2 remaps this account to cmart_management.
+        // Former staff demo account — now CMart Management (venue-side personnel).
         User::updateOrCreate(['email' => 'staff@cmart.com'], [
-            'name' => 'CMart Staff',
+            'name' => 'CMart Management Demo',
             'password' => bcrypt('password123'),
             'phone_number' => '0122222222',
-            'role' => 'staff',
+            'role' => 'cmart_management',
             'vendor_status' => 'none',
         ]);
 
@@ -85,9 +81,9 @@ class DatabaseSeeder extends Seeder
                 ['user_id' => $staff->id],
                 [
                     'staff_code' => 'CM-STF-001',
-                    'tier' => 1,
-                    'position_title' => 'Operations Staff',
-                    'department' => 'Operations',
+                    'tier' => 2,
+                    'position_title' => 'CMart Management',
+                    'department' => 'Venue & Activities',
                     'branch_name' => 'CMart Main Branch',
                     'is_active' => true,
                 ]

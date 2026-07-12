@@ -174,10 +174,10 @@ class FeedbackController extends Controller
     {
         if (
             $feedback->official_reply_status === 'published'
-            && ManagementRole::isStaffRole($request->user()->role)
+            && !ManagementRole::isOrganizerEquivalent($request->user()->role)
         ) {
             return response()->json([
-                'message' => '403 Forbidden: Manager approval required to edit a published reply.',
+                'message' => '403 Forbidden: Organizer approval required to edit a published reply.',
             ], 403);
         }
 
@@ -214,8 +214,8 @@ class FeedbackController extends Controller
 
     public function publishOfficialReply(Request $request, Feedback $feedback)
     {
-        if (!ManagementRole::canAccessManagerRoutes($request->user()->role)) {
-            return response()->json(['message' => '403 Forbidden: Manager access required.'], 403);
+        if (!ManagementRole::canAccessOrganizerRoutes($request->user()->role)) {
+            return response()->json(['message' => '403 Forbidden: Organizer access required.'], 403);
         }
 
         $validated = $request->validate([
@@ -246,8 +246,8 @@ class FeedbackController extends Controller
 
     public function destroy(Request $request, Feedback $feedback)
     {
-        if (!ManagementRole::canAccessManagerRoutes($request->user()->role)) {
-            return response()->json(['message' => '403 Forbidden: Manager access required.'], 403);
+        if (!ManagementRole::canAccessOrganizerRoutes($request->user()->role)) {
+            return response()->json(['message' => '403 Forbidden: Organizer access required.'], 403);
         }
 
         $feedback->delete();

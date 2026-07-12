@@ -55,14 +55,14 @@ class WebAnalyticsSecurityTest extends TestCase
         $this->get('/admin/analytics')->assertForbidden();
     }
 
-    public function test_staff_users_cannot_access_raw_analytics_proxy_endpoints(): void
+    public function test_cmart_management_demo_cannot_access_raw_analytics_proxy_endpoints(): void
     {
-        $staff = User::where('email', 'staff@cmart.com')->first();
-        if (!$staff) {
-            $this->markTestSkipped('Seeded staff user (staff@cmart.com) not found. Run database seeders.');
+        $venue = User::where('email', 'staff@cmart.com')->first();
+        if (!$venue) {
+            $this->markTestSkipped('Seeded cmart_management demo (staff@cmart.com) not found. Run database seeders.');
         }
 
-        Sanctum::actingAs($staff);
+        Sanctum::actingAs($venue);
 
         $this->getJson('/api/proxy/analytics/summary')->assertForbidden();
         $this->get('/admin/analytics')->assertForbidden();

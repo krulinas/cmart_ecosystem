@@ -133,7 +133,7 @@ class VendorPrivateItemsAccessTest extends TestCase
     public function test_vendor_with_pending_booking_can_create_and_list_private_item(): void
     {
         $vendor = $this->createCommunityVendor();
-        $this->createBookingFor($vendor, 'Pending_Staff');
+        $this->createBookingFor($vendor, 'Pending_Organizer');
         $this->assertVendorCanCreateAndListItem($vendor, 'pending-booking');
     }
 

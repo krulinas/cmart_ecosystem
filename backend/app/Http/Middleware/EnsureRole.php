@@ -13,14 +13,10 @@ class EnsureRole
         $user = $request->user();
 
         if (!$user || !ManagementRole::userHasAnyRole($user->role, $roles)) {
-            $managerRoles = array_merge(
-                ManagementRole::organizerEquivalentRoles(),
-                [ManagementRole::ORGANIZER, ManagementRole::CMART_MANAGEMENT],
-            );
-            $requiresManager = !empty(array_intersect($roles, $managerRoles));
+            $requiresOrganizer = !empty(array_intersect($roles, ManagementRole::organizerEquivalentRoles()));
 
-            $message = $requiresManager && ManagementRole::isStaffRole($user?->role)
-                ? '403 Forbidden: Manager access required.'
+            $message = $requiresOrganizer && !ManagementRole::isOrganizerEquivalent($user?->role)
+                ? '403 Forbidden: Organizer access required.'
                 : '403 Forbidden: The authenticated user does not have permission to access this resource.';
 
             return response()->json(['message' => $message], 403);
