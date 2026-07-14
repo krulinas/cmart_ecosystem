@@ -43,9 +43,10 @@ class StaffOperationsSummaryTest extends TestCase
 
     public function test_organizer_demo_account_can_fetch_operations_summary(): void
     {
-        $organizer = User::where('email', 'organizer@cmart.com')->first();
+        // Canonical seeded organizer demo is admin@cmart.com (legacy manager remapped in PR1).
+        $organizer = User::where('email', 'admin@cmart.com')->first();
         if (!$organizer) {
-            $this->markTestSkipped('Seeded organizer user (organizer@cmart.com) not found. Run database seeders.');
+            $this->markTestSkipped('Seeded organizer user (admin@cmart.com) not found. Run database seeders.');
         }
 
         Sanctum::actingAs($organizer);

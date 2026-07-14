@@ -13,6 +13,7 @@ use App\Models\Space;
 use App\Models\User;
 use App\Services\BookingAllocationLifecycleService;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\CleansUpTestFixtures;
 use Tests\TestCase;
 
 /**
@@ -20,45 +21,11 @@ use Tests\TestCase;
  */
 class BookingAllocationLifecycleTest extends TestCase
 {
-    private array $createdUserIds = [];
-    private array $createdEventIds = [];
-    private array $createdSiteIds = [];
-    private array $createdDayIds = [];
-    private array $createdBookingIds = [];
-    private array $createdAllocationIds = [];
-    private array $createdInvoiceIds = [];
+    use CleansUpTestFixtures;
 
     protected function tearDown(): void
     {
-        if ($this->createdAllocationIds !== []) {
-            BookingDayAllocation::whereIn('id', $this->createdAllocationIds)->delete();
-        }
-
-        if ($this->createdInvoiceIds !== []) {
-            Invoice::whereIn('id', $this->createdInvoiceIds)->delete();
-        }
-
-        if ($this->createdBookingIds !== []) {
-            BookingAuditLog::whereIn('booking_id', $this->createdBookingIds)->delete();
-            Booking::whereIn('id', $this->createdBookingIds)->delete();
-        }
-
-        if ($this->createdDayIds !== []) {
-            EventDay::whereIn('id', $this->createdDayIds)->delete();
-        }
-
-        if ($this->createdSiteIds !== []) {
-            EventSite::whereIn('id', $this->createdSiteIds)->delete();
-        }
-
-        if ($this->createdEventIds !== []) {
-            CarbootEvent::whereIn('id', $this->createdEventIds)->delete();
-        }
-
-        if ($this->createdUserIds !== []) {
-            User::whereIn('id', $this->createdUserIds)->delete();
-        }
-
+        $this->cleanupTrackedFixtures();
         parent::tearDown();
     }
 
@@ -71,9 +38,8 @@ class BookingAllocationLifecycleTest extends TestCase
             'role' => $role,
             'vendor_status' => $role === 'community' ? 'approved' : 'none',
         ]);
-        $this->createdUserIds[] = $user->id;
 
-        return $user;
+        return $this->trackUser($user);
     }
 
     private function standardSpace(): Space
@@ -97,9 +63,8 @@ class BookingAllocationLifecycleTest extends TestCase
             'max_slots' => 50,
             'day_generation_mode' => 'calendar_days',
         ]);
-        $this->createdEventIds[] = $event->id;
 
-        return $event;
+        return $this->trackEvent($event);
     }
 
     private function seedEventLayout(CarbootEvent $event): array

@@ -4,30 +4,17 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\TracksProvisionedUsers;
 use Tests\TestCase;
 
 class WebAnalyticsSecurityTest extends TestCase
 {
-    private function requireUser(string $email, string $role, string $name): User
+    use TracksProvisionedUsers;
+
+    protected function tearDown(): void
     {
-        $user = User::where('email', $email)->first();
-        if ($user) {
-            if ($user->role !== $role) {
-                $user->role = $role;
-                $user->save();
-            }
-
-            return $user;
-        }
-
-        return User::create([
-            'name' => $name,
-            'email' => $email,
-            'password' => bcrypt('password123'),
-            'phone_number' => '0199999998',
-            'role' => $role,
-            'vendor_status' => 'none',
-        ]);
+        $this->cleanupProvisionedUsers();
+        parent::tearDown();
     }
 
     public function test_unauthenticated_users_cannot_access_admin_analytics_page(): void
@@ -70,7 +57,7 @@ class WebAnalyticsSecurityTest extends TestCase
 
     public function test_cmart_management_users_cannot_access_raw_analytics_proxy_endpoints(): void
     {
-        $venueManager = $this->requireUser('venue@cmart.com', 'cmart_management', 'CMart Venue Manager');
+        $venueManager = $this->provisionUser('venue@cmart.com', 'cmart_management', 'CMart Venue Manager');
 
         Sanctum::actingAs($venueManager);
 
@@ -81,7 +68,7 @@ class WebAnalyticsSecurityTest extends TestCase
     public function test_legacy_admin_account_migrated_to_organizer_can_access_analytics_page(): void
     {
         // admin@cmart.com was the legacy manager demo; PR1 remaps it to organizer.
-        $legacyAdmin = $this->requireUser('admin@cmart.com', 'organizer', 'Carboot Organizer (Ops)');
+        $legacyAdmin = $this->provisionUser('admin@cmart.com', 'organizer', 'Carboot Organizer (Ops)');
 
         Sanctum::actingAs($legacyAdmin);
 
@@ -90,7 +77,7 @@ class WebAnalyticsSecurityTest extends TestCase
 
     public function test_organizer_can_access_analytics_proxy_endpoints(): void
     {
-        $organizer = $this->requireUser('organizer@cmart.com', 'organizer', 'Carboot Organizer');
+        $organizer = $this->provisionUser('organizer@cmart.com', 'organizer', 'Carboot Organizer');
 
         Sanctum::actingAs($organizer);
 

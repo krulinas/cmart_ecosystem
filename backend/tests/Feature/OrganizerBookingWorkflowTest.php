@@ -12,6 +12,7 @@ use App\Models\Invoice;
 use App\Models\Space;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\CleansUpTestFixtures;
 use Tests\TestCase;
 
 /**
@@ -19,51 +20,11 @@ use Tests\TestCase;
  */
 class OrganizerBookingWorkflowTest extends TestCase
 {
-    private array $createdUserIds = [];
-    private array $createdBookingIds = [];
-    private array $createdEventIds = [];
-    private array $createdSiteIds = [];
-    private array $createdDayIds = [];
-    private array $createdAllocationIds = [];
-    private array $createdInvoiceIds = [];
+    use CleansUpTestFixtures;
 
     protected function tearDown(): void
     {
-        if ($this->createdAllocationIds !== []) {
-            BookingDayAllocation::whereIn('id', $this->createdAllocationIds)->delete();
-            $this->createdAllocationIds = [];
-        }
-
-        if ($this->createdInvoiceIds !== []) {
-            Invoice::whereIn('id', $this->createdInvoiceIds)->delete();
-            $this->createdInvoiceIds = [];
-        }
-
-        if ($this->createdBookingIds !== []) {
-            Booking::whereIn('id', $this->createdBookingIds)->delete();
-            $this->createdBookingIds = [];
-        }
-
-        if ($this->createdDayIds !== []) {
-            EventDay::whereIn('id', $this->createdDayIds)->delete();
-            $this->createdDayIds = [];
-        }
-
-        if ($this->createdSiteIds !== []) {
-            EventSite::whereIn('id', $this->createdSiteIds)->delete();
-            $this->createdSiteIds = [];
-        }
-
-        if ($this->createdEventIds !== []) {
-            CarbootEvent::whereIn('id', $this->createdEventIds)->delete();
-            $this->createdEventIds = [];
-        }
-
-        if ($this->createdUserIds !== []) {
-            User::whereIn('id', $this->createdUserIds)->delete();
-            $this->createdUserIds = [];
-        }
-
+        $this->cleanupTrackedFixtures();
         parent::tearDown();
     }
 
@@ -77,9 +38,7 @@ class OrganizerBookingWorkflowTest extends TestCase
             'vendor_status' => 'none',
         ], $overrides));
 
-        $this->createdUserIds[] = $user->id;
-
-        return $user;
+        return $this->trackUser($user);
     }
 
     private function createBooking(string $approvalStatus = 'Pending_Organizer'): Booking
@@ -99,7 +58,7 @@ class OrganizerBookingWorkflowTest extends TestCase
             'description' => 'Direct organizer workflow test',
             'max_slots' => 50,
         ]);
-        $this->createdEventIds[] = $event->id;
+        $this->trackEvent($event);
 
         $booking = Booking::create([
             'user_id' => $vendor->id,
@@ -112,11 +71,12 @@ class OrganizerBookingWorkflowTest extends TestCase
         ]);
         $this->createdBookingIds[] = $booking->id;
 
-        Invoice::create([
+        $invoice = Invoice::create([
             'booking_id' => $booking->id,
             'amount' => 20.00,
             'payment_status' => 'Unpaid',
         ]);
+        $this->createdInvoiceIds[] = $invoice->id;
 
         return $booking;
     }
@@ -171,7 +131,7 @@ class OrganizerBookingWorkflowTest extends TestCase
             'max_slots' => 50,
             'day_generation_mode' => 'calendar_days',
         ]);
-        $this->createdEventIds[] = $event->id;
+        $this->trackEvent($event);
         $siteIds = $this->seedBookableEventSites($event, $space);
 
         Sanctum::actingAs($vendor);
