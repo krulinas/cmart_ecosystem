@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-ink-50" data-testid="booking-page-root">
     <AppNavbar :variant="auth.isVendorUser ? 'vendor' : 'public'" />
     <div class="py-12 px-4">
-    <div class="max-w-2xl mx-auto">
+    <div class="max-w-4xl mx-auto">
       <router-link
         :to="auth.isVendorUser ? '/dashboard' : '/community'"
         class="inline-flex items-center text-sm text-ink-500 hover:text-brand-600 mb-6"
@@ -146,39 +146,18 @@
             />
           </div>
 
-          <div>
-            <label class="ml-label">Number of Tapak (Parking Lots)</label>
-            <p class="text-xs text-ink-500 mb-2">1 Tapak = RM 20.00</p>
-
-            <div class="flex items-center justify-center gap-3 sm:gap-4 w-full max-w-xs mx-auto sm:mx-0">
-              <button
-                type="button"
-                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink-200 bg-white text-xl font-bold text-ink-700 shadow-sm transition hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-40"
-                :disabled="tapakQuantity <= 1"
-                aria-label="Decrease tapak quantity"
-                @click="decreaseTapak"
-              >
-                −
-              </button>
-
-              <div class="flex min-w-[4.5rem] flex-1 items-center justify-center rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5">
-                <span class="text-2xl font-extrabold text-brand-800 tabular-nums">{{ tapakQuantity }}</span>
-              </div>
-
-              <button
-                type="button"
-                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ink-200 bg-white text-xl font-bold text-ink-700 shadow-sm transition hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-40"
-                :disabled="tapakQuantity >= MAX_TAPAK"
-                aria-label="Increase tapak quantity"
-                @click="increaseTapak"
-              >
-                +
-              </button>
-            </div>
-
-            <p class="mt-4 text-lg sm:text-xl font-extrabold text-brand-700 text-center sm:text-left">
-              Total Price: RM {{ totalPrice }}.00
-            </p>
+          <div v-if="selectedEvent && !eventLoadError">
+            <EventSiteSelector
+              v-model:selected-site-ids="selectedSiteIds"
+              :sites="availabilitySites"
+              :operational-days="availabilityDays"
+              :loading="availabilityLoading"
+              :load-error="availabilityError"
+              :readiness-message="availabilityReadiness"
+              :selection-error="siteSelectionError"
+              data-testid="booking-site-selector"
+              @retry="loadSiteAvailability(selectedEvent.id)"
+            />
           </div>
 
           <div class="rounded-xl border border-ink-100 bg-ink-50/50 px-4 py-3">
@@ -191,7 +170,7 @@
               <span>
                 <span class="block text-sm font-semibold text-ink-800">Save these details for my next booking</span>
                 <span class="block text-xs text-ink-500 mt-1">
-                  Only your product and tapak details will be saved. Event date and payment details are never reused.
+                  Only your product details will be saved. Event, site selection, and payment details are never reused.
                 </span>
               </span>
             </label>
@@ -216,15 +195,20 @@ import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
+import EventSiteSelector from '../../components/vendor/EventSiteSelector.vue';
 import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 import { PRODUCT_CATEGORIES } from '../../constants/productCategories';
 import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
+import {
+  getSelectedSites,
+  pruneInvalidSelections,
+  selectionValidationMessage,
+} from '../../utils/eventSiteSelection';
 
 const EVENT_UNAVAILABLE_MESSAGE = 'This event is no longer available for booking. Please choose another event.';
-
-const TAPAK_UNIT_PRICE = 20;
-const MAX_TAPAK = 10;
+const SITE_CONFLICT_MESSAGE =
+  'One or more selected sites are no longer available. The latest layout has been refreshed.';
 
 const toast = useToast();
 const auth = useAuthStore();
@@ -237,7 +221,6 @@ const bookingForm = reactive({
 });
 
 const userName = ref(auth.user?.name || '');
-const tapakQuantity = ref(1);
 const submitting = ref(false);
 const loadingEvents = ref(true);
 const bookableEvents = ref([]);
@@ -248,6 +231,15 @@ const savedPreferenceLoaded = ref(false);
 const saveForNextBooking = ref(false);
 const clearingPreference = ref(false);
 
+const availabilityLoading = ref(false);
+const availabilityError = ref('');
+const availabilityReadiness = ref('');
+const availabilityDays = ref([]);
+const availabilitySites = ref([]);
+const selectedSiteIds = ref([]);
+const siteSelectionError = ref('');
+let availabilityRequestToken = 0;
+
 const routeEventId = computed(() => {
   const raw = route.query.event_id;
   if (!raw) return null;
@@ -255,9 +247,15 @@ const routeEventId = computed(() => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 });
 
-const totalPrice = computed(() => tapakQuantity.value * TAPAK_UNIT_PRICE);
+const selectedSites = computed(() => getSelectedSites(availabilitySites.value, selectedSiteIds.value));
 
-const canSubmit = computed(() => Boolean(selectedEvent.value) && !eventLoadError.value);
+const canSubmit = computed(() => {
+  if (!selectedEvent.value || eventLoadError.value) return false;
+  if (availabilityLoading.value || availabilityError.value) return false;
+  if (availabilityReadiness.value) return false;
+  if (!selectedSiteIds.value.length) return false;
+  return !selectionValidationMessage(selectedSites.value);
+});
 
 const loadBookableEvents = async () => {
   const { data } = await api.get('/events');
@@ -265,10 +263,67 @@ const loadBookableEvents = async () => {
     .map((ev) => mapApiEventToCard(ev, DEFAULT_EVENT_LOCATION));
 };
 
+const resetSiteSelection = () => {
+  selectedSiteIds.value = [];
+  availabilitySites.value = [];
+  availabilityDays.value = [];
+  availabilityError.value = '';
+  availabilityReadiness.value = '';
+  siteSelectionError.value = '';
+};
+
+const loadSiteAvailability = async (eventId, { preserveSelection = false } = {}) => {
+  if (!eventId) {
+    resetSiteSelection();
+    return;
+  }
+
+  const requestToken = ++availabilityRequestToken;
+  availabilityLoading.value = true;
+  availabilityError.value = '';
+  availabilityReadiness.value = '';
+  siteSelectionError.value = '';
+  if (!preserveSelection) {
+    selectedSiteIds.value = [];
+  }
+
+  try {
+    const { data } = await api.get(`/vendor/events/${eventId}/site-availability`);
+    if (requestToken !== availabilityRequestToken) return;
+
+    availabilitySites.value = Array.isArray(data.sites) ? data.sites : [];
+    availabilityDays.value = Array.isArray(data.operational_days) ? data.operational_days : [];
+    availabilityReadiness.value = data.readiness?.message || '';
+  } catch (error) {
+    if (requestToken !== availabilityRequestToken) return;
+
+    if (error.response?.status === 422) {
+      availabilitySites.value = [];
+      availabilityDays.value = [];
+      availabilityReadiness.value =
+        error.response?.data?.message || 'This event is not ready for site selection yet.';
+      return;
+    }
+
+    resetSiteSelection();
+    availabilityError.value =
+      error.response?.data?.message || 'Unable to load site availability. Please try again.';
+  } finally {
+    if (requestToken === availabilityRequestToken) {
+      availabilityLoading.value = false;
+    }
+  }
+};
+
 const applySelectedEvent = (event) => {
   selectedEvent.value = event || null;
   selectedEventId.value = event ? String(event.id) : '';
   eventLoadError.value = '';
+  resetSiteSelection();
+
+  if (event?.id) {
+    loadSiteAvailability(event.id);
+  }
 };
 
 const applySavedPreference = (preference) => {
@@ -280,9 +335,6 @@ const applySavedPreference = (preference) => {
   }
   if (preference.specific_products) {
     bookingForm.product_details = preference.specific_products;
-  }
-  if (preference.tapak_count >= 1) {
-    tapakQuantity.value = Math.min(preference.tapak_count, MAX_TAPAK);
   }
   savedPreferenceLoaded.value = true;
   saveForNextBooking.value = true;
@@ -304,7 +356,6 @@ const saveBookingPreference = async () => {
     name: userName.value.trim() || null,
     product_category: bookingForm.product_category || null,
     specific_products: bookingForm.product_details.trim() || null,
-    tapak_count: tapakQuantity.value,
     remember_enabled: true,
   });
 };
@@ -356,7 +407,7 @@ watch(selectedEventId, (id) => {
 
   if (!id) {
     if (!routeEventId.value) {
-      selectedEvent.value = null;
+      applySelectedEvent(null);
     }
     return;
   }
@@ -384,41 +435,50 @@ onMounted(async () => {
   }
 });
 
-const decreaseTapak = () => {
-  if (tapakQuantity.value > 1) {
-    tapakQuantity.value -= 1;
-  }
-};
-
-const increaseTapak = () => {
-  if (tapakQuantity.value < MAX_TAPAK) {
-    tapakQuantity.value += 1;
-  }
-};
-
 const resetBookingForm = () => {
   bookingForm.product_category = '';
   bookingForm.product_details = '';
-  tapakQuantity.value = 1;
+  resetSiteSelection();
   if (!routeEventId.value) {
     applySelectedEvent(null);
+  } else if (selectedEvent.value?.id) {
+    loadSiteAvailability(selectedEvent.value.id);
   }
+};
+
+const handleBookingConflict = async () => {
+  toast.error(SITE_CONFLICT_MESSAGE);
+  siteSelectionError.value = SITE_CONFLICT_MESSAGE;
+
+  if (!selectedEvent.value?.id) return;
+
+  const previousSelection = [...selectedSiteIds.value];
+  await loadSiteAvailability(selectedEvent.value.id, { preserveSelection: true });
+  selectedSiteIds.value = pruneInvalidSelections(previousSelection, availabilitySites.value);
 };
 
 const submitBooking = async () => {
   if (!canSubmit.value || !selectedEvent.value) {
-    toast.error('Please select a valid event before submitting.');
+    toast.error('Please select a valid event and at least one physical site before submitting.');
+    return;
+  }
+
+  const validationMessage = selectionValidationMessage(selectedSites.value);
+  if (validationMessage) {
+    siteSelectionError.value = validationMessage;
+    toast.error(validationMessage);
     return;
   }
 
   submitting.value = true;
+  siteSelectionError.value = '';
+
   try {
     const { data } = await api.post('/bookings', {
       event_id: selectedEvent.value.id,
+      event_site_ids: selectedSiteIds.value,
       product_category: bookingForm.product_category,
       product_details: bookingForm.product_details,
-      tapak_quantity: tapakQuantity.value,
-      total_price: totalPrice.value,
     });
     toast.success(data.message || '201 Created: Booking submitted successfully.');
 
@@ -435,7 +495,22 @@ const submitBooking = async () => {
     await auth.fetchMe();
     router.push('/dashboard');
   } catch (e) {
-    console.error('500 Internal Server Error: Unable to communicate with the API.', e);
+    console.error('Booking submission failed:', e);
+
+    if (e.response?.status === 409) {
+      await handleBookingConflict();
+      return;
+    }
+
+    if (e.response?.status === 422) {
+      const message = e.response?.data?.message || 'Unable to submit booking.';
+      siteSelectionError.value =
+        e.response?.data?.errors?.event_site_ids?.[0] ||
+        (e.response?.data?.error?.startsWith?.('no_active') ? message : siteSelectionError.value || message);
+      toast.error(message);
+      return;
+    }
+
     toast.error(e.response?.data?.message || '500 Internal Server Error: Unable to communicate with the API.');
   } finally {
     submitting.value = false;

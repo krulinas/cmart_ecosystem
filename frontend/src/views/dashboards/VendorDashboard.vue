@@ -524,11 +524,11 @@ const fetchVendorInsights = async () => {
     vendorAnalytics.value = {
       ...structuredClone(DEFAULT_ANALYTICS),
       ...data,
-      summary: { ...DEFAULT_ANALYTICS.summary, ...(data.summary || {}) },
-      booth: { ...DEFAULT_ANALYTICS.booth, ...(data.booth || {}) },
-      trends: { ...DEFAULT_ANALYTICS.trends, ...(data.trends || {}) },
-      distributions: { ...DEFAULT_ANALYTICS.distributions, ...(data.distributions || {}) },
-      latest: { ...DEFAULT_ANALYTICS.latest, ...(data.latest || {}) },
+      summary: { ...DEFAULT_ANALYTICS.summary, ...data.summary },
+      booth: { ...DEFAULT_ANALYTICS.booth, ...data.booth },
+      trends: { ...DEFAULT_ANALYTICS.trends, ...data.trends },
+      distributions: { ...DEFAULT_ANALYTICS.distributions, ...data.distributions },
+      latest: { ...DEFAULT_ANALYTICS.latest, ...data.latest },
       recent_activity: Array.isArray(data.recent_activity) ? data.recent_activity : [],
     };
   } catch (e) {

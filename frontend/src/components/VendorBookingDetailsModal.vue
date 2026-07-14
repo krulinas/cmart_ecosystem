@@ -88,6 +88,36 @@
                 </div>
               </dl>
 
+              <section
+                v-if="siteSummary"
+                class="rounded-2xl border border-brand-100 bg-brand-50/40 p-5"
+                data-testid="vendor-booking-site-selection"
+              >
+                <h3 class="font-bold text-brand-900">Physical Site Selection</h3>
+                <dl class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div class="rounded-xl border border-brand-100 bg-white p-4 sm:col-span-2">
+                    <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Assigned Sites</dt>
+                    <dd class="mt-1 text-lg font-extrabold text-ink-900">{{ siteSummary.labels }}</dd>
+                  </div>
+                  <div class="rounded-xl border border-brand-100 bg-white p-4">
+                    <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Site Count</dt>
+                    <dd class="mt-1 font-semibold text-ink-900">{{ siteSummary.siteCount }}</dd>
+                  </div>
+                  <div class="rounded-xl border border-brand-100 bg-white p-4">
+                    <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Allocation Status</dt>
+                    <dd class="mt-1 font-semibold text-ink-900">{{ siteSummary.allocationStatus }}</dd>
+                  </div>
+                  <div v-if="siteSummary.spaceName" class="rounded-xl border border-brand-100 bg-white p-4">
+                    <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Space Type</dt>
+                    <dd class="mt-1 font-semibold text-ink-900">{{ siteSummary.spaceName }}</dd>
+                  </div>
+                  <div v-if="siteSummary.days" class="rounded-xl border border-brand-100 bg-white p-4 sm:col-span-2">
+                    <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Event Days</dt>
+                    <dd class="mt-1 font-semibold text-ink-900">{{ siteSummary.days }}</dd>
+                  </div>
+                </dl>
+              </section>
+
               <section v-if="booking.approval_status === 'Approved'" class="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-5">
                 <h3 class="font-bold text-emerald-900">Booth Assignment &amp; QR Pass</h3>
                 <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -318,6 +348,7 @@ import {
   statusBadgeClass,
   statusLabel,
   stepClass,
+  siteSelectionSummary,
 } from '../utils/bookingDisplay';
 
 const props = defineProps({
@@ -344,6 +375,8 @@ const editForm = reactive({
 const titleId = computed(() =>
   props.bookingId ? `vendor-booking-modal-${props.bookingId}` : 'vendor-booking-modal',
 );
+
+const siteSummary = computed(() => siteSelectionSummary(booking.value));
 
 const close = () => emit('update:modelValue', false);
 

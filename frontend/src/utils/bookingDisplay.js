@@ -87,7 +87,44 @@ export const matchesStatusFilter = (booking, filterId) => {
   return true;
 };
 
+export const allocationStatusLabel = (status) =>
+  ({
+    reserved: 'Reserved',
+    confirmed: 'Confirmed',
+    released: 'Released',
+    cancelled: 'Cancelled',
+    mixed: 'Mixed',
+  }[status] || status);
+
+export const siteLabelsForBooking = (booking) => {
+  const sites = booking?.site_selection?.sites;
+  if (Array.isArray(sites) && sites.length) {
+    return sites.map((site) => site.label).join(', ');
+  }
+  return null;
+};
+
+export const siteSelectionSummary = (booking) => {
+  const selection = booking?.site_selection;
+  if (!selection) return null;
+
+  return {
+    labels: Array.isArray(selection.sites)
+      ? selection.sites.map((site) => site.label).join(', ')
+      : '—',
+    siteCount: selection.site_count ?? selection.sites?.length ?? 0,
+    spaceName: selection.sites?.[0]?.space_name || null,
+    allocationStatus: allocationStatusLabel(selection.allocation_status),
+    days: Array.isArray(selection.days)
+      ? selection.days.map((day) => day.operational_date).join(', ')
+      : null,
+  };
+};
+
 export const boothLabelForBooking = (booking) => {
+  const labels = siteLabelsForBooking(booking);
+  if (labels) return labels;
+
   if (!booking || booking.approval_status !== 'Approved') return '—';
   const prefix = String.fromCharCode(65 + (booking.id % 3));
   return `${prefix}-${String(booking.id).padStart(2, '0')}`;

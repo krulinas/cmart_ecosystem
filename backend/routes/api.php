@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\StaffOperationsController;
 use App\Http\Controllers\Api\ManagementReportsController;
 use App\Http\Controllers\Api\EventSiteController;
 use App\Http\Controllers\Api\EventDayController;
+use App\Http\Controllers\Api\VendorEventSiteAvailabilityController;
 use App\Support\ManagementCapability;
 use App\Support\ManagementRole;
 
@@ -103,6 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/vendor/bookings/{booking}/submit-payment', [BookingController::class, 'vendorSubmitPayment']);
         Route::post('/vendor/bookings/{booking}/demo-payment', [BookingController::class, 'vendorDemoPayment']);
         Route::post('/bookings', [BookingController::class, 'store']);
+        Route::get('/vendor/events/{carboot_event}/site-availability', [VendorEventSiteAvailabilityController::class, 'show']);
     });
 
     Route::middleware('role:' . ManagementRole::routeRoleList(ManagementRole::carbootOperationalRoles()))->group(function () {

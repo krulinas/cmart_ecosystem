@@ -60,7 +60,7 @@
                 <tr class="text-left text-[11px] uppercase tracking-wider text-ink-500">
                   <th class="px-4 py-3 font-semibold">Booking</th>
                   <th class="px-4 py-3 font-semibold">Vendor product</th>
-                  <th class="px-4 py-3 font-semibold">Space</th>
+                  <th class="px-4 py-3 font-semibold">Space / Sites</th>
                   <th class="px-4 py-3 font-semibold">Event date</th>
                   <th class="px-4 py-3 font-semibold">Status</th>
                   <th class="px-4 py-3 text-right font-semibold">Actions</th>
@@ -84,7 +84,12 @@
                     <div class="font-medium text-ink-800">{{ b.product_category || 'Others' }}</div>
                     <div class="max-w-xs truncate text-xs text-ink-500">{{ b.product_details || '—' }}</div>
                   </td>
-                  <td class="px-4 py-3.5 text-ink-700">{{ b.space?.space_size || b.space_id }}</td>
+                  <td class="px-4 py-3.5 text-ink-700">
+                    <div>{{ physicalSiteSummary(b) }}</div>
+                    <div v-if="b.site_selection?.allocation_status" class="text-xs text-ink-500">
+                      {{ allocationStatusLabel(b.site_selection.allocation_status) }}
+                    </div>
+                  </td>
                   <td class="px-4 py-3.5 whitespace-nowrap text-ink-700">{{ formatBookingDate(b.booking_date) }}</td>
                   <td class="px-4 py-3.5">
                     <ManagementStatusChip :status="b.approval_status" data-testid="organizer-booking-status" />
@@ -224,7 +229,7 @@
                 <th class="px-4 py-3 font-semibold">Vendor</th>
                 <th class="px-4 py-3 font-semibold">Category</th>
                 <th class="px-4 py-3 font-semibold">Details</th>
-                <th class="px-4 py-3 font-semibold">Space</th>
+                <th class="px-4 py-3 font-semibold">Space / Sites</th>
                 <th class="px-4 py-3 font-semibold">Date</th>
                 <th class="px-4 py-3 font-semibold">Status</th>
                 <th class="px-4 py-3 font-semibold">Payment</th>
@@ -246,7 +251,12 @@
                 <td class="px-4 py-3.5 text-ink-800">{{ vendorLabel(b) }}</td>
                 <td class="px-4 py-3.5 text-ink-700">{{ b.product_category || 'Others' }}</td>
                 <td class="px-4 py-3.5 max-w-[200px] truncate text-ink-600">{{ b.product_details || '—' }}</td>
-                <td class="px-4 py-3.5 text-ink-700">{{ b.space?.space_size || b.space_id }}</td>
+                <td class="px-4 py-3.5 text-ink-700">
+                  <div>{{ physicalSiteSummary(b) }}</div>
+                  <div v-if="b.site_selection?.allocation_status" class="text-xs text-ink-500">
+                    {{ allocationStatusLabel(b.site_selection.allocation_status) }}
+                  </div>
+                </td>
                 <td class="px-4 py-3.5 whitespace-nowrap text-ink-700">{{ formatBookingDate(b.booking_date) }}</td>
                 <td class="px-4 py-3.5">
                   <ManagementStatusChip :status="b.approval_status" data-testid="organizer-booking-status" />
@@ -397,7 +407,7 @@ import ManagementKpiCard from '../../../components/management/ManagementKpiCard.
 import ManagementEmptyState from '../../../components/management/ManagementEmptyState.vue';
 import ManagementStatusChip from '../../../components/management/ManagementStatusChip.vue';
 import { useManagementAccess } from '../../../composables/useManagementAccess';
-import { formatBookingDate, isTerminalBookingStatus, statusLabel } from '../../../utils/bookingDisplay';
+import { formatBookingDate, isTerminalBookingStatus, siteLabelsForBooking, allocationStatusLabel, statusLabel } from '../../../utils/bookingDisplay';
 
 const emit = defineEmits(['refreshed']);
 
@@ -456,6 +466,12 @@ const vendorLabel = (booking) =>
   || booking.user?.businessProfile?.business_name
   || booking.user?.name
   || '—';
+
+const physicalSiteSummary = (booking) => {
+  const labels = siteLabelsForBooking(booking);
+  if (labels) return labels;
+  return booking.space?.space_size || booking.space_id || '—';
+};
 
 const paymentStatusBadgeClass = (status) => {
   if (status === 'Paid') return 'bg-emerald-50 text-emerald-800';

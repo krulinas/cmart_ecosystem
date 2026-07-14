@@ -162,10 +162,42 @@ async function fillInputValue(driver, testId, value) {
   );
 }
 
+async function selectFirstAvailableSite(driver) {
+  await waitForTestId(driver, 'event-site-selector', 20000);
+  await waitForTestIdHidden(driver, 'event-site-selector-loading', 20000);
+
+  const readinessElements = await driver.findElements(
+    By.css('[data-testid="event-site-readiness-message"]'),
+  );
+  if (readinessElements.length && (await readinessElements[0].isDisplayed())) {
+    const message = (await readinessElements[0].getText()).trim();
+    throw new Error(
+      `Event is not ready for E2E site selection: ${message}. Configure EventSites and active EventDays for a bookable event.`,
+    );
+  }
+
+  const selected = await driver.executeScript(`
+    const tiles = [...document.querySelectorAll('[data-testid^="event-site-tile-"]')];
+    const target = tiles.find((button) => !button.disabled && /available/i.test(button.getAttribute('aria-label') || ''));
+    if (!target) {
+      return { ok: false, reason: 'No available site tile found for E2E booking.' };
+    }
+    target.click();
+    return { ok: true, label: target.getAttribute('data-testid') };
+  `);
+
+  if (!selected?.ok) {
+    throw new Error(selected?.reason || 'Unable to select an available site for E2E booking.');
+  }
+
+  await waitForTestId(driver, 'event-site-selection-summary', 10000);
+}
+
 async function fillBookingForm(driver, detailsMarker) {
   await fillInputValue(driver, 'booking-business-name', env.bookingBusinessName);
   await setSelectValue(driver, 'booking-category', resolveCategory(env.bookingCategory));
   await fillInputValue(driver, 'booking-details', detailsMarker);
+  await selectFirstAvailableSite(driver);
 
   await driver.wait(
     async () => {
@@ -173,7 +205,7 @@ async function fillBookingForm(driver, detailsMarker) {
       return submitButton.isEnabled();
     },
     10000,
-    'Booking submit stayed disabled. Confirm the event is selected and required fields are filled.',
+    'Booking submit stayed disabled. Confirm the event has available sites and required fields are filled.',
   );
 }
 
