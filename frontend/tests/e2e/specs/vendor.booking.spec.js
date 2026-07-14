@@ -312,7 +312,7 @@ describe('Vendor booking', function () {
     let outcome;
     try {
       outcome = await waitForSubmitOutcome(driver, toastsBeforeSubmit);
-    } catch (error) {
+    } catch {
       await driver.get(`${env.baseUrl}/dashboard`);
       await waitForTestId(driver, 'vendor-dashboard-root');
       await assertBookingVisible(driver, detailsMarker);

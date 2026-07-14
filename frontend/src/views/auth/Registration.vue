@@ -146,7 +146,7 @@
             />
           </div>
 
-          <div v-if="selectedEvent && !eventLoadError">
+          <div v-if="selectedEvent && !eventLoadError" data-testid="booking-site-selector">
             <EventSiteSelector
               v-model:selected-site-ids="selectedSiteIds"
               :sites="availabilitySites"
@@ -155,7 +155,6 @@
               :load-error="availabilityError"
               :readiness-message="availabilityReadiness"
               :selection-error="siteSelectionError"
-              data-testid="booking-site-selector"
               @retry="loadSiteAvailability(selectedEvent.id)"
             />
           </div>
@@ -189,6 +188,12 @@
     </div>
   </div>
 </template>
+
+<script>
+export default {
+  name: 'VendorBookingRegistration',
+};
+</script>
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue';
@@ -448,13 +453,18 @@ const resetBookingForm = () => {
 
 const handleBookingConflict = async () => {
   toast.error(SITE_CONFLICT_MESSAGE);
-  siteSelectionError.value = SITE_CONFLICT_MESSAGE;
 
-  if (!selectedEvent.value?.id) return;
+  if (!selectedEvent.value?.id) {
+    siteSelectionError.value = SITE_CONFLICT_MESSAGE;
+    return;
+  }
 
   const previousSelection = [...selectedSiteIds.value];
   await loadSiteAvailability(selectedEvent.value.id, { preserveSelection: true });
   selectedSiteIds.value = pruneInvalidSelections(previousSelection, availabilitySites.value);
+  // Set after refresh: loadSiteAvailability() resets siteSelectionError, so the
+  // conflict notice must be applied once the latest layout has loaded.
+  siteSelectionError.value = SITE_CONFLICT_MESSAGE;
 };
 
 const submitBooking = async () => {

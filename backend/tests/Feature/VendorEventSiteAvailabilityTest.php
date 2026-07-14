@@ -24,14 +24,14 @@ class VendorEventSiteAvailabilityTest extends TestCase
         parent::tearDown();
     }
 
-    private function createUser(string $role = 'community'): User
+    private function createUser(string $role = 'community', ?string $vendorStatus = null): User
     {
         $user = User::create([
             'name' => 'Avail Test ' . $role . ' ' . uniqid(),
             'email' => 'avail-' . $role . '-' . uniqid() . '@example.com',
             'password' => bcrypt('password123'),
             'role' => $role,
-            'vendor_status' => $role === 'community' ? 'approved' : 'none',
+            'vendor_status' => $vendorStatus ?? ($role === 'community' ? 'approved' : 'none'),
         ]);
 
         return $this->trackUser($user);
@@ -128,6 +128,47 @@ class VendorEventSiteAvailabilityTest extends TestCase
         [$event] = $this->seedEventWithLayout(1);
 
         Sanctum::actingAs($manager);
+
+        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+            ->assertForbidden();
+    }
+
+    /**
+     * Canonical rule: booking operations gate on role:community membership only.
+     * EnsureVendorApproved is intentionally dormant during onboarding
+     * (see App\Http\Middleware\EnsureVendorApproved), and
+     * CommunityVendorBookingAccessTest proves a vendor_status=none community user
+     * may submit a booking. Availability must match that exact gate.
+     */
+    public function test_non_approved_community_user_can_load_availability(): void
+    {
+        $vendor = $this->createUser('community', 'none');
+        [$event] = $this->seedEventWithLayout(2);
+
+        Sanctum::actingAs($vendor);
+
+        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+            ->assertOk()
+            ->assertJsonCount(2, 'sites');
+    }
+
+    public function test_organizer_is_blocked_on_vendor_availability_route(): void
+    {
+        $organizer = $this->createUser('organizer');
+        [$event] = $this->seedEventWithLayout(1);
+
+        Sanctum::actingAs($organizer);
+
+        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+            ->assertForbidden();
+    }
+
+    public function test_super_admin_is_blocked_on_vendor_only_availability_route(): void
+    {
+        $superAdmin = $this->createUser('super_admin');
+        [$event] = $this->seedEventWithLayout(1);
+
+        Sanctum::actingAs($superAdmin);
 
         $this->getJson("/api/vendor/events/{$event->id}/site-availability")
             ->assertForbidden();
