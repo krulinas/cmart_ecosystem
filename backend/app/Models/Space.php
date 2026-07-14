@@ -11,7 +11,13 @@ class Space extends Model
 
     protected $fillable = ['space_size', 'price', 'status'];
 
-    public function bookings() {
+    public function bookings()
+    {
         return $this->hasMany(Booking::class);
+    }
+
+    public function eventSites()
+    {
+        return $this->hasMany(EventSite::class);
     }
 }

@@ -250,10 +250,17 @@ async function waitForBookingActionToast(driver, bookingId, statusLabel, timeout
   );
 }
 
-async function waitForApiBookingStatus(driver, bookingId, marker, expectation, timeoutMs = 20000) {
+async function waitForApiBookingStatus(
+  driver,
+  bookingId,
+  marker,
+  expectation,
+  timeoutMs = 20000,
+  { readStatus = readOrganizerBookingStatusViaApi } = {},
+) {
   return driver.wait(
     async () => {
-      const status = await readE2EBookingStatusViaApi(driver, bookingId, marker);
+      const status = await readStatus(driver, bookingId, marker);
       if (status && expectation.attrs.has(status)) {
         return status;
       }
@@ -262,6 +269,18 @@ async function waitForApiBookingStatus(driver, bookingId, marker, expectation, t
     timeoutMs,
     `Booking #${bookingId} did not reach API status ${[...expectation.attrs].join('|')}.`,
   );
+}
+
+/** Poll booking status via API until expectation is met (organizer endpoint by default). */
+export async function waitForBookingStatus(
+  driver,
+  bookingId,
+  marker,
+  expectation,
+  timeoutMs = 20000,
+  options = {},
+) {
+  return waitForApiBookingStatus(driver, bookingId, marker, expectation, timeoutMs, options);
 }
 
 async function reloadOrganizerBookingsPanel(driver, baseUrl, marker) {
@@ -299,7 +318,7 @@ async function captureApproveFailureDiagnostics(driver, bookingId, marker, phase
   return meta;
 }
 
-export async function readE2EBookingStatusViaApi(driver, bookingId, marker) {
+export async function readOrganizerBookingStatusViaApi(driver, bookingId, marker) {
   const apiBase = env.apiBaseUrl;
   return driver.executeScript(
     async (id, markerText, base) => {
@@ -315,8 +334,8 @@ export async function readE2EBookingStatusViaApi(driver, bookingId, marker) {
 
       if (!response.ok) return null;
 
-      const booking = await response.json();
-      const bookingRecord = booking.booking ?? booking;
+      const payload = await response.json();
+      const bookingRecord = payload.booking ?? payload;
       const details = String(bookingRecord.product_details || '').toLowerCase();
 
       if (!details.includes(String(markerText).toLowerCase())) return null;
@@ -326,6 +345,39 @@ export async function readE2EBookingStatusViaApi(driver, bookingId, marker) {
     marker,
     apiBase,
   );
+}
+
+export async function readVendorBookingStatusViaApi(driver, bookingId, marker) {
+  const apiBase = env.apiBaseUrl;
+  return driver.executeScript(
+    async (id, markerText, base) => {
+      const token = localStorage.getItem('carboot_cmart_token');
+      if (!token) return null;
+
+      const response = await fetch(`${base}/vendor/bookings/${id}`, {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) return null;
+
+      const bookingRecord = await response.json();
+      const details = String(bookingRecord.product_details || '').toLowerCase();
+
+      if (!details.includes(String(markerText).toLowerCase())) return null;
+      return String(bookingRecord.approval_status || '');
+    },
+    bookingId,
+    marker,
+    apiBase,
+  );
+}
+
+/** @deprecated Use readOrganizerBookingStatusViaApi or readVendorBookingStatusViaApi */
+export async function readE2EBookingStatusViaApi(driver, bookingId, marker) {
+  return readOrganizerBookingStatusViaApi(driver, bookingId, marker);
 }
 
 export async function applyApproveViaApi(driver, bookingId, marker) {
@@ -709,12 +761,32 @@ export async function applyRejectViaApi(driver, bookingId, marker) {
 export async function resubmitVendorBookingAfterRevision(driver, marker, { bookingId } = {}) {
   assert.ok(bookingId != null, 'resubmitVendorBookingAfterRevision requires a verified booking ID.');
 
-  try {
-    await waitForApiBookingStatus(driver, bookingId, marker, PENDING_ORGANIZER_EXPECTATION, 15000);
-    return { bookingId, statusAttr: 'Pending_Organizer', statusLabel: 'Pending Organizer Review' };
-  } catch {
-    await applyResubmitViaApi(driver, bookingId, marker);
-    await waitForApiBookingStatus(driver, bookingId, marker, PENDING_ORGANIZER_EXPECTATION, 15000);
+  const readStatus = () => readVendorBookingStatusViaApi(driver, bookingId, marker);
+
+  let current = await readStatus();
+  if (current === 'Pending_Organizer') {
     return { bookingId, statusAttr: 'Pending_Organizer', statusLabel: 'Pending Organizer Review' };
   }
+
+  if (current === 'Needs_Revision') {
+    await applyResubmitViaApi(driver, bookingId, marker);
+  } else if (current == null) {
+    // Session may not have loaded yet — attempt resubmit when revision is expected.
+    await applyResubmitViaApi(driver, bookingId, marker);
+  }
+
+  const finalStatus = await waitForBookingStatus(
+    driver,
+    bookingId,
+    marker,
+    PENDING_ORGANIZER_EXPECTATION,
+    20000,
+    { readStatus: readVendorBookingStatusViaApi },
+  );
+
+  return {
+    bookingId,
+    statusAttr: finalStatus,
+    statusLabel: 'Pending Organizer Review',
+  };
 }

@@ -24,6 +24,8 @@ use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\UserBookingPreferenceController;
 use App\Http\Controllers\Api\StaffOperationsController;
 use App\Http\Controllers\Api\ManagementReportsController;
+use App\Http\Controllers\Api\EventSiteController;
+use App\Http\Controllers\Api\EventDayController;
 use App\Support\ManagementCapability;
 use App\Support\ManagementRole;
 
@@ -111,6 +113,24 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/operations-summary', [StaffOperationsController::class, 'operationsSummary']);
             Route::get('/bookings/{booking}/verify', [BookingPassVerificationController::class, 'verify']);
             Route::post('/bookings/{booking}/check-in', [BookingPassVerificationController::class, 'checkIn']);
+
+            // Phase 2A.4 — physical event-site foundation (Organizer only).
+            Route::get('/events/{carboot_event}/sites', [EventSiteController::class, 'index']);
+            Route::post('/events/{carboot_event}/sites', [EventSiteController::class, 'store']);
+            Route::post('/events/{carboot_event}/sites/generate', [EventSiteController::class, 'generate']);
+            Route::get('/event-sites/{event_site}', [EventSiteController::class, 'show']);
+            Route::put('/event-sites/{event_site}', [EventSiteController::class, 'update']);
+            Route::patch('/event-sites/{event_site}', [EventSiteController::class, 'update']);
+            Route::delete('/event-sites/{event_site}', [EventSiteController::class, 'destroy']);
+
+            // Phase 2A.5 — Organizer-defined operational event days.
+            Route::get('/events/{carboot_event}/days', [EventDayController::class, 'index']);
+            Route::post('/events/{carboot_event}/days', [EventDayController::class, 'store']);
+            Route::post('/events/{carboot_event}/days/generate', [EventDayController::class, 'generate']);
+            Route::get('/event-days/{event_day}', [EventDayController::class, 'show']);
+            Route::put('/event-days/{event_day}', [EventDayController::class, 'update']);
+            Route::patch('/event-days/{event_day}', [EventDayController::class, 'update']);
+            Route::delete('/event-days/{event_day}', [EventDayController::class, 'destroy']);
         });
 
         // Deprecated PR2 compatibility — remove after external clients migrate.

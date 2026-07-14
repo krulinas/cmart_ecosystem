@@ -3,16 +3,22 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Exceptions\AllocationValidationException;
+use App\Exceptions\DomainConflictException;
 use App\Models\Booking;
 use App\Models\CarbootEvent;
+use App\Models\EventSite;
 use App\Models\Invoice;
 use App\Models\Space;
 use App\Models\User;
 use App\Support\ManagementRole;
+use App\Services\BookingAllocationLifecycleService;
+use App\Services\BookingAllocationReservationService;
 use App\Services\BookingAuditLogger;
 use App\Services\VendorBookingPresenter;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class BookingController extends Controller
@@ -34,12 +40,14 @@ class BookingController extends Controller
     /**
      * Submit a new vendor booking. Initial status is Pending_Organizer.
      */
-    public function store(Request $request)
-    {
+    public function store(
+        Request $request,
+        BookingAllocationReservationService $reservationService,
+    ) {
         $validated = $request->validate([
             'event_id' => 'required|integer|exists:carboot_events,id',
-            'tapak_quantity' => 'required|integer|min:1',
-            'total_price' => 'required|numeric|min:20',
+            'event_site_ids' => 'required|array|min:1',
+            'event_site_ids.*' => 'required|integer|distinct',
             'product_category' => [
                 'required',
                 'string',
@@ -55,45 +63,94 @@ class BookingController extends Controller
             'product_details' => 'required|string|max:5000',
         ]);
 
-        $event = CarbootEvent::query()->find($validated['event_id']);
-        if (!$event || !$this->isEventBookable($event)) {
+        try {
+            [$booking, $invoice] = DB::transaction(function () use ($request, $validated, $reservationService) {
+                $event = CarbootEvent::query()
+                    ->whereKey($validated['event_id'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if (!$this->isEventBookable($event)) {
+                    throw new AllocationValidationException(
+                        'This event is no longer available for booking. Please choose another event.',
+                        'event_not_bookable',
+                    );
+                }
+
+                $placeholderSpaceId = EventSite::query()
+                    ->whereIn('id', $validated['event_site_ids'])
+                    ->orderBy('id')
+                    ->value('space_id');
+
+                if (!$placeholderSpaceId) {
+                    throw new AllocationValidationException(
+                        'One or more event sites do not exist.',
+                        'missing_event_site',
+                    );
+                }
+
+                $booking = Booking::create([
+                    'user_id' => $request->user()->id,
+                    'space_id' => $placeholderSpaceId,
+                    'carboot_event_id' => $event->id,
+                    'booking_date' => $event->starts_at->toDateString(),
+                    'product_category' => $validated['product_category'],
+                    'product_details' => $validated['product_details'],
+                    'approval_status' => self::PENDING_ORGANIZER,
+                    'revision_comment' => null,
+                    'whatsapp_link' => 'https://chat.whatsapp.com/CMART_OFFICIAL_GROUP_INVITE',
+                ]);
+
+                $reservation = $reservationService->reserveForBookingInExistingTransaction(
+                    $booking,
+                    $validated['event_site_ids'],
+                );
+
+                $firstOperationalDay = $reservation->activeEventDays
+                    ->sortBy('operational_date')
+                    ->first();
+
+                $booking->update([
+                    'space_id' => $reservation->selectedSites->first()->space_id,
+                    'booking_date' => $firstOperationalDay->operational_date,
+                ]);
+
+                $invoice = Invoice::create([
+                    'booking_id' => $booking->id,
+                    'amount' => $reservation->amount,
+                    'payment_status' => 'Unpaid',
+                ]);
+
+                BookingAuditLogger::log(
+                    $booking,
+                    $request->user(),
+                    'New',
+                    self::PENDING_ORGANIZER,
+                    null,
+                    $request,
+                    'vendor_submitted_booking',
+                );
+
+                return [
+                    $booking->fresh(['space', 'invoice', 'carbootEvent', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']),
+                    $invoice,
+                ];
+            });
+        } catch (AllocationValidationException $exception) {
             return response()->json([
-                'message' => 'This event is no longer available for booking. Please choose another event.',
+                'message' => $exception->getMessage(),
+                'error' => $exception->error,
             ], 422);
-        }
-
-        $expectedTotal = $validated['tapak_quantity'] * 20;
-        if ((float) $validated['total_price'] !== (float) $expectedTotal) {
+        } catch (DomainConflictException $exception) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Total price must equal tapak quantity × RM 20.',
-            ], 422);
+                'message' => $exception->getMessage(),
+                'error' => $exception->error,
+            ], 409);
         }
-
-        $space = Space::query()
-            ->where('space_size', 'Standard (1 Parking Lot)')
-            ->firstOrFail();
-
-        $booking = Booking::create([
-            'user_id' => $request->user()->id,
-            'space_id' => $space->id,
-            'carboot_event_id' => $event->id,
-            'booking_date' => $event->starts_at->toDateString(),
-            'product_category' => $validated['product_category'],
-            'product_details' => $validated['product_details'],
-            'approval_status' => self::PENDING_ORGANIZER,
-            'revision_comment' => null,
-            'whatsapp_link' => 'https://chat.whatsapp.com/CMART_OFFICIAL_GROUP_INVITE',
-        ]);
-
-        $invoice = Invoice::create([
-            'booking_id' => $booking->id,
-            'amount' => $validated['total_price'],
-            'payment_status' => 'Unpaid',
-        ]);
 
         return response()->json([
             'message' => '201 Created: Booking submitted successfully. Awaiting Organizer review.',
-            'booking' => $booking,
+            'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
             'invoice' => $invoice,
         ], 201);
     }
@@ -101,8 +158,11 @@ class BookingController extends Controller
     /**
      * Organizer review status update. Direct Pending_Organizer transitions only.
      */
-    public function update(Request $request, Booking $booking)
-    {
+    public function update(
+        Request $request,
+        Booking $booking,
+        BookingAllocationLifecycleService $allocationLifecycle,
+    ) {
         if (!ManagementRole::isOrganizerEquivalent($request->user()->role)) {
             return response()->json([
                 'message' => '403 Forbidden: Organizer access required for booking review.',
@@ -142,31 +202,58 @@ class BookingController extends Controller
             ], 422);
         }
 
-        $booking->update([
-            'approval_status' => $target,
-            'revision_comment' => $target === 'Needs_Revision'
-                ? $validated['revision_comment']
-                : null,
-        ]);
+        try {
+            DB::transaction(function () use (
+                $booking,
+                $user,
+                $current,
+                $target,
+                $validated,
+                $request,
+                $allocationLifecycle,
+            ) {
+                $booking->update([
+                    'approval_status' => $target,
+                    'revision_comment' => $target === 'Needs_Revision'
+                        ? $validated['revision_comment']
+                        : null,
+                ]);
 
-        BookingAuditLogger::log(
-            $booking,
-            $user,
-            $current,
-            $target,
-            $target === 'Needs_Revision' ? ($validated['revision_comment'] ?? null) : null,
-            $request,
-            match ($target) {
-                'Approved' => 'organizer_approved_booking',
-                'Rejected' => 'organizer_rejected_booking',
-                'Needs_Revision' => 'organizer_requested_revision',
-                default => 'status_change',
-            },
-        );
+                if ($target === 'Rejected') {
+                    $allocationLifecycle->releaseForBooking(
+                        $booking,
+                        $user,
+                        BookingAllocationLifecycleService::REASON_BOOKING_REJECTED,
+                    );
+                }
+
+                BookingAuditLogger::log(
+                    $booking,
+                    $user,
+                    $current,
+                    $target,
+                    $target === 'Needs_Revision' ? ($validated['revision_comment'] ?? null) : null,
+                    $request,
+                    match ($target) {
+                        'Approved' => 'organizer_approved_booking',
+                        'Rejected' => 'organizer_rejected_booking',
+                        'Needs_Revision' => 'organizer_requested_revision',
+                        default => 'status_change',
+                    },
+                );
+            });
+        } catch (DomainConflictException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'error' => $exception->error,
+            ], 409);
+        }
+
+        $booking->load(['user', 'space', 'invoice', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
         return response()->json([
             'message' => '200 OK: Booking status updated to ' . $target . '.',
-            'booking' => $booking->fresh(['user', 'space', 'invoice']),
+            'booking' => VendorBookingPresenter::presentForOrganizer($booking),
         ]);
     }
 
@@ -252,6 +339,13 @@ class BookingController extends Controller
             ], 422);
         }
 
+        if ($request->has('event_site_ids')) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Event site selection cannot be changed during revision resubmission.',
+                'error' => 'event_site_ids_not_allowed_on_resubmit',
+            ], 422);
+        }
+
         $validated = $request->validate([
             'space_id' => 'sometimes|required|exists:spaces,id',
             'booking_date' => 'sometimes|required|date',
@@ -262,9 +356,11 @@ class BookingController extends Controller
             'revision_comment' => null,
         ]));
 
+        $booking->load(['space', 'invoice', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
+
         return response()->json([
             'message' => '200 OK: Booking resubmitted successfully. Awaiting Organizer review.',
-            'booking' => $booking->fresh(['space', 'invoice']),
+            'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
         ]);
     }
 
@@ -548,8 +644,11 @@ class BookingController extends Controller
         ]);
     }
 
-    public function vendorCancel(Request $request, Booking $booking)
-    {
+    public function vendorCancel(
+        Request $request,
+        Booking $booking,
+        BookingAllocationLifecycleService $allocationLifecycle,
+    ) {
         if ($denied = $this->authorizeVendorBooking($request, $booking)) {
             return $denied;
         }
@@ -563,29 +662,50 @@ class BookingController extends Controller
         }
 
         $previous = $booking->approval_status;
-        $booking->update([
-            'approval_status' => 'Cancelled',
-            'revision_comment' => null,
-        ]);
 
-        BookingAuditLogger::log(
-            $booking,
-            $request->user(),
-            $previous,
-            'Cancelled',
-            'Withdrawn by vendor.',
-            $request,
-            'vendor_cancel',
-        );
+        try {
+            DB::transaction(function () use ($booking, $request, $previous, $allocationLifecycle) {
+                $booking->update([
+                    'approval_status' => 'Cancelled',
+                    'revision_comment' => null,
+                ]);
+
+                $allocationLifecycle->releaseForBooking(
+                    $booking,
+                    $request->user(),
+                    BookingAllocationLifecycleService::REASON_BOOKING_CANCELLED,
+                );
+
+                BookingAuditLogger::log(
+                    $booking,
+                    $request->user(),
+                    $previous,
+                    'Cancelled',
+                    'Withdrawn by vendor.',
+                    $request,
+                    'vendor_cancel',
+                );
+            });
+        } catch (DomainConflictException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'error' => $exception->error,
+            ], 409);
+        }
+
+        $booking->load(['space', 'invoice', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
         return response()->json([
             'message' => '200 OK: Booking withdrawn successfully.',
-            'booking' => $booking->fresh(['space', 'invoice']),
+            'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
         ]);
     }
 
-    public function withdraw(Request $request, Booking $booking)
-    {
+    public function withdraw(
+        Request $request,
+        Booking $booking,
+        BookingAllocationLifecycleService $allocationLifecycle,
+    ) {
         if ($denied = $this->authorizeVendorBooking($request, $booking)) {
             return $denied;
         }
@@ -615,27 +735,42 @@ class BookingController extends Controller
         $previous = $booking->approval_status;
         $reason = trim((string) ($validated['withdrawal_reason'] ?? ''));
 
-        $booking->update([
-            'approval_status' => 'Withdrawn',
-            'withdrawn_at' => now(),
-            'withdrawal_reason' => $reason !== '' ? $reason : null,
-            'withdrawn_by' => $request->user()->id,
-            'revision_comment' => null,
-            'vendor_request_type' => null,
-            'vendor_request_note' => null,
-        ]);
+        try {
+            DB::transaction(function () use ($booking, $request, $previous, $reason, $allocationLifecycle) {
+                $booking->update([
+                    'approval_status' => 'Withdrawn',
+                    'withdrawn_at' => now(),
+                    'withdrawal_reason' => $reason !== '' ? $reason : null,
+                    'withdrawn_by' => $request->user()->id,
+                    'revision_comment' => null,
+                    'vendor_request_type' => null,
+                    'vendor_request_note' => null,
+                ]);
 
-        BookingAuditLogger::log(
-            $booking,
-            $request->user(),
-            $previous,
-            'Withdrawn',
-            $reason !== '' ? $reason : 'Withdrawn by vendor.',
-            $request,
-            'vendor_withdraw',
-        );
+                $allocationLifecycle->releaseForBooking(
+                    $booking,
+                    $request->user(),
+                    BookingAllocationLifecycleService::REASON_BOOKING_WITHDRAWN,
+                );
 
-        $booking->load(['space', 'invoice', 'auditLogs.actor']);
+                BookingAuditLogger::log(
+                    $booking,
+                    $request->user(),
+                    $previous,
+                    'Withdrawn',
+                    $reason !== '' ? $reason : 'Withdrawn by vendor.',
+                    $request,
+                    'vendor_withdraw',
+                );
+            });
+        } catch (DomainConflictException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'error' => $exception->error,
+            ], 409);
+        }
+
+        $booking->load(['space', 'invoice', 'auditLogs.actor', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
         return response()->json([
             'message' => 'Booking withdrawn successfully.',
@@ -772,8 +907,11 @@ class BookingController extends Controller
         ]);
     }
 
-    public function vendorDemoPayment(Request $request, Booking $booking)
-    {
+    public function vendorDemoPayment(
+        Request $request,
+        Booking $booking,
+        BookingAllocationLifecycleService $allocationLifecycle,
+    ) {
         if ($denied = $this->authorizeVendorBooking($request, $booking)) {
             return $denied;
         }
@@ -817,13 +955,24 @@ class BookingController extends Controller
             'payment_method' => 'required|string|in:demo_fpx,demo_ewallet,demo_card,demo_manual_transfer',
         ]);
 
-        $invoice->update([
-            'payment_status' => 'Paid',
-            'payment_submitted_at' => now(),
-            'payment_proof_path' => 'demo-gateway/' . $validated['payment_method'],
-        ]);
+        try {
+            DB::transaction(function () use ($booking, $validated, $invoice, $allocationLifecycle) {
+                $invoice->update([
+                    'payment_status' => 'Paid',
+                    'payment_submitted_at' => now(),
+                    'payment_proof_path' => 'demo-gateway/' . $validated['payment_method'],
+                ]);
 
-        $booking->load(['space', 'invoice', 'carbootEvent']);
+                $allocationLifecycle->confirmForBooking($booking);
+            });
+        } catch (DomainConflictException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'error' => $exception->error,
+            ], 409);
+        }
+
+        $booking->load(['space', 'invoice', 'carbootEvent', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
         return response()->json([
             'message' => 'Payment successful. Your vendor pass is now unlocked.',
@@ -832,8 +981,11 @@ class BookingController extends Controller
         ]);
     }
 
-    public function verifyBookingPayment(Request $request, Booking $booking)
-    {
+    public function verifyBookingPayment(
+        Request $request,
+        Booking $booking,
+        BookingAllocationLifecycleService $allocationLifecycle,
+    ) {
         if (!ManagementRole::isOrganizerEquivalent($request->user()->role)) {
             return response()->json([
                 'message' => '403 Forbidden: Organizer access required for payment verification.',
@@ -868,25 +1020,36 @@ class BookingController extends Controller
             ], 422);
         }
 
-        $invoice->update([
-            'payment_status' => 'Paid',
-        ]);
+        try {
+            DB::transaction(function () use ($booking, $invoice, $request, $allocationLifecycle) {
+                $invoice->update([
+                    'payment_status' => 'Paid',
+                ]);
 
-        BookingAuditLogger::log(
-            $booking,
-            $request->user(),
-            'Approved',
-            'Approved',
-            'Payment verified as Paid.',
-            $request,
-            'organizer_verified_payment',
-        );
+                $allocationLifecycle->confirmForBooking($booking);
 
-        $booking->load(['space', 'invoice', 'user.businessProfile']);
+                BookingAuditLogger::log(
+                    $booking,
+                    $request->user(),
+                    'Approved',
+                    'Approved',
+                    'Payment verified as Paid.',
+                    $request,
+                    'organizer_verified_payment',
+                );
+            });
+        } catch (DomainConflictException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'error' => $exception->error,
+            ], 409);
+        }
+
+        $booking->load(['space', 'invoice', 'user.businessProfile', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
         return response()->json([
             'message' => 'Payment verified successfully. Vendor receipt and event pass are now available.',
-            'booking' => $booking,
+            'booking' => VendorBookingPresenter::presentForOrganizer($booking),
             'invoice' => $invoice->fresh(),
         ]);
     }
@@ -924,6 +1087,13 @@ class BookingController extends Controller
             return response()->json([
                 'message' => '403 Forbidden: Organizer access required.',
             ], 403);
+        }
+
+        if ($booking->bookingDayAllocations()->exists()) {
+            return response()->json([
+                'message' => '409 Conflict: This booking has allocation history and cannot be hard-deleted.',
+                'error' => 'booking_has_allocation_history',
+            ], 409);
         }
 
         $booking->delete();

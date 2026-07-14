@@ -4,7 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Booking;
 use App\Models\BookingAuditLog;
+use App\Models\BookingDayAllocation;
 use App\Models\CarbootEvent;
+use App\Models\EventDay;
+use App\Models\EventSite;
 use App\Models\Invoice;
 use App\Models\Space;
 use App\Models\User;
@@ -19,12 +22,36 @@ class OrganizerBookingWorkflowTest extends TestCase
     private array $createdUserIds = [];
     private array $createdBookingIds = [];
     private array $createdEventIds = [];
+    private array $createdSiteIds = [];
+    private array $createdDayIds = [];
+    private array $createdAllocationIds = [];
+    private array $createdInvoiceIds = [];
 
     protected function tearDown(): void
     {
+        if ($this->createdAllocationIds !== []) {
+            BookingDayAllocation::whereIn('id', $this->createdAllocationIds)->delete();
+            $this->createdAllocationIds = [];
+        }
+
+        if ($this->createdInvoiceIds !== []) {
+            Invoice::whereIn('id', $this->createdInvoiceIds)->delete();
+            $this->createdInvoiceIds = [];
+        }
+
         if ($this->createdBookingIds !== []) {
             Booking::whereIn('id', $this->createdBookingIds)->delete();
             $this->createdBookingIds = [];
+        }
+
+        if ($this->createdDayIds !== []) {
+            EventDay::whereIn('id', $this->createdDayIds)->delete();
+            $this->createdDayIds = [];
+        }
+
+        if ($this->createdSiteIds !== []) {
+            EventSite::whereIn('id', $this->createdSiteIds)->delete();
+            $this->createdSiteIds = [];
         }
 
         if ($this->createdEventIds !== []) {
@@ -94,9 +121,47 @@ class OrganizerBookingWorkflowTest extends TestCase
         return $booking;
     }
 
+    private function seedBookableEventSites(CarbootEvent $event, Space $space, int $siteCount = 1): array
+    {
+        $siteIds = [];
+
+        for ($i = 1; $i <= $siteCount; $i++) {
+            $site = EventSite::create([
+                'carboot_event_id' => $event->id,
+                'space_id' => $space->id,
+                'label' => sprintf('A%02d', $i),
+                'row_label' => 'A',
+                'position_number' => $i,
+                'grid_row' => 1,
+                'grid_column' => $i,
+                'display_order' => $i,
+                'operational_status' => EventSite::STATUS_ACTIVE,
+            ]);
+            $this->createdSiteIds[] = $site->id;
+            $siteIds[] = $site->id;
+        }
+
+        $day = EventDay::create([
+            'carboot_event_id' => $event->id,
+            'operational_date' => $event->starts_at->toDateString(),
+            'starts_at' => $event->starts_at,
+            'ends_at' => $event->ends_at,
+            'operational_status' => EventDay::STATUS_ACTIVE,
+            'display_order' => 1,
+        ]);
+        $this->createdDayIds[] = $day->id;
+
+        return $siteIds;
+    }
+
     public function test_new_community_booking_defaults_to_pending_organizer(): void
     {
         $vendor = $this->createUser('community', ['vendor_status' => 'none']);
+        $space = Space::query()->firstOrCreate(
+            ['space_size' => 'Standard (1 Parking Lot)'],
+            ['price' => 20.00, 'status' => 'Available'],
+        );
+
         $event = CarbootEvent::query()->create([
             'title' => 'Store Test Event ' . uniqid(),
             'starts_at' => now()->addDays(14),
@@ -104,15 +169,16 @@ class OrganizerBookingWorkflowTest extends TestCase
             'status' => 'Available',
             'description' => 'Booking store test',
             'max_slots' => 50,
+            'day_generation_mode' => 'calendar_days',
         ]);
         $this->createdEventIds[] = $event->id;
+        $siteIds = $this->seedBookableEventSites($event, $space);
 
         Sanctum::actingAs($vendor);
 
         $response = $this->postJson('/api/bookings', [
             'event_id' => $event->id,
-            'tapak_quantity' => 1,
-            'total_price' => 20,
+            'event_site_ids' => [$siteIds[0]],
             'product_category' => 'Food & Beverages',
             'product_details' => 'New booking workflow test',
         ]);
@@ -122,6 +188,14 @@ class OrganizerBookingWorkflowTest extends TestCase
 
         $bookingId = $response->json('booking.id');
         $this->createdBookingIds[] = $bookingId;
+
+        $invoiceId = $response->json('invoice.id');
+        if ($invoiceId) {
+            $this->createdInvoiceIds[] = $invoiceId;
+        }
+
+        $allocationIds = BookingDayAllocation::where('booking_id', $bookingId)->pluck('id')->all();
+        $this->createdAllocationIds = array_merge($this->createdAllocationIds, $allocationIds);
     }
 
     public function test_organizer_can_approve_pending_organizer_booking_directly(): void

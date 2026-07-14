@@ -22,6 +22,7 @@ class EventPresenter
             'status',
             'description',
             'max_slots',
+            'day_generation_mode',
             'image_path',
             'created_at',
             'updated_at',

@@ -119,6 +119,12 @@ class CarbootEventController extends Controller
             'status' => ['sometimes', 'required', Rule::in(self::STATUSES)],
             'description' => 'nullable|string|max:5000',
             'max_slots' => 'nullable|integer|min:1',
+            'day_generation_mode' => [
+                'sometimes',
+                'required',
+                'string',
+                Rule::in(CarbootEvent::DAY_GENERATION_MODES),
+            ],
             'poster' => 'nullable|file|mimes:jpeg,jpg,png,webp|max:5120',
             'images' => 'nullable|array|max:' . self::MAX_IMAGES,
             'images.*' => 'file|mimes:jpeg,jpg,png,webp|max:5120',

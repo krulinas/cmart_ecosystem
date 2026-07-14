@@ -86,4 +86,9 @@ class User extends Authenticatable
     {
         return $this->hasOne(UserBookingPreference::class);
     }
+
+    public function releasedBookingDayAllocations()
+    {
+        return $this->hasMany(BookingDayAllocation::class, 'released_by');
+    }
 }

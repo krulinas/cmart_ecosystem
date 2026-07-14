@@ -62,4 +62,9 @@ class Booking extends Model
     public function withdrawnBy() {
         return $this->belongsTo(User::class, 'withdrawn_by');
     }
+
+    public function bookingDayAllocations()
+    {
+        return $this->hasMany(BookingDayAllocation::class);
+    }
 }

@@ -20,6 +20,7 @@ class CarbootEvent extends Model
         'status',
         'description',
         'max_slots',
+        'day_generation_mode',
         'image_path',
     ];
 
@@ -32,6 +33,14 @@ class CarbootEvent extends Model
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
         'max_slots' => 'integer',
+    ];
+
+    public const DAY_MODE_CALENDAR = 'calendar_days';
+    public const DAY_MODE_SINGLE_SESSION = 'single_session';
+
+    public const DAY_GENERATION_MODES = [
+        self::DAY_MODE_CALENDAR,
+        self::DAY_MODE_SINGLE_SESSION,
     ];
 
     public function images(): HasMany
@@ -122,6 +131,21 @@ class CarbootEvent extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class, 'carboot_event_id');
+    }
+
+    public function eventSites(): HasMany
+    {
+        return $this->hasMany(EventSite::class, 'carboot_event_id')
+            ->orderBy('display_order')
+            ->orderBy('grid_row')
+            ->orderBy('grid_column');
+    }
+
+    public function eventDays(): HasMany
+    {
+        return $this->hasMany(EventDay::class, 'carboot_event_id')
+            ->orderBy('display_order')
+            ->orderBy('operational_date');
     }
 
     public function syncCapacityStatus(): void
