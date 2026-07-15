@@ -11,6 +11,8 @@ use App\Models\EventSite;
 use App\Models\Invoice;
 use App\Models\Space;
 use App\Models\User;
+use App\Services\BookingAllocationLifecycleService;
+use App\Services\BookingAllocationReservationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -51,6 +53,8 @@ class E2ESiteFixtures extends Command
 
         return match ($this->argument('action')) {
             'create' => $this->createFixtures(),
+            'create-paid-booking' => $this->createPaidBookingFixture(),
+            'create-payment-submitted-booking' => $this->createPaymentSubmittedBookingFixture(),
             'cleanup' => $this->cleanupFixtures(),
             default => $this->invalidAction(),
         };
@@ -58,17 +62,113 @@ class E2ESiteFixtures extends Command
 
     private function invalidAction(): int
     {
-        $this->error("Unknown action [{$this->argument('action')}]. Use 'create' or 'cleanup'.");
+        $this->error(
+            "Unknown action [{$this->argument('action')}]. Use 'create', "
+            . "'create-paid-booking', 'create-payment-submitted-booking', or 'cleanup'.",
+        );
 
         return self::FAILURE;
     }
 
+    private function createPaidBookingFixture(): int
+    {
+        return $this->createWithdrawalBookingFixture(
+            'Paid',
+            'E2E paid booking fixture created.',
+            true,
+        );
+    }
+
+    private function createPaymentSubmittedBookingFixture(): int
+    {
+        return $this->createWithdrawalBookingFixture(
+            'Pending Verification',
+            'E2E payment-submitted booking fixture created.',
+            false,
+        );
+    }
+
+    private function createWithdrawalBookingFixture(
+        string $paymentStatus,
+        string $message,
+        bool $confirmAllocations,
+    ): int
+    {
+        $this->purge();
+        $base = $this->buildBaseFixtures();
+
+        $payload = DB::transaction(function () use ($base, $paymentStatus, $confirmAllocations) {
+            $vendor = User::where('email', self::VENDOR_EMAIL)->firstOrFail();
+            $event = CarbootEvent::findOrFail($base['event_id']);
+            $siteIds = array_slice($base['site_ids'], 0, 2);
+
+            $booking = Booking::create([
+                'user_id' => $vendor->id,
+                'space_id' => $base['space_id'],
+                'carboot_event_id' => $event->id,
+                'booking_date' => $event->starts_at->toDateString(),
+                'product_category' => 'Food & Beverages',
+                'product_details' => self::MARKER . ' withdrawal reconciliation E2E booking',
+                'approval_status' => 'Approved',
+                'revision_comment' => null,
+                'whatsapp_link' => 'https://chat.whatsapp.com/CMART_OFFICIAL_GROUP_INVITE',
+            ]);
+
+            $reservationService = app(BookingAllocationReservationService::class);
+            $reservation = $reservationService->reserveForBookingInExistingTransaction($booking, $siteIds);
+
+            $booking->update([
+                'space_id' => $reservation->selectedSites->first()->space_id,
+                'booking_date' => $reservation->activeEventDays->sortBy('operational_date')->first()->operational_date,
+            ]);
+
+            $invoice = Invoice::create([
+                'booking_id' => $booking->id,
+                'amount' => $reservation->amount,
+                'payment_status' => $paymentStatus,
+                'payment_proof_path' => self::MARKER . '/payment-proof-marker.jpg',
+                'payment_submitted_at' => now(),
+            ]);
+
+            if ($confirmAllocations) {
+                app(BookingAllocationLifecycleService::class)->confirmForBooking($booking->fresh());
+            }
+
+            $booking->refresh()->load(['invoice', 'bookingDayAllocations.eventSite']);
+
+            return array_merge($base, [
+                'booking_id' => $booking->id,
+                'invoice_id' => $invoice->id,
+                'invoice_amount' => (float) $invoice->amount,
+                'payment_status' => $invoice->payment_status,
+                'payment_proof_marker' => self::MARKER . '/payment-proof-marker.jpg',
+                'allocation_status' => $confirmAllocations ? 'confirmed' : 'reserved',
+                'site_labels' => $booking->bookingDayAllocations
+                    ->pluck('eventSite.label')
+                    ->unique()
+                    ->sort()
+                    ->values()
+                    ->all(),
+            ]);
+        });
+
+        return $this->emitFixtureResult($message, $payload);
+    }
+
     private function createFixtures(): int
     {
-        // Idempotent: clear any stale fixture first so IDs are always fresh.
         $this->purge();
+        $result = $this->buildBaseFixtures();
 
-        $result = DB::transaction(function () {
+        return $this->emitFixtureResult('E2E site fixtures created.', $result);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildBaseFixtures(): array
+    {
+        return DB::transaction(function () {
             $space = Space::query()->firstOrCreate(
                 ['space_size' => self::SPACE_SIZE],
                 [
@@ -142,25 +242,26 @@ class E2ESiteFixtures extends Command
                 'site_labels' => $siteLabels,
             ];
         });
+    }
 
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    private function emitFixtureResult(string $message, array $result): int
+    {
         if ($this->option('json')) {
             $this->line(json_encode($result, JSON_UNESCAPED_SLASHES));
 
             return self::SUCCESS;
         }
 
-        $this->info('E2E site fixtures created.');
+        $this->info($message);
         $this->table(
             ['Field', 'Value'],
-            [
-                ['event_id', $result['event_id']],
-                ['event_title', $result['event_title']],
-                ['vendor_email', $result['vendor_email']],
-                ['space', $result['space_name'] . ' (#' . $result['space_id'] . ')'],
-                ['day_ids', implode(', ', $result['day_ids'])],
-                ['site_ids', implode(', ', $result['site_ids'])],
-                ['site_labels', implode(', ', $result['site_labels'])],
-            ],
+            collect($result)->map(fn ($value, $key) => [
+                $key,
+                is_array($value) ? implode(', ', $value) : $value,
+            ])->values()->all(),
         );
 
         return self::SUCCESS;

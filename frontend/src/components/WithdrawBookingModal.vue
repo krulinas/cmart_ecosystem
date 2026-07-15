@@ -37,16 +37,34 @@
             </div>
 
             <div class="px-5 py-4 space-y-4">
-              <p class="text-sm text-ink-700 leading-relaxed">
-                You are about to withdraw this booking. Your booking record will remain in your history,
-                but you will no longer be considered for this event slot.
+              <p
+                class="text-sm leading-relaxed"
+                :class="requiresAcknowledgement ? 'font-semibold text-rose-800' : 'text-ink-700'"
+                data-testid="withdraw-booking-warning"
+              >
+                {{ warningMessage }}
               </p>
-              <p class="text-sm font-semibold text-rose-700">
+
+              <p v-if="!requiresAcknowledgement" class="text-sm font-semibold text-rose-700">
                 This action cannot be undone from your dashboard.
               </p>
-              <p class="text-xs text-ink-500">
-                Your selected tapak or slot may be released for other vendors once the withdrawal is processed.
-              </p>
+
+              <label
+                v-if="requiresAcknowledgement"
+                class="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50/70 p-3 cursor-pointer"
+                data-testid="withdraw-no-refund-acknowledgement-label"
+              >
+                <input
+                  v-model="acknowledged"
+                  type="checkbox"
+                  class="mt-1 h-4 w-4 rounded border-rose-300 text-rose-600 focus:ring-rose-500"
+                  data-testid="withdraw-no-refund-acknowledgement"
+                  :disabled="submitting"
+                />
+                <span class="text-sm text-rose-900">
+                  Saya faham bahawa bayaran tidak akan dipulangkan dan tapak akan dibuka semula kepada vendor lain.
+                </span>
+              </label>
 
               <div>
                 <label for="withdrawal-reason" class="ml-label">Reason for withdrawal (optional)</label>
@@ -80,7 +98,7 @@
                 type="button"
                 class="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 data-testid="withdraw-booking-confirm"
-                :disabled="submitting"
+                :disabled="submitting || !canConfirm"
                 @click="confirmWithdraw"
               >
                 {{ submitting ? 'Withdrawing…' : 'Yes, withdraw booking' }}
@@ -94,17 +112,27 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import {
+  requiresNoRefundAcknowledgement,
+  withdrawalWarningMessage,
+} from '../utils/bookingDisplay';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
+  booking: { type: Object, default: null },
 });
 
 const emit = defineEmits(['update:modelValue', 'confirm']);
 
 const reason = ref('');
+const acknowledged = ref(false);
 const submitting = ref(false);
 const errorMessage = ref('');
+
+const requiresAcknowledgement = computed(() => requiresNoRefundAcknowledgement(props.booking));
+const warningMessage = computed(() => withdrawalWarningMessage(props.booking));
+const canConfirm = computed(() => !requiresAcknowledgement.value || acknowledged.value);
 
 const close = () => {
   if (submitting.value) return;
@@ -112,9 +140,11 @@ const close = () => {
 };
 
 const confirmWithdraw = () => {
+  if (!canConfirm.value || submitting.value) return;
   errorMessage.value = '';
   emit('confirm', {
     withdrawal_reason: reason.value.trim(),
+    acknowledge_no_refund: requiresAcknowledgement.value ? true : undefined,
     setSubmitting: (value) => { submitting.value = value; },
     setError: (message) => { errorMessage.value = message; },
     close: () => emit('update:modelValue', false),
@@ -126,6 +156,7 @@ watch(
   (open) => {
     if (open) {
       reason.value = '';
+      acknowledged.value = false;
       errorMessage.value = '';
       submitting.value = false;
       document.body.style.overflow = 'hidden';

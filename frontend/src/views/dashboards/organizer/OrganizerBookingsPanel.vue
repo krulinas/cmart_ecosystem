@@ -89,6 +89,13 @@
                     <div v-if="b.site_selection?.allocation_status" class="text-xs text-ink-500">
                       {{ allocationStatusLabel(b.site_selection.allocation_status) }}
                     </div>
+                    <div
+                      v-if="withdrawalSummaryLine(b)"
+                      class="text-xs text-slate-600"
+                      data-testid="organizer-withdrawal-summary"
+                    >
+                      {{ withdrawalSummaryLine(b) }}
+                    </div>
                   </td>
                   <td class="px-4 py-3.5 whitespace-nowrap text-ink-700">{{ formatBookingDate(b.booking_date) }}</td>
                   <td class="px-4 py-3.5">
@@ -96,6 +103,14 @@
                   </td>
                   <td class="px-4 py-3.5">
                     <div class="flex justify-end gap-1.5 flex-wrap">
+                      <button
+                        class="ml-btn-ghost text-xs px-3 py-1.5"
+                        data-testid="organizer-booking-view-details"
+                        :data-booking-id="b.id"
+                        @click="openBookingDetails(b.id)"
+                      >
+                        Details
+                      </button>
                       <button class="ml-btn-ghost text-xs px-3 py-1.5" @click="viewPdf(b.id)">PDF</button>
                       <template v-if="canApproveBookings && !isTerminalBookingStatus(b.approval_status)">
                         <button
@@ -162,7 +177,7 @@
               </button>
             </div>
 
-            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-6">
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-7">
               <div class="relative xl:col-span-2">
                 <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 text-xs">⌕</span>
                 <input
@@ -173,7 +188,7 @@
                   class="ml-input w-full pl-8 text-sm"
                 />
               </div>
-              <select v-model="statusFilter" class="ml-input text-sm">
+              <select v-model="statusFilter" class="ml-input text-sm" data-testid="organizer-status-filter">
                 <option value="all">All statuses</option>
                 <option value="Pending_Organizer">Organizer queue</option>
                 <option value="Needs_Revision">Needs revision</option>
@@ -182,11 +197,16 @@
                 <option value="Cancelled">Cancelled</option>
                 <option value="Withdrawn">Withdrawn</option>
               </select>
-              <select v-model="paymentFilter" class="ml-input text-sm">
+              <select v-model="paymentFilter" class="ml-input text-sm" data-testid="organizer-payment-filter">
                 <option value="all">All payments</option>
                 <option value="Paid">Paid</option>
                 <option value="Unpaid">Unpaid</option>
-                <option value="Pending Verification">Pending Verification</option>
+                <option value="Pending Verification">Payment Submitted</option>
+              </select>
+              <select v-model="noRefundFilter" class="ml-input text-sm" data-testid="organizer-no-refund-filter">
+                <option value="all">All refund policies</option>
+                <option value="yes">No-refund applied</option>
+                <option value="no">No-refund not applicable</option>
               </select>
               <select v-model="eventFilter" class="ml-input text-sm">
                 <option value="all">All events</option>
@@ -233,7 +253,7 @@
                 <th class="px-4 py-3 font-semibold">Date</th>
                 <th class="px-4 py-3 font-semibold">Status</th>
                 <th class="px-4 py-3 font-semibold">Payment</th>
-                <th v-if="canDeleteBookings" class="px-4 py-3 text-right font-semibold">Actions</th>
+                <th class="px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-ink-100">
@@ -256,6 +276,13 @@
                   <div v-if="b.site_selection?.allocation_status" class="text-xs text-ink-500">
                     {{ allocationStatusLabel(b.site_selection.allocation_status) }}
                   </div>
+                  <div
+                    v-if="withdrawalSummaryLine(b)"
+                    class="text-xs text-slate-600"
+                    data-testid="organizer-withdrawal-summary"
+                  >
+                    {{ withdrawalSummaryLine(b) }}
+                  </div>
                 </td>
                 <td class="px-4 py-3.5 whitespace-nowrap text-ink-700">{{ formatBookingDate(b.booking_date) }}</td>
                 <td class="px-4 py-3.5">
@@ -272,16 +299,13 @@
                       {{ b.invoice.payment_status }}
                     </span>
                     <span v-else class="text-ink-400">—</span>
-                    <a
-                      v-if="b.invoice?.payment_proof_path"
-                      :href="paymentProofUrl(b.invoice.payment_proof_path)"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <span
+                      v-if="b.invoice?.payment_proof_present"
                       data-testid="payment-proof-link"
-                      class="text-xs font-semibold text-brand-700 hover:text-brand-800 hover:underline"
+                      class="text-xs font-semibold text-brand-700"
                     >
-                      View proof
-                    </a>
+                      Payment proof submitted
+                    </span>
                     <button
                       v-if="canVerifyPayment(b)"
                       type="button"
@@ -294,19 +318,30 @@
                     </button>
                   </div>
                 </td>
-                <td v-if="canDeleteBookings" class="px-4 py-3.5 text-right">
-                  <button
-                    class="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
-                    data-testid="organizer-booking-action-delete"
-                    :data-booking-id="b.id"
-                    @click="deleteBooking(b.id)"
-                  >
-                    Delete
-                  </button>
+                <td class="px-4 py-3.5 text-right">
+                  <div class="flex justify-end gap-2">
+                    <button
+                      class="ml-btn-ghost text-xs px-3 py-1.5"
+                      data-testid="organizer-booking-view-details"
+                      :data-booking-id="b.id"
+                      @click="openBookingDetails(b.id)"
+                    >
+                      Details
+                    </button>
+                    <button
+                      v-if="canDeleteBookings"
+                      class="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                      data-testid="organizer-booking-action-delete"
+                      :data-booking-id="b.id"
+                      @click="deleteBooking(b.id)"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr v-if="hasLoaded && !registryLoading && !registryBookings.length">
-                <td :colspan="canDeleteBookings ? 9 : 8" class="px-4 py-0">
+                <td colspan="9" class="px-4 py-0">
                   <div class="py-12">
                     <ManagementEmptyState
                       title="No bookings found"
@@ -396,6 +431,14 @@
         </div>
       </div>
     </Teleport>
+
+    <OrganizerWithdrawalReconciliationModal
+      v-model="showBookingDetails"
+      :booking-id="selectedBookingId"
+      :booking="selectedBooking"
+      :loading="bookingDetailsLoading"
+      :error="bookingDetailsError"
+    />
   </div>
 </template>
 
@@ -406,8 +449,9 @@ import api from '../../../services/api';
 import ManagementKpiCard from '../../../components/management/ManagementKpiCard.vue';
 import ManagementEmptyState from '../../../components/management/ManagementEmptyState.vue';
 import ManagementStatusChip from '../../../components/management/ManagementStatusChip.vue';
+import OrganizerWithdrawalReconciliationModal from '../../../components/organizer/OrganizerWithdrawalReconciliationModal.vue';
 import { useManagementAccess } from '../../../composables/useManagementAccess';
-import { formatBookingDate, isTerminalBookingStatus, siteLabelsForBooking, allocationStatusLabel, statusLabel } from '../../../utils/bookingDisplay';
+import { formatBookingDate, isTerminalBookingStatus, siteLabelsForBooking, allocationStatusLabel, organizerWithdrawalSummary, statusLabel } from '../../../utils/bookingDisplay';
 
 const emit = defineEmits(['refreshed']);
 
@@ -447,6 +491,7 @@ const searchQuery = ref('');
 const debouncedSearch = ref('');
 const statusFilter = ref('all');
 const paymentFilter = ref('all');
+const noRefundFilter = ref('all');
 const eventFilter = ref('all');
 const sortBy = ref('newest');
 const perPage = ref(15);
@@ -473,13 +518,22 @@ const physicalSiteSummary = (booking) => {
   return booking.space?.space_size || booking.space_id || '—';
 };
 
+const withdrawalSummaryLine = (booking) => {
+  const summary = organizerWithdrawalSummary(booking);
+  if (!summary) return '';
+  const parts = ['Withdrawn'];
+  if (summary.paymentState === 'paid' || summary.paymentState === 'payment_submitted') {
+    parts.push('No refund');
+  }
+  if (summary.sitesReleased) parts.push('Sites released');
+  return parts.join(' · ');
+};
+
 const paymentStatusBadgeClass = (status) => {
   if (status === 'Paid') return 'bg-emerald-50 text-emerald-800';
   if (status === 'Pending Verification') return 'bg-sky-50 text-sky-800';
   return 'bg-amber-50 text-amber-800';
 };
-
-const paymentProofUrl = (path) => `/storage/${String(path || '').replace(/^\/+/, '')}`;
 
 const canVerifyPayment = (booking) =>
   canVerifyPayments.value
@@ -489,6 +543,29 @@ const canVerifyPayment = (booking) =>
 const paymentVerifyTarget = ref(null);
 const showPaymentVerifyModal = ref(false);
 const verifyingPayment = ref(false);
+const showBookingDetails = ref(false);
+const selectedBookingId = ref(null);
+const selectedBooking = ref(null);
+const bookingDetailsLoading = ref(false);
+const bookingDetailsError = ref('');
+
+const openBookingDetails = async (bookingId) => {
+  selectedBookingId.value = bookingId;
+  selectedBooking.value = null;
+  bookingDetailsError.value = '';
+  bookingDetailsLoading.value = true;
+  showBookingDetails.value = true;
+
+  try {
+    const { data } = await api.get(`/bookings/${bookingId}`);
+    selectedBooking.value = data;
+  } catch (error) {
+    bookingDetailsError.value =
+      error.forbiddenMessage || error.response?.data?.message || 'Unable to load booking reconciliation.';
+  } finally {
+    bookingDetailsLoading.value = false;
+  }
+};
 
 const openPaymentVerifyModal = (booking) => {
   paymentVerifyTarget.value = booking;
@@ -524,6 +601,7 @@ const hasActiveFilters = computed(() =>
     debouncedSearch.value.trim()
     || statusFilter.value !== 'all'
     || paymentFilter.value !== 'all'
+    || noRefundFilter.value !== 'all'
     || eventFilter.value !== 'all'
     || sortBy.value !== 'newest'
     || perPage.value !== 15,
@@ -613,6 +691,9 @@ const buildQueryParams = () => {
   if (paymentFilter.value !== 'all') {
     params.payment_status = paymentFilter.value;
   }
+  if (noRefundFilter.value !== 'all') {
+    params.no_refund_applied = noRefundFilter.value === 'yes' ? 1 : 0;
+  }
   if (eventFilter.value !== 'all') {
     params.event_id = eventFilter.value;
   }
@@ -701,6 +782,7 @@ const resetFilters = () => {
   debouncedSearch.value = '';
   statusFilter.value = 'all';
   paymentFilter.value = 'all';
+  noRefundFilter.value = 'all';
   eventFilter.value = 'all';
   sortBy.value = 'newest';
   perPage.value = 15;
@@ -718,7 +800,7 @@ watch(searchQuery, (value) => {
   }, 300);
 });
 
-watch([statusFilter, paymentFilter, eventFilter, sortBy, perPage], () => {
+watch([statusFilter, paymentFilter, noRefundFilter, eventFilter, sortBy, perPage], () => {
   currentPage.value = 1;
   fetchRegistry();
 });

@@ -181,14 +181,86 @@ export const formatWithdrawnDate = (value) => {
 export const canVendorEdit = (booking) =>
   ['Pending_Organizer', 'Needs_Revision'].includes(booking?.approval_status);
 
+export const NO_REFUND_WITHDRAWAL_WARNING_MS =
+  'Anda boleh menarik diri selepas bayaran dibuat, tetapi bayaran tidak akan dipulangkan. Tapak yang telah ditempah akan dibuka semula kepada vendor lain.';
+
+export const UNPAID_WITHDRAWAL_WARNING =
+  'Penarikan diri akan menamatkan tempahan ini dan tapak yang dipilih akan dibuka semula kepada vendor lain. Tindakan ini tidak boleh dibatalkan melalui papan pemuka.';
+
+export const withdrawalPolicyForBooking = (booking) =>
+  booking?.withdrawal_policy || null;
+
 export const canVendorWithdraw = (booking) => {
+  const policy = withdrawalPolicyForBooking(booking);
+  if (policy && typeof policy.can_withdraw === 'boolean') {
+    return policy.can_withdraw;
+  }
+
   if (typeof booking?.can_withdraw === 'boolean') {
     return booking.can_withdraw;
   }
 
-  return PENDING_STATUSES.includes(booking?.approval_status)
-    && booking?.invoice?.payment_status !== 'Paid';
+  return PENDING_STATUSES.includes(booking?.approval_status);
 };
+
+export const requiresNoRefundAcknowledgement = (booking) => {
+  const policy = withdrawalPolicyForBooking(booking);
+  return Boolean(policy?.requires_no_refund_acknowledgement);
+};
+
+export const withdrawalWarningMessage = (booking) => {
+  const policy = withdrawalPolicyForBooking(booking);
+  if (policy?.warning_message) return policy.warning_message;
+  if (requiresNoRefundAcknowledgement(booking)) return NO_REFUND_WITHDRAWAL_WARNING_MS;
+  return UNPAID_WITHDRAWAL_WARNING;
+};
+
+export const withdrawnNoRefundNotice = (booking) => {
+  if (!isWithdrawnBooking(booking)) return null;
+  const paymentState = withdrawalPolicyForBooking(booking)?.payment_state
+    || normalizePaymentStatus(booking).toLowerCase();
+  if (paymentState === 'paid' || paymentState === 'pending verification') {
+    return 'Payment remains recorded. No refund was issued. Physical sites have been released.';
+  }
+  if (paymentState === 'payment_submitted') {
+    return 'Payment proof remains on record. No refund was issued. Physical sites have been released.';
+  }
+  return null;
+};
+
+export const organizerWithdrawalSummary = (booking) => {
+  if (!isWithdrawnBooking(booking)) return null;
+  const paymentState = withdrawalPolicyForBooking(booking)?.payment_state
+    || (isBookingPaymentPaid(booking) ? 'paid' : normalizePaymentStatus(booking) || 'unpaid');
+  const siteLabels = siteLabelsForBooking(booking);
+  return {
+    status: 'Withdrawn',
+    paymentState,
+    noRefund: paymentState === 'paid' || paymentState === 'payment_submitted',
+    sitesReleased: booking?.site_selection?.allocation_status === 'released',
+    siteLabels,
+    withdrawnAt: booking?.withdrawn_at || null,
+  };
+};
+
+export const organizerPaymentStateLabel = (state) =>
+  ({
+    paid: 'Paid',
+    payment_submitted: 'Payment Submitted',
+    unpaid: 'Unpaid',
+  }[state] || 'Unpaid');
+
+export const organizerReconciliationForBooking = (booking) =>
+  booking?.withdrawal_reconciliation || null;
+
+export const bookingMatchesNoRefundFilter = (booking, filter) => {
+  if (filter === 'all') return true;
+  const applied = Boolean(organizerReconciliationForBooking(booking)?.no_refund_applied);
+  return filter === 'yes' ? applied : !applied;
+};
+
+export const safeAuditActionLabel = (item) =>
+  item?.label?.trim() || 'Booking activity recorded';
 
 export const canVendorResubmit = (booking) => booking?.approval_status === 'Needs_Revision';
 

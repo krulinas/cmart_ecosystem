@@ -232,16 +232,24 @@
 
               <section
                 v-if="isWithdrawnBooking(booking)"
-                class="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2"
+                data-testid="vendor-booking-withdrawn-summary"
               >
                 <h3 class="font-bold text-slate-800">Withdrawn Booking</h3>
-                <p class="mt-1 text-sm text-slate-700">
+                <p class="text-sm text-slate-700">
                   This booking was withdrawn on {{ formatWithdrawnDate(booking.withdrawn_at) }}.
                 </p>
-                <p v-if="booking.withdrawal_reason" class="mt-2 text-sm text-slate-600">
+                <p v-if="booking.withdrawal_reason" class="text-sm text-slate-600">
                   Reason: {{ booking.withdrawal_reason }}
                 </p>
-                <p class="mt-2 text-xs text-slate-500">
+                <p
+                  v-if="withdrawnNotice"
+                  class="text-sm font-medium text-slate-800"
+                  data-testid="vendor-booking-no-refund-notice"
+                >
+                  {{ withdrawnNotice }}
+                </p>
+                <p class="text-xs text-slate-500">
                   Withdrawn bookings cannot be edited.
                 </p>
               </section>
@@ -317,6 +325,7 @@
 
   <WithdrawBookingModal
     v-model="showWithdrawModal"
+    :booking="booking"
     @confirm="handleWithdrawConfirm"
   />
 </template>
@@ -342,6 +351,7 @@ import {
   formatWithdrawnDate,
   isBookingPaymentPaid,
   isWithdrawnBooking,
+  withdrawnNoRefundNotice,
   VENDOR_WHATSAPP_GROUP_URL,
   progressBarClass,
   progressWidth,
@@ -377,6 +387,7 @@ const titleId = computed(() =>
 );
 
 const siteSummary = computed(() => siteSelectionSummary(booking.value));
+const withdrawnNotice = computed(() => withdrawnNoRefundNotice(booking.value));
 
 const close = () => emit('update:modelValue', false);
 
@@ -448,12 +459,21 @@ const openWithdrawModal = () => {
   showWithdrawModal.value = true;
 };
 
-const handleWithdrawConfirm = async ({ withdrawal_reason, setSubmitting, setError, close: closeWithdrawModal }) => {
+const handleWithdrawConfirm = async ({
+  withdrawal_reason,
+  acknowledge_no_refund,
+  setSubmitting,
+  setError,
+  close: closeWithdrawModal,
+}) => {
   setSubmitting(true);
   try {
-    const { data } = await api.patch(`/bookings/${props.bookingId}/withdraw`, {
-      withdrawal_reason: withdrawal_reason || null,
-    });
+    const payload = { withdrawal_reason: withdrawal_reason || null };
+    if (acknowledge_no_refund) {
+      payload.acknowledge_no_refund = true;
+    }
+
+    const { data } = await api.patch(`/bookings/${props.bookingId}/withdraw`, payload);
     booking.value = {
       ...data.booking,
       audit_logs: data.booking.audit_logs || data.booking.auditLogs || [],

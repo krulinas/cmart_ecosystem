@@ -255,6 +255,28 @@ export async function withdrawVendorBooking(driver, marker, reason, { bookingId 
 
   await fillInputValue(driver, 'withdrawal-reason', reason);
 
+  const acknowledgement = await driver.findElements(By.css('[data-testid="withdraw-no-refund-acknowledgement"]'));
+  if (acknowledgement.length) {
+    await driver.executeScript(
+      `const checkbox = document.querySelector('[data-testid="withdraw-no-refund-acknowledgement"]');
+       if (!checkbox) throw new Error('No-refund acknowledgement checkbox not found.');
+       checkbox.checked = true;
+       checkbox.dispatchEvent(new Event('input', { bubbles: true }));
+       checkbox.dispatchEvent(new Event('change', { bubbles: true }));`,
+    );
+
+    await driver.wait(
+      async () => {
+        const button = await driver.findElement(
+          By.css('[data-testid="withdraw-booking-modal"] [data-testid="withdraw-booking-confirm"]'),
+        );
+        return button.isEnabled();
+      },
+      10000,
+      'Withdraw confirm should enable after no-refund acknowledgement.',
+    );
+  }
+
   await driver.executeScript(
     `const button = document.querySelector('[data-testid="withdraw-booking-modal"] [data-testid="withdraw-booking-confirm"]');
      if (!button) throw new Error('Withdraw confirm button not found.');

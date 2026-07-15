@@ -396,8 +396,21 @@ class BookingController extends Controller
             Booking::query(),
             $filters,
         )
-            ->with(['user.businessProfile', 'space', 'invoice'])
+            ->with([
+                'user.businessProfile',
+                'space',
+                'invoice',
+                'carbootEvent',
+                'withdrawnBy',
+                'bookingDayAllocations.eventSite.space',
+                'bookingDayAllocations.eventDay',
+            ])
             ->paginate($filters['per_page']);
+
+        $paginator->setCollection(
+            $paginator->getCollection()
+                ->map(fn (Booking $booking) => VendorBookingPresenter::presentForOrganizer($booking)),
+        );
 
         return response()->json([
             'data' => $paginator->items(),
@@ -421,6 +434,7 @@ class BookingController extends Controller
             'search' => 'nullable|string|max:200',
             'status' => 'nullable|string|in:Pending_Organizer,Needs_Revision,Approved,Rejected,Cancelled,Withdrawn',
             'payment_status' => 'nullable|string|in:Paid,Unpaid,Pending Verification',
+            'no_refund_applied' => 'nullable|boolean',
             'event_id' => 'nullable|integer|exists:carboot_events,id',
             'event' => 'nullable|integer|exists:carboot_events,id',
             'sort' => 'nullable|string|in:newest,oldest,status,event,vendor,amount',
@@ -436,6 +450,9 @@ class BookingController extends Controller
             'search' => trim((string) ($validated['search'] ?? '')),
             'status' => $validated['status'] ?? null,
             'payment_status' => $validated['payment_status'] ?? null,
+            'no_refund_applied' => array_key_exists('no_refund_applied', $validated)
+                ? (bool) $validated['no_refund_applied']
+                : null,
             'event_id' => $validated['event_id'] ?? $validated['event'] ?? null,
             'sort' => $validated['sort'] ?? 'newest',
             'direction' => $validated['direction'] ?? null,
@@ -480,6 +497,23 @@ class BookingController extends Controller
             $query->whereHas('invoice', function ($invoiceQuery) use ($filters) {
                 $invoiceQuery->where('payment_status', $filters['payment_status']);
             });
+        }
+
+        if ($filters['no_refund_applied'] !== null) {
+            $query->where('approval_status', 'Withdrawn');
+            if ($filters['no_refund_applied']) {
+                $query->whereHas('invoice', function ($invoiceQuery) {
+                    $invoiceQuery->whereIn('payment_status', ['Paid', 'Pending Verification']);
+                });
+            } else {
+                $query->where(function ($builder) {
+                    $builder
+                        ->whereDoesntHave('invoice')
+                        ->orWhereHas('invoice', function ($invoiceQuery) {
+                            $invoiceQuery->where('payment_status', 'Unpaid');
+                        });
+                });
+            }
         }
 
         if ($filters['event_id']) {
@@ -566,12 +600,21 @@ class BookingController extends Controller
     private function fetchQueueBookings($user)
     {
         return Booking::query()
-            ->with(['user.businessProfile', 'space', 'invoice'])
+            ->with([
+                'user.businessProfile',
+                'space',
+                'invoice',
+                'carbootEvent',
+                'withdrawnBy',
+                'bookingDayAllocations.eventSite.space',
+                'bookingDayAllocations.eventDay',
+            ])
             ->where('booking_date', '>', '1970-01-01')
             ->where('approval_status', $this->queueStatusForUser($user))
             ->orderByDesc('created_at')
             ->limit(100)
-            ->get();
+            ->get()
+            ->map(fn (Booking $booking) => VendorBookingPresenter::presentForOrganizer($booking));
     }
 
     public function mine(Request $request)
@@ -710,34 +753,69 @@ class BookingController extends Controller
             return $denied;
         }
 
-        if ($booking->approval_status === 'Withdrawn') {
+        if (in_array($booking->approval_status, ['Rejected', 'Cancelled'], true)) {
             return response()->json([
                 'message' => 'This booking can no longer be withdrawn.',
-            ], 422);
+                'current_status' => $booking->approval_status,
+            ], 409);
         }
 
-        if ($booking->invoice?->payment_status === 'Paid') {
+        if ($booking->approval_status === 'Withdrawn') {
+            $booking->load(['space', 'invoice', 'auditLogs.actor', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
+
             return response()->json([
-                'message' => 'Paid bookings cannot be withdrawn directly. Please contact CMart staff for cancellation assistance.',
-            ], 422);
+                'message' => 'Booking withdrawn successfully.',
+                'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
+            ]);
         }
 
         if (!VendorBookingPresenter::canVendorWithdraw($booking, $request->user()->id)) {
             return response()->json([
                 'message' => 'This booking can no longer be withdrawn.',
-            ], 422);
+                'current_status' => $booking->approval_status,
+            ], 409);
         }
 
-        $validated = $request->validate([
+        $paymentState = VendorBookingPresenter::withdrawalPaymentState($booking);
+        $requiresAcknowledgement = in_array(
+            $paymentState,
+            [VendorBookingPresenter::PAYMENT_STATE_PAID, VendorBookingPresenter::PAYMENT_STATE_PAYMENT_SUBMITTED],
+            true,
+        );
+
+        $rules = [
             'withdrawal_reason' => 'nullable|string|max:500',
-        ]);
+        ];
+
+        if ($requiresAcknowledgement) {
+            $rules['acknowledge_no_refund'] = 'required|accepted';
+        }
+
+        $validated = $request->validate($rules);
 
         $previous = $booking->approval_status;
         $reason = trim((string) ($validated['withdrawal_reason'] ?? ''));
 
+        $auditNote = $reason !== '' ? $reason : 'Withdrawn by vendor.';
+        if ($requiresAcknowledgement) {
+            $auditNote .= ' [no-refund policy applied; payment_state=' . $paymentState . ']';
+        }
+
         try {
-            DB::transaction(function () use ($booking, $request, $previous, $reason, $allocationLifecycle) {
-                $booking->update([
+            DB::transaction(function () use ($booking, $request, $previous, $reason, $auditNote, $allocationLifecycle) {
+                $lockedBooking = Booking::query()
+                    ->whereKey($booking->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if (in_array($lockedBooking->approval_status, ['Rejected', 'Cancelled', 'Withdrawn'], true)) {
+                    throw new DomainConflictException(
+                        'This booking can no longer be withdrawn.',
+                        'booking_not_withdrawable',
+                    );
+                }
+
+                $lockedBooking->update([
                     'approval_status' => 'Withdrawn',
                     'withdrawn_at' => now(),
                     'withdrawal_reason' => $reason !== '' ? $reason : null,
@@ -748,17 +826,17 @@ class BookingController extends Controller
                 ]);
 
                 $allocationLifecycle->releaseForBooking(
-                    $booking,
+                    $lockedBooking,
                     $request->user(),
                     BookingAllocationLifecycleService::REASON_BOOKING_WITHDRAWN,
                 );
 
                 BookingAuditLogger::log(
-                    $booking,
+                    $lockedBooking,
                     $request->user(),
                     $previous,
                     'Withdrawn',
-                    $reason !== '' ? $reason : 'Withdrawn by vendor.',
+                    $auditNote,
                     $request,
                     'vendor_withdraw',
                 );
@@ -770,7 +848,7 @@ class BookingController extends Controller
             ], 409);
         }
 
-        $booking->load(['space', 'invoice', 'auditLogs.actor', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
+        $booking->refresh()->load(['space', 'invoice', 'auditLogs.actor', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
         return response()->json([
             'message' => 'Booking withdrawn successfully.',
@@ -1076,7 +1154,20 @@ class BookingController extends Controller
 
     public function show(Booking $booking)
     {
-        return $booking->load(['user', 'space', 'invoice']);
+        $booking->load([
+            'user.businessProfile',
+            'space',
+            'invoice',
+            'carbootEvent',
+            'withdrawnBy',
+            'auditLogs.actor',
+            'bookingDayAllocations.eventSite.space',
+            'bookingDayAllocations.eventDay',
+        ]);
+
+        return response()->json(
+            VendorBookingPresenter::presentForOrganizer($booking, true),
+        );
     }
 
     public function destroy(Booking $booking)

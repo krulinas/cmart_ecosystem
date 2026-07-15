@@ -33,7 +33,18 @@ function runArtisan(action, { json = false } = {}) {
 }
 
 export function createSiteFixtures() {
-  const stdout = runArtisan('create', { json: true });
+  return parseFixtureJson(runArtisan('create', { json: true }));
+}
+
+export function createPaidWithdrawalFixture() {
+  return parseFixtureJson(runArtisan('create-paid-booking', { json: true }));
+}
+
+export function createPaymentSubmittedWithdrawalFixture() {
+  return parseFixtureJson(runArtisan('create-payment-submitted-booking', { json: true }));
+}
+
+function parseFixtureJson(stdout) {
   const jsonLine = stdout
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -41,7 +52,7 @@ export function createSiteFixtures() {
     .find((line) => line.startsWith('{'));
 
   if (!jsonLine) {
-    throw new Error(`Could not parse e2e:site-fixtures create output:\n${stdout}`);
+    throw new Error(`Could not parse e2e:site-fixtures output:\n${stdout}`);
   }
 
   return JSON.parse(jsonLine);
