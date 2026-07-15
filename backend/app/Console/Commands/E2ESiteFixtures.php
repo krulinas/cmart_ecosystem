@@ -35,13 +35,15 @@ class E2ESiteFixtures extends Command
 {
     protected $signature = 'e2e:site-fixtures
                             {action=create : create or cleanup}
-                            {--json : Emit machine-readable JSON for the E2E harness}';
+                            {--json : Emit machine-readable JSON for the E2E harness}
+                            {--site= : Site label for recovery competing allocation}';
 
     protected $description = 'Phase 2A.8.1: Create or remove temporary E2E EventSite/EventDay fixtures';
 
     public const MARKER = 'E2E-SITE-FIX';
     private const EVENT_TITLE = self::MARKER . ' Carboot Weekend';
     private const VENDOR_EMAIL = 'e2e-site-fix-vendor@example.com';
+    private const ORGANIZER_EMAIL = 'e2e-site-fix-organizer@example.com';
     private const SPACE_SIZE = 'Standard (1 Parking Lot)';
 
     public function handle(): int
@@ -58,6 +60,9 @@ class E2ESiteFixtures extends Command
             'create-paid-booking' => $this->createPaidBookingFixture(),
             'create-payment-submitted-booking' => $this->createPaymentSubmittedBookingFixture(),
             'create-paid-three-day-booking' => $this->createPaidThreeDayBookingFixture(),
+            'create-released-day-recovery' => $this->createReleasedDayRecoveryFixture(),
+            'recovery-add-competing-allocation' => $this->recoveryAddCompetingAllocation(),
+            'recovery-status' => $this->recoveryStatus(),
             'attendance-status' => $this->attendanceStatus(),
             'cleanup' => $this->cleanupFixtures(),
             default => $this->invalidAction(),
@@ -69,7 +74,9 @@ class E2ESiteFixtures extends Command
         $this->error(
             "Unknown action [{$this->argument('action')}]. Use 'create', "
             . "'create-paid-booking', 'create-payment-submitted-booking', "
-            . "'create-paid-three-day-booking', 'attendance-status', or 'cleanup'.",
+            . "'create-paid-three-day-booking', 'create-released-day-recovery', "
+            . "'recovery-add-competing-allocation', 'recovery-status', "
+            . "'attendance-status', or 'cleanup'.",
         );
 
         return self::FAILURE;
@@ -103,6 +110,209 @@ class E2ESiteFixtures extends Command
             true,
             3,
         );
+    }
+
+    private function createReleasedDayRecoveryFixture(): int
+    {
+        $this->purge();
+        $base = $this->buildBaseFixtures(3);
+
+        $payload = DB::transaction(function () use ($base) {
+            $vendor = User::where('email', self::VENDOR_EMAIL)->firstOrFail();
+            $organizer = User::firstOrCreate(
+                ['email' => self::ORGANIZER_EMAIL],
+                [
+                    'name' => 'E2E Site Fixture Organizer',
+                    'password' => bcrypt('password123'),
+                    'role' => 'organizer',
+                    'vendor_status' => 'none',
+                ],
+            );
+            $event = CarbootEvent::findOrFail($base['event_id']);
+            $siteIds = array_slice($base['site_ids'], 0, 2);
+            $dayIds = $base['day_ids'];
+            $releasedDayId = $dayIds[2];
+
+            $booking = Booking::create([
+                'user_id' => $vendor->id,
+                'space_id' => $base['space_id'],
+                'carboot_event_id' => $event->id,
+                'booking_date' => $event->starts_at->toDateString(),
+                'product_category' => 'Food & Beverages',
+                'product_details' => self::MARKER . ' released-day recovery E2E booking',
+                'approval_status' => 'Approved',
+            ]);
+
+            $reservationService = app(BookingAllocationReservationService::class);
+            $reservation = $reservationService->reserveForBookingInExistingTransaction($booking, $siteIds);
+            $invoice = Invoice::create([
+                'booking_id' => $booking->id,
+                'amount' => $reservation->amount,
+                'payment_status' => 'Paid',
+                'payment_proof_path' => self::MARKER . '/payment-proof-marker.jpg',
+                'payment_submitted_at' => now(),
+            ]);
+            app(BookingAllocationLifecycleService::class)->confirmForBooking($booking->fresh());
+
+            $reason = 'Emergency family commitment on the final event day.';
+            app(BookingAllocationLifecycleService::class)->releaseForBookingDays(
+                $booking->fresh(),
+                [$releasedDayId],
+                $organizer,
+                BookingAllocationLifecycleService::REASON_ORGANIZER_DAY_EXCEPTION,
+            );
+
+            $exception = BookingAttendanceException::create([
+                'booking_id' => $booking->id,
+                'applied_by' => $organizer->id,
+                'applied_by_name' => $organizer->name,
+                'reason' => $reason,
+                'payment_state' => BookingAttendanceException::PAYMENT_PAID,
+                'no_refund_acknowledged' => true,
+                'previous_retained_day_count' => 3,
+                'retained_day_count' => 2,
+                'released_day_count' => 1,
+                'applied_at' => now(),
+            ]);
+            foreach ($dayIds as $index => $dayId) {
+                BookingAttendanceExceptionDay::create([
+                    'booking_attendance_exception_id' => $exception->id,
+                    'event_day_id' => $dayId,
+                    'disposition' => $index < 2
+                        ? BookingAttendanceExceptionDay::DISPOSITION_RETAINED
+                        : BookingAttendanceExceptionDay::DISPOSITION_RELEASED,
+                ]);
+            }
+            BookingAuditLog::create([
+                'booking_id' => $booking->id,
+                'actor_user_id' => $organizer->id,
+                'action' => 'organizer_applied_attendance_exception',
+                'from_status' => 'Approved',
+                'to_status' => 'Approved',
+                'revision_comment' => $reason,
+            ]);
+
+            $booking->refresh()->load(['invoice', 'bookingDayAllocations.eventSite', 'bookingDayAllocations.eventDay']);
+
+            return array_merge($base, [
+                'booking_id' => $booking->id,
+                'invoice_id' => $invoice->id,
+                'invoice_amount' => (float) $invoice->amount,
+                'payment_status' => $invoice->payment_status,
+                'released_day_id' => $releasedDayId,
+                'released_day_operational_date' => EventDay::find($releasedDayId)?->operational_date?->format('Y-m-d'),
+                'retained_day_ids' => array_slice($dayIds, 0, 2),
+                'site_labels' => ['A01', 'A02'],
+                'organizer_email' => self::ORGANIZER_EMAIL,
+                'organizer_password' => 'password123',
+                'exception_reason' => $reason,
+                'allocation_count' => $booking->bookingDayAllocations->count(),
+                'released_allocation_count' => $booking->bookingDayAllocations
+                    ->where('allocation_status', BookingDayAllocation::STATUS_RELEASED)
+                    ->count(),
+                'active_allocation_count' => $booking->bookingDayAllocations
+                    ->where('active_lock', 1)
+                    ->count(),
+            ]);
+        });
+
+        return $this->emitFixtureResult('E2E released-day recovery fixture created.', $payload);
+    }
+
+    private function recoveryAddCompetingAllocation(): int
+    {
+        $siteLabel = strtoupper((string) $this->option('site'));
+        if ($siteLabel === '') {
+            $this->error('The --site option is required (for example --site=A02).');
+
+            return self::FAILURE;
+        }
+
+        $booking = Booking::query()
+            ->whereHas('carbootEvent', fn ($query) => $query->where('title', 'like', self::MARKER . '%'))
+            ->whereHas('bookingDayAllocations', fn ($query) => $query->where(
+                'release_reason',
+                BookingAllocationLifecycleService::REASON_ORGANIZER_DAY_EXCEPTION,
+            ))
+            ->latest('id')
+            ->firstOrFail();
+        $releasedDayId = BookingDayAllocation::query()
+            ->where('booking_id', $booking->id)
+            ->where('release_reason', BookingAllocationLifecycleService::REASON_ORGANIZER_DAY_EXCEPTION)
+            ->value('event_day_id');
+        $site = EventSite::query()
+            ->where('carboot_event_id', $booking->carboot_event_id)
+            ->where('label', $siteLabel)
+            ->firstOrFail();
+        $competitor = User::firstOrCreate(
+            ['email' => 'e2e-site-fix-competitor@example.com'],
+            [
+                'name' => 'E2E Recovery Competitor',
+                'password' => bcrypt('password123'),
+                'role' => 'community',
+                'vendor_status' => 'approved',
+            ],
+        );
+
+        $payload = DB::transaction(function () use ($booking, $releasedDayId, $site, $competitor) {
+            $competingBooking = Booking::create([
+                'user_id' => $competitor->id,
+                'space_id' => $site->space_id,
+                'carboot_event_id' => $booking->carboot_event_id,
+                'booking_date' => EventDay::find($releasedDayId)?->operational_date,
+                'product_category' => 'Others',
+                'product_details' => self::MARKER . ' recovery competing allocation',
+                'approval_status' => 'Approved',
+            ]);
+            $allocation = BookingDayAllocation::create([
+                'booking_id' => $competingBooking->id,
+                'event_day_id' => $releasedDayId,
+                'event_site_id' => $site->id,
+                'allocation_status' => BookingDayAllocation::STATUS_CONFIRMED,
+                'reserved_at' => now(),
+                'confirmed_at' => now(),
+                'active_lock' => 1,
+            ]);
+
+            return [
+                'source_booking_id' => $booking->id,
+                'competing_booking_id' => $competingBooking->id,
+                'competing_allocation_id' => $allocation->id,
+                'event_day_id' => $releasedDayId,
+                'event_site_id' => $site->id,
+                'site_label' => $site->label,
+            ];
+        });
+
+        return $this->emitFixtureResult('E2E recovery competing allocation created.', $payload);
+    }
+
+    private function recoveryStatus(): int
+    {
+        $booking = Booking::query()
+            ->whereHas('carbootEvent', fn ($query) => $query->where('title', 'like', self::MARKER . '%'))
+            ->whereHas('bookingDayAllocations', fn ($query) => $query->where(
+                'release_reason',
+                BookingAllocationLifecycleService::REASON_ORGANIZER_DAY_EXCEPTION,
+            ))
+            ->with('invoice')
+            ->latest('id')
+            ->firstOrFail();
+
+        return $this->emitFixtureResult('E2E recovery fixture status.', [
+            'booking_id' => $booking->id,
+            'approval_status' => $booking->approval_status,
+            'payment_status' => $booking->invoice?->payment_status,
+            'allocation_count' => BookingDayAllocation::where('booking_id', $booking->id)->count(),
+            'released_count' => BookingDayAllocation::where('booking_id', $booking->id)
+                ->where('allocation_status', BookingDayAllocation::STATUS_RELEASED)
+                ->count(),
+            'active_count' => BookingDayAllocation::where('booking_id', $booking->id)
+                ->where('active_lock', 1)
+                ->count(),
+            'exception_count' => BookingAttendanceException::where('booking_id', $booking->id)->count(),
+            'audit_count' => BookingAuditLog::where('booking_id', $booking->id)->count(),
+        ]);
     }
 
     private function attendanceStatus(): int

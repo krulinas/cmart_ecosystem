@@ -30,7 +30,28 @@
         </div>
       </section>
 
-      <!-- Approval queue -->
+      <div class="flex flex-wrap gap-2" data-testid="organizer-bookings-tabs">
+        <button
+          type="button"
+          class="rounded-full px-4 py-2 text-sm font-semibold transition"
+          :class="activeWorkspaceTab === 'bookings' ? 'bg-cyan-600 text-white shadow-sm' : 'bg-white text-ink-600 ring-1 ring-ink-200'"
+          data-testid="organizer-tab-bookings"
+          @click="activeWorkspaceTab = 'bookings'"
+        >
+          Bookings Registry
+        </button>
+        <button
+          type="button"
+          class="rounded-full px-4 py-2 text-sm font-semibold transition"
+          :class="activeWorkspaceTab === 'recovery' ? 'bg-cyan-600 text-white shadow-sm' : 'bg-white text-ink-600 ring-1 ring-ink-200'"
+          data-testid="organizer-tab-released-recovery"
+          @click="switchToRecoveryTab"
+        >
+          Released-Day Recovery
+        </button>
+      </div>
+
+      <template v-if="activeWorkspaceTab === 'bookings'">
       <section class="overflow-hidden rounded-2xl border border-ink-200 bg-white shadow-sm">
         <div class="px-5 py-4 text-white sm:px-6" :class="theme.queueHeader">
           <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
@@ -396,6 +417,9 @@
           </div>
         </div>
       </section>
+      </template>
+
+      <OrganizerReleasedDayRecoveryPanel v-else ref="recoveryPanel" />
     </template>
 
     <Teleport to="body">
@@ -444,13 +468,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
 import ManagementKpiCard from '../../../components/management/ManagementKpiCard.vue';
 import ManagementEmptyState from '../../../components/management/ManagementEmptyState.vue';
 import ManagementStatusChip from '../../../components/management/ManagementStatusChip.vue';
 import OrganizerWithdrawalReconciliationModal from '../../../components/organizer/OrganizerWithdrawalReconciliationModal.vue';
+import OrganizerReleasedDayRecoveryPanel from '../../../components/organizer/OrganizerReleasedDayRecoveryPanel.vue';
 import { useManagementAccess } from '../../../composables/useManagementAccess';
 import { formatBookingDate, isTerminalBookingStatus, siteLabelsForBooking, allocationStatusLabel, organizerWithdrawalSummary, statusLabel } from '../../../utils/bookingDisplay';
 
@@ -545,6 +570,8 @@ const paymentVerifyTarget = ref(null);
 const showPaymentVerifyModal = ref(false);
 const verifyingPayment = ref(false);
 const showBookingDetails = ref(false);
+const activeWorkspaceTab = ref('bookings');
+const recoveryPanel = ref(null);
 const selectedBookingId = ref(null);
 const selectedBooking = ref(null);
 const bookingDetailsLoading = ref(false);
@@ -872,5 +899,11 @@ onBeforeUnmount(() => {
   clearTimeout(searchDebounceTimer);
 });
 
-defineExpose({ fetchBookings });
+const switchToRecoveryTab = async () => {
+  activeWorkspaceTab.value = 'recovery';
+  await nextTick();
+  await recoveryPanel.value?.load?.();
+};
+
+defineExpose({ fetchBookings, switchToRecoveryTab });
 </script>

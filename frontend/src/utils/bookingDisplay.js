@@ -316,3 +316,90 @@ export const canVendorAccessWhatsAppGroup = (booking) =>
   booking?.approval_status === 'Approved' && isBookingPaymentPaid(booking);
 
 export const VENDOR_WHATSAPP_GROUP_URL = 'https://chat.whatsapp.com/CMartVendorDemoGroup';
+
+export const formatDateTime = (value) => {
+  if (!value) return 'Not recorded';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Not recorded';
+  return date.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: MY_TZ });
+};
+
+export const formatOperationalDate = (dateStr) => {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-GB', {
+    timeZone: MY_TZ,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+};
+
+export const recoveryStateOptions = [
+  'recoverable',
+  'partially_blocked',
+  'fully_blocked',
+  'expired',
+  'operationally_unavailable',
+];
+
+export const recoveryStateLabel = (state) =>
+  ({
+    recoverable: 'Recoverable',
+    partially_blocked: 'Partially Blocked',
+    fully_blocked: 'Fully Blocked',
+    expired: 'Expired',
+    operationally_unavailable: 'Operationally Unavailable',
+  }[state] || state);
+
+export const recoveryStateBadgeClass = (state) =>
+  ({
+    recoverable: 'ml-badge bg-emerald-100 text-emerald-800',
+    partially_blocked: 'ml-badge bg-amber-100 text-amber-800',
+    fully_blocked: 'ml-badge bg-rose-100 text-rose-800',
+    expired: 'ml-badge bg-slate-100 text-slate-700',
+    operationally_unavailable: 'ml-badge bg-ink-100 text-ink-700',
+  }[state] || 'ml-badge bg-ink-100 text-ink-700');
+
+export const recoveryPaymentLabel = (state) => organizerPaymentStateLabel(state);
+
+export const recoveryPaymentBadgeClass = (state) =>
+  ({
+    paid: 'inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800',
+    payment_submitted: 'inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800',
+    unpaid: 'inline-flex rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-semibold text-ink-700',
+  }[state] || 'inline-flex rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-semibold text-ink-700');
+
+export const releaseReasonLabel = (reason) =>
+  ({
+    organizer_day_exception: 'Organizer attendance exception',
+    booking_withdrawn: 'Vendor withdrawal',
+    booking_cancelled: 'Booking cancelled',
+    booking_rejected: 'Booking rejected',
+  }[reason] || reason || '—');
+
+export const releasedSiteLabels = (row) =>
+  (row?.released_sites || []).map((site) => site.label).filter(Boolean).join(', ') || '—';
+
+export const recoveryBlockerSummary = (row) => {
+  const blockers = (row?.released_sites || [])
+    .map((site) => site.blocker)
+    .filter(Boolean);
+  if (!blockers.length) return '';
+  if (blockers.length === 1) return blockers[0];
+  return `${blockers.length} sites blocked`;
+};
+
+export const buildRecoveryQueryParams = ({
+  search = '',
+  recoveryState = 'all',
+  paymentState = 'all',
+  page = 1,
+  perPage = 15,
+} = {}) => {
+  const params = { page, per_page: perPage };
+  if (search) params.search = search;
+  if (recoveryState !== 'all') params.recovery_state = recoveryState;
+  if (paymentState !== 'all') params.payment_state = paymentState;
+  return params;
+};

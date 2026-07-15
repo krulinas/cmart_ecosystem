@@ -48,6 +48,29 @@ export function createPaidThreeDayAttendanceFixture() {
   return parseFixtureJson(runArtisan('create-paid-three-day-booking', { json: true }));
 }
 
+export function createReleasedDayRecoveryFixture() {
+  return parseFixtureJson(runArtisan('create-released-day-recovery', { json: true }));
+}
+
+export function recoveryAddCompetingAllocation(siteLabel) {
+  const args = ['artisan', 'e2e:site-fixtures', 'recovery-add-competing-allocation', `--site=${siteLabel}`, '--json'];
+  const result = spawnSync('php', args, {
+    cwd: backendRoot,
+    encoding: 'utf-8',
+    shell: process.platform === 'win32',
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `e2e:site-fixtures recovery-add-competing-allocation failed (exit ${result.status}): ${result.stderr || result.stdout}`,
+    );
+  }
+  return parseFixtureJson(result.stdout);
+}
+
+export function recoveryFixtureStatus() {
+  return parseFixtureJson(runArtisan('recovery-status', { json: true }));
+}
+
 export function attendanceFixtureStatus() {
   return parseFixtureJson(runArtisan('attendance-status', { json: true }));
 }
