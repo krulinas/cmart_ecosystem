@@ -44,6 +44,14 @@ export function createPaymentSubmittedWithdrawalFixture() {
   return parseFixtureJson(runArtisan('create-payment-submitted-booking', { json: true }));
 }
 
+export function createPaidThreeDayAttendanceFixture() {
+  return parseFixtureJson(runArtisan('create-paid-three-day-booking', { json: true }));
+}
+
+export function attendanceFixtureStatus() {
+  return parseFixtureJson(runArtisan('attendance-status', { json: true }));
+}
+
 function parseFixtureJson(stdout) {
   const jsonLine = stdout
     .split(/\r?\n/)

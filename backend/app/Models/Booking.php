@@ -67,4 +67,11 @@ class Booking extends Model
     {
         return $this->hasMany(BookingDayAllocation::class);
     }
+
+    public function attendanceExceptions()
+    {
+        return $this->hasMany(BookingAttendanceException::class)
+            ->orderBy('applied_at')
+            ->orderBy('id');
+    }
 }

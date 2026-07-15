@@ -19,6 +19,8 @@ class BookingAllocationLifecycleService
 
     public const REASON_BOOKING_WITHDRAWN = 'booking_withdrawn';
 
+    public const REASON_ORGANIZER_DAY_EXCEPTION = 'organizer_day_exception';
+
     /**
      * Transition active reserved allocations to confirmed after payment verification.
      *
@@ -130,5 +132,56 @@ class BookingAllocationLifecycleService
             ->forBooking((int) $booking->id)
             ->orderBy('id')
             ->get();
+    }
+
+    /**
+     * Release only active allocations on the selected EventDays.
+     *
+     * @param  list<int>  $eventDayIds
+     * @return Collection<int, BookingDayAllocation>
+     */
+    public function releaseForBookingDays(
+        Booking $booking,
+        array $eventDayIds,
+        User $releasedBy,
+        string $reason = self::REASON_ORGANIZER_DAY_EXCEPTION,
+    ): Collection {
+        $booking = Booking::query()
+            ->whereKey($booking->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $dayIds = array_values(array_unique(array_map('intval', $eventDayIds)));
+        sort($dayIds, SORT_NUMERIC);
+
+        if ($dayIds === []) {
+            return collect();
+        }
+
+        $allocations = BookingDayAllocation::query()
+            ->forBooking((int) $booking->id)
+            ->whereIn('event_day_id', $dayIds)
+            ->activeOccupancy()
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        if ($allocations->isEmpty()) {
+            return collect();
+        }
+
+        $releasedAt = now();
+
+        foreach ($allocations as $allocation) {
+            $allocation->update([
+                'allocation_status' => BookingDayAllocation::STATUS_RELEASED,
+                'released_at' => $releasedAt,
+                'released_by' => $releasedBy->id,
+                'release_reason' => $reason,
+                'active_lock' => null,
+            ]);
+        }
+
+        return $allocations->map->fresh()->values();
     }
 }

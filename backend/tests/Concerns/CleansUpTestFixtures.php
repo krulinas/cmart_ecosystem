@@ -3,6 +3,8 @@
 namespace Tests\Concerns;
 
 use App\Models\Booking;
+use App\Models\BookingAttendanceException;
+use App\Models\BookingAttendanceExceptionDay;
 use App\Models\BookingAuditLog;
 use App\Models\BookingDayAllocation;
 use App\Models\CarbootEvent;
@@ -45,6 +47,18 @@ trait CleansUpTestFixtures
     protected function cleanupTrackedFixtures(): void
     {
         try {
+            if ($this->createdBookingIds !== []) {
+                $exceptionIds = BookingAttendanceException::whereIn(
+                    'booking_id',
+                    $this->createdBookingIds,
+                )->pluck('id');
+                BookingAttendanceExceptionDay::whereIn(
+                    'booking_attendance_exception_id',
+                    $exceptionIds,
+                )->delete();
+                BookingAttendanceException::whereIn('id', $exceptionIds)->delete();
+            }
+
             if ($this->createdAllocationIds !== []) {
                 BookingDayAllocation::whereIn('id', $this->createdAllocationIds)->delete();
             }

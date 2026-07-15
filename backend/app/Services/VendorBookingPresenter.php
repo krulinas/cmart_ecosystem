@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\BookingAttendanceException;
+use App\Models\BookingAttendanceExceptionDay;
 use App\Models\BookingDayAllocation;
 use App\Models\CarbootEvent;
 
@@ -20,6 +22,9 @@ class VendorBookingPresenter
 
     public const NO_REFUND_WARNING_MS =
         'Anda boleh menarik diri selepas bayaran dibuat, tetapi bayaran tidak akan dipulangkan. Tapak yang telah ditempah akan dibuka semula kepada vendor lain.';
+
+    public const ATTENDANCE_NO_REFUND_WARNING_MS =
+        'Pengecualian hari tidak mengubah jumlah bayaran. Tiada bayaran balik akan diberikan bagi hari yang dilepaskan.';
 
     public static function eventLabel(Booking $booking): string
     {
@@ -253,6 +258,157 @@ class VendorBookingPresenter
         ];
     }
 
+    /**
+     * Safe full-event policy and append-only attendance-exception summary.
+     *
+     * @return array<string, mixed>
+     */
+    public static function attendancePolicy(Booking $booking, bool $forOrganizer = false): array
+    {
+        $booking->loadMissing([
+            'invoice',
+            'carbootEvent',
+            'attendanceExceptions.appliedBy',
+            'attendanceExceptions.days.eventDay',
+            'bookingDayAllocations.eventSite.space',
+            'bookingDayAllocations.eventDay',
+        ]);
+
+        $allocations = $booking->bookingDayAllocations;
+        $exceptions = $booking->attendanceExceptions->sortBy('id')->values();
+        /** @var BookingAttendanceException|null $latest */
+        $latest = $exceptions->last();
+
+        $originalDayIds = $allocations->pluck('event_day_id')->map(fn ($id) => (int) $id)->unique();
+        $retainedDayIds = $latest
+            ? $latest->days
+                ->where('disposition', BookingAttendanceExceptionDay::DISPOSITION_RETAINED)
+                ->pluck('event_day_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+            : $originalDayIds;
+        $releasedDayIds = $exceptions
+            ->flatMap(fn (BookingAttendanceException $exception) => $exception->days
+                ->where('disposition', BookingAttendanceExceptionDay::DISPOSITION_RELEASED)
+                ->pluck('event_day_id'))
+            ->map(fn ($id) => (int) $id)
+            ->unique();
+
+        $daysById = $allocations
+            ->pluck('eventDay')
+            ->filter()
+            ->unique('id')
+            ->keyBy('id');
+        $dayPresenter = function (int $dayId) use ($allocations, $daysById) {
+            $day = $daysById->get($dayId);
+            if (! $day) {
+                return null;
+            }
+
+            $dayAllocations = $allocations->where('event_day_id', $dayId);
+            $statuses = $dayAllocations->pluck('allocation_status')->unique()->values();
+            $status = $statuses->count() === 1 ? $statuses->first() : 'mixed';
+            $hasStarted = $day->starts_at === null || $day->starts_at->lte(now());
+
+            return [
+                'id' => $day->id,
+                'operational_date' => $day->operational_date->format('Y-m-d'),
+                'starts_at' => $day->starts_at?->toIso8601String(),
+                'ends_at' => $day->ends_at?->toIso8601String(),
+                'allocation_status' => $status,
+                'has_started' => $hasStarted,
+                'can_be_released' => ! $hasStarted && $dayAllocations->contains(
+                    fn (BookingDayAllocation $row) => $row->occupiesSite(),
+                ),
+            ];
+        };
+
+        $retainedDays = $retainedDayIds
+            ->sort()
+            ->map($dayPresenter)
+            ->filter()
+            ->sortBy('starts_at')
+            ->values()
+            ->all();
+        $releasedDays = $releasedDayIds
+            ->sort()
+            ->map($dayPresenter)
+            ->filter()
+            ->sortBy('starts_at')
+            ->values()
+            ->all();
+        $siteLabels = $allocations
+            ->pluck('eventSite')
+            ->filter()
+            ->unique('id')
+            ->sortBy('label')
+            ->pluck('label')
+            ->values()
+            ->all();
+        $paymentState = self::withdrawalPaymentState($booking);
+        $canReduce = $forOrganizer
+            && in_array($booking->approval_status, self::WITHDRAWABLE_STATUSES, true)
+            && $booking->carbootEvent?->day_generation_mode === CarbootEvent::DAY_MODE_CALENDAR
+            && count($retainedDays) >= 2
+            && collect($retainedDays)->contains('can_be_released', true);
+
+        $payload = [
+            'mode' => $latest ? 'organizer_exception' : 'full_event',
+            'full_event_required_by_default' => true,
+            'has_exception' => $latest !== null,
+            'can_organizer_reduce_days' => $canReduce,
+            'original_event_day_count' => $originalDayIds->count(),
+            'retained_event_day_count' => count($retainedDays),
+            'released_event_day_count' => count($releasedDays),
+            'retained_days' => $retainedDays,
+            'released_days' => $releasedDays,
+            'site_labels' => $siteLabels,
+            'reason' => $latest?->reason,
+            'applied_at' => $latest?->applied_at?->toIso8601String(),
+            'applied_by' => $latest ? (
+                $forOrganizer
+                    ? [
+                        'id' => $latest->appliedBy?->id,
+                        'name' => $latest->applied_by_name,
+                    ]
+                    : ['name' => 'Organizer']
+            ) : null,
+            'payment_state' => $latest?->payment_state ?? $paymentState,
+            'no_refund_applied' => $latest !== null
+                && in_array($latest->payment_state, [
+                    self::PAYMENT_STATE_PAID,
+                    self::PAYMENT_STATE_PAYMENT_SUBMITTED,
+                ], true),
+            'requires_no_refund_acknowledgement' => in_array($paymentState, [
+                self::PAYMENT_STATE_PAID,
+                self::PAYMENT_STATE_PAYMENT_SUBMITTED,
+            ], true),
+            'no_refund_warning' => self::ATTENDANCE_NO_REFUND_WARNING_MS,
+        ];
+
+        if ($forOrganizer) {
+            $payload['exception_history'] = $exceptions
+                ->map(fn (BookingAttendanceException $exception) => [
+                    'id' => $exception->id,
+                    'reason' => $exception->reason,
+                    'previous_retained_day_count' => $exception->previous_retained_day_count,
+                    'retained_day_count' => $exception->retained_day_count,
+                    'released_day_count' => $exception->released_day_count,
+                    'payment_state' => $exception->payment_state,
+                    'no_refund_acknowledged' => $exception->no_refund_acknowledged,
+                    'applied_at' => $exception->applied_at?->toIso8601String(),
+                    'applied_by' => [
+                        'id' => $exception->appliedBy?->id,
+                        'name' => $exception->applied_by_name,
+                    ],
+                ])
+                ->values()
+                ->all();
+        }
+
+        return $payload;
+    }
+
     public static function presentForVendor(Booking $booking, ?int $viewerUserId = null): array
     {
         $booking->loadMissing(['space', 'invoice', 'carbootEvent']);
@@ -260,6 +416,7 @@ class VendorBookingPresenter
         $payload = array_merge($booking->toArray(), [
             'can_withdraw' => self::canVendorWithdraw($booking, $viewerUserId),
             'withdrawal_policy' => self::withdrawalPolicy($booking, $viewerUserId),
+            'attendance_policy' => self::attendancePolicy($booking),
             'event_label' => self::eventLabel($booking),
         ]);
 
@@ -287,6 +444,7 @@ class VendorBookingPresenter
         $payload['invoice'] = self::safeInvoice($booking);
         $payload['withdrawal_policy'] = self::withdrawalPolicy($booking);
         $payload['withdrawal_reconciliation'] = self::withdrawalReconciliation($booking);
+        $payload['attendance_policy'] = self::attendancePolicy($booking, true);
         if ($includeAuditTimeline) {
             $payload['audit_timeline'] = BookingAuditPresenter::timeline($booking);
         }

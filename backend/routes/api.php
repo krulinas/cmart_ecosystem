@@ -112,6 +112,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('organizer')->group(function () {
             Route::get('/feedbacks', [FeedbackController::class, 'staffIndex']);
             Route::get('/bookings/registry', [BookingController::class, 'staffRegistry']);
+            Route::patch('/bookings/{booking}/attendance-exception', [BookingController::class, 'applyAttendanceException']);
             Route::get('/operations-summary', [StaffOperationsController::class, 'operationsSummary']);
             Route::get('/bookings/{booking}/verify', [BookingPassVerificationController::class, 'verify']);
             Route::post('/bookings/{booking}/check-in', [BookingPassVerificationController::class, 'checkIn']);

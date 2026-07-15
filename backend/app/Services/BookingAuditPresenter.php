@@ -14,6 +14,7 @@ class BookingAuditPresenter
         'vendor_resubmitted_booking' => 'Vendor resubmitted booking',
         'organizer_approved_booking' => 'Booking approved',
         'organizer_verified_payment' => 'Payment verified',
+        'organizer_applied_attendance_exception' => 'Organizer applied attendance exception',
         'vendor_withdraw' => 'Vendor withdrew booking',
         'organizer_rejected_booking' => 'Booking rejected',
         'vendor_cancel' => 'Booking cancelled',
@@ -27,7 +28,7 @@ class BookingAuditPresenter
      */
     public static function timeline(Booking $booking): array
     {
-        $booking->loadMissing('auditLogs.actor');
+        $booking->loadMissing(['auditLogs.actor', 'attendanceExceptions']);
 
         return $booking->auditLogs
             ->sortBy(fn (BookingAuditLog $log) => [$log->created_at?->getTimestamp() ?? 0, $log->id])
@@ -59,6 +60,30 @@ class BookingAuditPresenter
                     'Vendor withdrew after submitting payment proof · No refund policy applied · Sites released',
                 default => 'Vendor withdrew before payment · Sites released',
             };
+        }
+
+        if ($log->action === 'organizer_applied_attendance_exception') {
+            preg_match('/Attendance exception #(\d+)/', (string) $log->revision_comment, $matches);
+            $exception = isset($matches[1])
+                ? $booking->attendanceExceptions->firstWhere('id', (int) $matches[1])
+                : null;
+
+            if (! $exception) {
+                return 'Organizer reduced the retained EventDays';
+            }
+
+            $summary = "Attendance reduced to {$exception->retained_day_count} of {$exception->previous_retained_day_count} days";
+            if ($exception->payment_state === VendorBookingPresenter::PAYMENT_STATE_PAYMENT_SUBMITTED) {
+                $summary .= ' · Payment proof retained';
+            }
+            if (in_array($exception->payment_state, [
+                VendorBookingPresenter::PAYMENT_STATE_PAID,
+                VendorBookingPresenter::PAYMENT_STATE_PAYMENT_SUBMITTED,
+            ], true)) {
+                $summary .= ' · No refund';
+            }
+
+            return $summary . " · {$exception->released_day_count} day released";
         }
 
         return match ($log->action) {

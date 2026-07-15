@@ -438,6 +438,7 @@
       :booking="selectedBooking"
       :loading="bookingDetailsLoading"
       :error="bookingDetailsError"
+      @booking-updated="handleBookingDetailsUpdated"
     />
   </div>
 </template>
@@ -565,6 +566,13 @@ const openBookingDetails = async (bookingId) => {
   } finally {
     bookingDetailsLoading.value = false;
   }
+};
+
+const handleBookingDetailsUpdated = async (booking) => {
+  selectedBooking.value = booking;
+  toast.success('Attendance exception applied.');
+  await fetchBookings();
+  emit('refreshed');
 };
 
 const openPaymentVerifyModal = (booking) => {

@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Booking;
+use App\Models\BookingAttendanceException;
+use App\Models\BookingAttendanceExceptionDay;
 use App\Models\BookingAuditLog;
 use App\Models\BookingDayAllocation;
 use App\Models\CarbootEvent;
@@ -55,6 +57,8 @@ class E2ESiteFixtures extends Command
             'create' => $this->createFixtures(),
             'create-paid-booking' => $this->createPaidBookingFixture(),
             'create-payment-submitted-booking' => $this->createPaymentSubmittedBookingFixture(),
+            'create-paid-three-day-booking' => $this->createPaidThreeDayBookingFixture(),
+            'attendance-status' => $this->attendanceStatus(),
             'cleanup' => $this->cleanupFixtures(),
             default => $this->invalidAction(),
         };
@@ -64,7 +68,8 @@ class E2ESiteFixtures extends Command
     {
         $this->error(
             "Unknown action [{$this->argument('action')}]. Use 'create', "
-            . "'create-paid-booking', 'create-payment-submitted-booking', or 'cleanup'.",
+            . "'create-paid-booking', 'create-payment-submitted-booking', "
+            . "'create-paid-three-day-booking', 'attendance-status', or 'cleanup'.",
         );
 
         return self::FAILURE;
@@ -76,6 +81,7 @@ class E2ESiteFixtures extends Command
             'Paid',
             'E2E paid booking fixture created.',
             true,
+            2,
         );
     }
 
@@ -85,17 +91,70 @@ class E2ESiteFixtures extends Command
             'Pending Verification',
             'E2E payment-submitted booking fixture created.',
             false,
+            2,
         );
+    }
+
+    private function createPaidThreeDayBookingFixture(): int
+    {
+        return $this->createWithdrawalBookingFixture(
+            'Paid',
+            'E2E paid three-day attendance fixture created.',
+            true,
+            3,
+        );
+    }
+
+    private function attendanceStatus(): int
+    {
+        $booking = Booking::query()
+            ->whereHas('carbootEvent', fn ($query) =>
+                $query->where('title', 'like', self::MARKER . '%'))
+            ->with('invoice')
+            ->latest('id')
+            ->firstOrFail();
+        $allocations = BookingDayAllocation::where('booking_id', $booking->id)->get();
+
+        return $this->emitFixtureResult('E2E attendance fixture status.', [
+            'booking_id' => $booking->id,
+            'approval_status' => $booking->approval_status,
+            'invoice_amount' => (float) $booking->invoice?->amount,
+            'payment_status' => $booking->invoice?->payment_status,
+            'payment_proof_present' => filled($booking->invoice?->payment_proof_path),
+            'allocation_count' => $allocations->count(),
+            'confirmed_count' => $allocations->where('allocation_status', 'confirmed')->count(),
+            'released_count' => $allocations->where('allocation_status', 'released')->count(),
+            'active_count' => $allocations->where('active_lock', 1)->count(),
+            'released_lock_null_count' => $allocations
+                ->where('allocation_status', 'released')
+                ->whereNull('active_lock')
+                ->count(),
+            'attendance_release_reason_count' => $allocations
+                ->where('release_reason', BookingAllocationLifecycleService::REASON_ORGANIZER_DAY_EXCEPTION)
+                ->count(),
+            'released_by_ids' => $allocations
+                ->where('allocation_status', 'released')
+                ->pluck('released_by')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all(),
+            'exception_count' => BookingAttendanceException::where('booking_id', $booking->id)->count(),
+            'audit_count' => BookingAuditLog::where('booking_id', $booking->id)
+                ->where('action', 'organizer_applied_attendance_exception')
+                ->count(),
+        ]);
     }
 
     private function createWithdrawalBookingFixture(
         string $paymentStatus,
         string $message,
         bool $confirmAllocations,
+        int $dayCount,
     ): int
     {
         $this->purge();
-        $base = $this->buildBaseFixtures();
+        $base = $this->buildBaseFixtures($dayCount);
 
         $payload = DB::transaction(function () use ($base, $paymentStatus, $confirmAllocations) {
             $vendor = User::where('email', self::VENDOR_EMAIL)->firstOrFail();
@@ -166,9 +225,9 @@ class E2ESiteFixtures extends Command
     /**
      * @return array<string, mixed>
      */
-    private function buildBaseFixtures(): array
+    private function buildBaseFixtures(int $dayCount = 2): array
     {
-        return DB::transaction(function () {
+        return DB::transaction(function () use ($dayCount) {
             $space = Space::query()->firstOrCreate(
                 ['space_size' => self::SPACE_SIZE],
                 [
@@ -191,14 +250,14 @@ class E2ESiteFixtures extends Command
                 'title' => self::EVENT_TITLE,
                 'description' => self::MARKER . ' temporary browser E2E fixture event',
                 'starts_at' => $starts,
-                'ends_at' => $starts->copy()->addDay()->setTime(17, 0, 0),
+                'ends_at' => $starts->copy()->addDays($dayCount - 1)->setTime(17, 0, 0),
                 'status' => 'Open',
                 'max_slots' => 100,
                 'day_generation_mode' => CarbootEvent::DAY_MODE_CALENDAR,
             ]);
 
             $dayIds = [];
-            for ($d = 0; $d < 2; $d++) {
+            for ($d = 0; $d < $dayCount; $d++) {
                 $dayStart = $starts->copy()->addDays($d);
                 $day = EventDay::create([
                     'carboot_event_id' => $event->id,
@@ -320,8 +379,16 @@ class E2ESiteFixtures extends Command
             $invoices = 0;
             $bookings = 0;
             $auditLogs = 0;
+            $exceptionDays = 0;
+            $exceptions = 0;
 
             if ($bookingIds !== []) {
+                $exceptionIds = BookingAttendanceException::whereIn('booking_id', $bookingIds)->pluck('id');
+                $exceptionDays = BookingAttendanceExceptionDay::whereIn(
+                    'booking_attendance_exception_id',
+                    $exceptionIds,
+                )->delete();
+                $exceptions = BookingAttendanceException::whereIn('id', $exceptionIds)->delete();
                 $allocations = BookingDayAllocation::whereIn('booking_id', $bookingIds)->delete();
                 $invoices = Invoice::whereIn('booking_id', $bookingIds)->delete();
                 $auditLogs = BookingAuditLog::whereIn('booking_id', $bookingIds)->delete();
@@ -367,6 +434,8 @@ class E2ESiteFixtures extends Command
                 'booking_day_allocations' => (int) $allocations,
                 'invoices' => (int) $invoices,
                 'booking_audit_logs' => (int) $auditLogs,
+                'booking_attendance_exception_days' => (int) $exceptionDays,
+                'booking_attendance_exceptions' => (int) $exceptions,
                 'bookings' => (int) $bookings,
                 'event_sites' => (int) $sites,
                 'event_days' => (int) $days,

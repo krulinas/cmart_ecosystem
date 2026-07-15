@@ -15,7 +15,7 @@
       >
         <header class="sticky top-0 z-10 flex items-center justify-between border-b border-ink-100 bg-white/95 px-5 py-4 backdrop-blur">
           <div>
-            <p class="text-xs font-bold uppercase tracking-wider text-cyan-700">Organizer read-only view</p>
+            <p class="text-xs font-bold uppercase tracking-wider text-cyan-700">Organizer booking view</p>
             <h2 id="organizer-reconciliation-title" class="text-lg font-extrabold text-ink-900">
               Booking #{{ booking?.id || bookingId }}
             </h2>
@@ -100,6 +100,66 @@
             </div>
           </section>
 
+          <section
+            v-if="attendancePolicy"
+            class="rounded-2xl border border-cyan-200 bg-cyan-50/40 p-5"
+            data-testid="organizer-attendance-policy"
+          >
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 class="font-extrabold text-ink-900">Full-Event Attendance</h3>
+                <p class="mt-1 text-sm text-ink-600">Full-event booking is the default for every active operational EventDay.</p>
+              </div>
+              <button
+                v-if="attendancePolicy.can_organizer_reduce_days"
+                type="button"
+                class="ml-btn-primary"
+                data-testid="organizer-apply-attendance-exception"
+                @click="showAttendanceException = true"
+              >
+                Apply Attendance Exception
+              </button>
+            </div>
+
+            <dl class="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+              <div class="rounded-xl bg-white p-3 ring-1 ring-cyan-100">
+                <dt class="text-xs font-bold uppercase text-ink-500">Coverage</dt>
+                <dd class="mt-1 font-semibold">{{ attendancePolicy.retained_event_day_count }} retained · {{ attendancePolicy.released_event_day_count }} released</dd>
+              </div>
+              <div class="rounded-xl bg-white p-3 ring-1 ring-cyan-100">
+                <dt class="text-xs font-bold uppercase text-ink-500">Sites</dt>
+                <dd class="mt-1 font-semibold">{{ attendancePolicy.site_labels?.join(', ') || 'Not recorded' }}</dd>
+              </div>
+              <div class="rounded-xl bg-white p-3 ring-1 ring-cyan-100">
+                <dt class="text-xs font-bold uppercase text-ink-500">Invoice</dt>
+                <dd class="mt-1 font-semibold">RM {{ booking.invoice?.amount || '0.00' }} · {{ paymentStateLabel(attendancePolicy.payment_state) }}</dd>
+              </div>
+            </dl>
+
+            <div class="mt-4 grid gap-3 sm:grid-cols-2">
+              <div class="rounded-xl bg-white p-4 ring-1 ring-emerald-100" data-testid="organizer-retained-event-days">
+                <p class="text-xs font-bold uppercase text-emerald-700">Retained EventDays</p>
+                <p v-for="day in attendancePolicy.retained_days" :key="day.id" class="mt-2 text-sm text-ink-800">
+                  {{ formatDateTime(day.starts_at) }} · {{ allocationStatusLabel(day.allocation_status) }}
+                </p>
+              </div>
+              <div class="rounded-xl bg-white p-4 ring-1 ring-rose-100" data-testid="organizer-released-event-days">
+                <p class="text-xs font-bold uppercase text-rose-700">Released EventDays</p>
+                <p v-if="!attendancePolicy.released_days?.length" class="mt-2 text-sm text-ink-500">None</p>
+                <p v-for="day in attendancePolicy.released_days" :key="day.id" class="mt-2 text-sm text-ink-800">
+                  {{ formatDateTime(day.starts_at) }} · Released
+                </p>
+              </div>
+            </div>
+            <div v-if="attendancePolicy.has_exception" class="mt-4 rounded-xl bg-white p-4 ring-1 ring-cyan-100">
+              <p class="font-semibold text-ink-900">Organizer attendance exception applied</p>
+              <p class="mt-1 text-sm text-ink-700">Reason: {{ attendancePolicy.reason }}</p>
+              <p v-if="attendancePolicy.no_refund_applied" class="mt-1 text-sm font-semibold text-rose-700">
+                Invoice amount unchanged · No refund
+              </p>
+            </div>
+          </section>
+
           <section class="rounded-2xl border border-ink-200 bg-white p-5">
             <h3 class="font-extrabold text-ink-900">Booking Audit Timeline</h3>
             <p class="mt-1 text-sm text-ink-500">Read-only lifecycle events, oldest to newest.</p>
@@ -135,13 +195,19 @@
           </section>
         </div>
       </div>
+      <OrganizerAttendanceExceptionModal
+        v-model="showAttendanceException"
+        :booking="booking"
+        @applied="handleAttendanceApplied"
+      />
     </div>
   </Teleport>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { allocationStatusLabel, organizerPaymentStateLabel } from '../../utils/bookingDisplay';
+import OrganizerAttendanceExceptionModal from './OrganizerAttendanceExceptionModal.vue';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -151,9 +217,12 @@ const props = defineProps({
   error: { type: String, default: '' },
 });
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue', 'booking-updated']);
 const reconciliation = computed(() => props.booking?.withdrawal_reconciliation || null);
+const attendancePolicy = computed(() => props.booking?.attendance_policy || null);
+const showAttendanceException = ref(false);
 const close = () => emit('update:modelValue', false);
+const handleAttendanceApplied = (booking) => emit('booking-updated', booking);
 const paymentStateLabel = (state) => organizerPaymentStateLabel(state);
 
 const formatDateTime = (value) => {

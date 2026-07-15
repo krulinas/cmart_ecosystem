@@ -6,7 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Exceptions\AllocationValidationException;
 use App\Exceptions\DomainConflictException;
 use App\Models\Booking;
+use App\Models\BookingAttendanceException;
+use App\Models\BookingAttendanceExceptionDay;
+use App\Models\BookingDayAllocation;
 use App\Models\CarbootEvent;
+use App\Models\EventDay;
 use App\Models\EventSite;
 use App\Models\Invoice;
 use App\Models\Space;
@@ -20,6 +24,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class BookingController extends Controller
 {
@@ -61,6 +66,12 @@ class BookingController extends Controller
                 ]),
             ],
             'product_details' => 'required|string|max:5000',
+            'event_day_ids' => 'prohibited',
+            'booking_day_ids' => 'prohibited',
+            'selected_days' => 'prohibited',
+            'attendance_days' => 'prohibited',
+            'excluded_day_ids' => 'prohibited',
+            'day_exception' => 'prohibited',
         ]);
 
         try {
@@ -153,6 +164,244 @@ class BookingController extends Controller
             'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
             'invoice' => $invoice,
         ], 201);
+    }
+
+    public function applyAttendanceException(
+        Request $request,
+        Booking $booking,
+        BookingAllocationLifecycleService $allocationLifecycle,
+    ) {
+        if (! ManagementRole::isOrganizerEquivalent($request->user()->role)) {
+            return response()->json([
+                'message' => '403 Forbidden: Organizer access required for attendance exceptions.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'retained_event_day_ids' => 'required|array|min:1',
+            'retained_event_day_ids.*' => 'required|integer|distinct',
+            'reason' => 'required|string|min:10|max:1000',
+            'acknowledge_no_refund' => 'nullable|boolean',
+        ]);
+
+        try {
+            $result = DB::transaction(function () use (
+                $request,
+                $booking,
+                $allocationLifecycle,
+                $validated,
+            ) {
+                $lockedBooking = Booking::query()
+                    ->whereKey($booking->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if (! in_array($lockedBooking->approval_status, [
+                    'Pending_Organizer',
+                    'Needs_Revision',
+                    'Approved',
+                ], true)) {
+                    throw new DomainConflictException(
+                        'Attendance exceptions are not available for this booking status.',
+                        'booking_not_eligible_for_attendance_exception',
+                    );
+                }
+
+                $event = CarbootEvent::query()
+                    ->whereKey($lockedBooking->carboot_event_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($event->day_generation_mode !== CarbootEvent::DAY_MODE_CALENDAR) {
+                    throw new DomainConflictException(
+                        'Attendance exceptions are available only for calendar-day events.',
+                        'attendance_exception_requires_calendar_days',
+                    );
+                }
+
+                $eventDays = EventDay::query()
+                    ->forEvent((int) $event->id)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($eventDays->where('operational_status', EventDay::STATUS_ACTIVE)->count() < 2) {
+                    throw new DomainConflictException(
+                        'Attendance exceptions require at least two active EventDays.',
+                        'attendance_exception_requires_multiple_days',
+                    );
+                }
+
+                $allocations = BookingDayAllocation::query()
+                    ->forBooking((int) $lockedBooking->id)
+                    ->with(['eventDay', 'eventSite.space'])
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
+
+                $activeAllocations = $allocations
+                    ->filter(fn (BookingDayAllocation $row) => $row->occupiesSite());
+                $activeDayIds = $activeAllocations
+                    ->pluck('event_day_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->sort()
+                    ->values();
+
+                if ($activeDayIds->isEmpty()) {
+                    throw new DomainConflictException(
+                        'This booking has no active allocations to reduce.',
+                        'attendance_exception_requires_active_allocations',
+                    );
+                }
+
+                $retainedDayIds = collect($validated['retained_event_day_ids'])
+                    ->map(fn ($id) => (int) $id)
+                    ->sort()
+                    ->values();
+                $eventDayIds = $eventDays->pluck('id')->map(fn ($id) => (int) $id);
+
+                if ($retainedDayIds->diff($eventDayIds)->isNotEmpty()) {
+                    throw ValidationException::withMessages([
+                        'retained_event_day_ids' => [
+                            'Every retained EventDay must belong to this booking event.',
+                        ],
+                    ]);
+                }
+
+                $notCurrentlyRetained = $retainedDayIds->diff($activeDayIds);
+                if ($notCurrentlyRetained->isNotEmpty()) {
+                    $historicalDayIds = $allocations
+                        ->pluck('event_day_id')
+                        ->map(fn ($id) => (int) $id)
+                        ->unique();
+
+                    if ($notCurrentlyRetained->intersect($historicalDayIds)->isNotEmpty()) {
+                        throw new DomainConflictException(
+                            'Previously released EventDays cannot be re-added.',
+                            'released_event_days_cannot_be_readded',
+                        );
+                    }
+
+                    throw ValidationException::withMessages([
+                        'retained_event_day_ids' => [
+                            'Only EventDays currently retained by this booking may be selected.',
+                        ],
+                    ]);
+                }
+
+                $excludedDayIds = $activeDayIds->diff($retainedDayIds)->sort()->values();
+                if ($excludedDayIds->isEmpty()) {
+                    return [
+                        'booking' => $lockedBooking,
+                        'changed' => false,
+                    ];
+                }
+
+                if ($activeDayIds->count() < 2) {
+                    throw new DomainConflictException(
+                        'At least one active EventDay must remain.',
+                        'attendance_exception_requires_retained_day',
+                    );
+                }
+
+                $excludedDays = $eventDays->whereIn('id', $excludedDayIds->all());
+                $startedDay = $excludedDays->first(
+                    fn (EventDay $day) => $day->starts_at === null || $day->starts_at->lte(now()),
+                );
+
+                if ($startedDay) {
+                    throw new DomainConflictException(
+                        'Started or completed EventDays cannot be released.',
+                        'event_day_already_started',
+                    );
+                }
+
+                $paymentState = VendorBookingPresenter::withdrawalPaymentState($lockedBooking);
+                $requiresAcknowledgement = in_array($paymentState, [
+                    VendorBookingPresenter::PAYMENT_STATE_PAID,
+                    VendorBookingPresenter::PAYMENT_STATE_PAYMENT_SUBMITTED,
+                ], true);
+
+                if ($requiresAcknowledgement && ! $request->boolean('acknowledge_no_refund')) {
+                    throw ValidationException::withMessages([
+                        'acknowledge_no_refund' => [
+                            'You must acknowledge that the booking amount remains unchanged and no refund will be issued.',
+                        ],
+                    ]);
+                }
+
+                $appliedAt = now();
+                $exception = BookingAttendanceException::create([
+                    'booking_id' => $lockedBooking->id,
+                    'applied_by' => $request->user()->id,
+                    'applied_by_name' => $request->user()->name,
+                    'reason' => $validated['reason'],
+                    'payment_state' => $paymentState,
+                    'no_refund_acknowledged' => $requiresAcknowledgement,
+                    'previous_retained_day_count' => $activeDayIds->count(),
+                    'retained_day_count' => $retainedDayIds->count(),
+                    'released_day_count' => $excludedDayIds->count(),
+                    'applied_at' => $appliedAt,
+                ]);
+
+                foreach ($activeDayIds as $eventDayId) {
+                    BookingAttendanceExceptionDay::create([
+                        'booking_attendance_exception_id' => $exception->id,
+                        'event_day_id' => $eventDayId,
+                        'disposition' => $retainedDayIds->contains($eventDayId)
+                            ? BookingAttendanceExceptionDay::DISPOSITION_RETAINED
+                            : BookingAttendanceExceptionDay::DISPOSITION_RELEASED,
+                    ]);
+                }
+
+                $allocationLifecycle->releaseForBookingDays(
+                    $lockedBooking,
+                    $excludedDayIds->all(),
+                    $request->user(),
+                );
+
+                BookingAuditLogger::log(
+                    $lockedBooking,
+                    $request->user(),
+                    $lockedBooking->approval_status,
+                    $lockedBooking->approval_status,
+                    "Attendance exception #{$exception->id}",
+                    $request,
+                    'organizer_applied_attendance_exception',
+                );
+
+                return [
+                    'booking' => $lockedBooking,
+                    'changed' => true,
+                ];
+            });
+        } catch (DomainConflictException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'error' => $exception->error,
+            ], 409);
+        }
+
+        $result['booking']->refresh()->load([
+            'user.businessProfile',
+            'space',
+            'invoice',
+            'carbootEvent',
+            'withdrawnBy',
+            'auditLogs.actor',
+            'attendanceExceptions.appliedBy',
+            'attendanceExceptions.days.eventDay',
+            'bookingDayAllocations.eventSite.space',
+            'bookingDayAllocations.eventDay',
+        ]);
+
+        return response()->json([
+            'message' => $result['changed']
+                ? 'Attendance exception applied successfully.'
+                : 'Attendance coverage is already unchanged.',
+            'booking' => VendorBookingPresenter::presentForOrganizer($result['booking'], true),
+        ]);
     }
 
     /**
@@ -402,6 +651,8 @@ class BookingController extends Controller
                 'invoice',
                 'carbootEvent',
                 'withdrawnBy',
+                'attendanceExceptions.appliedBy',
+                'attendanceExceptions.days.eventDay',
                 'bookingDayAllocations.eventSite.space',
                 'bookingDayAllocations.eventDay',
             ])
@@ -606,6 +857,8 @@ class BookingController extends Controller
                 'invoice',
                 'carbootEvent',
                 'withdrawnBy',
+                'attendanceExceptions.appliedBy',
+                'attendanceExceptions.days.eventDay',
                 'bookingDayAllocations.eventSite.space',
                 'bookingDayAllocations.eventDay',
             ])
@@ -624,7 +877,15 @@ class BookingController extends Controller
         return $request->user()
             ->bookings()
             ->withValidBookingDate()
-            ->with(['space', 'invoice'])
+            ->with([
+                'space',
+                'invoice',
+                'carbootEvent',
+                'attendanceExceptions.appliedBy',
+                'attendanceExceptions.days.eventDay',
+                'bookingDayAllocations.eventSite.space',
+                'bookingDayAllocations.eventDay',
+            ])
             ->latest()
             ->get()
             ->map(fn (Booking $booking) => VendorBookingPresenter::presentForVendor($booking, $userId))
@@ -641,7 +902,16 @@ class BookingController extends Controller
             return response()->json(['message' => '404 Not Found: Booking record is unavailable.'], 404);
         }
 
-        $booking->load(['space', 'invoice', 'auditLogs.actor', 'carbootEvent']);
+        $booking->load([
+            'space',
+            'invoice',
+            'auditLogs.actor',
+            'carbootEvent',
+            'attendanceExceptions.appliedBy',
+            'attendanceExceptions.days.eventDay',
+            'bookingDayAllocations.eventSite.space',
+            'bookingDayAllocations.eventDay',
+        ]);
 
         return response()->json(
             VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
@@ -654,15 +924,14 @@ class BookingController extends Controller
             return $denied;
         }
 
-        if (!in_array($booking->approval_status, [self::PENDING_ORGANIZER, 'Needs_Revision'], true)) {
-            return response()->json([
-                'message' => '422 Unprocessable Entity: Only pending bookings can be edited by vendors.',
-                'current_status' => $booking->approval_status,
-            ], 422);
-        }
-
         $validated = $request->validate([
-            'booking_date' => 'sometimes|required|date|after_or_equal:today',
+            'booking_date' => 'prohibited',
+            'event_day_ids' => 'prohibited',
+            'booking_day_ids' => 'prohibited',
+            'selected_days' => 'prohibited',
+            'attendance_days' => 'prohibited',
+            'excluded_day_ids' => 'prohibited',
+            'day_exception' => 'prohibited',
             'product_category' => [
                 'sometimes',
                 'required',
@@ -678,6 +947,13 @@ class BookingController extends Controller
             ],
             'product_details' => 'sometimes|required|string|max:5000',
         ]);
+
+        if (!in_array($booking->approval_status, [self::PENDING_ORGANIZER, 'Needs_Revision'], true)) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Only pending bookings can be edited by vendors.',
+                'current_status' => $booking->approval_status,
+            ], 422);
+        }
 
         $booking->update($validated);
 
@@ -1161,6 +1437,8 @@ class BookingController extends Controller
             'carbootEvent',
             'withdrawnBy',
             'auditLogs.actor',
+            'attendanceExceptions.appliedBy',
+            'attendanceExceptions.days.eventDay',
             'bookingDayAllocations.eventSite.space',
             'bookingDayAllocations.eventDay',
         ]);

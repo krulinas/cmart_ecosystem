@@ -118,6 +118,45 @@
                 </dl>
               </section>
 
+              <section
+                v-if="attendancePolicy"
+                class="rounded-2xl border border-cyan-100 bg-cyan-50/40 p-5"
+                data-testid="vendor-attendance-policy"
+              >
+                <h3 class="font-bold text-ink-900">Full-Event Attendance</h3>
+                <p v-if="!attendancePolicy.has_exception" class="mt-2 text-sm text-ink-700">
+                  This booking covers all active event days.
+                </p>
+                <template v-else>
+                  <p class="mt-2 font-semibold text-cyan-900">Attendance exception approved by Organizer</p>
+                  <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div class="rounded-xl bg-white p-4 ring-1 ring-emerald-100" data-testid="vendor-retained-event-days">
+                      <p class="text-xs font-bold uppercase text-emerald-700">Retained EventDays</p>
+                      <p v-for="day in attendancePolicy.retained_days" :key="day.id" class="mt-2 text-sm">
+                        {{ formatAttendanceDay(day) }}
+                      </p>
+                    </div>
+                    <div class="rounded-xl bg-white p-4 ring-1 ring-rose-100" data-testid="vendor-released-event-days">
+                      <p class="text-xs font-bold uppercase text-rose-700">Released EventDays</p>
+                      <p v-for="day in attendancePolicy.released_days" :key="day.id" class="mt-2 text-sm">
+                        {{ formatAttendanceDay(day) }}
+                      </p>
+                    </div>
+                  </div>
+                  <p class="mt-3 text-sm text-ink-700">Reason: {{ attendancePolicy.reason }}</p>
+                  <p class="mt-1 text-sm text-ink-700">
+                    Sites {{ attendancePolicy.site_labels?.join(', ') }} remain unchanged on retained days.
+                  </p>
+                  <p
+                    v-if="attendancePolicy.no_refund_applied"
+                    class="mt-2 text-sm font-semibold text-rose-700"
+                    data-testid="vendor-attendance-no-refund-notice"
+                  >
+                    The booking amount remains unchanged. No refund applies to released EventDays.
+                  </p>
+                </template>
+              </section>
+
               <section v-if="booking.approval_status === 'Approved'" class="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-5">
                 <h3 class="font-bold text-emerald-900">Booth Assignment &amp; QR Pass</h3>
                 <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -265,10 +304,6 @@
               <section v-if="canVendorEdit(booking)" class="rounded-xl border border-brand-100 bg-brand-50/40 p-4 space-y-3">
                 <h3 class="font-bold text-ink-900">Edit Booking</h3>
                 <div>
-                  <label class="ml-label">Event date</label>
-                  <input v-model="editForm.booking_date" type="date" class="ml-input" />
-                </div>
-                <div>
                   <label class="ml-label">Category</label>
                   <select v-model="editForm.product_category" class="ml-input">
                     <option v-for="cat in PRODUCT_CATEGORIES" :key="cat" :value="cat">{{ cat }}</option>
@@ -377,7 +412,6 @@ const saving = ref(false);
 const showWithdrawModal = ref(false);
 const requestNote = ref('');
 const editForm = reactive({
-  booking_date: '',
   product_category: '',
   product_details: '',
 });
@@ -388,6 +422,12 @@ const titleId = computed(() =>
 
 const siteSummary = computed(() => siteSelectionSummary(booking.value));
 const withdrawnNotice = computed(() => withdrawnNoRefundNotice(booking.value));
+const attendancePolicy = computed(() => booking.value?.attendance_policy || null);
+const formatAttendanceDay = (day) => {
+  const date = new Date(day.starts_at || `${day.operational_date}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return day.operational_date;
+  return date.toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' });
+};
 
 const close = () => emit('update:modelValue', false);
 
@@ -399,9 +439,6 @@ const goToCheckout = () => {
 
 const populateEditForm = () => {
   if (!booking.value) return;
-  const rawDate = booking.value.booking_date;
-  editForm.booking_date =
-    typeof rawDate === 'string' ? rawDate.slice(0, 10) : rawDate?.split?.('T')?.[0] || '';
   editForm.product_category = booking.value.product_category || 'Others';
   editForm.product_details = booking.value.product_details || '';
 };

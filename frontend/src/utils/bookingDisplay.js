@@ -253,6 +253,27 @@ export const organizerPaymentStateLabel = (state) =>
 export const organizerReconciliationForBooking = (booking) =>
   booking?.withdrawal_reconciliation || null;
 
+export const attendancePolicyForBooking = (booking) =>
+  booking?.attendance_policy || null;
+
+export const attendanceRetainedDayIds = (policy) =>
+  (policy?.retained_days || []).map((day) => day.id);
+
+export const attendanceReleaseCount = (policy, retainedDayIds) =>
+  (policy?.retained_days || []).filter((day) => !retainedDayIds.includes(day.id)).length;
+
+export const attendanceExceptionValidation = (policy, retainedDayIds, reason, acknowledged) => {
+  if (!retainedDayIds.length) return 'At least one EventDay must remain.';
+  if (reason.trim().length < 10) return 'Provide a reason of at least 10 characters.';
+  if (attendanceReleaseCount(policy, retainedDayIds) < 1) {
+    return 'Deselect at least one future EventDay to apply an exception.';
+  }
+  if (policy?.requires_no_refund_acknowledgement && !acknowledged) {
+    return 'No-refund acknowledgement is required.';
+  }
+  return '';
+};
+
 export const bookingMatchesNoRefundFilter = (booking, filter) => {
   if (filter === 'all') return true;
   const applied = Boolean(organizerReconciliationForBooking(booking)?.no_refund_applied);
