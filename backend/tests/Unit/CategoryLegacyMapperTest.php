@@ -125,4 +125,27 @@ class CategoryLegacyMapperTest extends TestCase
         $this->assertSame(CategoryLegacyMapper::STATUS_SKIPPED_NULL, $resolved['mapping_status']);
         $this->assertSame(CategoryLegacyMapper::REASON_NULL_OPTIONAL, $resolved['reason_code']);
     }
+
+    public function test_normalized_value_hash_is_deterministic_sha256(): void
+    {
+        $hash = CategoryLegacyMapper::normalizedValueHash('Food & Beverages');
+
+        $this->assertSame(64, strlen($hash));
+        $this->assertSame(hash('sha256', 'Food & Beverages'), $hash);
+        $this->assertSame($hash, CategoryLegacyMapper::normalizedValueHash('Food & Beverages'));
+    }
+
+    public function test_null_normalized_value_uses_stable_sentinel_hash(): void
+    {
+        $hash = CategoryLegacyMapper::normalizedValueHash(null);
+
+        $this->assertSame(
+            hash('sha256', CategoryLegacyMapper::NULL_HASH_SENTINEL),
+            $hash,
+        );
+        $this->assertNotSame(
+            CategoryLegacyMapper::normalizedValueHash(''),
+            $hash,
+        );
+    }
 }

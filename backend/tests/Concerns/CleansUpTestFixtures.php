@@ -9,6 +9,8 @@ use App\Models\BookingAuditLog;
 use App\Models\BookingDayAllocation;
 use App\Models\CarbootEvent;
 use App\Models\EventDay;
+use App\Models\EventLayoutAuditLog;
+use App\Models\EventLayoutRow;
 use App\Models\EventSite;
 use App\Models\Invoice;
 use App\Models\User;
@@ -82,10 +84,13 @@ trait CleansUpTestFixtures
             }
 
             if ($this->createdEventIds !== []) {
+                EventLayoutAuditLog::whereIn('carboot_event_id', $this->createdEventIds)->delete();
+                EventLayoutRow::whereIn('carboot_event_id', $this->createdEventIds)->delete();
                 CarbootEvent::whereIn('id', $this->createdEventIds)->delete();
             }
 
             if ($this->createdUserIds !== []) {
+                EventLayoutAuditLog::whereIn('actor_user_id', $this->createdUserIds)->delete();
                 $this->deleteUsersAndDependencies($this->createdUserIds);
             }
         } finally {

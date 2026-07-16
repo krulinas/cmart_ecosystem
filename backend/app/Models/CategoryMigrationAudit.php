@@ -18,12 +18,19 @@ class CategoryMigrationAudit extends Model
         'source_column',
         'original_value',
         'normalized_value',
+        'normalized_value_hash',
         'mapping_status',
         'matched_vendor_category_id',
         'reason_code',
         'backfill_version',
         'metadata',
     ];
+
+    /**
+     * Audit rows are immutable after insert. updated_at is set once on insert
+     * and must not be mutated by backfill reruns (Phase 3.4A).
+     */
+    public $timestamps = true;
 
     protected $casts = [
         'source_primary_key' => 'integer',

@@ -4,7 +4,7 @@ export const WORKSPACE_NAV_GROUPS = [
   {
     id: 'carboot_operations',
     label: 'Carboot Operations',
-    items: ['bookings', 'feedback', 'events'],
+    items: ['bookings', 'feedback', 'events', 'layout'],
   },
   {
     id: 'cmart_activities',

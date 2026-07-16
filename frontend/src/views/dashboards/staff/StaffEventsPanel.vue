@@ -75,6 +75,13 @@
           </div>
           <div class="flex flex-col gap-1 shrink-0">
             <button class="ml-btn-ghost text-sm" @click="edit(ev)">Edit</button>
+            <button
+              class="ml-btn-ghost text-sm text-cyan-800"
+              data-testid="manage-layout-button"
+              @click="openLayout(ev)"
+            >
+              Urus Susun Atur
+            </button>
             <button class="ml-btn-ghost text-sm text-rose-600" :disabled="deletingId === ev.id" @click="remove(ev.id)">
               {{ deletingId === ev.id ? 'Deleting…' : 'Delete' }}
             </button>
@@ -87,6 +94,7 @@
 
 <script setup>
 import { ref, reactive } from 'vue';
+import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
 import MultiImageUploadField from '../../../components/MultiImageUploadField.vue';
@@ -98,6 +106,7 @@ import {
 } from '../../../utils/eventDisplay';
 
 const toast = useToast();
+const router = useRouter();
 const statuses = ['Available', 'Almost Full', 'Closed'];
 const events = ref([]);
 const loading = ref(false);
@@ -110,6 +119,14 @@ const imageFiles = ref([]);
 const removeImageIds = ref([]);
 const editingImages = ref([]);
 const legacyImagePath = ref('');
+
+const openLayout = (event) => {
+  router.push({
+    path: '/admin',
+    hash: '#layout',
+    query: { eventId: String(event.id) },
+  });
+};
 
 const emptyForm = () => ({
   title: '',

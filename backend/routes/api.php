@@ -28,6 +28,10 @@ use App\Http\Controllers\Api\EventSiteController;
 use App\Http\Controllers\Api\EventDayController;
 use App\Http\Controllers\Api\VendorEventSiteAvailabilityController;
 use App\Http\Controllers\Api\OrganizerReleasedDayRecoveryController;
+use App\Http\Controllers\Api\OrganizerVendorCategoryController;
+use App\Http\Controllers\Api\OrganizerEventLayoutController;
+use App\Http\Controllers\Api\OrganizerEventLayoutRowController;
+use App\Http\Controllers\Api\OrganizerEventLayoutSiteController;
 use App\Support\ManagementCapability;
 use App\Support\ManagementRole;
 
@@ -136,6 +140,24 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/event-days/{event_day}', [EventDayController::class, 'update']);
             Route::patch('/event-days/{event_day}', [EventDayController::class, 'update']);
             Route::delete('/event-days/{event_day}', [EventDayController::class, 'destroy']);
+
+            // Phase 3.5 — Organizer category-based layout, readiness and locking.
+            Route::get('/vendor-categories', [OrganizerVendorCategoryController::class, 'index']);
+            Route::get('/events/{carboot_event}/layout', [OrganizerEventLayoutController::class, 'show']);
+            Route::get('/events/{carboot_event}/layout/readiness', [OrganizerEventLayoutController::class, 'readiness']);
+
+            Route::post('/events/{carboot_event}/layout/rows', [OrganizerEventLayoutRowController::class, 'store']);
+            Route::patch('/events/{carboot_event}/layout/rows/reorder', [OrganizerEventLayoutRowController::class, 'reorder']);
+            Route::patch('/events/{carboot_event}/layout/rows/{row}', [OrganizerEventLayoutRowController::class, 'update']);
+            Route::delete('/events/{carboot_event}/layout/rows/{row}', [OrganizerEventLayoutRowController::class, 'destroy']);
+            Route::patch('/events/{carboot_event}/layout/rows/{row}/archive', [OrganizerEventLayoutRowController::class, 'archive']);
+            Route::patch('/events/{carboot_event}/layout/rows/{row}/unarchive', [OrganizerEventLayoutRowController::class, 'unarchive']);
+
+            Route::post('/events/{carboot_event}/layout/rows/{row}/sites', [OrganizerEventLayoutSiteController::class, 'store']);
+            Route::post('/events/{carboot_event}/layout/rows/{row}/sites/generate', [OrganizerEventLayoutSiteController::class, 'generate']);
+            Route::patch('/events/{carboot_event}/layout/rows/{row}/sites/reorder', [OrganizerEventLayoutSiteController::class, 'reorder']);
+            Route::patch('/events/{carboot_event}/layout/sites/{site}', [OrganizerEventLayoutSiteController::class, 'update']);
+            Route::delete('/events/{carboot_event}/layout/sites/{site}', [OrganizerEventLayoutSiteController::class, 'destroy']);
         });
 
         // Deprecated PR2 compatibility — remove after external clients migrate.

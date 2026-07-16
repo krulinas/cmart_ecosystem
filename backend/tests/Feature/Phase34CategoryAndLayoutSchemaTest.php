@@ -358,7 +358,8 @@ class Phase34CategoryAndLayoutSchemaTest extends TestCase
         $this->assertSame('  Row   A  ', $sites[0]->fresh()->row_label);
         $this->assertSame('Row A', $sites[1]->fresh()->row_label);
 
-        EventLayoutRow::query()->whereIn('carboot_event_id', [$eventA->id, $eventB->id])->delete();
+        // Phase 3.4A: do not hard-delete rows while sites still reference them.
+        // Fixture cleanup deletes sites first, then events (cascading empty rows).
     }
 
     public function test_event_layout_row_label_and_slug_unique_per_event(): void

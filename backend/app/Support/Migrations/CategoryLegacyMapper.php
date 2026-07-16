@@ -27,6 +27,19 @@ class CategoryLegacyMapper
 
     public const REASON_NULL_OPTIONAL = 'null_optional_value';
 
+    /** Stable SHA-256 input when normalized_value is SQL NULL. */
+    public const NULL_HASH_SENTINEL = '__CATEGORY_NULL__';
+
+    /**
+     * Deterministic SHA-256 of the normalized category value (or null sentinel).
+     */
+    public static function normalizedValueHash(?string $normalizedValue): string
+    {
+        $input = $normalizedValue === null ? self::NULL_HASH_SENTINEL : $normalizedValue;
+
+        return hash('sha256', $input);
+    }
+
     /**
      * Canonical MVP taxonomy seed rows.
      *

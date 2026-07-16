@@ -159,6 +159,9 @@ class Phase34SchemaBackfill
     }
 
     /**
+     * Append-only audit insert. Same source + version + normalized identity is
+     * ignored; changed values create a new immutable observation.
+     *
      * @param  array{
      *   mapping_status: string,
      *   reason_code: string,
@@ -174,41 +177,28 @@ class Phase34SchemaBackfill
         ?string $originalValue,
         array $resolved,
     ): void {
-        $payload = [
+        $normalized = $resolved['normalized_value'];
+        $hash = CategoryLegacyMapper::normalizedValueHash($normalized);
+        $now = now();
+
+        DB::table('category_migration_audits')->insertOrIgnore([
+            'source_table' => $sourceTable,
+            'source_primary_key' => $sourcePrimaryKey,
+            'source_column' => $sourceColumn,
             'original_value' => $originalValue,
-            'normalized_value' => $resolved['normalized_value'],
+            'normalized_value' => $normalized,
+            'normalized_value_hash' => $hash,
             'mapping_status' => $resolved['mapping_status'],
             'matched_vendor_category_id' => $resolved['matched_vendor_category_id'],
             'reason_code' => $resolved['reason_code'],
+            'backfill_version' => CategoryLegacyMapper::BACKFILL_VERSION,
             'metadata' => json_encode([
                 'matched_label' => $resolved['matched_label'],
                 'backfill_version' => CategoryLegacyMapper::BACKFILL_VERSION,
             ], JSON_THROW_ON_ERROR),
-            'updated_at' => now(),
-        ];
-
-        $existing = DB::table('category_migration_audits')
-            ->where('source_table', $sourceTable)
-            ->where('source_primary_key', $sourcePrimaryKey)
-            ->where('source_column', $sourceColumn)
-            ->where('backfill_version', CategoryLegacyMapper::BACKFILL_VERSION)
-            ->first();
-
-        if ($existing) {
-            DB::table('category_migration_audits')
-                ->where('id', $existing->id)
-                ->update($payload);
-
-            return;
-        }
-
-        DB::table('category_migration_audits')->insert(array_merge($payload, [
-            'source_table' => $sourceTable,
-            'source_primary_key' => $sourcePrimaryKey,
-            'source_column' => $sourceColumn,
-            'backfill_version' => CategoryLegacyMapper::BACKFILL_VERSION,
-            'created_at' => now(),
-        ]));
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
     }
 
     /**

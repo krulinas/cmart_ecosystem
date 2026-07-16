@@ -2,10 +2,11 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Complete |
+| **Status** | Complete (amended by Phase 3.4A on 2026-07-16) |
 | **Date** | 2026-07-16 |
 | **Depends on** | Phase 3.2 ADR (amended), Phase 3.3 isolation, Phase 3.3A classification |
 | **Next** | Phase 3.5 — Organizer Layout Backend and Readiness |
+| **Amendment** | [phase-3-4a-schema-integrity-corrections.md](./phase-3-4a-schema-integrity-corrections.md) |
 
 ---
 
@@ -44,6 +45,14 @@ Legacy fields retained: `product_category`, `business_category`, `vendor_items.c
 2026_07_16_000006_create_event_layout_rows_table
 2026_07_16_000007_add_event_layout_row_id_to_event_sites_table
 2026_07_16_000008_backfill_event_layout_rows_from_sites
+```
+
+### Phase 3.4A additive corrections (committed history preserved)
+
+```text
+2026_07_16_000009_harden_event_site_layout_row_foreign_key
+2026_07_16_000010_make_category_migration_audits_append_only
+2026_07_16_000011_add_event_layout_delete_ordering_trigger
 ```
 
 Support classes:
@@ -91,9 +100,21 @@ Unresolved values remain NULL FKs. Final `NOT NULL` is deferred until Phase 3.7+
 
 ## 7. Category migration audit
 
-Table: `category_migration_audits`  
+Table: `category_migration_audits`
+
+### Phase 3.4 (original)
+
 Uniqueness: `(source_table, source_primary_key, source_column, backfill_version)`  
-Reruns update the same audit row (idempotent).
+Reruns updated the same audit row (idempotent but **not** append-only).
+
+### Phase 3.4A amendment (2026-07-16)
+
+- Added `normalized_value_hash` `CHAR(64)` (SHA-256; null → `__CATEGORY_NULL__`).
+- Unique: `(source_table, source_primary_key, source_column, backfill_version, normalized_value_hash)` as `category_migration_audits_append_only_unique`.
+- Backfill uses `insertOrIgnore` — changed values create new immutable observations; same value reruns neither duplicate nor mutate.
+- `updated_at` remains but is not mutated after insert.
+
+See [phase-3-4a-schema-integrity-corrections.md](./phase-3-4a-schema-integrity-corrections.md).
 
 ---
 
@@ -122,8 +143,19 @@ Backfilled rows have `vendor_category_id = NULL` (no category inference).
 
 ## 10. Event-site relationship
 
+### Phase 3.4 (original)
+
 `event_sites.event_layout_row_id` nullable, `nullOnDelete` (safe with event cascade).  
 `row_label` remains the Phase 2 generator write source until Phase 3.5.
+
+### Phase 3.4A amendment (2026-07-16)
+
+- FK delete behaviour changed to **`restrictOnDelete`** — deleting a row cannot orphan/null sites.
+- Empty unused rows may still be hard-deleted.
+- InnoDB event-cascade sibling ordering conflict resolved by trigger `cmart_before_delete_carboot_event_layout` (delete sites, then rows, before event delete). Allocation `RESTRICT` still blocks events with history.
+- Column remains nullable; `row_label` unchanged.
+
+See [phase-3-4a-schema-integrity-corrections.md](./phase-3-4a-schema-integrity-corrections.md).
 
 ---
 
@@ -148,7 +180,8 @@ All new operational FKs and `category_label_snapshot` remain nullable in Phase 3
 - Site generation (`EventSiteLayoutGenerator`) unchanged
 - Booking create/reserve/lifecycle/withdrawal unchanged
 - Legacy strings and `row_label` preserved
-- Full suite: 191 passed, 22 skipped (known fixture debt), 0 failed
+- Full suite (Phase 3.4): 191 passed, 22 skipped, 0 failed
+- Full suite (Phase 3.4A): 203 passed, 22 skipped, 0 failed, 954 assertions
 
 ---
 
@@ -156,12 +189,14 @@ All new operational FKs and `category_label_snapshot` remain nullable in Phase 3
 
 Rolling back the eight Phase 3.4 migrations on `cmart_test` drops new tables/columns and re-seeds cleanly on re-migrate. Legacy string columns are never modified by rollback.
 
+Phase 3.4A corrections roll back independently (`000011` → `000010` → `000009`). `000010` down collapses multi-hash history before restoring the original unique key.
+
 ---
 
 ## 15. Test strategy
 
 - Unit: `CategoryLegacyMapperTest`
-- Feature: `Phase34CategoryAndLayoutSchemaTest`
+- Feature: `Phase34CategoryAndLayoutSchemaTest`, `Phase34ASchemaIntegrityTest`
 - Compatibility: existing layout/allocation/booking/withdrawal/governance suites
 - Guard: Phase 3.3 `TestingDatabaseGuard` remains active
 
@@ -169,7 +204,7 @@ Rolling back the eight Phase 3.4 migrations on `cmart_test` drops new tables/col
 
 ## 16. Persistent-data validation
 
-`cmart_db` counts before and after Phase 3.4 work: **unchanged**. Phase 3.4 migrations were never applied to `cmart_db`.
+`cmart_db` counts before and after Phase 3.4 / 3.4A work: **unchanged**. Phase 3.4 / 3.4A migrations were never applied to `cmart_db`.
 
 ---
 
@@ -178,6 +213,7 @@ Rolling back the eight Phase 3.4 migrations on `cmart_test` drops new tables/col
 - Empty `cmart_test` has no legacy category rows to backfill until fixtures create them (covered by controlled tests).
 - Shared `spaces` catalogue `firstOrCreate` price conflicts across older tests; Creation/Availability tests now normalize Standard price to 30.
 - Skip debt (22) remains for Phase 3.11.
+- Site→row FK nullability and row archive/lock remain for Phase 3.5+.
 
 ---
 
@@ -192,5 +228,7 @@ Rolling back the eight Phase 3.4 migrations on `cmart_test` drops new tables/col
 | Phase 2 write paths still work | Met |
 | Test isolation intact | Met |
 | Dev DB untouched | Met |
+| Restrictive site→row FK (3.4A) | Met |
+| Append-only category audits (3.4A) | Met |
 
 Phase 3.5 may implement Organizer layout APIs, readiness, locking, and row-aware site generation — still without vendor eligibility enforcement (Phase 3.7) or public layout (Phase 3.10).
