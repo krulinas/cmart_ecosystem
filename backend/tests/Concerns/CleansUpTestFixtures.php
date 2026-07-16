@@ -16,10 +16,11 @@ use App\Models\VendorBusinessProfile;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Reliable teardown for feature tests that write to the persistent local database.
+ * Reliable teardown for feature tests that write to the disposable test database.
  *
- * PHPUnit uses mysql/cmart_db (see phpunit.xml). Track every created fixture ID
- * and delete in reverse foreign-key order. Always reset tracking arrays in finally.
+ * PHPUnit resolves mysql/cmart_test (see phpunit.xml and TestingDatabaseGuard).
+ * Track every created fixture ID and delete in reverse foreign-key order.
+ * Always reset tracking arrays in finally.
  */
 trait CleansUpTestFixtures
 {
