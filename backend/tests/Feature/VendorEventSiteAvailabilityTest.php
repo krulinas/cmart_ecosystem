@@ -39,10 +39,16 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
     private function standardSpace(): Space
     {
-        return Space::query()->firstOrCreate(
+        $space = Space::query()->firstOrCreate(
             ['space_size' => 'Standard (1 Parking Lot)'],
             ['price' => 30.00, 'status' => 'Available'],
         );
+
+        if ((float) $space->price !== 30.0) {
+            $space->forceFill(['price' => 30.00, 'status' => 'Available'])->save();
+        }
+
+        return $space->fresh();
     }
 
     private function seedEventWithLayout(int $siteCount = 2): array

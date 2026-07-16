@@ -46,7 +46,7 @@ class BookingAllocationLifecycleTest extends TestCase
     {
         return Space::query()->firstOrCreate(
             ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 25.00, 'status' => 'Available'],
+            ['price' => 30.00, 'status' => 'Available'],
         );
     }
 

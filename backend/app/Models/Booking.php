@@ -15,6 +15,8 @@ class Booking extends Model
         'carboot_event_id',
         'booking_date',
         'product_category',
+        'vendor_category_id',
+        'category_label_snapshot',
         'product_details',
         'approval_status',
         'checked_in_at',
@@ -49,6 +51,11 @@ class Booking extends Model
 
     public function carbootEvent() {
         return $this->belongsTo(CarbootEvent::class, 'carboot_event_id');
+    }
+
+    public function vendorCategory()
+    {
+        return $this->belongsTo(VendorCategory::class);
     }
 
     public function invoice() {

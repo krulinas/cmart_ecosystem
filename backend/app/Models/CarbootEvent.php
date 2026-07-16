@@ -133,6 +133,13 @@ class CarbootEvent extends Model
         return $this->hasMany(Booking::class, 'carboot_event_id');
     }
 
+    public function eventLayoutRows(): HasMany
+    {
+        return $this->hasMany(EventLayoutRow::class, 'carboot_event_id')
+            ->orderBy('display_order')
+            ->orderBy('id');
+    }
+
     public function eventSites(): HasMany
     {
         return $this->hasMany(EventSite::class, 'carboot_event_id')

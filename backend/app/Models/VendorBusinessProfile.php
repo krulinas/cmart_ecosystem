@@ -16,6 +16,7 @@ class VendorBusinessProfile extends Model
         'business_name',
         'business_phone',
         'business_category',
+        'vendor_category_id',
         'description',
         'logo_path',
     ];
@@ -27,6 +28,11 @@ class VendorBusinessProfile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function vendorCategory(): BelongsTo
+    {
+        return $this->belongsTo(VendorCategory::class);
     }
 
     public function getLogoUrlAttribute(): ?string

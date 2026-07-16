@@ -18,6 +18,7 @@ class VendorItem extends Model
         'user_id',
         'name',
         'category',
+        'vendor_category_id',
         'condition',
         'pricing_type',
         'price',
@@ -42,6 +43,11 @@ class VendorItem extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function vendorCategory(): BelongsTo
+    {
+        return $this->belongsTo(VendorCategory::class);
     }
 
     public function images(): HasMany

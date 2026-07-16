@@ -3,11 +3,18 @@
 | Field | Value |
 |-------|-------|
 | **Title** | Phase 3 — Event Layout & Category-Based Slot Planning |
-| **Status** | Accepted |
+| **Status** | Accepted — Amended after Phase 3.3 validation |
 | **Date** | 2026-07-15 |
-| **Depends on** | Phase 2A–2B (physical allocation foundation), Phase 3.1 audit |
-| **Blocks** | Phase 3.3 (test isolation) → Phase 3.4+ (implementation) |
+| **Amended** | 2026-07-16 (Phase 3.3A) |
+| **Depends on** | Phase 2A–2B (physical allocation foundation), Phase 3.1 audit, Phase 3.3 test isolation |
+| **Blocks** | Phase 3.4+ (implementation) — only after this ADR’s amendments and skipped-test classification |
 | **ADR ID** | ADR-003 |
+
+### Amendment history
+
+| Amendment | Date | Reason |
+|-----------|------|--------|
+| Phase 3.3A | 2026-07-16 | Correct category migration (no silent Others mapping), canonical taxonomy including Household Items and Mixed / Others, vendor-safe category endpoint, closed/ended public layout, row rename locking, immutable reassignment snapshots, category deactivation impact checks, public publication readiness, Super Admin endpoint semantics, and Phase 3.4 entry gate |
 
 ---
 
@@ -50,9 +57,9 @@ Hardcoded in `BookingController`, `VendorProfileController`, `VendorBusinessProf
 
 No separate `vendor` database role exists; community users become vendors via `vendor_business_profiles`.
 
-### Test environment risk (Phase 3.1)
+### Test environment risk (Phase 3.1 → resolved in Phase 3.3)
 
-`backend/phpunit.xml` sets `APP_ENV=testing` but does **not** override `DB_CONNECTION` or `DB_DATABASE`. Tests run against persistent MySQL (`cmart_db`). Phase 3.3 must establish isolated test database before schema work.
+Phase 3.1 risk: PHPUnit inherited `cmart_db`. **Phase 3.3 complete:** `phpunit.xml` forces `DB_DATABASE=cmart_test`; `TestingDatabaseGuard` rejects `cmart_db` before mutation. See `docs/phase-3/phase-3-3-test-environment-isolation-and-baseline-safety.md`.
 
 ---
 
@@ -78,6 +85,10 @@ These are canonical and must not be reopened without strong repository evidence:
 8. **Structured table/grid MVP** — no drag-and-drop.
 9. **Reuse Phase 2 allocation engine** — do not redesign reservation/lifecycle.
 10. **CMart Management** has no Carboot layout authority.
+11. **Unknown legacy categories** are migration blockers — never silently mapped to `Mixed / Others`.
+12. **Row labels are identity fields** — rename is blocked after any allocation history.
+13. **Operational readiness ≠ public publication readiness** — separate gates.
+14. **Super Admin** uses Organizer internal layout/occupancy endpoints — never vendor-session availability semantics.
 
 ---
 
@@ -200,31 +211,95 @@ CarbootEvent
 
 ### A. Canonical Category Taxonomy
 
-**Table:** `vendor_categories`  
+**Table:** `vendor_categories`
 **Model:** `VendorCategory`
 
 | Column | Type | Purpose |
 |--------|------|---------|
 | `id` | bigint PK | Stable reference |
 | `slug` | string(64) unique | API/programmatic key (e.g. `pre-loved-thrift`) |
-| `label` | string(128) unique | Display label (matches legacy string exactly for seed) |
+| `label` | string(128) unique | Canonical display label |
 | `description` | text nullable | Public/Organizer description |
 | `display_order` | unsigned int | Sort order |
-| `is_active` | boolean default true | Inactive = not selectable for new rows/bookings |
+| `is_active` | boolean default true | Inactive = not selectable for **new** rows/bookings/profile defaults |
 | `is_public` | boolean default true | Hide from public layout when false |
 | `created_at`, `updated_at` | timestamps | |
 | `archived_at` | timestamp nullable | Soft archival; never hard-delete if referenced |
 
-**Initial seed (from repository):**
+Both `is_active` and `archived_at` are required concepts: `is_active=false` blocks new selection; `archived_at` marks permanent retirement while remaining queryable for Organizer history.
 
-| slug | label |
-|------|-------|
-| `pre-loved-thrift` | Pre-loved / Thrift |
-| `food-beverages` | Food & Beverages |
-| `clothing-apparel` | Clothing & Apparel |
-| `handicrafts-art` | Handicrafts & Art |
-| `electronics-gadgets` | Electronics & Gadgets |
-| `others` | Others |
+#### Canonical Phase 3 MVP taxonomy (selectable)
+
+Legacy repository strings are **migration inputs**, not automatically the complete Phase 3 taxonomy.
+
+| Canonical Slug | Canonical Label | Source | Active for MVP |
+|----------------|-----------------|--------|---------------:|
+| `pre-loved-thrift` | Pre-loved / Thrift | Legacy exact | Yes |
+| `food-beverages` | Food & Beverages | Legacy exact | Yes |
+| `clothing-apparel` | Clothing & Apparel | Legacy exact | Yes |
+| `handicrafts-art` | Handicrafts & Art | Legacy exact | Yes |
+| `electronics-gadgets` | Electronics & Gadgets | Legacy exact | Yes |
+| `household-items` | Household Items | Stakeholder layout example (new) | Yes |
+| `mixed-others` | Mixed / Others | Replaces legacy `Others` | Yes |
+
+Do **not** merge `Pre-loved / Thrift` with `Clothing & Apparel` without explicit stakeholder evidence.
+
+#### Legacy persisted labels → approved migration mapping
+
+| Legacy / input value (exact after normalization) | Maps to slug | Maps to label |
+|--------------------------------------------------|--------------|---------------|
+| `Pre-loved / Thrift` | `pre-loved-thrift` | Pre-loved / Thrift |
+| `Food & Beverages` | `food-beverages` | Food & Beverages |
+| `Clothing & Apparel` | `clothing-apparel` | Clothing & Apparel |
+| `Handicrafts & Art` | `handicrafts-art` | Handicrafts & Art |
+| `Electronics & Gadgets` | `electronics-gadgets` | Electronics & Gadgets |
+| `Others` | `mixed-others` | Mixed / Others |
+
+#### Approved aliases (migration only — not separate DB categories)
+
+| Alias (after normalization) | Maps to | Justification |
+|-----------------------------|---------|---------------|
+| *(none approved beyond exact legacy table above)* | — | Stakeholder wording such as `Food & Drinks`, `Preloved Clothes` remains **UI copy / documentation examples only** until explicit data or stakeholder approval adds them as aliases |
+
+#### Stakeholder-friendly wording (not database categories)
+
+| Wording | Treatment |
+|---------|-----------|
+| Food & Drinks | Documentation / UI copy variant of Food & Beverages — **not** a seed row |
+| Preloved Clothes | Documentation / UI copy variant of Pre-loved / Thrift — **not** a seed row |
+| Mixed / Others | **Is** the canonical label for `mixed-others` |
+| Household Items | **Is** the canonical label for `household-items` |
+
+#### Normalization rules (before exact match)
+
+1. Trim leading/trailing whitespace.
+2. Collapse internal runs of whitespace to a single space.
+3. Do **not** case-fold for matching (labels are case-sensitive after trim).
+4. Do **not** strip or normalize punctuation (`/`, `&`, `-`) beyond whitespace collapse.
+5. Do **not** apply fuzzy / Levenshtein / synonym matching.
+
+#### Unknown, malformed, ambiguous, or unsupported values
+
+```text
+Known exact value or explicitly approved alias
+→ map to canonical category_id
+
+Unknown, malformed, ambiguous, or unsupported value
+→ write to migration audit table/log
+→ leave vendor_category_id NULL (unresolved)
+→ block final NOT NULL / FK enforcement
+→ require explicit Organizer/ops resolution before Phase 3.4 constraint closure
+```
+
+**Unknown values auto-map to Mixed / Others: No**
+
+#### Migration audit & constraint stop condition
+
+- Persist unresolved rows: source table, PK, original string, normalized string, reason (`unknown` / `ambiguous`).
+- Verification gate: `COUNT(*) WHERE vendor_category_id IS NULL AND product_category IS NOT NULL` (and profile equivalents) must be **0** before adding NOT NULL.
+- Rerun backfill: idempotent — only fills NULL FKs from known map; never overwrites resolved IDs; re-lists remaining unknowns.
+- Rollback: drop FKs/constraints; retain string columns; audit log retained for review.
+- Nullable transitional period: required until unresolved = 0.
 
 **Relationships:**
 
@@ -232,7 +307,7 @@ CarbootEvent
 - `Booking.vendor_category_id` — operational category FK
 - `EventLayoutRow.vendor_category_id` — row category FK
 
-**Historical strategy:** Bookings store `category_label_snapshot` at submit/resubmit-with-sites. Profile changes do not mutate existing bookings.
+**Historical strategy:** Bookings store `category_label_snapshot` at submit/resubmit-with-sites. Profile changes do not mutate existing bookings. Archived categories remain queryable for Organizer history.
 
 **Legacy string fields (transitional):**
 
@@ -247,7 +322,7 @@ CarbootEvent
 
 ### B. Event Layout Row Contract
 
-**Table:** `event_layout_rows`  
+**Table:** `event_layout_rows`
 **Model:** `EventLayoutRow`
 
 | Column | Type | Purpose |
@@ -279,7 +354,7 @@ CarbootEvent
 
 **Deletion:** Hard delete blocked when row has allocation history; use `archived_at` + `is_active=false`.
 
-**Category deactivated:** Row fails readiness; existing bookings retain snapshot; new bookings cannot select inactive category.
+**Category deactivated (global):** See §A category deactivation impact checks. Deactivating a category used by active/future layout rows is **blocked** until rows are remapped or events closed/archived. Historical bookings retain `vendor_category_id` (where FK still valid) and `category_label_snapshot`.
 
 ---
 
@@ -413,7 +488,14 @@ AND existing Phase 2 rules (space type, adjacency, all active days available)
 
 ### G. Layout Readiness Contract
 
-**Service:** `EventLayoutReadinessService`
+**Services:**
+
+| Service | Purpose |
+|---------|---------|
+| `EventLayoutReadinessService` | Operational bookability (vendor booking gate) |
+| `EventPublicLayoutReadinessService` | Public publication gate (may extend readiness service) |
+
+#### Operational readiness
 
 **Computed states:**
 
@@ -421,10 +503,10 @@ AND existing Phase 2 rules (space type, adjacency, all active days available)
 |--------|------------|---------|
 | `not_configured` | false | No days and no rows |
 | `incomplete` | false | One or more blocking checks fail |
-| `ready` | true | All checks pass |
+| `ready` | true | All operational checks pass |
 | `locked` | true | Ready + event has confirmed/paid allocation history affecting layout policy (informational) |
 
-**Blocking checks:**
+**Operational blocking checks:**
 
 1. `NO_ACTIVE_EVENT_DAYS` — at least one active `event_days` row
 2. `NO_ACTIVE_LAYOUT_ROWS` — at least one active `event_layout_rows` row
@@ -432,20 +514,54 @@ AND existing Phase 2 rules (space type, adjacency, all active days available)
 4. `NO_ACTIVE_EVENT_SITES` — at least one active site
 5. `SITE_WITHOUT_ROW` — each active site has `event_layout_row_id`
 6. `DUPLICATE_SITE_LABEL` — structural validation
-7. `INACTIVE_CATEGORY_ON_ROW` — row category deactivated
+7. `INACTIVE_CATEGORY_ON_ROW` — active row references inactive/archived category
 
-**Exposure:**
+**Operational exposure:**
 
 - `GET /api/organizer/events/{event}/layout-readiness` — full blocking list
 - Vendor availability — structured error or empty with `layout_readiness` when not ready
 - `BookingController::store` — reject with `event_layout_not_ready`
-- Public layout — 404 or `{ "published": false }` when not ready/unpublished
 
-**Publication vs readiness:**
+#### Public publication readiness (separate)
 
-- Event may be **publicly listed** while layout incomplete (marketing visibility)
-- Event is **not vendor-bookable** until `ready`
-- `carboot_events.status` active/closed rules unchanged; readiness is additional gate
+Publication requires operational readiness **plus**:
+
+1. `NO_PUBLIC_ROWS` — at least one active row with `is_public=true`
+2. `NO_PUBLIC_SITES` — at least one active public-visible site in a public row
+3. `NO_PUBLIC_CATEGORY` — that row’s category is active and `is_public=true`
+4. `EMPTY_PUBLIC_PROJECTION` — projected public payload would contain ≥1 row
+5. Valid public `display_order` among public rows
+
+A layout **must not** be publishable if the public response would contain zero visible rows.
+
+**Publication vs operational readiness:**
+
+- Event may be **publicly listed** (marketing card) while layout incomplete
+- Event is **not vendor-bookable** until operational `ready`
+- Event may be operationally ready while public layout remains unpublished
+- **Unpublishing does not stop vendor booking** if operational readiness remains valid
+- Repository event statuses (`CarbootEventController::STATUSES`): `Available`, `Almost Full`, `Closed`
+
+#### Category deactivation impact checks
+
+Before setting `is_active=false` or `archived_at`:
+
+1. Inspect active/future layout rows using the category
+2. Inspect open bookings (Pending Organizer, Needs Revision, Approved, payment pending)
+3. Inspect active reservations (`reserved` / `confirmed` allocations)
+
+**Block deactivation** while the category is operationally used by an open or future event unless:
+
+- A replacement category migration for affected rows is completed, or
+- Affected events/rows are Closed/archived safely
+
+**Service:** `VendorCategoryImpactService` (or Organizer category deactivate endpoint pre-check).
+
+**Error:** `CATEGORY_IN_OPERATIONAL_USE` (422) with Organizer-facing list of blocking event/row/booking counts.
+
+**Hard delete:** Forbidden while any FK reference exists (bookings, rows, profiles). Use archive only.
+
+**Historical:** Bookings retain category ID (if FK allows) + label snapshot; Organizer reports may query archived categories.
 
 ---
 
@@ -453,8 +569,16 @@ AND existing Phase 2 rules (space type, adjacency, all active days available)
 
 **Event-level fields (additive on `carboot_events`):**
 
-- `public_layout_published_at` timestamp nullable
+- `public_layout_published_at` timestamp nullable — **source of truth** for “previously published”
 - `public_layout_entrance_note` text nullable
+
+**Previously published determination:**
+
+```text
+previously_published ≡ public_layout_published_at IS NOT NULL
+```
+
+Unpublish sets `public_layout_published_at = NULL` and writes a publication audit row. Chronologically ended / Closed events that retain a non-null `public_layout_published_at` remain historically published.
 
 **Rules:**
 
@@ -464,10 +588,12 @@ AND existing Phase 2 rules (space type, adjacency, all active days available)
 | CMart Management | No | No |
 | Super Admin | Yes (technical) | Yes |
 
-- Publication requires `layout_readiness.is_ready === true`
-- Unpublish does not affect vendor booking of eligible sites
-- Cancelled/closed events: public layout returns `{ "status": "unavailable" }` regardless of publish flag
+- Publish requires `EventPublicLayoutReadinessService` pass (operational ready + public projection non-empty)
+- Unpublish does **not** affect vendor booking of eligible sites
 - Row-level `is_public=false`: row omitted from public projection; **vendor booking still allowed** if operational
+- Category `is_public=false`: row omitted from public projection even if row is public
+
+**Publish blocking reasons (examples):** `NO_PUBLIC_ROWS`, `NO_PUBLIC_SITES`, `NO_PUBLIC_CATEGORY`, `EMPTY_PUBLIC_PROJECTION`, `EVENT_LAYOUT_NOT_READY`
 
 ---
 
@@ -479,17 +605,34 @@ AND existing Phase 2 rules (space type, adjacency, all active days available)
 |-------|---------|
 | `editable` | No allocation history on row/site |
 | `partially_locked` | Active `reserved` allocations on row/site |
-| `history_locked` | Any confirmed/released allocation history |
+| `history_locked` | Any confirmed **or released** allocation history, including paid / withdrawn-paid booking history |
+
+**Row rename rule (MVP — corrected):**
+
+`event_layout_rows.label` is an **identity field** mirrored to `event_sites.row_label` and may appear in booking presentation, reports, audit, and vendor summaries.
+
+| Allocation State | Rename Row Label |
+|------------------|------------------|
+| No active or historical allocation | Allowed |
+| Active reserved allocation | **Blocked** |
+| Confirmed allocation history | **Blocked** |
+| Released historical allocation | **Blocked** |
+| Paid or withdrawn-paid booking history | **Blocked** |
+
+Organizer may still update non-identity fields when otherwise allowed: `description`, `is_public`, `display_order`.
+
+Future rename-after-immutable-snapshot is **deferred** (not MVP).
 
 **Operation matrix:**
 
-| Operation | No History | Active Reservation | Confirmed/Paid History |
-|-----------|:----------:|:------------------:|:----------------------:|
+| Operation | No History | Active Reservation | Confirmed/Paid/Released History |
+|-----------|:----------:|:------------------:|:-------------------------------:|
 | Add row | Allowed | Allowed | Allowed |
-| Rename unused row | Allowed | Allowed | Allowed with warning (label snapshot on bookings uses site label not row label) |
-| Rename used row | Allowed | Allowed with warning | Allowed with warning |
+| Rename unused row | Allowed | **Blocked** | **Blocked** |
+| Rename used row | Allowed | **Blocked** | **Blocked** |
 | Change row category | Allowed | **Blocked** | **Blocked** |
 | Reorder row | Allowed | Allowed | Allowed |
+| Update row description / is_public | Allowed | Allowed | Allowed |
 | Archive row | Allowed if empty | **Blocked** | Archive only (`is_active=false`) |
 | Delete row | Allowed if empty | **Blocked** | **Blocked** |
 | Add site | Allowed | Allowed | Allowed |
@@ -500,7 +643,7 @@ AND existing Phase 2 rules (space type, adjacency, all active days available)
 | Regenerate row sites | Allowed | **Blocked** | **Blocked** |
 | Regenerate full layout | Allowed | **Blocked** | **Blocked** |
 
-**Enforcement:** `EventLayoutLockService` called from Organizer layout controllers before mutating writes.
+**Enforcement:** `EventLayoutLockService` called from Organizer layout controllers before mutating writes. Error: `LAYOUT_ROW_LABEL_LOCKED` (422).
 
 ---
 
@@ -508,19 +651,49 @@ AND existing Phase 2 rules (space type, adjacency, all active days available)
 
 **Table:** `booking_site_reassignment_overrides`
 
+Relational columns (indexed / queryable):
+
 | Column | Purpose |
 |--------|---------|
 | `id` | PK |
 | `booking_id` | FK |
 | `organizer_user_id` | Actor |
-| `vendor_category_id` | Booking category at time of override |
-| `target_vendor_category_id` | Row category of new site(s) |
-| `previous_event_site_ids` | JSON array |
-| `new_event_site_ids` | JSON array |
-| `override_reason` | text required |
-| `previous_approval_status` | snapshot |
-| `payment_status_snapshot` | snapshot |
-| `created_at` | |
+| `vendor_category_id` | Booking category ID at override time |
+| `target_vendor_category_id` | Target row category ID |
+| `override_reason` | text required (min length enforced) |
+| `snapshot_version` | unsigned int (schema version of JSON payload) |
+| `snapshot` | JSON — immutable human-readable payload (see below) |
+| `created_at` | Timestamp |
+
+**Immutable snapshot payload (`snapshot`, append-only, never mutated after insert):**
+
+| Field | Purpose |
+|-------|---------|
+| `booking_category_id` | Booking category ID |
+| `booking_category_label` | Booking category label snapshot |
+| `previous_event_site_ids` | Previous site IDs |
+| `previous_event_site_labels` | Previous site label snapshots |
+| `previous_row_ids` | Previous row IDs |
+| `previous_row_labels` | Previous row label snapshots |
+| `previous_row_category_ids` | Previous row category IDs |
+| `previous_row_category_labels` | Previous row category label snapshots |
+| `new_event_site_ids` | New site IDs |
+| `new_event_site_labels` | New site label snapshots |
+| `new_row_ids` | New row IDs |
+| `new_row_labels` | New row label snapshots |
+| `new_row_category_ids` | New row category IDs |
+| `new_row_category_labels` | New row category label snapshots |
+| `affected_event_day_ids` | Affected event-day IDs |
+| `affected_event_dates` | Affected operational date snapshots (`Y-m-d`) |
+| `previous_allocation_statuses` | Per allocation status before switch |
+| `new_allocation_statuses` | Per allocation status after switch |
+| `payment_status` | Invoice/payment status snapshot |
+| `booking_approval_status` | Booking approval status snapshot |
+| `organizer_user_id` | Actor ID (duplicated for snapshot self-containment) |
+| `override_reason` | Reason text snapshot |
+| `recorded_at` | ISO-8601 timestamp |
+
+Do **not** resolve labels dynamically from live row/site records when presenting audit history.
 
 **Flow:**
 
@@ -530,17 +703,18 @@ Organizer POST .../site-reassignment
 → require override_reason (min 10 chars)
 → if paid: require confirm_paid_reassignment=true
 → DB::transaction:
+    capture immutable snapshot from current rows/sites/days/allocations
     release old allocations (lifecycle service)
     reserve new sites (reservation service, skip category check with override flag)
-    write override record
-    write booking_audit_logs + layout audit reference
+    write override record (relational + snapshot JSON)
+    write booking_audit_logs reference
 ```
 
-**Vendor visibility:** Sanitized message: "Your site assignment was updated by the Organizer." No override reason.
+**Vendor visibility:** Sanitized message: "Your site assignment was updated by the Organizer." No override reason. No internal snapshots.
 
 **Public:** No indication.
 
-**Reversal:** New forward reassignment only; no silent undo.
+**Reversal:** New forward reassignment only; no silent undo. Prior override rows remain append-only history.
 
 ---
 
@@ -550,12 +724,29 @@ Organizer POST .../site-reassignment
 
 **Controller:** `PublicEventLayoutController` or `CarbootEventController::publicLayout` using `PublicEventLayoutPresenter`
 
-**Response (when published + ready):**
+**Repository event status model** (`CarbootEventController::STATUSES`): `Available` | `Almost Full` | `Closed`.
+Chronologically **ended:** `ends_at < now()`.
+There is **no** separate `Cancelled` event status enum today. Product “cancelled event” for public layout means: Organizer unpublished the layout (`public_layout_published_at = NULL`) as part of taking the event out of public navigation (typically also `Closed`).
+
+**Deterministic public behaviour (no optional wording):**
+
+| Condition | HTTP | Body |
+|-----------|------|------|
+| Layout incomplete / not operationally ready | 404 | `{ "message": "Layout not available" }` |
+| Layout unpublished (`public_layout_published_at` null) | 404 | Same (no leak) |
+| Cancelled for public purposes (unpublished; see above) | 404 | Same |
+| Current or future published event (`ends_at >= now()`, published) | 200 | Navigation-only layout; no occupancy; no booking status |
+| Ended (`ends_at < now()`) **or** `status = Closed`, and previously published | 200 | Static historical navigation layout; **no booking CTA**; no live availability; no reservation/payment data |
+
+**Previously published:** `public_layout_published_at IS NOT NULL`.
+
+**Response (200 published):**
 
 ```json
 {
-  "event": { "id": 1, "title": "...", "status": "Active" },
+  "event": { "id": 1, "title": "...", "status": "Available" },
   "published": true,
+  "historical": false,
   "entrance_note": "Main gate, left of food court",
   "rows": [
     {
@@ -570,38 +761,68 @@ Organizer POST .../site-reassignment
 }
 ```
 
-**Excluded:** booking IDs, vendor data, occupancy, overrides, audit, invoices, notes.
+For ended/Closed historical responses, set `"historical": true` and omit any booking CTA fields.
 
-**Empty behaviours:**
-
-| Condition | HTTP | Body |
-|-----------|------|------|
-| Layout incomplete | 404 | `{ "message": "Layout not available" }` |
-| Unpublished | 404 | Same (no leak) |
-| Cancelled event | 404 | Same |
-| Ended event | 200 optional | May show static layout without booking CTA |
+**Excluded:** booking IDs, vendor data, occupancy, overrides, audit, invoices, notes, payment data.
 
 ---
 
-### L. Organizer API Contract
+### L. Organizer / Vendor / Public API Contract
 
-| Method | Route | Auth | Role | Request | Response | Main validation | Audit |
-|--------|-------|------|------|---------|----------|-----------------|-------|
-| GET | `/api/organizer/categories` | Sanctum | organizer, super_admin | — | `{ categories: [...] }` | — | — |
-| GET | `/api/organizer/events/{event}/layout` | Sanctum | organizer, super_admin | — | rows, sites, lock state | event access | — |
-| GET | `/api/organizer/events/{event}/layout-readiness` | Sanctum | organizer, super_admin | — | readiness DTO | — | — |
+| Method | Route | Auth | Role / Audience | Request | Response | Main validation | Audit |
+|--------|-------|------|-----------------|---------|----------|-----------------|-------|
+| GET | `/api/vendor-categories` | Optional Sanctum | Public registration + authenticated community vendors | — | Active selectable categories only | `is_active=true`, `archived_at` null; ordered by `display_order` | — |
+| GET | `/api/organizer/categories` | Sanctum | organizer, super_admin | — | All categories incl. inactive/archived + impact metadata | Organizer only | — |
+| GET | `/api/organizer/events/{event}/layout` | Sanctum | organizer, super_admin | — | Internal rows, sites, lock state, categories | event access | — |
+| GET | `/api/organizer/events/{event}/occupancy` | Sanctum | organizer, super_admin | — | Internal occupancy (reservation/confirmed counts; no vendor PII required for MVP) | event access | — |
+| GET | `/api/organizer/events/{event}/layout-readiness` | Sanctum | organizer, super_admin | — | Operational + public publication readiness | — | — |
 | POST | `/api/organizer/events/{event}/layout-rows` | Sanctum | organizer, super_admin | label, category_id, description | row | unique label, active category | `event_layout_audit_logs` |
-| PATCH | `/api/organizer/layout-rows/{row}` | Sanctum | organizer, super_admin | label, category_id, order, is_active, is_public | row | lock service | audit |
+| PATCH | `/api/organizer/layout-rows/{row}` | Sanctum | organizer, super_admin | description, order, is_active, is_public; label only if unlocked | row | lock service | audit |
 | DELETE | `/api/organizer/layout-rows/{row}` | Sanctum | organizer, super_admin | — | 204 | no history | audit |
 | POST | `/api/organizer/layout-rows/{row}/sites/generate` | Sanctum | organizer, super_admin | space_id, count, positions | sites | lock service | audit |
-| POST | `/api/organizer/events/{event}/layout/publish` | Sanctum | organizer, super_admin | entrance_note? | publish state | readiness ready | publication audit |
+| POST | `/api/organizer/events/{event}/layout/publish` | Sanctum | organizer, super_admin | entrance_note? | publish state | public publication readiness | publication audit |
 | POST | `/api/organizer/events/{event}/layout/unpublish` | Sanctum | organizer, super_admin | — | publish state | — | audit |
 | POST | `/api/organizer/bookings/{booking}/site-reassignment` | Sanctum | organizer, super_admin | event_site_ids, override_reason, confirm_paid? | booking | override contract | booking + override audit |
+| GET | `/api/vendor/events/{event}/site-availability` | Sanctum | **community vendor session only** | category_id, booking_id? | vendor-safe eligibility | readiness + category | — |
+| GET | `/api/events/{event}/layout` | none | public | — | public navigation layout | publication + lifecycle rules | — |
+
+#### Vendor-safe category endpoint vs Organizer category endpoint
+
+| Aspect | `GET /api/vendor-categories` | `GET /api/organizer/categories` |
+|--------|------------------------------|---------------------------------|
+| Audience | Registration + community vendors | Organizer / Super Admin |
+| Fields | `id`, `slug`, `label`, `description`, `display_order` | Above + `is_active`, `is_public`, `archived_at`, usage/impact counts |
+| Filters | Active + selectable only | All including inactive/archived |
+| Replaces | Hardcoded `frontend/src/constants/productCategories.js` after controlled compatibility period | N/A |
+
+Example vendor-safe payload:
+
+```json
+{
+  "categories": [
+    {
+      "id": 1,
+      "slug": "food-beverages",
+      "label": "Food & Beverages",
+      "description": null,
+      "display_order": 2
+    }
+  ]
+}
+```
+
+#### Super Admin endpoint semantics (corrected)
+
+| Actor | Availability / occupancy path |
+|-------|-------------------------------|
+| Community vendor | `GET /api/vendor/events/{event}/site-availability` — may include `booking_id`, category eligibility, vendor-safe disabled reasons |
+| Organizer | `GET /api/organizer/events/{event}/layout` and `/occupancy` |
+| Super Admin | Same **Organizer** internal endpoints when permitted — **must not** impersonate vendor-session availability |
 
 **Extended existing routes:**
 
 - `POST /api/organizer/events/{event}/sites/generate` — delegate to row-aware generator
-- `GET /api/vendor/events/{event}/site-availability?category_id=` — category projection
+- `GET /api/vendor/events/{event}/site-availability?category_id=` — category projection for vendors only
 
 ---
 
@@ -627,18 +848,21 @@ Organizer POST .../site-reassignment
 | Capability | Organizer | CMart Mgmt | Community Vendor | Public | Super Admin |
 |------------|:---------:|:----------:|:----------------:|:------:|:-----------:|
 | View internal layout | Yes | No | No | No | Yes |
+| View internal occupancy | Yes | No | No | No | Yes |
 | View readiness status | Yes | No | No | No | Yes |
 | Create layout row | Yes | No | No | No | Yes |
 | Edit unused row | Yes | No | No | No | Yes |
-| Edit locked row | Partial (rename/order only) | No | No | No | Yes |
+| Edit locked row | Partial (description / order / visibility only; **no label rename**) | No | No | No | Yes |
 | Assign row category | Yes (if unlocked) | No | No | No | Yes |
 | Generate row sites | Yes | No | No | No | Yes |
-| View vendor-safe availability | No | No | Yes (own session) | No | Yes |
+| List vendor-safe categories | Yes (via vendor endpoint or organizer) | Yes (public-safe list only) | Yes | Yes (active selectable) | Yes |
+| Manage categories (inactive/impact) | Yes | No | No | No | Yes |
+| View vendor-safe availability | No | No | Yes (own session) | No | **No** — use Organizer occupancy/layout |
 | Submit eligible site booking | No | No | Yes | No | No |
 | Submit incompatible site booking | No | No | No | No | No |
 | Reassign booking site | Yes | No | No | No | Yes |
 | Override category mismatch | Yes (with reason) | No | No | No | Yes |
-| View internal override reason | Yes | No | No | No | Yes |
+| View internal override reason / snapshots | Yes | No | No | No | Yes |
 | View public layout | Yes | Yes (public endpoint) | Yes | Yes | Yes |
 | Publish public layout | Yes | No | No | No | Yes |
 
@@ -663,6 +887,10 @@ Organizer POST .../site-reassignment
 | `ORGANIZER_OVERRIDE_REASON_REQUIRED` | 422 | Missing reason | — | Override reason required | — |
 | `ORGANIZER_OVERRIDE_NOT_ALLOWED` | 422 | Invalid state | — | Reassignment not permitted | — |
 | `PUBLIC_LAYOUT_NOT_PUBLISHED` | 404 | Public request | — | — | Not found |
+| `LAYOUT_ROW_LABEL_LOCKED` | 422 | Rename after allocation history | — | Row label cannot be renamed after allocations exist | — |
+| `CATEGORY_IN_OPERATIONAL_USE` | 422 | Deactivate category still used | — | Category is used by open/future events or bookings | — |
+| `PUBLIC_LAYOUT_NOT_PUBLISHABLE` | 422 | Publish with empty public projection | — | Public layout would have zero visible rows | — |
+| `CATEGORY_MIGRATION_UNRESOLVED` | 422 / migrate stop | Unknown legacy category remains | — | Resolve unmapped category strings before constraint | — |
 
 ---
 
@@ -680,26 +908,26 @@ Do not overload `booking_audit_logs` with row rename or site generation.
 
 ## Migration Strategy
 
-**Order (no implementation in Phase 3.2):**
+**Order (no implementation in Phase 3.2 / 3.3A):**
 
-1. Create `vendor_categories` + seed six labels
-2. Add nullable `vendor_category_id` to `vendor_business_profiles`, `bookings`
-3. Backfill booking/profile IDs from `product_category` / `business_category` strings
-4. Add `category_label_snapshot` to bookings; backfill from string
+1. Create `vendor_categories` + seed **seven** canonical MVP labels (including `household-items`, `mixed-others`)
+2. Add nullable `vendor_category_id` to `vendor_business_profiles`, `bookings` (and related string fields)
+3. Backfill IDs using **exact + approved-alias map only**; write unknown values to migration audit; leave unresolved as NULL
+4. Add `category_label_snapshot` to bookings; backfill from mapped labels only where FK resolved
 5. Create `event_layout_rows`
 6. Add nullable `event_layout_row_id` to `event_sites`
 7. Backfill rows from distinct `(carboot_event_id, row_label)`
 8. Link sites to rows; mirror `row_label` from row.label
-9. Add `event_layout_audit_logs`, override table, publication fields
-10. Add indexes; NOT NULL constraints after verification
+9. Add `event_layout_audit_logs`, override table with immutable snapshot JSON, publication fields
+10. **Stop condition:** unresolved category counts must be 0 before NOT NULL / FK enforcement
 11. Compatibility presenters dual-read strings
 12. Switch write paths to FK + snapshot
-13. Switch read paths
+13. Switch read paths; vendors consume `GET /api/vendor-categories`
 14. Deprecate string-only writes after regression
 
-**Verification queries:** count sites without row; count bookings with unmapped category; duplicate row labels per event.
+**Verification queries:** count sites without row; count bookings/profiles with unmapped category; duplicate row labels per event; list migration audit unknowns.
 
-**Rollback:** Drop constraints and nullable FKs; keep string columns until Phase 3.11.
+**Rollback:** Drop constraints and nullable FKs; keep string columns; retain audit of unknowns until Phase 3.11.
 
 **Empty DB:** Seeders create categories + demo event layout in Phase 3.11.
 
@@ -707,13 +935,31 @@ Do not overload `booking_audit_logs` with row rename or site generation.
 
 ## Testing Strategy
 
-### Phase 3.3 prerequisite (mandatory before 3.4)
+### Phase 3.3 prerequisite (complete)
 
-- Dedicated `cmart_test` database (or sqlite only if constraints replicated — **MySQL test DB recommended**)
-- `phpunit.xml` sets `DB_DATABASE=cmart_test`
-- `TestingEnvironmentGuard` aborts if `APP_ENV=testing` and database name equals production/dev
-- Documented `php artisan migrate --env=testing` workflow
-- CI uses isolated DB
+- Dedicated `cmart_test` database — **done**
+- `phpunit.xml` sets `DB_DATABASE=cmart_test` — **done**
+- `TestingDatabaseGuard` rejects `cmart_db` — **done**
+- Documented in `docs/phase-3/phase-3-3-test-environment-isolation-and-baseline-safety.md`
+
+### Phase 3.3A prerequisite (this amendment)
+
+- All mandatory ADR corrections integrated — **this document**
+- All 22 skipped tests classified — `docs/phase-3/phase-3-3a-adr-corrections-and-skipped-test-classification.md`
+- No critical skipped path hides schema/backfill or canonical governance without replacement coverage
+
+### Phase 3.4 entry gate (mandatory)
+
+Phase 3.4 may begin only when:
+
+1. Phase 3.3 test isolation is complete.
+2. All mandatory Phase 3.2 ADR corrections are integrated.
+3. All skipped tests are classified.
+4. No critical skipped regression path is left unexplained.
+5. Canonical taxonomy and migration mapping are documented.
+6. Unknown legacy categories are handled as blockers, not silently remapped.
+
+Skipped tests need **not** all be repaired before Phase 3.4 unless classification proves they protect schema-critical behaviour (see Phase 3.3A report: none block 3.4).
 
 ### Per-phase tests (summary)
 
@@ -735,7 +981,7 @@ Do not overload `booking_audit_logs` with row rename or site generation.
 | Risk | Severity | Likelihood | Mitigation | Phase |
 |------|----------|------------|------------|-------|
 | Tests mutate dev DB | High | High | Phase 3.3 isolation | 3.3 |
-| Invalid legacy category strings | Medium | Low | Seed mapping + unknown bucket to Others | 3.4 |
+| Invalid legacy category strings | Medium | Low | Exact map + migration audit; **block NOT NULL** until unresolved = 0 | 3.4 |
 | Sites without row after backfill | Medium | Medium | Verification gate before NOT NULL | 3.4 |
 | Category change during booking TX | High | Low | Event lock + readiness assert first | 3.7 |
 | CMart route leakage | High | Low | ManagementCapability on new routes | 3.5 |
@@ -770,6 +1016,9 @@ Do not overload `booking_audit_logs` with row rename or site generation.
 - Live public occupancy map
 - Check-in / event pass (Phase 4+)
 - Hierarchical category taxonomy
+- Row rename after immutable row-label snapshots exist
+- Additional migration aliases (`Food & Drinks`, `Preloved Clothes`) without evidence
+- Repair of seed-dependent skipped tests (Phase 3.11 fixture hardening; see Phase 3.3A)
 
 ---
 
@@ -782,6 +1031,10 @@ Do not overload `booking_audit_logs` with row rename or site generation.
 - Vendor-submitted incompatible sites pending approval
 - Silent Organizer override
 - CMart Management layout configuration
+- Silent mapping of unknown categories to `Mixed / Others`
+- Row rename after allocation history (MVP)
+- Super Admin using vendor-session availability as inspection path
+- Optional / ambiguous ended-event public layout behaviour
 
 ---
 
@@ -789,58 +1042,60 @@ Do not overload `booking_audit_logs` with row rename or site generation.
 
 ### Phase 3.3 — Test Environment Isolation and Baseline Safety
 
-**Objective:** Safe migration testing.  
-**Scope:** `phpunit.xml`, `.env.testing`, guard trait, docs.  
-**Dependencies:** None.  
-**Stop condition:** Tests never write to `cmart_db`.  
-**DoD:** CI + local documented; guard test passes.
+**Status:** Complete.
+**DoD:** Tests never write to `cmart_db`; guard active.
+
+### Phase 3.3A — ADR Corrections and Skipped-Test Classification
+
+**Status:** Complete (this amendment + classification report).
+**DoD:** ADR consistent; 22 skips classified; Phase 3.4 entry gate honest.
 
 ### Phase 3.4 — Canonical Category and Layout Schema
 
-**Objective:** Tables, FKs, backfill, seeders.  
-**Dependencies:** 3.3.  
-**Files:** migrations, `VendorCategory`, `EventLayoutRow`, models.  
-**Exclusions:** No API/UI.
+**Objective:** Tables, FKs, backfill, seeders.
+**Dependencies:** 3.3 + 3.3A.
+**Files:** migrations, `VendorCategory`, `EventLayoutRow`, models.
+**Exclusions:** No API/UI. Unknown categories must remain unresolved blockers until fixed.
 
 ### Phase 3.5 — Organizer Layout Backend and Readiness
 
-**Objective:** Row CRUD, readiness, lock services, row site generation.  
-**Dependencies:** 3.4.  
-**Files:** `EventLayoutRowController`, services, routes.  
+**Objective:** Row CRUD, readiness, lock services, row site generation.
+**Dependencies:** 3.4.
+**Files:** `EventLayoutRowController`, services, routes.
 **Tests:** Feature tests for readiness/lock.
 
 ### Phase 3.6 — Organizer Layout Management UI
 
-**Objective:** Staff/Organizer table workspace.  
-**Dependencies:** 3.5.  
-**Files:** new Organizer layout view/panel.  
+**Objective:** Staff/Organizer table workspace.
+**Dependencies:** 3.5.
+**Files:** new Organizer layout view/panel.
 **Exclusions:** Drag-and-drop.
 
 ### Phase 3.7 — Vendor Category Eligibility Enforcement
 
-**Objective:** Availability projection + booking validation.  
-**Dependencies:** 3.5.  
-**Files:** `BookingCategoryEligibilityService`, `VendorEventSiteAvailabilityService`, `BookingController`.  
+**Objective:** Availability projection + booking validation.
+**Dependencies:** 3.5.
+**Files:** `BookingCategoryEligibilityService`, `VendorEventSiteAvailabilityService`, `BookingController`.
 
 ### Phase 3.8 — Organizer Reassignment Override and Audit
 
-**Objective:** Override table + atomic reassignment.  
-**Dependencies:** 3.7.  
+**Objective:** Override table + atomic reassignment.
+**Dependencies:** 3.7.
 
 ### Phase 3.9 — Vendor Site Selection UX
 
-**Objective:** Category-first UI, disabled states.  
-**Dependencies:** 3.7.  
+**Objective:** Category-first UI, disabled states.
+**Dependencies:** 3.7.
 **Files:** `EventSiteSelector.vue`, `Registration.vue`.
 
 ### Phase 3.10 — Public Simplified Layout
 
-**Objective:** `GET /api/events/{event}/layout` + public view.  
+**Objective:** `GET /api/events/{event}/layout` + public view.
 **Dependencies:** 3.5, 3.6 publication fields.
 
 ### Phase 3.11 — Migration, Regression, and E2E Hardening
 
-**Objective:** Seed layouts, retire synthetic booth fallback where safe, full regression.  
+**Objective:** Seed layouts, retire synthetic booth fallback where safe, full regression.
 **Dependencies:** 3.7–3.10.
 
 ---
@@ -848,6 +1103,10 @@ Do not overload `booking_audit_logs` with row rename or site generation.
 ## References
 
 - Phase 3.1 audit (conversation transcript `7e3c7b40-f236-4497-a083-d21a7871c9e2`)
+- `docs/phase-3/phase-3-3-test-environment-isolation-and-baseline-safety.md`
+- `docs/phase-3/phase-3-3a-adr-corrections-and-skipped-test-classification.md`
 - `docs/phase-2/phase-2a-architecture-decision-record.md`
 - `docs/phase-2/phase-2a7-booking-creation-and-allocation-lifecycle.md`
 - `docs/phase-2/phase-2a7-1-test-isolation-and-local-data-cleanup.md`
+- Repository event statuses: `backend/app/Http/Controllers/Api/CarbootEventController.php` (`Available`, `Almost Full`, `Closed`)
+- Hardcoded legacy categories: `frontend/src/constants/productCategories.js`, `BookingController` validation rules

@@ -43,10 +43,17 @@ class BookingCreationWithAllocationsTest extends TestCase
 
     private function standardSpace(): Space
     {
-        return Space::query()->firstOrCreate(
+        $space = Space::query()->firstOrCreate(
             ['space_size' => 'Standard (1 Parking Lot)'],
             ['price' => 30.00, 'status' => 'Available'],
         );
+
+        // Shared catalogue row: earlier tests may have firstOrCreate'd at another price.
+        if ((float) $space->price !== 30.0) {
+            $space->forceFill(['price' => 30.00, 'status' => 'Available'])->save();
+        }
+
+        return $space->fresh();
     }
 
     private function largeSpace(): Space

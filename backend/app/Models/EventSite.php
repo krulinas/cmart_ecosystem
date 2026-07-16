@@ -23,6 +23,7 @@ class EventSite extends Model
 
     protected $fillable = [
         'carboot_event_id',
+        'event_layout_row_id',
         'space_id',
         'label',
         'row_label',
@@ -45,6 +46,11 @@ class EventSite extends Model
     public function carbootEvent(): BelongsTo
     {
         return $this->belongsTo(CarbootEvent::class, 'carboot_event_id');
+    }
+
+    public function eventLayoutRow(): BelongsTo
+    {
+        return $this->belongsTo(EventLayoutRow::class);
     }
 
     public function space(): BelongsTo

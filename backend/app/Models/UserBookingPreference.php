@@ -14,6 +14,7 @@ class UserBookingPreference extends Model
         'user_id',
         'name',
         'product_category',
+        'vendor_category_id',
         'specific_products',
         'tapak_count',
         'remember_enabled',
@@ -29,5 +30,10 @@ class UserBookingPreference extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function vendorCategory(): BelongsTo
+    {
+        return $this->belongsTo(VendorCategory::class);
     }
 }
