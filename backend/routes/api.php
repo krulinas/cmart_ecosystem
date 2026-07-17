@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\OrganizerEventLayoutController;
 use App\Http\Controllers\Api\OrganizerEventLayoutRowController;
 use App\Http\Controllers\Api\OrganizerEventLayoutSiteController;
 use App\Http\Controllers\Api\OrganizerBookingSiteAssignmentController;
+use App\Http\Controllers\Api\PublicEventLayoutController;
 use App\Support\ManagementCapability;
 use App\Support\ManagementRole;
 
@@ -60,6 +61,7 @@ Route::get('/feedbacks', [FeedbackController::class, 'index']);
 Route::post('/feedback/{id}/helpful', [FeedbackController::class, 'markHelpful']);
 
 Route::get('/events', [CarbootEventController::class, 'publicIndex']);
+Route::get('/events/{event}/layout', [PublicEventLayoutController::class, 'show']);
 Route::get('/events/{carboot_event}', [CarbootEventController::class, 'publicShow']);
 Route::get('/news', [NewsPostController::class, 'publicIndex']);
 
@@ -152,6 +154,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/vendor-categories', [OrganizerVendorCategoryController::class, 'index']);
             Route::get('/events/{carboot_event}/layout', [OrganizerEventLayoutController::class, 'show']);
             Route::get('/events/{carboot_event}/layout/readiness', [OrganizerEventLayoutController::class, 'readiness']);
+            Route::post('/events/{carboot_event}/layout/publish', [OrganizerEventLayoutController::class, 'publish']);
+            Route::post('/events/{carboot_event}/layout/unpublish', [OrganizerEventLayoutController::class, 'unpublish']);
 
             Route::post('/events/{carboot_event}/layout/rows', [OrganizerEventLayoutRowController::class, 'store']);
             Route::patch('/events/{carboot_event}/layout/rows/reorder', [OrganizerEventLayoutRowController::class, 'reorder']);

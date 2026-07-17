@@ -82,6 +82,54 @@
     <template v-else-if="selectedEventId && layout">
       <EventLayoutReadinessPanel :readiness="layout.readiness || {}" />
 
+      <section class="ml-card space-y-3" data-testid="layout-publication-panel">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h3 class="text-base font-extrabold text-ink-900">Penerbitan Peta Awam</h3>
+            <p class="mt-1 text-sm text-ink-600">
+              Peta pelawat hanya boleh diterbitkan apabila kesediaan awam lengkap.
+            </p>
+            <p class="mt-2 text-sm font-semibold" :class="layout.event.public_layout_published ? 'text-emerald-700' : 'text-amber-700'">
+              {{ layout.event.public_layout_published ? 'Diterbitkan' : 'Belum diterbitkan' }}
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-if="!layout.event.public_layout_published"
+              type="button"
+              class="ml-btn-primary text-sm"
+              :disabled="mutating || !layout.readiness?.public_ready"
+              data-testid="layout-publish-button"
+              @click="publishPublicLayout"
+            >
+              Terbitkan Peta Awam
+            </button>
+            <button
+              v-else
+              type="button"
+              class="ml-btn-ghost text-sm"
+              :disabled="mutating"
+              data-testid="layout-unpublish-button"
+              @click="unpublishPublicLayout"
+            >
+              Nyahterbit
+            </button>
+          </div>
+        </div>
+        <div>
+          <label for="layout-entrance-note" class="ml-label">Petunjuk masuk awam (pilihan)</label>
+          <textarea
+            id="layout-entrance-note"
+            v-model="entranceNote"
+            rows="2"
+            maxlength="1000"
+            class="ml-input"
+            :disabled="mutating || layout.event.public_layout_published"
+            placeholder="Contoh: Masuk melalui pintu utama bersebelahan medan selera."
+          />
+        </div>
+      </section>
+
       <section
         v-if="unresolvedSites.length"
         class="ml-card border-amber-200 bg-amber-50/60 space-y-3"
@@ -206,6 +254,7 @@ const loadError = ref('');
 const formError = ref('');
 const lastLoadedAt = ref(null);
 const loadToken = ref(0);
+const entranceNote = ref('');
 
 const rowModalOpen = ref(false);
 const siteModalOpen = ref(false);
@@ -298,6 +347,7 @@ async function refreshLayout({ force = false } = {}) {
     const { data } = await layoutApi.getOrganizerEventLayout(selectedEventId.value);
     if (token !== loadToken.value) return;
     layout.value = data;
+    entranceNote.value = data.event?.public_layout_entrance_note || '';
     lastLoadedAt.value = Date.now();
   } catch (error) {
     if (token !== loadToken.value) return;
@@ -348,6 +398,21 @@ async function submitRowForm(payload) {
       await layoutApi.createLayoutRow(selectedEventId.value, payload);
       toast.success(copy.rowCreated);
     }
+  });
+}
+
+async function publishPublicLayout() {
+  await withMutation(async () => {
+    await layoutApi.publishOrganizerEventLayout(selectedEventId.value, entranceNote.value);
+    toast.success('Susun atur awam telah diterbitkan.');
+  });
+}
+
+async function unpublishPublicLayout() {
+  if (!window.confirm('Nyahterbitkan peta awam ini? Pelawat tidak akan dapat melihatnya.')) return;
+  await withMutation(async () => {
+    await layoutApi.unpublishOrganizerEventLayout(selectedEventId.value);
+    toast.success('Susun atur awam telah dinyahterbitkan.');
   });
 }
 

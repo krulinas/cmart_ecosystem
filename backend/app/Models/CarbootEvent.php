@@ -21,6 +21,8 @@ class CarbootEvent extends Model
         'description',
         'max_slots',
         'day_generation_mode',
+        'public_layout_published_at',
+        'public_layout_entrance_note',
         'image_path',
     ];
 
@@ -33,6 +35,7 @@ class CarbootEvent extends Model
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
         'max_slots' => 'integer',
+        'public_layout_published_at' => 'datetime',
     ];
 
     public const DAY_MODE_CALENDAR = 'calendar_days';

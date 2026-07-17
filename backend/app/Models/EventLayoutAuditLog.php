@@ -21,6 +21,8 @@ class EventLayoutAuditLog extends Model
     public const ACTION_SITE_UPDATED = 'event_site_updated';
     public const ACTION_SITE_REORDERED = 'event_site_reordered';
     public const ACTION_SITE_DELETED = 'event_site_deleted';
+    public const ACTION_LAYOUT_PUBLISHED = 'public_layout_published';
+    public const ACTION_LAYOUT_UNPUBLISHED = 'public_layout_unpublished';
 
     protected $fillable = [
         'carboot_event_id',

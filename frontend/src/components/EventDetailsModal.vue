@@ -171,6 +171,7 @@
                 </div>
               </div>
             </div>
+            <PublicEventLayoutSection :event-id="event.id" />
           </div>
         </Transition>
       </div>
@@ -181,6 +182,7 @@
 <script setup>
 import { computed, ref, watch, onUnmounted, nextTick } from 'vue';
 import MediaImageGallery from './MediaImageGallery.vue';
+import PublicEventLayoutSection from './public/PublicEventLayoutSection.vue';
 import {
   downloadEventIcs,
   getEventUrgencyLabel,

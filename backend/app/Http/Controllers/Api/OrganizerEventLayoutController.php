@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CarbootEvent;
+use App\Models\EventLayoutAuditLog;
 use App\Models\EventLayoutRow;
 use App\Models\EventSite;
+use App\Services\EventLayoutAuditLogger;
 use App\Services\EventLayoutLockService;
 use App\Services\EventLayoutReadinessService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Phase 3.5 — Organizer event layout projection and readiness.
@@ -18,6 +22,7 @@ class OrganizerEventLayoutController extends Controller
     public function __construct(
         private readonly EventLayoutReadinessService $readiness,
         private readonly EventLayoutLockService $locks,
+        private readonly EventLayoutAuditLogger $audit,
     ) {
     }
 
@@ -75,6 +80,9 @@ class OrganizerEventLayoutController extends Controller
                 'id' => $carboot_event->id,
                 'name' => $carboot_event->title,
                 'status' => $carboot_event->status,
+                'public_layout_published' => $carboot_event->public_layout_published_at !== null,
+                'public_layout_published_at' => $carboot_event->public_layout_published_at?->toIso8601String(),
+                'public_layout_entrance_note' => $carboot_event->public_layout_entrance_note,
             ],
             'readiness' => [
                 'operational_ready' => $readiness['operational_ready'],
@@ -95,6 +103,86 @@ class OrganizerEventLayoutController extends Controller
     public function readiness(CarbootEvent $carboot_event): JsonResponse
     {
         return response()->json($this->readiness->assess($carboot_event));
+    }
+
+    public function publish(Request $request, CarbootEvent $carboot_event): JsonResponse
+    {
+        $validated = $request->validate([
+            'entrance_note' => ['nullable', 'string', 'max:1000'],
+        ]);
+        $readiness = $this->readiness->assess($carboot_event);
+
+        if (! $readiness['public_ready']) {
+            return response()->json([
+                'message' => 'Susun atur belum bersedia untuk diterbitkan.',
+                'error' => 'PUBLIC_LAYOUT_NOT_PUBLISHABLE',
+                'blocking_reasons' => $readiness['blocking_reasons'],
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($request, $carboot_event, $validated) {
+            $event = CarbootEvent::query()->whereKey($carboot_event->id)->lockForUpdate()->firstOrFail();
+            $before = [
+                'published_at' => $event->public_layout_published_at?->toIso8601String(),
+                'entrance_note' => $event->public_layout_entrance_note,
+            ];
+            $event->update([
+                'public_layout_published_at' => now(),
+                'public_layout_entrance_note' => $validated['entrance_note'] ?? null,
+            ]);
+
+            $this->audit->record(
+                eventId: (int) $event->id,
+                actor: $request->user(),
+                action: EventLayoutAuditLog::ACTION_LAYOUT_PUBLISHED,
+                before: $before,
+                after: [
+                    'published_at' => $event->public_layout_published_at?->toIso8601String(),
+                    'entrance_note' => $event->public_layout_entrance_note,
+                ],
+            );
+
+            return response()->json([
+                'message' => 'Susun atur awam telah diterbitkan.',
+                'publication' => [
+                    'published' => true,
+                    'published_at' => $event->public_layout_published_at?->toIso8601String(),
+                    'entrance_note' => $event->public_layout_entrance_note,
+                ],
+            ]);
+        });
+    }
+
+    public function unpublish(Request $request, CarbootEvent $carboot_event): JsonResponse
+    {
+        return DB::transaction(function () use ($request, $carboot_event) {
+            $event = CarbootEvent::query()->whereKey($carboot_event->id)->lockForUpdate()->firstOrFail();
+            $before = [
+                'published_at' => $event->public_layout_published_at?->toIso8601String(),
+                'entrance_note' => $event->public_layout_entrance_note,
+            ];
+            $event->update(['public_layout_published_at' => null]);
+
+            $this->audit->record(
+                eventId: (int) $event->id,
+                actor: $request->user(),
+                action: EventLayoutAuditLog::ACTION_LAYOUT_UNPUBLISHED,
+                before: $before,
+                after: [
+                    'published_at' => null,
+                    'entrance_note' => $event->public_layout_entrance_note,
+                ],
+            );
+
+            return response()->json([
+                'message' => 'Susun atur awam telah dinyahterbitkan.',
+                'publication' => [
+                    'published' => false,
+                    'published_at' => null,
+                    'entrance_note' => $event->public_layout_entrance_note,
+                ],
+            ]);
+        });
     }
 
     private function presentCategory(EventLayoutRow $row): ?array

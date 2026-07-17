@@ -1,3 +1,4 @@
+import process from 'node:process';
 import {
   env,
   requireOrganizerCredentials,
@@ -16,7 +17,7 @@ async function assertHttpReachable(url, label) {
     }
     return { status: response.status };
   } catch (error) {
-    throw new Error(`${label} not reachable at ${url} (${error.message})`);
+    throw new Error(`${label} not reachable at ${url} (${error.message})`, { cause: error });
   }
 }
 
@@ -36,6 +37,7 @@ async function assertAuthLoginReachable() {
     throw new Error(
       `Backend auth login not reachable at ${loginUrl} (${error.message}). ` +
         'Start Laravel with: php artisan serve',
+      { cause: error },
     );
   }
 
@@ -71,6 +73,7 @@ const LOGIN_ONLY_SPECS = new Set([
 
 const PUBLIC_ROUTE_SPECS = new Set([
   'public.public-route-safety.spec.js',
+  'public.event-layout.spec.js',
 ]);
 
 export function requiresBookingData(specFiles = []) {
@@ -93,7 +96,7 @@ async function assertUpcomingBookableEvents() {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
   } catch (error) {
-    throw new Error(`Public events API not reachable at ${url} (${error.message})`);
+    throw new Error(`Public events API not reachable at ${url} (${error.message})`, { cause: error });
   }
 
   if (!response.ok) {

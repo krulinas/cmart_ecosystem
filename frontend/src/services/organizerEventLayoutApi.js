@@ -16,6 +16,16 @@ export function getOrganizerEventLayoutReadiness(eventId) {
   return api.get(`/organizer/events/${eventId}/layout/readiness`);
 }
 
+export function publishOrganizerEventLayout(eventId, entranceNote) {
+  return api.post(`/organizer/events/${eventId}/layout/publish`, {
+    entrance_note: entranceNote || null,
+  });
+}
+
+export function unpublishOrganizerEventLayout(eventId) {
+  return api.post(`/organizer/events/${eventId}/layout/unpublish`);
+}
+
 export function createLayoutRow(eventId, payload) {
   return api.post(`/organizer/events/${eventId}/layout/rows`, payload);
 }
