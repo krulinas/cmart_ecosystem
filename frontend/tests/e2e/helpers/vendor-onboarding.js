@@ -7,6 +7,7 @@ import {
   prepareVendorBookingPage,
   setSelectValue,
 } from './booking.js';
+import { selectBookingCategory } from './vendor-categories.js';
 import { captureFailureDiagnostics } from './diagnostics.js';
 import { ensureGuestSession } from './guest-access.js';
 import { clearBrowserSession } from './session.js';
@@ -198,7 +199,7 @@ export async function submitApplicantBooking(driver, marker) {
   await prepareVendorBookingPage(driver);
   await openFirstBookableEvent(driver);
   await fillInputValue(driver, 'booking-business-name', env.bookingBusinessName);
-  await setSelectValue(driver, 'booking-category', 'Food & Beverages');
+  await selectBookingCategory(driver, 'Food & Beverages');
   await fillInputValue(driver, 'booking-details', marker);
 
   await driver.wait(

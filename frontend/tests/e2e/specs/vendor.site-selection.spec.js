@@ -1,9 +1,11 @@
 import { strict as assert } from 'node:assert';
+import { afterEach, before, beforeEach, describe, it } from 'mocha';
 import { By } from 'selenium-webdriver';
 import { env } from '../config/env.js';
 import { loginAsCommunityVendor } from '../helpers/auth.js';
 import { createDriver } from '../helpers/driver.js';
 import { createSiteFixtures, cleanupSiteFixtures } from '../helpers/site-fixtures.js';
+import { selectBookingCategory } from '../helpers/vendor-categories.js';
 import { waitForTestId, waitForTestIdHidden } from '../helpers/wait.js';
 import { setActiveDriver } from '../setup.js';
 
@@ -52,7 +54,7 @@ describe('Vendor cinema-style site selection', function () {
     await waitForTestId(driver, `event-site-tile-${labelB}`);
 
     await setInputValue(driver, 'booking-business-name', env.bookingBusinessName);
-    await setSelectValue(driver, 'booking-category', 'Food & Beverages');
+    await selectBookingCategory(driver, 'Food & Beverages');
     await setInputValue(driver, 'booking-details', `E2E-SITE-FIX success ${Date.now()}`);
 
     await clickTile(driver, labelA);
@@ -92,7 +94,7 @@ describe('Vendor cinema-style site selection', function () {
     const conflictSiteId = fixtures.site_ids[0];
 
     await setInputValue(driver, 'booking-business-name', env.bookingBusinessName);
-    await setSelectValue(driver, 'booking-category', 'Food & Beverages');
+    await selectBookingCategory(driver, 'Food & Beverages');
     const detailsMarker = `E2E-SITE-FIX conflict ${Date.now()}`;
     await setInputValue(driver, 'booking-details', detailsMarker);
 
@@ -189,18 +191,6 @@ async function setInputValue(driver, testId, value) {
      field.dispatchEvent(new Event('input', { bubbles: true }));
      field.dispatchEvent(new Event('change', { bubbles: true }));`,
     input,
-    value,
-  );
-}
-
-async function setSelectValue(driver, testId, value) {
-  const select = await waitForTestId(driver, testId);
-  await driver.executeScript(
-    `const el = arguments[0];
-     el.value = arguments[1];
-     el.dispatchEvent(new Event('input', { bubbles: true }));
-     el.dispatchEvent(new Event('change', { bubbles: true }));`,
-    select,
     value,
   );
 }

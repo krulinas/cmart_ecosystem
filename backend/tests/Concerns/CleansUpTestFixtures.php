@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\BookingAttendanceException;
 use App\Models\BookingAttendanceExceptionDay;
 use App\Models\BookingAuditLog;
+use App\Models\BookingCategoryOverride;
 use App\Models\BookingDayAllocation;
 use App\Models\CarbootEvent;
 use App\Models\EventDay;
@@ -71,6 +72,8 @@ trait CleansUpTestFixtures
             }
 
             if ($this->createdBookingIds !== []) {
+                BookingCategoryOverride::whereIn('booking_id', $this->createdBookingIds)->delete();
+                BookingDayAllocation::whereIn('booking_id', $this->createdBookingIds)->delete();
                 BookingAuditLog::whereIn('booking_id', $this->createdBookingIds)->delete();
                 Booking::whereIn('id', $this->createdBookingIds)->delete();
             }

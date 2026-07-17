@@ -21,6 +21,8 @@ class BookingAllocationLifecycleService
 
     public const REASON_ORGANIZER_DAY_EXCEPTION = 'organizer_day_exception';
 
+    public const REASON_ORGANIZER_SITE_REASSIGNMENT = 'organizer_site_reassignment';
+
     /**
      * Transition active reserved allocations to confirmed after payment verification.
      *

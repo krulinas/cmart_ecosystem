@@ -18,6 +18,11 @@ use Illuminate\Support\Facades\DB;
  */
 class BookingAllocationReservationService
 {
+    public function __construct(
+        private readonly BookingSiteCategoryValidator $categoryValidator,
+    ) {
+    }
+
     /**
      * Reserve inside an existing outer transaction (Phase 2A.7 booking creation).
      *
@@ -106,6 +111,23 @@ class BookingAllocationReservationService
         $this->assertSitesBelongToEvent($orderedSites, (int) $event->id);
         $this->assertSitesAreActive($orderedSites);
         $this->assertSitesAreAdjacentAndSameType($orderedSites);
+
+        // Phase 3.7 — revalidate row/category compatibility inside the reservation lock.
+        if ($booking->vendor_category_id) {
+            $booking->loadMissing('vendorCategory');
+            $category = $booking->vendorCategory;
+            if (! $category) {
+                throw new AllocationValidationException(
+                    'The selected category was not found.',
+                    'CATEGORY_NOT_FOUND',
+                );
+            }
+            $this->categoryValidator->assertSitesCompatibleWithCategory(
+                $orderedSites,
+                $category,
+                (int) $event->id,
+            );
+        }
 
         // 17–20. Active EventDays, ordered by ID, locked; require at least one.
         $activeDays = EventDay::query()

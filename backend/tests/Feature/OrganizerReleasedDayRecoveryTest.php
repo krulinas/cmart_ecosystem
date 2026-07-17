@@ -18,11 +18,13 @@ use App\Services\VendorBookingPresenter;
 use App\Services\VendorEventSiteAvailabilityService;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\CleansUpTestFixtures;
+use Tests\Concerns\EnsuresCanonicalLayoutForSites;
 use Tests\TestCase;
 
 class OrganizerReleasedDayRecoveryTest extends TestCase
 {
     use CleansUpTestFixtures;
+    use EnsuresCanonicalLayoutForSites;
 
     private const RECOVERY_ENDPOINT = '/api/organizer/released-day-recovery';
 
@@ -102,13 +104,14 @@ class OrganizerReleasedDayRecoveryTest extends TestCase
             ]);
             $this->createdSiteIds[] = $site->id;
 
-            return $site;
+            return $this->attachSiteToFoodLayout($event, $site, 'A');
         });
 
         Sanctum::actingAs($vendor);
         $response = $this->postJson('/api/bookings', [
             'event_id' => $event->id,
             'event_site_ids' => $sites->pluck('id')->all(),
+            'vendor_category_id' => $this->foodVendorCategory()->id,
             'product_category' => 'Food & Beverages',
             'product_details' => 'Recovery queue booking',
         ])->assertCreated()->json();
@@ -273,7 +276,10 @@ class OrganizerReleasedDayRecoveryTest extends TestCase
     {
         $fixture = $this->partialExceptionFixture();
         Sanctum::actingAs($fixture['vendor']);
-        $availability = app(VendorEventSiteAvailabilityService::class)->forEvent($fixture['event']->fresh());
+        $availability = app(VendorEventSiteAvailabilityService::class)->forEvent(
+            $fixture['event']->fresh(),
+            $this->foodVendorCategory()->id,
+        );
         foreach (['A01', 'A02'] as $label) {
             $site = collect($availability['sites'])->firstWhere('label', $label);
             $this->assertSame(VendorEventSiteAvailabilityService::AVAILABILITY_OCCUPIED, $site['availability_status']);
@@ -289,7 +295,10 @@ class OrganizerReleasedDayRecoveryTest extends TestCase
             'acknowledge_no_refund' => true,
         ])->assertOk();
 
-        $availability = app(VendorEventSiteAvailabilityService::class)->forEvent($fixture['event']->fresh());
+        $availability = app(VendorEventSiteAvailabilityService::class)->forEvent(
+            $fixture['event']->fresh(),
+            $this->foodVendorCategory()->id,
+        );
         foreach (['A01', 'A02'] as $label) {
             $site = collect($availability['sites'])->firstWhere('label', $label);
             $this->assertSame(VendorEventSiteAvailabilityService::AVAILABILITY_AVAILABLE, $site['availability_status']);

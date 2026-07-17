@@ -7,6 +7,7 @@ import {
   formatOperationalDaysSummary,
   getSelectedSites,
   groupSitesByRow,
+  prepareAvailabilityRows,
   pruneInvalidSelections,
   selectionValidationMessage,
   toggleSiteSelection,
@@ -17,6 +18,7 @@ const sampleSites = [
     id: 1,
     label: 'A01',
     row_label: 'A',
+    event_layout_row_id: 101,
     position_number: 1,
     space_id: 10,
     space_name: 'Standard',
@@ -28,6 +30,7 @@ const sampleSites = [
     id: 2,
     label: 'A02',
     row_label: 'A',
+    event_layout_row_id: 101,
     position_number: 2,
     space_id: 10,
     space_name: 'Standard',
@@ -39,6 +42,7 @@ const sampleSites = [
     id: 3,
     label: 'A03',
     row_label: 'A',
+    event_layout_row_id: 101,
     position_number: 3,
     space_id: 10,
     space_name: 'Standard',
@@ -50,6 +54,7 @@ const sampleSites = [
     id: 4,
     label: 'B01',
     row_label: 'B',
+    event_layout_row_id: 102,
     position_number: 1,
     space_id: 20,
     space_name: 'Large',
@@ -67,13 +72,37 @@ describe('eventSiteSelection helpers', () => {
     assert.deepEqual(rows[0].sites.map((site) => site.label), ['A01', 'A02', 'A03']);
   });
 
+  it('uses backend layout-row records for the booking row projection', () => {
+    const rows = prepareAvailabilityRows([
+      {
+        id: 102,
+        label: 'Row B',
+        display_order: 2,
+        category: { id: 2, label: 'Food & Beverages' },
+        sites: [sampleSites[3]],
+      },
+      {
+        id: 101,
+        label: 'Row A',
+        display_order: 1,
+        category: { id: 1, label: 'Pre-loved / Thrift' },
+        sites: [sampleSites[1], sampleSites[0], sampleSites[2]],
+      },
+    ]);
+
+    assert.deepEqual(rows.map((row) => row.rowId), [101, 102]);
+    assert.equal(rows[0].category.label, 'Pre-loved / Thrift');
+    assert.deepEqual(rows[0].sites.map((site) => site.label), ['A01', 'A02', 'A03']);
+    assert.equal(rows[0].availableSiteCount, 2);
+  });
+
   it('selects first available site and rejects occupied site', () => {
     const first = toggleSiteSelection(sampleSites[0], [], sampleSites);
     assert.deepEqual(first.selectedIds, [1]);
 
     const occupied = toggleSiteSelection(sampleSites[2], [], sampleSites);
     assert.deepEqual(occupied.selectedIds, []);
-    assert.match(occupied.blockedMessage || '', /adjacent|same row/i);
+    assert.match(occupied.blockedMessage || '', /bersebelahan|baris/i);
   });
 
   it('allows adjacent same-row selection and rejects gaps', () => {
@@ -110,7 +139,7 @@ describe('eventSiteSelection helpers', () => {
     const blocked = toggleSiteSelection(rowSites[1], allThree.selectedIds, rowSites);
 
     assert.deepEqual(blocked.selectedIds, allThree.selectedIds);
-    assert.match(blocked.blockedMessage || '', /edge|clear/i);
+    assert.match(blocked.blockedMessage || '', /hujung|kosongkan/i);
   });
 
   it('allows edge deselection', () => {
@@ -130,7 +159,7 @@ describe('eventSiteSelection helpers', () => {
     assert.equal(selectionValidationMessage(selected), null);
 
     const mixedRow = getSelectedSites(sampleSites, [1, 4]);
-    assert.match(selectionValidationMessage(mixedRow), /same row/i);
+    assert.match(selectionValidationMessage(mixedRow), /baris yang sama/i);
   });
 
   it('prunes invalid selections after conflict refresh', () => {
@@ -151,7 +180,7 @@ describe('eventSiteSelection helpers', () => {
       { operational_date: '2026-08-01' },
       { operational_date: '2026-08-02' },
     ]);
-    assert.match(multi, /all active event days/i);
+    assert.match(multi, /semua hari acara aktif/i);
   });
 
   it('reports non-contiguous positions', () => {

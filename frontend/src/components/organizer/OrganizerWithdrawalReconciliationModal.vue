@@ -160,6 +160,77 @@
             </div>
           </section>
 
+          <section
+            v-if="categoryPlacement"
+            class="rounded-2xl border border-violet-200 bg-violet-50/40 p-5"
+            data-testid="organizer-category-placement"
+          >
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 class="font-extrabold text-ink-900">Penempatan Kategori &amp; Tapak</h3>
+                <p class="mt-1 text-sm text-ink-600">Semak keserasian kategori tempahan dengan baris semasa.</p>
+              </div>
+              <button
+                v-if="reassignmentAllowed"
+                type="button"
+                class="ml-btn-primary"
+                data-testid="organizer-open-site-reassignment"
+                @click="showSiteReassignment = true"
+              >
+                Susun Semula Tapak
+              </button>
+            </div>
+
+            <dl class="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+              <div class="rounded-xl bg-white p-3 ring-1 ring-violet-100">
+                <dt class="text-xs font-bold uppercase text-ink-500">Kategori Tempahan</dt>
+                <dd class="mt-1 font-semibold">{{ categoryPlacement.booking_category?.label }}</dd>
+              </div>
+              <div class="rounded-xl bg-white p-3 ring-1 ring-violet-100">
+                <dt class="text-xs font-bold uppercase text-ink-500">Kategori Baris Semasa</dt>
+                <dd class="mt-1 font-semibold">{{ assignedRowCategoryLabel }}</dd>
+              </div>
+              <div class="rounded-xl bg-white p-3 ring-1 ring-violet-100">
+                <dt class="text-xs font-bold uppercase text-ink-500">Tapak Semasa</dt>
+                <dd class="mt-1 font-semibold">{{ currentSiteLabels }}</dd>
+              </div>
+              <div class="rounded-xl bg-white p-3 ring-1 ring-violet-100">
+                <dt class="text-xs font-bold uppercase text-ink-500">Status Keserasian</dt>
+                <dd
+                  class="mt-1 font-semibold"
+                  :class="categoryPlacement.current_assignment?.compatible ? 'text-emerald-700' : 'text-amber-800'"
+                  data-testid="organizer-compatibility-status"
+                >
+                  {{ categoryPlacement.current_assignment?.compatible ? 'Sepadan' : 'Tidak Sepadan' }}
+                </dd>
+              </div>
+            </dl>
+
+            <div
+              v-if="categoryPlacement.override?.active"
+              class="mt-4 rounded-xl bg-white p-4 ring-1 ring-amber-200"
+              data-testid="organizer-active-override"
+            >
+              <p class="font-semibold text-amber-900">Pengecualian: Diluluskan oleh Penganjur</p>
+              <p class="mt-1 text-sm text-ink-700">Sebab: {{ categoryPlacement.override.reason }}</p>
+              <p v-if="categoryPlacement.override.applied_by" class="mt-1 text-xs text-ink-500">
+                {{ categoryPlacement.override.applied_by.name }}
+                · {{ formatDateTime(categoryPlacement.override.applied_at) }}
+              </p>
+            </div>
+
+            <div
+              v-if="!reassignmentAllowed && reassignmentBlockers.length"
+              class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"
+              data-testid="organizer-reassignment-blockers"
+            >
+              <p class="font-semibold">Susunan semula tapak tidak tersedia:</p>
+              <ul class="mt-2 list-disc pl-5">
+                <li v-for="blocker in reassignmentBlockers" :key="blocker.code">{{ blocker.message }}</li>
+              </ul>
+            </div>
+          </section>
+
           <section class="rounded-2xl border border-ink-200 bg-white p-5">
             <h3 class="font-extrabold text-ink-900">Booking Audit Timeline</h3>
             <p class="mt-1 text-sm text-ink-500">Read-only lifecycle events, oldest to newest.</p>
@@ -200,6 +271,12 @@
         :booking="booking"
         @applied="handleAttendanceApplied"
       />
+      <OrganizerSiteReassignmentModal
+        v-model="showSiteReassignment"
+        :booking="booking"
+        :placement="categoryPlacement"
+        @applied="handleSiteReassignmentApplied"
+      />
     </div>
   </Teleport>
 </template>
@@ -208,6 +285,7 @@
 import { computed, ref } from 'vue';
 import { allocationStatusLabel, organizerPaymentStateLabel } from '../../utils/bookingDisplay';
 import OrganizerAttendanceExceptionModal from './OrganizerAttendanceExceptionModal.vue';
+import OrganizerSiteReassignmentModal from './OrganizerSiteReassignmentModal.vue';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -220,9 +298,23 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'booking-updated']);
 const reconciliation = computed(() => props.booking?.withdrawal_reconciliation || null);
 const attendancePolicy = computed(() => props.booking?.attendance_policy || null);
+const categoryPlacement = computed(() => props.booking?.category_placement || null);
+const reassignmentAllowed = computed(() => categoryPlacement.value?.reassignment?.allowed === true);
+const reassignmentBlockers = computed(() => categoryPlacement.value?.reassignment?.blocking_reasons || []);
+const assignedRowCategoryLabel = computed(() => {
+  const rows = categoryPlacement.value?.current_assignment?.rows || [];
+  if (!rows.length) return 'Tiada';
+  return rows.map((row) => row.category?.label || row.label).join(', ');
+});
+const currentSiteLabels = computed(() => {
+  const sites = categoryPlacement.value?.current_assignment?.sites || [];
+  return sites.map((site) => site.label).join(', ') || 'Tiada';
+});
 const showAttendanceException = ref(false);
+const showSiteReassignment = ref(false);
 const close = () => emit('update:modelValue', false);
 const handleAttendanceApplied = (booking) => emit('booking-updated', booking);
+const handleSiteReassignmentApplied = (booking) => emit('booking-updated', booking);
 const paymentStateLabel = (state) => organizerPaymentStateLabel(state);
 
 const formatDateTime = (value) => {

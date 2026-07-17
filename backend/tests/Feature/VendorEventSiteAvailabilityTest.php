@@ -6,9 +6,11 @@ use App\Models\Booking;
 use App\Models\BookingDayAllocation;
 use App\Models\CarbootEvent;
 use App\Models\EventDay;
+use App\Models\EventLayoutRow;
 use App\Models\EventSite;
 use App\Models\Space;
 use App\Models\User;
+use App\Models\VendorCategory;
 use App\Services\BookingAllocationReservationService;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\CleansUpTestFixtures;
@@ -51,6 +53,18 @@ class VendorEventSiteAvailabilityTest extends TestCase
         return $space->fresh();
     }
 
+    private function foodCategory(): VendorCategory
+    {
+        return VendorCategory::query()->where('slug', 'food-beverages')->firstOrFail();
+    }
+
+    private function availabilityUrl(CarbootEvent $event, ?int $categoryId = null): string
+    {
+        $categoryId ??= $this->foodCategory()->id;
+
+        return "/api/vendor/events/{$event->id}/site-availability?vendor_category_id={$categoryId}";
+    }
+
     private function seedEventWithLayout(int $siteCount = 2): array
     {
         $starts = now()->addDays(20)->setTime(8, 0, 0);
@@ -66,11 +80,23 @@ class VendorEventSiteAvailabilityTest extends TestCase
         $this->trackEvent($event);
 
         $space = $this->standardSpace();
+        $category = $this->foodCategory();
+        $row = EventLayoutRow::create([
+            'carboot_event_id' => $event->id,
+            'vendor_category_id' => $category->id,
+            'label' => 'A',
+            'slug' => 'a-' . $event->id,
+            'display_order' => 1,
+            'is_active' => true,
+            'is_public' => true,
+        ]);
+
         $sites = [];
 
         for ($i = 1; $i <= $siteCount; $i++) {
             $site = EventSite::create([
                 'carboot_event_id' => $event->id,
+                'event_layout_row_id' => $row->id,
                 'space_id' => $space->id,
                 'label' => sprintf('A%02d', $i),
                 'row_label' => 'A',
@@ -104,9 +130,11 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
         Sanctum::actingAs($vendor);
 
-        $response = $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+        $response = $this->getJson($this->availabilityUrl($event))
             ->assertOk()
             ->assertJsonPath('event.id', $event->id)
+            ->assertJsonPath('category_required', false)
+            ->assertJsonPath('category.label', 'Food & Beverages')
             ->assertJsonPath('selection_rules.full_event_duration', true)
             ->assertJsonCount(2, 'sites')
             ->assertJsonPath('sites.0.label', 'A01')
@@ -120,11 +148,25 @@ class VendorEventSiteAvailabilityTest extends TestCase
         $this->assertArrayNotHasKey('booking_id', $json['sites'][0]);
     }
 
+    public function test_availability_without_category_requires_selection(): void
+    {
+        $vendor = $this->createUser();
+        [$event] = $this->seedEventWithLayout(2);
+
+        Sanctum::actingAs($vendor);
+
+        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+            ->assertOk()
+            ->assertJsonPath('category_required', true)
+            ->assertJsonCount(0, 'sites')
+            ->assertJsonPath('readiness.status', 'category_required');
+    }
+
     public function test_unauthenticated_request_returns_401(): void
     {
         [$event] = $this->seedEventWithLayout(1);
 
-        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+        $this->getJson($this->availabilityUrl($event))
             ->assertUnauthorized();
     }
 
@@ -135,7 +177,7 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
         Sanctum::actingAs($manager);
 
-        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+        $this->getJson($this->availabilityUrl($event))
             ->assertForbidden();
     }
 
@@ -153,7 +195,7 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
         Sanctum::actingAs($vendor);
 
-        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+        $this->getJson($this->availabilityUrl($event))
             ->assertOk()
             ->assertJsonCount(2, 'sites');
     }
@@ -165,7 +207,7 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+        $this->getJson($this->availabilityUrl($event))
             ->assertForbidden();
     }
 
@@ -176,7 +218,7 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
         Sanctum::actingAs($superAdmin);
 
-        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+        $this->getJson($this->availabilityUrl($event))
             ->assertForbidden();
     }
 
@@ -205,10 +247,51 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
         Sanctum::actingAs($vendor);
 
-        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+        $this->getJson($this->availabilityUrl($event))
             ->assertOk()
             ->assertJsonPath('sites.0.availability_status', 'occupied')
+            ->assertJsonPath('sites.0.occupancy_status', 'reserved')
             ->assertJsonPath('sites.0.is_selectable', false);
+    }
+
+    public function test_confirmed_occupancy_is_exposed_without_booking_identity(): void
+    {
+        $vendor = $this->createUser();
+        $other = $this->createUser();
+        [$event, $sites, $day] = $this->seedEventWithLayout(1);
+
+        $booking = Booking::create([
+            'user_id' => $other->id,
+            'space_id' => $sites[0]->space_id,
+            'carboot_event_id' => $event->id,
+            'booking_date' => $day->operational_date,
+            'product_category' => 'Food & Beverages',
+            'product_details' => 'Confirmed occupancy test',
+            'approval_status' => 'Approved',
+        ]);
+        $this->createdBookingIds[] = $booking->id;
+
+        app(BookingAllocationReservationService::class)->reserveForBooking($booking, [$sites[0]->id]);
+        BookingDayAllocation::where('booking_id', $booking->id)->update([
+            'allocation_status' => BookingDayAllocation::STATUS_CONFIRMED,
+            'confirmed_at' => now(),
+        ]);
+        $this->createdAllocationIds = array_merge(
+            $this->createdAllocationIds,
+            BookingDayAllocation::where('booking_id', $booking->id)->pluck('id')->all(),
+        );
+
+        Sanctum::actingAs($vendor);
+
+        $site = $this->getJson($this->availabilityUrl($event))
+            ->assertOk()
+            ->assertJsonPath('sites.0.availability_status', 'occupied')
+            ->assertJsonPath('sites.0.occupancy_status', 'confirmed')
+            ->json('sites.0');
+
+        $this->assertArrayNotHasKey('booking_id', $site);
+        $this->assertArrayNotHasKey('allocation_id', $site);
+        $this->assertArrayNotHasKey('vendor', $site);
     }
 
     public function test_released_allocation_does_not_block_availability(): void
@@ -240,7 +323,7 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
         Sanctum::actingAs($vendor);
 
-        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+        $this->getJson($this->availabilityUrl($event))
             ->assertOk()
             ->assertJsonPath('sites.0.availability_status', 'available');
     }
@@ -253,7 +336,7 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
         Sanctum::actingAs($vendor);
 
-        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+        $this->getJson($this->availabilityUrl($event))
             ->assertOk()
             ->assertJsonPath('sites.0.availability_status', 'disabled')
             ->assertJsonPath('sites.0.is_selectable', false);
@@ -276,7 +359,7 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
         Sanctum::actingAs($vendor);
 
-        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+        $this->getJson($this->availabilityUrl($event))
             ->assertStatus(422)
             ->assertJsonFragment(['error' => 'no_active_event_days']);
     }
@@ -308,10 +391,10 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
         Sanctum::actingAs($vendor);
 
-        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+        $this->getJson($this->availabilityUrl($event))
             ->assertOk()
             ->assertJsonCount(0, 'sites')
-            ->assertJsonPath('readiness.status', 'no_event_sites');
+            ->assertJsonPath('readiness.status', 'no_compatible_sites');
     }
 
     public function test_cancelled_event_day_is_excluded_from_operational_days(): void
@@ -331,7 +414,7 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
         Sanctum::actingAs($vendor);
 
-        $this->getJson("/api/vendor/events/{$event->id}/site-availability")
+        $this->getJson($this->availabilityUrl($event))
             ->assertOk()
             ->assertJsonCount(1, 'operational_days');
     }

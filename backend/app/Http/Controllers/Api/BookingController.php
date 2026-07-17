@@ -19,7 +19,9 @@ use App\Support\ManagementRole;
 use App\Services\BookingAllocationLifecycleService;
 use App\Services\BookingAllocationReservationService;
 use App\Services\BookingAuditLogger;
+use App\Services\BookingSiteCategoryValidator;
 use App\Services\VendorBookingPresenter;
+use App\Services\VendorCategoryResolver;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -48,23 +50,15 @@ class BookingController extends Controller
     public function store(
         Request $request,
         BookingAllocationReservationService $reservationService,
+        VendorCategoryResolver $categoryResolver,
+        BookingSiteCategoryValidator $categoryValidator,
     ) {
         $validated = $request->validate([
             'event_id' => 'required|integer|exists:carboot_events,id',
             'event_site_ids' => 'required|array|min:1',
             'event_site_ids.*' => 'required|integer|distinct',
-            'product_category' => [
-                'required',
-                'string',
-                Rule::in([
-                    'Pre-loved / Thrift',
-                    'Food & Beverages',
-                    'Clothing & Apparel',
-                    'Handicrafts & Art',
-                    'Electronics & Gadgets',
-                    'Others',
-                ]),
-            ],
+            'vendor_category_id' => 'nullable|integer|exists:vendor_categories,id',
+            'product_category' => 'nullable|string|max:255',
             'product_details' => 'required|string|max:5000',
             'event_day_ids' => 'prohibited',
             'booking_day_ids' => 'prohibited',
@@ -75,7 +69,13 @@ class BookingController extends Controller
         ]);
 
         try {
-            [$booking, $invoice] = DB::transaction(function () use ($request, $validated, $reservationService) {
+            [$booking, $invoice] = DB::transaction(function () use (
+                $request,
+                $validated,
+                $reservationService,
+                $categoryResolver,
+                $categoryValidator,
+            ) {
                 $event = CarbootEvent::query()
                     ->whereKey($validated['event_id'])
                     ->lockForUpdate()
@@ -87,6 +87,13 @@ class BookingController extends Controller
                         'event_not_bookable',
                     );
                 }
+
+                $category = $categoryResolver->resolveForOperationalUse(
+                    isset($validated['vendor_category_id']) ? (int) $validated['vendor_category_id'] : null,
+                    $validated['product_category'] ?? null,
+                );
+
+                $categoryValidator->assertEventOperationallyLayoutReady($event);
 
                 $placeholderSpaceId = EventSite::query()
                     ->whereIn('id', $validated['event_site_ids'])
@@ -100,12 +107,16 @@ class BookingController extends Controller
                     );
                 }
 
+                $canonicalLabel = $category->label;
+
                 $booking = Booking::create([
                     'user_id' => $request->user()->id,
                     'space_id' => $placeholderSpaceId,
                     'carboot_event_id' => $event->id,
                     'booking_date' => $event->starts_at->toDateString(),
-                    'product_category' => $validated['product_category'],
+                    'vendor_category_id' => $category->id,
+                    'category_label_snapshot' => $canonicalLabel,
+                    'product_category' => $canonicalLabel,
                     'product_details' => $validated['product_details'],
                     'approval_status' => self::PENDING_ORGANIZER,
                     'revision_comment' => null,
@@ -132,18 +143,35 @@ class BookingController extends Controller
                     'payment_status' => 'Unpaid',
                 ]);
 
+                $siteLabels = $reservation->selectedSites->pluck('label')->implode(',');
+                $rowLabels = $reservation->selectedSites
+                    ->map(function (EventSite $site) {
+                        $site->loadMissing('eventLayoutRow');
+
+                        return $site->eventLayoutRow?->label ?? $site->row_label;
+                    })
+                    ->filter()
+                    ->unique()
+                    ->implode(',');
+
                 BookingAuditLogger::log(
                     $booking,
                     $request->user(),
                     'New',
                     self::PENDING_ORGANIZER,
-                    null,
+                    sprintf(
+                        'vendor_category_id=%d; category_label_snapshot=%s; sites=%s; rows=%s',
+                        $category->id,
+                        $canonicalLabel,
+                        $siteLabels,
+                        $rowLabels,
+                    ),
                     $request,
                     'vendor_submitted_booking',
                 );
 
                 return [
-                    $booking->fresh(['space', 'invoice', 'carbootEvent', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']),
+                    $booking->fresh(['space', 'invoice', 'carbootEvent', 'vendorCategory', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']),
                     $invoice,
                 ];
             });
@@ -918,8 +946,12 @@ class BookingController extends Controller
         );
     }
 
-    public function vendorUpdate(Request $request, Booking $booking)
-    {
+    public function vendorUpdate(
+        Request $request,
+        Booking $booking,
+        VendorCategoryResolver $categoryResolver,
+        BookingSiteCategoryValidator $categoryValidator,
+    ) {
         if ($denied = $this->authorizeVendorBooking($request, $booking)) {
             return $denied;
         }
@@ -932,19 +964,9 @@ class BookingController extends Controller
             'attendance_days' => 'prohibited',
             'excluded_day_ids' => 'prohibited',
             'day_exception' => 'prohibited',
-            'product_category' => [
-                'sometimes',
-                'required',
-                'string',
-                Rule::in([
-                    'Pre-loved / Thrift',
-                    'Food & Beverages',
-                    'Clothing & Apparel',
-                    'Handicrafts & Art',
-                    'Electronics & Gadgets',
-                    'Others',
-                ]),
-            ],
+            'event_site_ids' => 'prohibited',
+            'vendor_category_id' => 'nullable|integer|exists:vendor_categories,id',
+            'product_category' => 'nullable|string|max:255',
             'product_details' => 'sometimes|required|string|max:5000',
         ]);
 
@@ -955,11 +977,96 @@ class BookingController extends Controller
             ], 422);
         }
 
-        $booking->update($validated);
+        $wantsCategoryChange = array_key_exists('vendor_category_id', $validated)
+            || array_key_exists('product_category', $validated);
+
+        try {
+            DB::transaction(function () use (
+                $request,
+                $booking,
+                $validated,
+                $wantsCategoryChange,
+                $categoryResolver,
+                $categoryValidator,
+            ) {
+                $booking = Booking::query()->whereKey($booking->id)->lockForUpdate()->firstOrFail();
+
+                $updates = [];
+                if (array_key_exists('product_details', $validated)) {
+                    $updates['product_details'] = $validated['product_details'];
+                }
+
+                if ($wantsCategoryChange) {
+                    $category = $categoryResolver->resolveForOperationalUse(
+                        isset($validated['vendor_category_id']) ? (int) $validated['vendor_category_id'] : null,
+                        $validated['product_category'] ?? null,
+                    );
+
+                    $siteIds = BookingDayAllocation::query()
+                        ->forBooking((int) $booking->id)
+                        ->distinct()
+                        ->pluck('event_site_id')
+                        ->map(fn ($id) => (int) $id)
+                        ->all();
+
+                    if ($siteIds !== []) {
+                        $categoryValidator->assertSiteIdsCompatibleWithCategory(
+                            $siteIds,
+                            $category,
+                            (int) $booking->carboot_event_id,
+                        );
+                    }
+
+                    $previousId = $booking->vendor_category_id;
+                    $previousSnapshot = $booking->category_label_snapshot ?? $booking->product_category;
+
+                    $updates['vendor_category_id'] = $category->id;
+                    $updates['category_label_snapshot'] = $category->label;
+                    $updates['product_category'] = $category->label;
+
+                    $booking->update($updates);
+
+                    BookingAuditLogger::log(
+                        $booking,
+                        $request->user(),
+                        $booking->approval_status,
+                        $booking->approval_status,
+                        sprintf(
+                            'category_change; previous_id=%s; previous_snapshot=%s; new_id=%d; new_snapshot=%s',
+                            $previousId === null ? 'null' : (string) $previousId,
+                            $previousSnapshot ?? 'null',
+                            $category->id,
+                            $category->label,
+                        ),
+                        $request,
+                        'vendor_category_change',
+                    );
+
+                    return;
+                }
+
+                if ($updates !== []) {
+                    $booking->update($updates);
+                }
+            });
+        } catch (AllocationValidationException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'error' => $exception->error,
+            ], 422);
+        } catch (DomainConflictException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'error' => $exception->error,
+            ], 409);
+        }
 
         return response()->json([
             'message' => '200 OK: Booking updated successfully.',
-            'booking' => $booking->fresh(['space', 'invoice']),
+            'booking' => VendorBookingPresenter::presentForVendor(
+                $booking->fresh(['space', 'invoice', 'carbootEvent', 'vendorCategory', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']),
+                $request->user()->id,
+            ),
         ]);
     }
 
@@ -1436,6 +1543,9 @@ class BookingController extends Controller
             'invoice',
             'carbootEvent',
             'withdrawnBy',
+            'vendorCategory',
+            'activeCategoryOverride.appliedBy',
+            'categoryOverrides',
             'auditLogs.actor',
             'attendanceExceptions.appliedBy',
             'attendanceExceptions.days.eventDay',

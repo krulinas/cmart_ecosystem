@@ -81,4 +81,16 @@ class Booking extends Model
             ->orderBy('applied_at')
             ->orderBy('id');
     }
+
+    public function categoryOverrides()
+    {
+        return $this->hasMany(BookingCategoryOverride::class)->orderBy('id');
+    }
+
+    public function activeCategoryOverride()
+    {
+        return $this->hasOne(BookingCategoryOverride::class)
+            ->where('status', BookingCategoryOverride::STATUS_ACTIVE)
+            ->where('active_lock', 1);
+    }
 }

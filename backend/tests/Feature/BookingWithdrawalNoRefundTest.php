@@ -16,11 +16,13 @@ use App\Services\BookingAllocationLifecycleService;
 use App\Services\VendorBookingPresenter;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\CleansUpTestFixtures;
+use Tests\Concerns\EnsuresCanonicalLayoutForSites;
 use Tests\TestCase;
 
 class BookingWithdrawalNoRefundTest extends TestCase
 {
     use CleansUpTestFixtures;
+    use EnsuresCanonicalLayoutForSites;
 
     protected function tearDown(): void
     {
@@ -85,7 +87,7 @@ class BookingWithdrawalNoRefundTest extends TestCase
                 'operational_status' => EventSite::STATUS_ACTIVE,
             ]);
             $this->createdSiteIds[] = $site->id;
-            $sites[] = $site;
+            $sites[] = $this->attachSiteToFoodLayout($event, $site, 'W');
         }
 
         $days = [];
@@ -120,6 +122,7 @@ class BookingWithdrawalNoRefundTest extends TestCase
         $response = $this->postJson('/api/bookings', [
             'event_id' => $event->id,
             'event_site_ids' => $selectedSites,
+            'vendor_category_id' => $this->foodVendorCategory()->id,
             'product_category' => 'Food & Beverages',
             'product_details' => 'Withdrawal test booking',
         ])->assertCreated()->json();
@@ -267,7 +270,9 @@ class BookingWithdrawalNoRefundTest extends TestCase
         $siteId = $booking->bookingDayAllocations->first()->event_site_id;
 
         Sanctum::actingAs($vendor);
-        $occupied = $this->getJson("/api/vendor/events/{$eventId}/site-availability")
+        $occupied = $this->getJson(
+            "/api/vendor/events/{$eventId}/site-availability?vendor_category_id=" . $this->foodVendorCategory()->id,
+        )
             ->assertOk()
             ->json('sites');
 
@@ -278,7 +283,9 @@ class BookingWithdrawalNoRefundTest extends TestCase
             'acknowledge_no_refund' => true,
         ])->assertOk();
 
-        $available = $this->getJson("/api/vendor/events/{$eventId}/site-availability")
+        $available = $this->getJson(
+            "/api/vendor/events/{$eventId}/site-availability?vendor_category_id=" . $this->foodVendorCategory()->id,
+        )
             ->assertOk()
             ->json('sites');
 

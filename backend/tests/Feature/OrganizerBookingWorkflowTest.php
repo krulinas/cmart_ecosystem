@@ -13,6 +13,7 @@ use App\Models\Space;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\CleansUpTestFixtures;
+use Tests\Concerns\EnsuresCanonicalLayoutForSites;
 use Tests\TestCase;
 
 /**
@@ -21,6 +22,7 @@ use Tests\TestCase;
 class OrganizerBookingWorkflowTest extends TestCase
 {
     use CleansUpTestFixtures;
+    use EnsuresCanonicalLayoutForSites;
 
     protected function tearDown(): void
     {
@@ -98,7 +100,7 @@ class OrganizerBookingWorkflowTest extends TestCase
                 'operational_status' => EventSite::STATUS_ACTIVE,
             ]);
             $this->createdSiteIds[] = $site->id;
-            $siteIds[] = $site->id;
+            $siteIds[] = $this->attachSiteToFoodLayout($event, $site, 'A')->id;
         }
 
         $day = EventDay::create([
@@ -139,6 +141,7 @@ class OrganizerBookingWorkflowTest extends TestCase
         $response = $this->postJson('/api/bookings', [
             'event_id' => $event->id,
             'event_site_ids' => [$siteIds[0]],
+            'vendor_category_id' => $this->foodVendorCategory()->id,
             'product_category' => 'Food & Beverages',
             'product_details' => 'New booking workflow test',
         ]);

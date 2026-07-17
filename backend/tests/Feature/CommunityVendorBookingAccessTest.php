@@ -11,10 +11,13 @@ use App\Models\Invoice;
 use App\Models\Space;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\EnsuresCanonicalLayoutForSites;
 use Tests\TestCase;
 
 class CommunityVendorBookingAccessTest extends TestCase
 {
+    use EnsuresCanonicalLayoutForSites;
+
     private array $createdUserIds = [];
     private array $createdEventIds = [];
 
@@ -122,6 +125,7 @@ class CommunityVendorBookingAccessTest extends TestCase
             'operational_status' => EventSite::STATUS_ACTIVE,
         ]);
         $this->createdSiteIds[] = $site->id;
+        $this->attachSiteToFoodLayout($event, $site, 'A');
 
         $day = EventDay::create([
             'carboot_event_id' => $event->id,
@@ -146,6 +150,7 @@ class CommunityVendorBookingAccessTest extends TestCase
         $response = $this->postJson('/api/bookings', [
             'event_id' => $event->id,
             'event_site_ids' => [$site->id],
+            'vendor_category_id' => $this->foodVendorCategory()->id,
             'product_category' => 'Food & Beverages',
             'product_details' => 'Ayam Gunting',
         ])

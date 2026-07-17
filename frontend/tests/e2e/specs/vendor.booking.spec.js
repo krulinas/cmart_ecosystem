@@ -1,23 +1,13 @@
 import { strict as assert } from 'node:assert';
+import { before, describe, it } from 'mocha';
 import { By } from 'selenium-webdriver';
 import { env } from '../config/env.js';
 import { loginAsVendor } from '../helpers/auth.js';
 import { uniqueTestMarker } from '../helpers/actions.js';
 import { createDriver } from '../helpers/driver.js';
+import { selectBookingCategory } from '../helpers/vendor-categories.js';
 import { waitForTestId, waitForTestIdHidden, waitForUrlContains } from '../helpers/wait.js';
 import { setActiveDriver } from '../setup.js';
-
-async function setSelectValue(driver, testId, value) {
-  const selectElement = await waitForTestId(driver, testId);
-  await driver.executeScript(
-    `const select = arguments[0];
-     select.value = arguments[1];
-     select.dispatchEvent(new Event('input', { bubbles: true }));
-     select.dispatchEvent(new Event('change', { bubbles: true }));`,
-    selectElement,
-    value,
-  );
-}
 
 const NO_EVENTS_MESSAGE =
   'No available event found for E2E booking test. Please create an upcoming active event from staff dashboard first.';
@@ -195,7 +185,7 @@ async function selectFirstAvailableSite(driver) {
 
 async function fillBookingForm(driver, detailsMarker) {
   await fillInputValue(driver, 'booking-business-name', env.bookingBusinessName);
-  await setSelectValue(driver, 'booking-category', resolveCategory(env.bookingCategory));
+  await selectBookingCategory(driver, resolveCategory(env.bookingCategory));
   await fillInputValue(driver, 'booking-details', detailsMarker);
   await selectFirstAvailableSite(driver);
 

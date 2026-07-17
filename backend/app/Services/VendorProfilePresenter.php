@@ -24,6 +24,12 @@ class VendorProfilePresenter
             'business_name' => $profile?->business_name,
             'business_phone' => $profile?->business_phone,
             'business_category' => $profile?->business_category,
+            'vendor_category_id' => $profile?->vendor_category_id,
+            'category' => $profile?->vendorCategory ? [
+                'id' => (int) $profile->vendorCategory->id,
+                'slug' => $profile->vendorCategory->slug,
+                'label' => $profile->vendorCategory->label,
+            ] : null,
             'description' => $profile?->description,
             'logo_path' => $logoPath,
             'logo_url' => $logoUrl,

@@ -15,7 +15,8 @@
     "test:unit": "node --test tests/unit/**/*.test.js",
     "test:e2e": "node tests/e2e/run.js",
     "test:e2e:headed": "node tests/e2e/run.js --headed",
-    "test:e2e:headless": "node tests/e2e/run.js --headless"
+    "test:e2e:headless": "node tests/e2e/run.js --headless",
+    "test:e2e:phase39": "node tests/e2e/run.js --headless vendor.category-site-selection.spec.js"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.20",

@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\AllocationValidationException;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\VendorBusinessProfile;
+use App\Services\VendorCategoryResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 
 class VendorBusinessProfileController extends Controller
 {
@@ -25,7 +26,7 @@ class VendorBusinessProfileController extends Controller
         );
 
         return response()->json([
-            'profile' => $profile->fresh(),
+            'profile' => $profile->fresh('vendorCategory'),
             'account' => [
                 'email' => $user->email,
                 'name' => $user->name,
@@ -34,7 +35,7 @@ class VendorBusinessProfileController extends Controller
         ]);
     }
 
-    public function update(Request $request)
+    public function update(Request $request, VendorCategoryResolver $categoryResolver)
     {
         /** @var User $user */
         $user = $request->user();
@@ -42,18 +43,8 @@ class VendorBusinessProfileController extends Controller
         $validated = $request->validate([
             'business_name' => 'required|string|max:255',
             'business_phone' => 'nullable|string|max:30',
-            'business_category' => [
-                'nullable',
-                'string',
-                Rule::in([
-                    'Pre-loved / Thrift',
-                    'Food & Beverages',
-                    'Clothing & Apparel',
-                    'Handicrafts & Art',
-                    'Electronics & Gadgets',
-                    'Others',
-                ]),
-            ],
+            'vendor_category_id' => 'nullable|integer|exists:vendor_categories,id',
+            'business_category' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:5000',
         ]);
 
@@ -62,7 +53,44 @@ class VendorBusinessProfileController extends Controller
             ['business_name' => $user->name],
         );
 
-        $profile->update($validated);
+        $categoryFields = [];
+        $hasCategoryInput = array_key_exists('vendor_category_id', $validated)
+            || array_key_exists('business_category', $validated);
+
+        if ($hasCategoryInput) {
+            $id = $validated['vendor_category_id'] ?? null;
+            $label = $validated['business_category'] ?? null;
+
+            if ($id === null && ($label === null || trim((string) $label) === '')) {
+                $categoryFields = [
+                    'vendor_category_id' => null,
+                    'business_category' => null,
+                ];
+            } else {
+                try {
+                    $category = $categoryResolver->resolveForOperationalUse(
+                        $id !== null ? (int) $id : null,
+                        is_string($label) ? $label : null,
+                    );
+                } catch (AllocationValidationException $exception) {
+                    return response()->json([
+                        'message' => $exception->getMessage(),
+                        'error' => $exception->error,
+                    ], 422);
+                }
+
+                $categoryFields = [
+                    'vendor_category_id' => $category->id,
+                    'business_category' => $category->label,
+                ];
+            }
+        }
+
+        $profile->update(array_merge([
+            'business_name' => $validated['business_name'],
+            'business_phone' => $validated['business_phone'] ?? null,
+            'description' => $validated['description'] ?? null,
+        ], $categoryFields));
 
         if (array_key_exists('business_phone', $validated)) {
             $user->update(['phone_number' => $validated['business_phone']]);
@@ -74,7 +102,7 @@ class VendorBusinessProfileController extends Controller
 
         return response()->json([
             'message' => '200 OK: Business profile updated successfully.',
-            'profile' => $profile->fresh(),
+            'profile' => $profile->fresh('vendorCategory'),
             'account' => [
                 'email' => $user->fresh()->email,
                 'name' => $user->fresh()->name,

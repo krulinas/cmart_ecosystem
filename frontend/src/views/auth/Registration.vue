@@ -80,6 +80,10 @@
         </div>
 
         <form v-if="!loadingEvents" @submit.prevent="submitBooking" class="space-y-4" data-testid="booking-form">
+          <p class="sr-only" aria-live="polite" data-testid="booking-live-announcement">
+            {{ liveAnnouncement }}
+          </p>
+
           <div
             v-if="savedPreferenceLoaded"
             class="rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3 text-sm text-ink-700"
@@ -101,19 +105,27 @@
             </div>
           </div>
 
+          <VendorBookingCategorySelector
+            v-model="bookingForm.vendor_category_id"
+            :categories="vendorCategories"
+            :profile-suggested-category-id="profileCategoryId"
+            :loading="loadingCategories"
+            :load-error="categoryLoadError"
+            @retry="loadVendorCategories"
+          />
+
+          <p
+            v-if="categoryChangeNotice"
+            class="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-900"
+            data-testid="booking-category-change-notice"
+            role="status"
+          >
+            {{ categoryChangeNotice }}
+          </p>
+
           <div>
             <label class="ml-label">Your name</label>
             <input v-model="userName" type="text" required class="ml-input" placeholder="e.g. Ahmad bin Ali" data-testid="booking-business-name" />
-          </div>
-
-          <div>
-            <label class="ml-label">Product category</label>
-            <select v-model="bookingForm.product_category" required class="ml-input" data-testid="booking-category">
-              <option disabled value="">Select a category</option>
-              <option v-for="category in PRODUCT_CATEGORIES" :key="category" :value="category">
-                {{ category }}
-              </option>
-            </select>
           </div>
 
           <div>
@@ -150,12 +162,16 @@
             <EventSiteSelector
               v-model:selected-site-ids="selectedSiteIds"
               :sites="availabilitySites"
+              :rows="availabilityRows"
+              :selected-category="selectedCategory"
               :operational-days="availabilityDays"
               :loading="availabilityLoading"
               :load-error="availabilityError"
               :readiness-message="availabilityReadiness"
               :selection-error="siteSelectionError"
+              :removed-stale-site-labels="removedStaleSiteLabels"
               @retry="loadSiteAvailability(selectedEvent.id)"
+              @choose-category="chooseAnotherCategory"
             />
           </div>
 
@@ -201,9 +217,10 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import EventSiteSelector from '../../components/vendor/EventSiteSelector.vue';
+import VendorBookingCategorySelector from '../../components/vendor/VendorBookingCategorySelector.vue';
 import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
-import { PRODUCT_CATEGORIES } from '../../constants/productCategories';
+import { fetchVendorCategories, categoryConflictMessage } from '../../services/vendorCategoriesApi';
 import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
 import {
   getSelectedSites,
@@ -214,6 +231,7 @@ import {
 const EVENT_UNAVAILABLE_MESSAGE = 'This event is no longer available for booking. Please choose another event.';
 const SITE_CONFLICT_MESSAGE =
   'One or more selected sites are no longer available. The latest layout has been refreshed.';
+const CATEGORY_CLEARED_MESSAGE = 'Kategori telah ditukar. Pilihan tapak sebelumnya telah dikosongkan.';
 
 const toast = useToast();
 const auth = useAuthStore();
@@ -221,10 +239,16 @@ const router = useRouter();
 const route = useRoute();
 
 const bookingForm = reactive({
-  product_category: '',
+  vendor_category_id: '',
   product_details: '',
 });
 
+const vendorCategories = ref([]);
+const profileCategoryId = ref(null);
+const loadingCategories = ref(false);
+const categoryLoadError = ref('');
+const liveAnnouncement = ref('');
+const categoryChangeNotice = ref('');
 const userName = ref(auth.user?.name || '');
 const submitting = ref(false);
 const loadingEvents = ref(true);
@@ -240,10 +264,24 @@ const availabilityLoading = ref(false);
 const availabilityError = ref('');
 const availabilityReadiness = ref('');
 const availabilityDays = ref([]);
+const availabilityRows = ref([]);
 const availabilitySites = ref([]);
 const selectedSiteIds = ref([]);
+const removedStaleSiteLabels = ref([]);
 const siteSelectionError = ref('');
 let availabilityRequestToken = 0;
+let suppressCategoryWatch = false;
+
+const selectedCategoryLabel = computed(() => {
+  const id = String(bookingForm.vendor_category_id || '');
+  const match = vendorCategories.value.find((c) => String(c.id) === id);
+  return match?.label || '';
+});
+
+const selectedCategory = computed(() => {
+  const id = String(bookingForm.vendor_category_id || '');
+  return vendorCategories.value.find((category) => String(category.id) === id) || null;
+});
 
 const routeEventId = computed(() => {
   const raw = route.query.event_id;
@@ -256,11 +294,44 @@ const selectedSites = computed(() => getSelectedSites(availabilitySites.value, s
 
 const canSubmit = computed(() => {
   if (!selectedEvent.value || eventLoadError.value) return false;
+  if (!bookingForm.vendor_category_id) return false;
   if (availabilityLoading.value || availabilityError.value) return false;
   if (availabilityReadiness.value) return false;
   if (!selectedSiteIds.value.length) return false;
   return !selectionValidationMessage(selectedSites.value);
 });
+
+const loadVendorCategories = async () => {
+  loadingCategories.value = true;
+  categoryLoadError.value = '';
+  try {
+    vendorCategories.value = await fetchVendorCategories(api);
+  } catch (error) {
+    console.error('Failed to load vendor categories:', error);
+    vendorCategories.value = [];
+    categoryLoadError.value = 'Kategori jualan tidak dapat dimuatkan.';
+  } finally {
+    loadingCategories.value = false;
+  }
+};
+
+const loadProfileCategorySuggestion = async () => {
+  try {
+    const { data } = await api.get('/vendor/business-profile');
+    const id = data?.profile?.vendor_category_id;
+    if (id) {
+      profileCategoryId.value = id;
+      if (!bookingForm.vendor_category_id) {
+        suppressCategoryWatch = true;
+        bookingForm.vendor_category_id = String(id);
+        liveAnnouncement.value = 'Kategori cadangan daripada profil anda telah dipilih. Anda boleh menukarnya.';
+        suppressCategoryWatch = false;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load vendor profile category suggestion:', error);
+  }
+};
 
 const loadBookableEvents = async () => {
   const { data } = await api.get('/events');
@@ -270,6 +341,8 @@ const loadBookableEvents = async () => {
 
 const resetSiteSelection = () => {
   selectedSiteIds.value = [];
+  removedStaleSiteLabels.value = [];
+  availabilityRows.value = [];
   availabilitySites.value = [];
   availabilityDays.value = [];
   availabilityError.value = '';
@@ -283,6 +356,12 @@ const loadSiteAvailability = async (eventId, { preserveSelection = false } = {})
     return;
   }
 
+  if (!bookingForm.vendor_category_id) {
+    resetSiteSelection();
+    availabilityReadiness.value = 'Sila pilih kategori jualan terlebih dahulu.';
+    return;
+  }
+
   const requestToken = ++availabilityRequestToken;
   availabilityLoading.value = true;
   availabilityError.value = '';
@@ -293,12 +372,28 @@ const loadSiteAvailability = async (eventId, { preserveSelection = false } = {})
   }
 
   try {
-    const { data } = await api.get(`/vendor/events/${eventId}/site-availability`);
+    const { data } = await api.get(`/vendor/events/${eventId}/site-availability`, {
+      params: { vendor_category_id: bookingForm.vendor_category_id },
+    });
     if (requestToken !== availabilityRequestToken) return;
 
+    if (data.category_required) {
+      availabilityRows.value = [];
+      availabilitySites.value = [];
+      availabilityDays.value = Array.isArray(data.operational_days) ? data.operational_days : [];
+      availabilityReadiness.value = data.readiness?.message || 'Sila pilih kategori jualan terlebih dahulu.';
+      return;
+    }
+
+    availabilityRows.value = Array.isArray(data.rows) ? data.rows : [];
     availabilitySites.value = Array.isArray(data.sites) ? data.sites : [];
     availabilityDays.value = Array.isArray(data.operational_days) ? data.operational_days : [];
-    availabilityReadiness.value = data.readiness?.message || '';
+    availabilityReadiness.value = data.readiness?.status === 'no_compatible_sites'
+      ? 'Tiada tapak tersedia untuk kategori ini.'
+      : (data.readiness?.message || '');
+    liveAnnouncement.value = availabilityRows.value.length
+      ? `${availabilitySites.value.filter((site) => site.is_selectable).length} tapak tersedia telah dimuatkan.`
+      : availabilityReadiness.value;
   } catch (error) {
     if (requestToken !== availabilityRequestToken) return;
 
@@ -306,13 +401,13 @@ const loadSiteAvailability = async (eventId, { preserveSelection = false } = {})
       availabilitySites.value = [];
       availabilityDays.value = [];
       availabilityReadiness.value =
-        error.response?.data?.message || 'This event is not ready for site selection yet.';
+        categoryConflictMessage(error.response?.data?.error, error.response?.data?.message)
+        || 'This event is not ready for site selection yet.';
       return;
     }
 
     resetSiteSelection();
-    availabilityError.value =
-      error.response?.data?.message || 'Unable to load site availability. Please try again.';
+    availabilityError.value = 'Maklumat tapak tidak dapat dimuatkan.';
   } finally {
     if (requestToken === availabilityRequestToken) {
       availabilityLoading.value = false;
@@ -326,8 +421,10 @@ const applySelectedEvent = (event) => {
   eventLoadError.value = '';
   resetSiteSelection();
 
-  if (event?.id) {
+  if (event?.id && bookingForm.vendor_category_id) {
     loadSiteAvailability(event.id);
+  } else if (event?.id) {
+    availabilityReadiness.value = 'Sila pilih kategori jualan terlebih dahulu.';
   }
 };
 
@@ -335,8 +432,13 @@ const applySavedPreference = (preference) => {
   if (preference.name) {
     userName.value = preference.name;
   }
-  if (preference.product_category) {
-    bookingForm.product_category = preference.product_category;
+  if (preference.product_category && !bookingForm.vendor_category_id) {
+    const match = vendorCategories.value.find((c) => c.label === preference.product_category);
+    if (match) {
+      suppressCategoryWatch = true;
+      bookingForm.vendor_category_id = String(match.id);
+      suppressCategoryWatch = false;
+    }
   }
   if (preference.specific_products) {
     bookingForm.product_details = preference.specific_products;
@@ -359,7 +461,7 @@ const loadSavedPreference = async () => {
 const saveBookingPreference = async () => {
   await api.put('/booking-preferences/me', {
     name: userName.value.trim() || null,
-    product_category: bookingForm.product_category || null,
+    product_category: selectedCategoryLabel.value || null,
     specific_products: bookingForm.product_details.trim() || null,
     remember_enabled: true,
   });
@@ -382,6 +484,14 @@ const clearSavedPreference = async () => {
   } finally {
     clearingPreference.value = false;
   }
+};
+
+const chooseAnotherCategory = () => {
+  bookingForm.vendor_category_id = '';
+  liveAnnouncement.value = 'Pilih kategori jualan lain.';
+  requestAnimationFrame(() => {
+    document.getElementById('vendor-category-heading')?.focus?.();
+  });
 };
 
 const loadSelectedEventFromRoute = async () => {
@@ -421,15 +531,47 @@ watch(selectedEventId, (id) => {
   applySelectedEvent(event || null);
 });
 
+watch(
+  () => bookingForm.vendor_category_id,
+  (next, prev) => {
+    if (suppressCategoryWatch) return;
+    if (String(next || '') === String(prev || '')) return;
+
+    const hadSites = selectedSiteIds.value.length > 0;
+    selectedSiteIds.value = [];
+    removedStaleSiteLabels.value = [];
+    siteSelectionError.value = '';
+    if (prev) {
+      categoryChangeNotice.value = CATEGORY_CLEARED_MESSAGE;
+      toast.info(CATEGORY_CLEARED_MESSAGE);
+      liveAnnouncement.value = hadSites
+        ? CATEGORY_CLEARED_MESSAGE
+        : 'Kategori jualan telah ditukar. Tapak yang sesuai sedang dimuatkan.';
+    }
+
+    if (!next) {
+      resetSiteSelection();
+      availabilityReadiness.value = 'Pilih kategori jualan untuk meneruskan.';
+      return;
+    }
+
+    if (selectedEvent.value?.id) {
+      loadSiteAvailability(selectedEvent.value.id);
+    }
+  },
+);
+
 onMounted(async () => {
   userName.value = auth.user?.name || '';
   loadingEvents.value = true;
   eventLoadError.value = '';
 
   try {
+    await loadVendorCategories();
     await Promise.all([
       loadBookableEvents(),
       loadSavedPreference(),
+      loadProfileCategorySuggestion(),
     ]);
     await loadSelectedEventFromRoute();
   } catch (error) {
@@ -441,35 +583,53 @@ onMounted(async () => {
 });
 
 const resetBookingForm = () => {
-  bookingForm.product_category = '';
+  bookingForm.vendor_category_id = profileCategoryId.value ? String(profileCategoryId.value) : '';
   bookingForm.product_details = '';
   resetSiteSelection();
   if (!routeEventId.value) {
     applySelectedEvent(null);
-  } else if (selectedEvent.value?.id) {
+  } else if (selectedEvent.value?.id && bookingForm.vendor_category_id) {
     loadSiteAvailability(selectedEvent.value.id);
   }
 };
 
 const handleBookingConflict = async () => {
-  toast.error(SITE_CONFLICT_MESSAGE);
+  await refreshAvailabilityAfterConflict(SITE_CONFLICT_MESSAGE);
+};
 
+const refreshAvailabilityAfterConflict = async (message) => {
+  toast.error(message);
   if (!selectedEvent.value?.id) {
-    siteSelectionError.value = SITE_CONFLICT_MESSAGE;
+    siteSelectionError.value = message;
     return;
   }
 
   const previousSelection = [...selectedSiteIds.value];
+  const previousLabels = new Map(
+    availabilitySites.value.map((site) => [Number(site.id), site.label]),
+  );
   await loadSiteAvailability(selectedEvent.value.id, { preserveSelection: true });
-  selectedSiteIds.value = pruneInvalidSelections(previousSelection, availabilitySites.value);
-  // Set after refresh: loadSiteAvailability() resets siteSelectionError, so the
-  // conflict notice must be applied once the latest layout has loaded.
-  siteSelectionError.value = SITE_CONFLICT_MESSAGE;
+  const nextSelection = pruneInvalidSelections(previousSelection, availabilitySites.value);
+  const nextSet = new Set(nextSelection.map(Number));
+  removedStaleSiteLabels.value = previousSelection
+    .map(Number)
+    .filter((id) => !nextSet.has(id))
+    .map((id) => previousLabels.get(id))
+    .filter(Boolean);
+  selectedSiteIds.value = nextSelection;
+  siteSelectionError.value = 'Pilihan tapak telah dikemas kini kerana susun atur atau ketersediaan berubah.';
+  liveAnnouncement.value = removedStaleSiteLabels.value.length
+    ? `${siteSelectionError.value} Tapak dialih keluar: ${removedStaleSiteLabels.value.join(', ')}.`
+    : siteSelectionError.value;
 };
 
 const submitBooking = async () => {
   if (!canSubmit.value || !selectedEvent.value) {
-    toast.error('Please select a valid event and at least one physical site before submitting.');
+    toast.error(
+      bookingForm.vendor_category_id
+        ? 'Please select a valid event and at least one physical site before submitting.'
+        : 'Sila pilih kategori jualan terlebih dahulu.',
+    );
     return;
   }
 
@@ -487,7 +647,8 @@ const submitBooking = async () => {
     const { data } = await api.post('/bookings', {
       event_id: selectedEvent.value.id,
       event_site_ids: selectedSiteIds.value,
-      product_category: bookingForm.product_category,
+      vendor_category_id: Number(bookingForm.vendor_category_id),
+      product_category: selectedCategoryLabel.value,
       product_details: bookingForm.product_details,
     });
     toast.success(data.message || '201 Created: Booking submitted successfully.');
@@ -508,15 +669,22 @@ const submitBooking = async () => {
     console.error('Booking submission failed:', e);
 
     if (e.response?.status === 409) {
+      const code = e.response?.data?.error;
+      if (code === 'EVENT_LAYOUT_NOT_READY' || code === 'LAYOUT_CHANGED') {
+        const message = categoryConflictMessage(code, e.response?.data?.message);
+        await refreshAvailabilityAfterConflict(message);
+        return;
+      }
       await handleBookingConflict();
       return;
     }
 
     if (e.response?.status === 422) {
-      const message = e.response?.data?.message || 'Unable to submit booking.';
+      const code = e.response?.data?.error;
+      const message = categoryConflictMessage(code, e.response?.data?.message || 'Unable to submit booking.');
       siteSelectionError.value =
-        e.response?.data?.errors?.event_site_ids?.[0] ||
-        (e.response?.data?.error?.startsWith?.('no_active') ? message : siteSelectionError.value || message);
+        e.response?.data?.errors?.event_site_ids?.[0]
+        || message;
       toast.error(message);
       return;
     }

@@ -411,7 +411,7 @@ class VendorBookingPresenter
 
     public static function presentForVendor(Booking $booking, ?int $viewerUserId = null): array
     {
-        $booking->loadMissing(['space', 'invoice', 'carbootEvent']);
+        $booking->loadMissing(['space', 'invoice', 'carbootEvent', 'vendorCategory', 'activeCategoryOverride']);
 
         $payload = array_merge($booking->toArray(), [
             'can_withdraw' => self::canVendorWithdraw($booking, $viewerUserId),
@@ -422,6 +422,16 @@ class VendorBookingPresenter
 
         unset($payload['audit_logs'], $payload['booking_day_allocations'], $payload['withdrawn_by']);
         $payload['invoice'] = self::safeInvoice($booking);
+        $payload['category'] = self::presentCategory($booking);
+        $payload['category_label_snapshot'] = $booking->category_label_snapshot
+            ?? $booking->product_category;
+
+        if ($booking->activeCategoryOverride) {
+            $payload['placement_exception'] = [
+                'applied' => true,
+                'message' => 'Pihak penganjur telah menetapkan tapak anda di zon kategori berbeza.',
+            ];
+        }
 
         $siteSelection = self::siteSelection($booking);
         if ($siteSelection !== null) {
@@ -434,7 +444,7 @@ class VendorBookingPresenter
 
     public static function presentForOrganizer(Booking $booking, bool $includeAuditTimeline = false): array
     {
-        $booking->loadMissing(['user', 'space', 'invoice', 'carbootEvent', 'withdrawnBy']);
+        $booking->loadMissing(['user', 'space', 'invoice', 'carbootEvent', 'withdrawnBy', 'vendorCategory', 'activeCategoryOverride']);
         if ($includeAuditTimeline) {
             $booking->loadMissing('auditLogs.actor');
         }
@@ -442,6 +452,10 @@ class VendorBookingPresenter
         $payload = $booking->toArray();
         unset($payload['audit_logs'], $payload['booking_day_allocations'], $payload['withdrawn_by']);
         $payload['invoice'] = self::safeInvoice($booking);
+        $payload['category'] = self::presentCategory($booking);
+        $payload['category_label_snapshot'] = $booking->category_label_snapshot
+            ?? $booking->product_category;
+        $payload['category_placement'] = self::categoryPlacement($booking);
         $payload['withdrawal_policy'] = self::withdrawalPolicy($booking);
         $payload['withdrawal_reconciliation'] = self::withdrawalReconciliation($booking);
         $payload['attendance_policy'] = self::attendancePolicy($booking, true);
@@ -456,6 +470,49 @@ class VendorBookingPresenter
         }
 
         return $payload;
+    }
+
+    /**
+     * @return array{id: int, slug: string, label: string}|null
+     */
+    private static function presentCategory(Booking $booking): ?array
+    {
+        $label = $booking->category_label_snapshot ?? $booking->product_category;
+        $category = $booking->vendorCategory;
+
+        if ($category) {
+            return [
+                'id' => (int) $category->id,
+                'slug' => $category->slug,
+                'label' => $label ?: $category->label,
+            ];
+        }
+
+        if ($booking->vendor_category_id && $label) {
+            return [
+                'id' => (int) $booking->vendor_category_id,
+                'slug' => '',
+                'label' => $label,
+            ];
+        }
+
+        if ($label) {
+            return [
+                'id' => 0,
+                'slug' => '',
+                'label' => $label,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function categoryPlacement(Booking $booking): array
+    {
+        return app(OrganizerBookingCategoryPlacementService::class)->placementPayload($booking);
     }
 
     /**

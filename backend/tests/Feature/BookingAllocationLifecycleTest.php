@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\BookingAllocationLifecycleService;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\CleansUpTestFixtures;
+use Tests\Concerns\EnsuresCanonicalLayoutForSites;
 use Tests\TestCase;
 
 /**
@@ -22,6 +23,7 @@ use Tests\TestCase;
 class BookingAllocationLifecycleTest extends TestCase
 {
     use CleansUpTestFixtures;
+    use EnsuresCanonicalLayoutForSites;
 
     protected function tearDown(): void
     {
@@ -82,6 +84,7 @@ class BookingAllocationLifecycleTest extends TestCase
             'operational_status' => EventSite::STATUS_ACTIVE,
         ]);
         $this->createdSiteIds[] = $site->id;
+        $this->attachSiteToFoodLayout($event, $site, 'L');
 
         $day = EventDay::create([
             'carboot_event_id' => $event->id,
@@ -93,7 +96,7 @@ class BookingAllocationLifecycleTest extends TestCase
         ]);
         $this->createdDayIds[] = $day->id;
 
-        return [$site, $day];
+        return [$site->fresh(), $day];
     }
 
     private function createAllocatedBooking(User $vendor, string $approvalStatus = 'Pending_Organizer'): Booking
@@ -106,6 +109,7 @@ class BookingAllocationLifecycleTest extends TestCase
         $response = $this->postJson('/api/bookings', [
             'event_id' => $event->id,
             'event_site_ids' => [$site->id],
+            'vendor_category_id' => $this->foodVendorCategory()->id,
             'product_category' => 'Food & Beverages',
             'product_details' => 'Lifecycle integration booking',
         ])->assertCreated()->json();

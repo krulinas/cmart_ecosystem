@@ -4,6 +4,35 @@
 
 export const AVAILABILITY_AVAILABLE = 'available';
 
+export function prepareAvailabilityRows(rows = []) {
+  return [...rows]
+    .filter((row) => row && row.id != null)
+    .sort((left, right) => {
+      const leftOrder = Number(left.display_order ?? left.id);
+      const rightOrder = Number(right.display_order ?? right.id);
+      return leftOrder - rightOrder;
+    })
+    .map((row) => {
+      const sites = [...(Array.isArray(row.sites) ? row.sites : [])].sort((left, right) => {
+        const leftPos = Number(left.position_number ?? 0);
+        const rightPos = Number(right.position_number ?? 0);
+        if (leftPos !== rightPos) return leftPos - rightPos;
+        return String(left.label).localeCompare(String(right.label));
+      });
+
+      return {
+        ...row,
+        rowId: Number(row.id),
+        rowLabel: row.label,
+        sites,
+        siteCount: sites.length,
+        availableSiteCount: sites.filter((site) => site.is_selectable).length,
+        spaceNames: [...new Set(sites.map((site) => site.space_name).filter(Boolean))],
+        prices: [...new Set(sites.map((site) => Number(site.price || 0).toFixed(2)))],
+      };
+    });
+}
+
 export function groupSitesByRow(sites = []) {
   const rows = new Map();
 
@@ -59,18 +88,18 @@ export function arePositionsContiguous(sites = []) {
 export function selectionValidationMessage(selectedSites = []) {
   if (selectedSites.length === 0) return null;
 
-  const rowLabels = new Set(selectedSites.map((site) => site.row_label));
-  if (rowLabels.size > 1) {
-    return 'Selected sites must be in the same row.';
+  const rowIds = new Set(selectedSites.map((site) => Number(site.event_layout_row_id)));
+  if (rowIds.size > 1) {
+    return 'Pilih tapak dalam baris yang sama.';
   }
 
   const spaceIds = new Set(selectedSites.map((site) => site.space_id));
   if (spaceIds.size > 1) {
-    return 'Selected sites must share the same space type.';
+    return 'Semua tapak yang dipilih mestilah daripada jenis ruang yang sama.';
   }
 
   if (!arePositionsContiguous(selectedSites)) {
-    return 'Selected sites must have consecutive positions without gaps.';
+    return 'Pilih tapak yang bersebelahan.';
   }
 
   return null;
@@ -85,8 +114,8 @@ export function canSelectSite(site, selectedSites = []) {
     return true;
   }
 
-  const rowLabels = new Set(selectedSites.map((item) => item.row_label));
-  if (!rowLabels.has(site.row_label)) {
+  const rowIds = new Set(selectedSites.map((item) => Number(item.event_layout_row_id)));
+  if (!rowIds.has(Number(site.event_layout_row_id))) {
     return false;
   }
 
@@ -113,7 +142,7 @@ export function toggleSiteSelection(site, selectedIds = [], sites = []) {
     if (!arePositionsContiguous(remaining)) {
       return {
         selectedIds: [...selectedSet],
-        blockedMessage: 'Remove sites from the edge of your selection, or clear the selection.',
+        blockedMessage: 'Nyahpilih tapak dari hujung pilihan atau kosongkan semua pilihan.',
       };
     }
 
@@ -124,7 +153,7 @@ export function toggleSiteSelection(site, selectedIds = [], sites = []) {
   if (!canSelectSite(site, selectedSites)) {
     return {
       selectedIds: [...selectedSet],
-      blockedMessage: 'Choose an adjacent site in the same row and space type.',
+      blockedMessage: 'Pilih tapak yang bersebelahan dalam baris dan jenis ruang yang sama.',
     };
   }
 
@@ -156,23 +185,26 @@ export function pruneInvalidSelections(selectedIds = [], sites = []) {
 }
 
 export function formatOperationalDaysSummary(days = []) {
-  if (!days.length) return 'No active event days configured.';
+  if (!days.length) return 'Tiada hari acara aktif dikonfigurasi.';
   if (days.length === 1) {
-    return `Your selected sites will be reserved for ${days[0].operational_date}.`;
+    return `Tapak pilihan akan ditempah untuk ${days[0].operational_date}.`;
   }
 
   const labels = days.map((day) => day.operational_date).join(', ');
-  return `Your selected sites will be reserved for all active event days (${labels}).`;
+  return `Tapak pilihan akan ditempah untuk semua hari acara aktif (${labels}).`;
 }
 
 export function siteAriaLabel(site) {
   const price = Number(site.price || 0).toFixed(2);
+  const occupiedLabel = site.occupancy_status === 'confirmed'
+    ? 'ditempah dan disahkan'
+    : 'ditempah';
   const statusLabel = {
-    available: 'available',
-    occupied: 'occupied',
-    unavailable: 'unavailable',
-    disabled: 'disabled',
+    available: 'tersedia',
+    occupied: occupiedLabel,
+    unavailable: 'tidak tersedia',
+    disabled: 'dinyahaktifkan',
   }[site.availability_status] || site.availability_status;
 
-  return `Site ${site.label}, ${site.space_name || 'Space'}, RM${price}, ${statusLabel}`;
+  return `Tapak ${site.label}, ${site.space_name || 'Ruang'}, RM${price}, ${statusLabel}`;
 }

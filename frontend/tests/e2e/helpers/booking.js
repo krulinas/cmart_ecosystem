@@ -1,5 +1,6 @@
 import { By } from 'selenium-webdriver';
 import { env } from '../config/env.js';
+import { selectBookingCategory } from './vendor-categories.js';
 import { loginAsCommunityVendor, loginAsVendor } from './auth.js';
 import { uniqueTestMarker } from './actions.js';
 import { waitForTestId, waitForTestIdHidden, waitForUrlContains } from './wait.js';
@@ -142,7 +143,7 @@ async function selectFirstAvailableSite(driver) {
 
 async function fillBookingForm(driver, detailsMarker) {
   await fillInputValue(driver, 'booking-business-name', env.bookingBusinessName);
-  await setSelectValue(driver, 'booking-category', resolveCategory(env.bookingCategory));
+  await selectBookingCategory(driver, resolveCategory(env.bookingCategory));
   await fillInputValue(driver, 'booking-details', detailsMarker);
   await selectFirstAvailableSite(driver);
 

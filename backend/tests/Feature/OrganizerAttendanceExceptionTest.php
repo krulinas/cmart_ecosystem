@@ -16,11 +16,13 @@ use App\Services\BookingAllocationLifecycleService;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Tests\Concerns\CleansUpTestFixtures;
+use Tests\Concerns\EnsuresCanonicalLayoutForSites;
 use Tests\TestCase;
 
 class OrganizerAttendanceExceptionTest extends TestCase
 {
     use CleansUpTestFixtures;
+    use EnsuresCanonicalLayoutForSites;
 
     protected function tearDown(): void
     {
@@ -94,13 +96,14 @@ class OrganizerAttendanceExceptionTest extends TestCase
             ]);
             $this->createdSiteIds[] = $site->id;
 
-            return $site;
+            return $this->attachSiteToFoodLayout($event, $site, 'A');
         });
 
         Sanctum::actingAs($vendor);
         $response = $this->postJson('/api/bookings', [
             'event_id' => $event->id,
             'event_site_ids' => $sites->pluck('id')->all(),
+            'vendor_category_id' => $this->foodVendorCategory()->id,
             'product_category' => 'Food & Beverages',
             'product_details' => 'Three-day attendance exception booking',
         ])->assertCreated()->json();
@@ -142,6 +145,7 @@ class OrganizerAttendanceExceptionTest extends TestCase
             $this->postJson('/api/bookings', [
                 'event_id' => $fixture['event']->id,
                 'event_site_ids' => $fixture['sites']->pluck('id')->all(),
+                'vendor_category_id' => $this->foodVendorCategory()->id,
                 'product_category' => 'Food & Beverages',
                 'product_details' => 'Forbidden day field',
                 $field => [$fixture['days']->first()->id],

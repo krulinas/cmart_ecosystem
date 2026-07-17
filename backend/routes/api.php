@@ -27,11 +27,13 @@ use App\Http\Controllers\Api\ManagementReportsController;
 use App\Http\Controllers\Api\EventSiteController;
 use App\Http\Controllers\Api\EventDayController;
 use App\Http\Controllers\Api\VendorEventSiteAvailabilityController;
+use App\Http\Controllers\Api\VendorCategoryController;
 use App\Http\Controllers\Api\OrganizerReleasedDayRecoveryController;
 use App\Http\Controllers\Api\OrganizerVendorCategoryController;
 use App\Http\Controllers\Api\OrganizerEventLayoutController;
 use App\Http\Controllers\Api\OrganizerEventLayoutRowController;
 use App\Http\Controllers\Api\OrganizerEventLayoutSiteController;
+use App\Http\Controllers\Api\OrganizerBookingSiteAssignmentController;
 use App\Support\ManagementCapability;
 use App\Support\ManagementRole;
 
@@ -63,6 +65,8 @@ Route::get('/news', [NewsPostController::class, 'publicIndex']);
 
 Route::get('/marketplace/items', [MarketplaceController::class, 'index']);
 Route::get('/marketplace/items/{vendor_item}', [MarketplaceController::class, 'show']);
+
+Route::get('/vendor-categories', [VendorCategoryController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -118,6 +122,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/feedbacks', [FeedbackController::class, 'staffIndex']);
             Route::get('/bookings/registry', [BookingController::class, 'staffRegistry']);
             Route::patch('/bookings/{booking}/attendance-exception', [BookingController::class, 'applyAttendanceException']);
+            Route::get('/bookings/{booking}/category-placement', [OrganizerBookingSiteAssignmentController::class, 'categoryPlacement']);
+            Route::get('/bookings/{booking}/site-reassignment-options', [OrganizerBookingSiteAssignmentController::class, 'reassignmentOptions']);
+            Route::patch('/bookings/{booking}/site-assignment', [OrganizerBookingSiteAssignmentController::class, 'reassign']);
             Route::get('/released-day-recovery', [OrganizerReleasedDayRecoveryController::class, 'index']);
             Route::get('/operations-summary', [StaffOperationsController::class, 'operationsSummary']);
             Route::get('/bookings/{booking}/verify', [BookingPassVerificationController::class, 'verify']);

@@ -7,10 +7,12 @@ use App\Models\BookingAuditLog;
 use App\Models\BookingDayAllocation;
 use App\Models\CarbootEvent;
 use App\Models\EventDay;
+use App\Models\EventLayoutRow;
 use App\Models\EventSite;
 use App\Models\Invoice;
 use App\Models\Space;
 use App\Models\User;
+use App\Models\VendorCategory;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\CleansUpTestFixtures;
 use Tests\TestCase;
@@ -82,15 +84,43 @@ class BookingCreationWithAllocationsTest extends TestCase
         return $this->trackEvent($event);
     }
 
+    private function foodCategory(): VendorCategory
+    {
+        return VendorCategory::query()->where('slug', 'food-beverages')->firstOrFail();
+    }
+
+    private function ensureLayoutRow(CarbootEvent $event, string $rowLabel, ?VendorCategory $category = null): EventLayoutRow
+    {
+        $category ??= $this->foodCategory();
+
+        return EventLayoutRow::query()->firstOrCreate(
+            [
+                'carboot_event_id' => $event->id,
+                'label' => $rowLabel,
+            ],
+            [
+                'vendor_category_id' => $category->id,
+                'slug' => strtolower($rowLabel) . '-row-' . $event->id,
+                'display_order' => max(1, ord(strtoupper($rowLabel[0] ?? 'A')) - 64),
+                'is_active' => true,
+                'is_public' => true,
+            ],
+        );
+    }
+
     private function createSite(
         CarbootEvent $event,
         Space $space,
         string $label,
         string $row,
         int $position,
+        ?VendorCategory $category = null,
     ): EventSite {
+        $layoutRow = $this->ensureLayoutRow($event, $row, $category);
+
         $site = EventSite::create([
             'carboot_event_id' => $event->id,
+            'event_layout_row_id' => $layoutRow->id,
             'space_id' => $space->id,
             'label' => $label,
             'row_label' => $row,
@@ -126,6 +156,7 @@ class BookingCreationWithAllocationsTest extends TestCase
         return array_merge([
             'event_id' => $event->id,
             'event_site_ids' => $siteIds,
+            'vendor_category_id' => $this->foodCategory()->id,
             'product_category' => 'Food & Beverages',
             'product_details' => 'Phase 2A.7 booking creation test',
         ], $overrides);
@@ -163,6 +194,9 @@ class BookingCreationWithAllocationsTest extends TestCase
             ->assertJsonPath('booking.site_selection.allocation_status', 'reserved')
             ->assertJsonPath('booking.site_selection.sites.0.label', 'A05')
             ->assertJsonPath('booking.tapak_quantity', 1)
+            ->assertJsonPath('booking.vendor_category_id', $this->foodCategory()->id)
+            ->assertJsonPath('booking.category_label_snapshot', 'Food & Beverages')
+            ->assertJsonPath('booking.product_category', 'Food & Beverages')
             ->assertJsonPath('invoice.amount', '30.00')
             ->json();
 
@@ -170,7 +204,7 @@ class BookingCreationWithAllocationsTest extends TestCase
         $booking = Booking::findOrFail($bookingId);
 
         $this->assertSame($space->id, $booking->space_id);
-        $this->assertDatabaseCount('booking_day_allocations', 1);
+        $this->assertSame(1, BookingDayAllocation::where('booking_id', $bookingId)->count());
         $this->assertDatabaseHas('booking_day_allocations', [
             'booking_id' => $bookingId,
             'event_site_id' => $site->id,
@@ -303,9 +337,9 @@ class BookingCreationWithAllocationsTest extends TestCase
         $bookingsBefore = Booking::count();
 
         $this->postJson('/api/bookings', $this->bookingPayload($event, [$site->id]))
-            ->assertStatus(422)
+            ->assertStatus(409)
             ->assertJsonFragment([
-                'error' => 'no_active_event_days',
+                'error' => 'EVENT_LAYOUT_NOT_READY',
             ]);
 
         $this->assertSame($bookingsBefore, Booking::count());

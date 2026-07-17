@@ -5,9 +5,13 @@
     :aria-labelledby="headingId"
   >
     <div class="space-y-2">
-      <p :id="headingId" class="text-sm font-bold text-ink-900">Select your physical tapak sites</p>
+      <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Langkah 2</p>
+      <h2 :id="headingId" class="text-base font-extrabold text-ink-900">Pilih Tapak Fizikal</h2>
       <p class="text-sm text-ink-600">
-        Choose one or more adjacent sites in the same row. Availability is live, but final confirmation happens when you submit your booking.
+        Pilih satu atau lebih tapak bersebelahan dalam baris yang sama. Pengesahan akhir dibuat oleh pelayan semasa tempahan dihantar.
+      </p>
+      <p v-if="selectedCategory" class="text-sm font-semibold text-brand-700" data-testid="event-site-selected-category">
+        Kategori dipilih: {{ selectedCategory.label }}
       </p>
       <p v-if="operationalDays.length" class="text-xs text-brand-700 font-medium" data-testid="event-site-days-summary">
         {{ daysSummary }}
@@ -20,7 +24,15 @@
       data-testid="event-site-readiness-message"
       role="alert"
     >
-      {{ readinessMessage }}
+      <p>{{ readinessMessage }}</p>
+      <div v-if="selectedCategory" class="mt-3 flex flex-wrap gap-2">
+        <button type="button" class="ml-btn-ghost text-sm" @click="$emit('choose-category')">
+          Pilih kategori lain
+        </button>
+        <button type="button" class="ml-btn-ghost text-sm" @click="$emit('retry')">
+          Muat semula
+        </button>
+      </div>
     </div>
 
     <div
@@ -33,6 +45,15 @@
     </div>
 
     <div
+      v-if="removedStaleSiteLabels.length"
+      class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+      data-testid="event-site-removed-stale"
+      role="status"
+    >
+      Tapak yang dialih keluar: {{ removedStaleSiteLabels.join(', ') }}. Sila semak pilihan sebelum menghantar semula.
+    </div>
+
+    <div
       v-if="blockedMessage"
       class="rounded-lg border border-ink-200 bg-ink-50 px-4 py-3 text-sm text-ink-700"
       data-testid="event-site-selection-blocked"
@@ -41,7 +62,7 @@
       {{ blockedMessage }}
     </div>
 
-    <div class="flex flex-wrap gap-2 text-xs" data-testid="event-site-legend" aria-label="Site availability legend">
+    <div class="flex flex-wrap gap-2 text-xs" data-testid="event-site-legend" aria-label="Petunjuk status tapak">
       <span
         v-for="item in legendItems"
         :key="item.key"
@@ -54,7 +75,7 @@
     </div>
 
     <div v-if="loading" class="py-10 text-center text-sm text-ink-500" data-testid="event-site-selector-loading">
-      Loading site availability…
+      Memuatkan tapak yang tersedia…
     </div>
 
     <div
@@ -63,36 +84,64 @@
       data-testid="event-site-selector-error"
     >
       <p>{{ loadError }}</p>
-      <button type="button" class="ml-btn-ghost text-sm" @click="$emit('retry')">Retry</button>
+      <button type="button" class="ml-btn-ghost text-sm" @click="$emit('retry')">Cuba Lagi</button>
     </div>
 
     <div
-      v-else-if="allSitesOccupied"
+      v-else-if="!selectedCategory"
+      class="rounded-lg border border-ink-200 bg-ink-50 px-4 py-4 text-sm text-ink-700"
+      data-testid="event-site-category-required"
+      role="status"
+    >
+      Pilih kategori jualan untuk meneruskan.
+    </div>
+
+    <div
+      v-else-if="!readinessMessage && !groupedRows.length"
+      class="rounded-lg border border-ink-200 bg-ink-50 px-4 py-4 text-sm text-ink-700"
+      data-testid="event-site-no-compatible-rows"
+    >
+      Tiada baris susun atur tersedia untuk kategori ini.
+    </div>
+
+    <div
+      v-else-if="!readinessMessage && allSitesOccupied"
       class="rounded-lg border border-ink-200 bg-ink-50 px-4 py-4 text-sm text-ink-700"
       data-testid="event-site-all-occupied"
     >
-      All physical sites are currently reserved or unavailable.
+      Semua tapak untuk kategori ini telah ditempah atau tidak tersedia.
     </div>
 
-    <div v-else class="space-y-4 overflow-x-auto pb-1" data-testid="event-site-map">
+    <div v-else-if="!readinessMessage" class="space-y-4 pb-1" data-testid="event-site-map">
       <div
         v-for="row in groupedRows"
-        :key="row.rowLabel"
-        class="min-w-max"
-        :data-testid="`event-site-row-${row.rowLabel}`"
+        :key="row.rowId"
+        class="rounded-2xl border border-ink-200 bg-ink-50/40 p-4"
+        :data-row-id="row.rowId"
+        :data-testid="`event-site-row-${row.rowId}`"
       >
-        <div class="mb-2 text-xs font-bold uppercase tracking-wider text-ink-500">
-          Row {{ row.rowLabel }}
+        <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 class="font-extrabold text-ink-900">{{ row.rowLabel }}</h3>
+            <p class="mt-0.5 text-sm font-semibold text-brand-700">{{ row.category?.label }}</p>
+            <p v-if="row.description" class="mt-1 text-xs text-ink-600">{{ row.description }}</p>
+          </div>
+          <div class="text-right text-xs text-ink-600">
+            <p><strong>{{ row.availableSiteCount }}</strong> / {{ row.siteCount }} tapak tersedia</p>
+            <p v-if="row.spaceNames.length">{{ row.spaceNames.join(', ') }}</p>
+            <p v-if="row.prices.length" class="font-bold text-brand-700">RM {{ row.prices.join(' / RM ') }}</p>
+          </div>
         </div>
-        <div class="flex flex-wrap gap-2">
+        <div class="grid grid-cols-2 gap-2 min-[420px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
           <button
             v-for="site in row.sites"
             :key="site.id"
             type="button"
-            class="relative flex min-w-[4.5rem] flex-col items-center rounded-xl border px-2 py-2 text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+            class="relative flex min-h-20 min-w-0 flex-col items-center justify-center rounded-xl border px-2 py-2 text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             :class="tileClass(site)"
             :disabled="!isInteractive(site)"
             :aria-pressed="selectedSet.has(Number(site.id))"
+            :aria-disabled="!isInteractive(site)"
             :aria-label="ariaLabel(site)"
             :data-testid="`event-site-tile-${site.label}`"
             @click="handleToggle(site)"
@@ -114,26 +163,28 @@
       data-testid="event-site-selection-summary"
       aria-live="polite"
     >
-      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div>
-          <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Selected sites</p>
-          <p class="mt-1 text-sm font-semibold text-ink-900">
-            {{ selectedLabels }}
-          </p>
-          <p class="mt-1 text-xs text-ink-600">
-            {{ selectedSites.length }} site{{ selectedSites.length === 1 ? '' : 's' }}
-            <span v-if="sharedSpaceName"> · {{ sharedSpaceName }}</span>
-          </p>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Ringkasan Tempahan</p>
+          <dl class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+            <div><dt class="text-xs text-ink-500">Kategori Jualan</dt><dd class="font-semibold">{{ selectedCategory?.label }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Baris</dt><dd class="font-semibold">{{ selectedRowLabel }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Tapak Dipilih</dt><dd class="font-semibold">{{ selectedLabels }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Bilangan Tapak</dt><dd class="font-semibold">{{ selectedSites.length }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Hari Acara</dt><dd class="font-semibold">{{ operationalDays.length }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Harga Setiap Tapak</dt><dd class="font-semibold">RM {{ unitPriceFormatted }}</dd></div>
+            <div v-if="sharedSpaceName"><dt class="text-xs text-ink-500">Jenis Ruang</dt><dd class="font-semibold">{{ sharedSpaceName }}</dd></div>
+          </dl>
         </div>
         <button type="button" class="ml-btn-ghost text-sm shrink-0" data-testid="event-site-clear-selection" @click="clearSelection">
-          Clear selection
+          Kosongkan pilihan
         </button>
       </div>
       <p class="text-lg font-extrabold text-brand-800" data-testid="event-site-preview-amount">
-        Preview total: RM {{ previewAmountFormatted }}
+        Jumlah: RM {{ previewAmountFormatted }}
       </p>
       <p class="text-xs text-ink-600">
-        Preview amount covers the complete event duration and is not multiplied by day count. Final amount is confirmed by the server.
+        Jumlah meliputi keseluruhan tempoh acara dan tidak didarab dengan bilangan hari. Jumlah akhir disahkan oleh pelayan.
       </p>
     </div>
   </section>
@@ -145,7 +196,7 @@ import {
   computePreviewAmount,
   formatOperationalDaysSummary,
   getSelectedSites,
-  groupSitesByRow,
+  prepareAvailabilityRows,
   selectionValidationMessage,
   siteAriaLabel,
   toggleSiteSelection,
@@ -153,33 +204,41 @@ import {
 
 const props = defineProps({
   sites: { type: Array, default: () => [] },
+  rows: { type: Array, default: () => [] },
+  selectedCategory: { type: Object, default: null },
   operationalDays: { type: Array, default: () => [] },
   selectedSiteIds: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   loadError: { type: String, default: '' },
   readinessMessage: { type: String, default: '' },
   selectionError: { type: String, default: '' },
+  removedStaleSiteLabels: { type: Array, default: () => [] },
 });
 
-const emit = defineEmits(['update:selectedSiteIds', 'retry']);
+const emit = defineEmits(['update:selectedSiteIds', 'retry', 'choose-category']);
 
 const headingId = `event-site-selector-heading-${Math.random().toString(36).slice(2, 8)}`;
 const blockedMessage = ref('');
 
 const legendItems = [
-  { key: 'available', label: 'Available', chipClass: 'border-emerald-200 bg-emerald-50 text-emerald-800', swatchClass: 'bg-emerald-400 border-emerald-500' },
-  { key: 'selected', label: 'Selected', chipClass: 'border-brand-300 bg-brand-100 text-brand-800', swatchClass: 'bg-brand-500 border-brand-600' },
-  { key: 'occupied', label: 'Occupied', chipClass: 'border-rose-200 bg-rose-50 text-rose-800', swatchClass: 'bg-rose-300 border-rose-400' },
-  { key: 'unavailable', label: 'Unavailable', chipClass: 'border-ink-200 bg-ink-50 text-ink-700', swatchClass: 'bg-ink-200 border-ink-300' },
-  { key: 'disabled', label: 'Disabled', chipClass: 'border-slate-200 bg-slate-50 text-slate-700', swatchClass: 'bg-slate-300 border-slate-400' },
+  { key: 'available', label: 'Tersedia', chipClass: 'border-emerald-200 bg-emerald-50 text-emerald-800', swatchClass: 'bg-emerald-400 border-emerald-500' },
+  { key: 'selected', label: 'Dipilih', chipClass: 'border-brand-300 bg-brand-100 text-brand-800', swatchClass: 'bg-brand-500 border-brand-600' },
+  { key: 'occupied', label: 'Ditempah', chipClass: 'border-rose-200 bg-rose-50 text-rose-800', swatchClass: 'bg-rose-300 border-rose-400' },
+  { key: 'unavailable', label: 'Tidak tersedia', chipClass: 'border-ink-200 bg-ink-50 text-ink-700', swatchClass: 'bg-ink-200 border-ink-300' },
+  { key: 'disabled', label: 'Dinyahaktifkan', chipClass: 'border-slate-200 bg-slate-50 text-slate-700', swatchClass: 'bg-slate-300 border-slate-400' },
 ];
 
-const groupedRows = computed(() => groupSitesByRow(props.sites));
+const groupedRows = computed(() => prepareAvailabilityRows(props.rows));
 const selectedSet = computed(() => new Set(props.selectedSiteIds.map(Number)));
 const selectedSites = computed(() => getSelectedSites(props.sites, props.selectedSiteIds));
 const previewAmountFormatted = computed(() => computePreviewAmount(selectedSites.value).toFixed(2));
 const selectedLabels = computed(() => selectedSites.value.map((site) => site.label).join(', '));
 const sharedSpaceName = computed(() => selectedSites.value[0]?.space_name || '');
+const unitPriceFormatted = computed(() => Number(selectedSites.value[0]?.price || 0).toFixed(2));
+const selectedRowLabel = computed(() => {
+  const rowId = Number(selectedSites.value[0]?.event_layout_row_id);
+  return groupedRows.value.find((row) => row.rowId === rowId)?.rowLabel || '—';
+});
 const daysSummary = computed(() => formatOperationalDaysSummary(props.operationalDays));
 
 const allSitesOccupied = computed(() => {
@@ -213,11 +272,17 @@ function isInteractive(site) {
 
 function statusLabel(site) {
   if (isSelected(site)) return 'Selected';
+  if (site.availability_status === 'occupied' && site.occupancy_status === 'confirmed') {
+    return 'Disahkan';
+  }
+  if (site.availability_status === 'occupied' && site.occupancy_status === 'reserved') {
+    return 'Ditempah';
+  }
   return ({
-    available: 'Available',
-    occupied: 'Occupied',
-    unavailable: 'Unavailable',
-    disabled: 'Disabled',
+    available: 'Tersedia',
+    occupied: 'Ditempah',
+    unavailable: 'Tidak tersedia',
+    disabled: 'Dinyahaktifkan',
   })[site.availability_status] || site.availability_status;
 }
 
@@ -245,7 +310,7 @@ function tileClass(site) {
 
 function ariaLabel(site) {
   const base = siteAriaLabel(site);
-  return isSelected(site) ? `${base}, selected` : base;
+  return isSelected(site) ? `${base}, dipilih` : base;
 }
 
 function handleToggle(site) {
