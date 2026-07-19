@@ -70,8 +70,8 @@ export function filterPublicLayoutRows(rows = [], categoryId = 'all') {
 }
 
 export function publicLayoutFilterAnnouncement(categoryLabel, rowCount) {
-  if (categoryLabel === 'Semua Kategori') {
-    return `${rowCount} baris susun atur dipaparkan untuk semua kategori.`;
+  if (categoryLabel === 'All Categories') {
+    return `${rowCount} layout rows shown for all categories.`;
   }
-  return `${rowCount} baris susun atur dipaparkan untuk kategori ${categoryLabel}.`;
+  return `${rowCount} layout rows shown for ${categoryLabel}.`;
 }

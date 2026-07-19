@@ -14,13 +14,18 @@ const backendRoot = resolve(__dirname, '../../../../backend');
  * temporary row is removed afterwards regardless of test outcome.
  */
 function runArtisan(action, { json = false } = {}) {
-  const args = ['artisan', 'e2e:site-fixtures', action];
+  const args = ['artisan', 'e2e:site-fixtures', action, '--env=e2e'];
   if (json) args.push('--json');
 
   const result = spawnSync('php', args, {
     cwd: backendRoot,
     encoding: 'utf-8',
     shell: process.platform === 'win32',
+    env: {
+      ...process.env,
+      APP_ENV: 'e2e',
+      DB_DATABASE: 'cmart_e2e_db',
+    },
   });
 
   if (result.status !== 0) {
@@ -53,11 +58,16 @@ export function createReleasedDayRecoveryFixture() {
 }
 
 export function recoveryAddCompetingAllocation(siteLabel) {
-  const args = ['artisan', 'e2e:site-fixtures', 'recovery-add-competing-allocation', `--site=${siteLabel}`, '--json'];
+  const args = ['artisan', 'e2e:site-fixtures', 'recovery-add-competing-allocation', `--site=${siteLabel}`, '--json', '--env=e2e'];
   const result = spawnSync('php', args, {
     cwd: backendRoot,
     encoding: 'utf-8',
     shell: process.platform === 'win32',
+    env: {
+      ...process.env,
+      APP_ENV: 'e2e',
+      DB_DATABASE: 'cmart_e2e_db',
+    },
   });
   if (result.status !== 0) {
     throw new Error(

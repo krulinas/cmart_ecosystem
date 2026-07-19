@@ -34,7 +34,7 @@ export const WORKSPACE_NAV_ITEMS = [
   {
     id: 'layout',
     hash: 'layout',
-    label: 'Urus Susun Atur',
+    label: 'Layout Management',
     shortIcon: 'Ly',
     group: 'carboot_operations',
     domain: 'carboot',
@@ -120,7 +120,7 @@ export const SECTION_SUBTITLES = {
   bookings: 'Review vendor slot requests, approve or request revision, and verify payments.',
   feedback: 'Moderate community reviews and manage visibility on the public portal.',
   events: 'Schedule and maintain carboot event dates for the community calendar.',
-  layout: 'Urus baris kategori dan tapak fizikal untuk setiap acara Carboot.',
+  layout: 'Manage category rows and physical sites for each Carboot event.',
   'item-reservations': 'Reconcile item reservation holds and record manual off-platform service fees.',
   news: 'Publish CMart venue announcements, promotions, and operational updates.',
   revenue: 'Carboot operational revenue: expected vs collected payments and profit simulator.',

@@ -24,9 +24,9 @@
           </p>
 
           <div>
-            <label class="ml-label">Jenis ruang</label>
+            <label class="ml-label">Space type</label>
             <select v-model.number="form.space_id" class="ml-input" required :disabled="submitting" data-testid="layout-generate-space-select">
-              <option disabled value="">Pilih jenis ruang</option>
+              <option disabled value="">{{ copy.selectSpaceType }}</option>
               <option v-for="space in spaces" :key="space.id" :value="space.id">
                 {{ space.space_size }}
               </option>
@@ -35,25 +35,25 @@
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="ml-label">Awalan label</label>
+              <label class="ml-label">Label prefix</label>
               <input v-model="form.label_prefix" class="ml-input" required maxlength="16" :disabled="submitting" data-testid="layout-generate-prefix-input" />
             </div>
             <div>
-              <label class="ml-label">Bilangan</label>
+              <label class="ml-label">Count</label>
               <input v-model.number="form.count" type="number" min="1" :max="maxCount" class="ml-input" required :disabled="submitting" data-testid="layout-generate-count-input" />
             </div>
             <div>
-              <label class="ml-label">Nombor mula</label>
+              <label class="ml-label">Start number</label>
               <input v-model.number="form.start_number" type="number" min="1" class="ml-input" :disabled="submitting" />
             </div>
             <div>
-              <label class="ml-label">Padding nombor</label>
+              <label class="ml-label">Number padding</label>
               <input v-model.number="form.number_padding" type="number" min="1" max="6" class="ml-input" :disabled="submitting" />
             </div>
           </div>
 
           <div class="rounded-xl border border-ink-200 bg-ink-50 px-3 py-3">
-            <div class="text-xs font-bold uppercase tracking-wider text-ink-500">Pratonton</div>
+            <div class="text-xs font-bold uppercase tracking-wider text-ink-500">Preview</div>
             <p class="mt-2 break-words text-sm font-semibold text-ink-900" data-testid="layout-generate-preview">
               {{ previewText }}
             </p>
@@ -64,7 +64,7 @@
           <div class="flex justify-end gap-2">
             <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="close">{{ copy.cancel }}</button>
             <button type="submit" class="ml-btn-primary" :disabled="submitting || preview.length === 0" data-testid="layout-generate-submit">
-              {{ submitting ? 'Menjana…' : `Jana ${preview.length || 0} tapak` }}
+              {{ submitting ? copy.generating : copy.generateSitesAction(preview.length || 0) }}
             </button>
           </div>
         </form>
@@ -117,7 +117,7 @@ watch(
 );
 
 const preview = computed(() => previewGeneratedLabels(form));
-const previewText = computed(() => (preview.value.length ? preview.value.join(', ') : 'Tiada pratonton'));
+const previewText = computed(() => (preview.value.length ? preview.value.join(', ') : copy.noPreview));
 
 function close() {
   if (props.submitting) return;
@@ -126,7 +126,7 @@ function close() {
 
 function submit() {
   const count = Number(form.count);
-  if (!window.confirm(`Jana ${count} tapak untuk ${props.row?.label}?\nTapak sedia ada tidak akan dipadam atau diganti.`)) {
+  if (!window.confirm(copy.confirmGenerateSites(count, props.row?.label))) {
     return;
   }
   emit('submit', {

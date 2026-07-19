@@ -7,9 +7,7 @@ use App\Exceptions\DomainConflictException;
 use App\Models\Booking;
 use App\Models\BookingDayAllocation;
 use App\Models\EventDay;
-use App\Models\EventLayoutRow;
 use App\Models\EventSite;
-use App\Models\Invoice;
 use Illuminate\Support\Collection;
 
 /**
@@ -31,14 +29,14 @@ class OrganizerBookingReassignmentEligibilityService
         if (! in_array($booking->approval_status, self::REASSIGNABLE_STATUSES, true)) {
             $blockers[] = [
                 'code' => 'BOOKING_NOT_REASSIGNABLE',
-                'message' => 'Tempahan ini tidak boleh disusun semula pada peringkat semasa.',
+                'message' => 'This booking cannot be reassigned in its current state.',
             ];
         }
 
         if ($booking->checked_in_at !== null) {
             $blockers[] = [
                 'code' => 'BOOKING_NOT_REASSIGNABLE',
-                'message' => 'Tempahan ini tidak boleh disusun semula pada peringkat semasa.',
+                'message' => 'This booking cannot be reassigned in its current state.',
             ];
         }
 
@@ -46,12 +44,12 @@ class OrganizerBookingReassignmentEligibilityService
         if (! $invoice) {
             $blockers[] = [
                 'code' => 'BOOKING_NOT_REASSIGNABLE',
-                'message' => 'Tempahan ini tidak mempunyai invois yang sah.',
+                'message' => 'This booking does not have a valid invoice.',
             ];
         } elseif ($invoice->payment_status !== 'Unpaid') {
             $blockers[] = [
                 'code' => 'BOOKING_PAYMENT_LOCKED',
-                'message' => 'Tapak tidak boleh diubah selepas bayaran dihantar atau disahkan.',
+                'message' => 'Sites cannot be changed after payment is submitted or verified.',
             ];
         }
 
@@ -59,12 +57,12 @@ class OrganizerBookingReassignmentEligibilityService
         if ($active->isEmpty()) {
             $blockers[] = [
                 'code' => 'BOOKING_NOT_REASSIGNABLE',
-                'message' => 'Tempahan ini tidak mempunyai peruntukan aktif.',
+                'message' => 'This booking does not have an active allocation.',
             ];
         } elseif ($active->contains(fn (BookingDayAllocation $row) => $row->allocation_status !== BookingDayAllocation::STATUS_RESERVED)) {
             $blockers[] = [
                 'code' => 'BOOKING_ALLOCATION_CONFIRMED',
-                'message' => 'Tapak tidak boleh diubah kerana peruntukan tempahan telah disahkan.',
+                'message' => 'Sites cannot be changed because the booking allocation is confirmed.',
             ];
         }
 
@@ -72,14 +70,14 @@ class OrganizerBookingReassignmentEligibilityService
             if ($day->starts_at !== null && $day->starts_at->lte(now())) {
                 $blockers[] = [
                     'code' => 'EVENT_DAY_ALREADY_STARTED',
-                    'message' => 'Tapak tidak boleh diubah selepas hari acara bermula.',
+                    'message' => 'Sites cannot be changed after an event day has started.',
                 ];
                 break;
             }
             if ($day->operational_status !== EventDay::STATUS_ACTIVE) {
                 $blockers[] = [
                     'code' => 'EVENT_DAY_ALREADY_STARTED',
-                    'message' => 'Tapak tidak boleh diubah selepas hari acara bermula.',
+                    'message' => 'Sites cannot be changed after an event day has started.',
                 ];
                 break;
             }
@@ -131,7 +129,7 @@ class OrganizerBookingReassignmentEligibilityService
 
         if ($ids->count() !== $requiredSiteCount) {
             throw new AllocationValidationException(
-                'Bilangan tapak baharu mesti sama dengan tempahan asal.',
+                'The new site count must match the original booking.',
                 'SITE_COUNT_CHANGE_NOT_SUPPORTED',
             );
         }
@@ -191,7 +189,7 @@ class OrganizerBookingReassignmentEligibilityService
 
             if ((int) $site->space_id !== $requiredSpaceId) {
                 throw new AllocationValidationException(
-                    'Jenis atau harga tapak baharu mesti sama dengan tempahan asal.',
+                    'The new site type or price must match the original booking.',
                     'SITE_PRICE_CHANGE_NOT_SUPPORTED',
                 );
             }
@@ -199,7 +197,7 @@ class OrganizerBookingReassignmentEligibilityService
             $price = number_format((float) ($site->space?->price ?? 0), 2, '.', '');
             if ($price !== $requiredUnitPrice) {
                 throw new AllocationValidationException(
-                    'Jenis atau harga tapak baharu mesti sama dengan tempahan asal.',
+                    'The new site type or price must match the original booking.',
                     'SITE_PRICE_CHANGE_NOT_SUPPORTED',
                 );
             }
@@ -226,7 +224,7 @@ class OrganizerBookingReassignmentEligibilityService
         $rowIds = $sites->pluck('event_layout_row_id')->unique();
         if ($rowIds->count() !== 1) {
             throw new AllocationValidationException(
-                'Semua tapak mesti dipilih daripada baris yang sama.',
+                'All sites must be selected from the same row.',
                 'TARGET_SITE_MIXED_ROWS',
             );
         }
@@ -234,7 +232,7 @@ class OrganizerBookingReassignmentEligibilityService
         $rowLabels = $sites->pluck('row_label')->unique();
         if ($rowLabels->count() !== 1) {
             throw new AllocationValidationException(
-                'Semua tapak mesti dipilih daripada baris yang sama.',
+                'All sites must be selected from the same row.',
                 'TARGET_SITE_MIXED_ROWS',
             );
         }
@@ -243,7 +241,7 @@ class OrganizerBookingReassignmentEligibilityService
         for ($i = 1; $i < $positions->count(); $i++) {
             if ($positions[$i] !== $positions[$i - 1] + 1) {
                 throw new AllocationValidationException(
-                    'Pilihan tapak tidak memenuhi peraturan susun atur.',
+                    'The site selection does not meet layout rules.',
                     'TARGET_SITE_SELECTION_INVALID',
                 );
             }
@@ -262,7 +260,7 @@ class OrganizerBookingReassignmentEligibilityService
 
         if ($categoryIds->count() > 1) {
             throw new AllocationValidationException(
-                'Semua tapak mesti menggunakan kategori baris yang sama.',
+                'All sites must use the same row category.',
                 'TARGET_SITE_MIXED_CATEGORIES',
             );
         }
@@ -285,7 +283,7 @@ class OrganizerBookingReassignmentEligibilityService
 
         if ($conflict) {
             throw new DomainConflictException(
-                'Satu atau lebih tapak pilihan tidak lagi tersedia.',
+                'One or more selected sites are no longer available.',
                 'TARGET_SITE_UNAVAILABLE',
             );
         }

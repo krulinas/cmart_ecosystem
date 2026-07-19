@@ -51,7 +51,7 @@ describe('Phase 3.10 public category layout', function () {
     await waitForTestId(driver, 'public-layout-map', 30000);
     const text = await section.getText();
 
-    assert.match(text, /Peta Susun Atur Acara/);
+    assert.match(text, /Event Layout Map/);
     assert.match(text, /Row A/);
     assert.match(text, /Row B/);
     assert.match(text, /Pre-loved \/ Thrift/);
@@ -105,7 +105,7 @@ describe('Phase 3.10 public category layout', function () {
     await openEvent(driver, fixture.unpublishedEventTitle);
     const unavailable = await waitForTestId(driver, 'public-layout-unavailable', 30000);
 
-    assert.match(await unavailable.getText(), /Susun atur acara belum diterbitkan/);
+    assert.match(await unavailable.getText(), /The event layout has not been published yet/);
     assert.equal((await driver.findElements(By.css('[data-testid="public-layout-map"]'))).length, 0);
     const modal = await waitForTestId(driver, 'public-detail-modal');
     assert.match(await modal.getText(), new RegExp(escapeRegex(fixture.unpublishedEventTitle)));

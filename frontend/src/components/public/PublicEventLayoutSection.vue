@@ -5,11 +5,11 @@
     data-testid="public-event-layout-section"
   >
     <div class="max-w-4xl">
-      <p class="text-xs font-bold uppercase tracking-wider text-brand-600">Panduan Pelawat</p>
+      <p class="text-xs font-bold uppercase tracking-wider text-brand-600">Visitor Guide</p>
       <h3 id="public-layout-heading" class="mt-1 text-xl font-extrabold text-gray-900">
-        Peta Susun Atur Acara
+        Event Layout Map
       </h3>
-      <p class="mt-1 text-sm text-gray-600">Cari baris dan kawasan mengikut kategori jualan.</p>
+      <p class="mt-1 text-sm text-gray-600">Find rows and areas by sales category.</p>
     </div>
 
     <p class="sr-only" aria-live="polite" data-testid="public-layout-live-announcement">
@@ -22,7 +22,7 @@
       role="status"
       data-testid="public-layout-loading"
     >
-      Memuatkan susun atur acara…
+      Loading event layout…
     </div>
 
     <div
@@ -31,14 +31,14 @@
       role="alert"
       data-testid="public-layout-error"
     >
-      <p class="text-sm font-semibold text-rose-900">Susun atur acara tidak dapat dimuatkan.</p>
+      <p class="text-sm font-semibold text-rose-900">The event layout could not be loaded.</p>
       <button
         type="button"
         class="mt-3 min-h-11 rounded-lg bg-rose-700 px-4 py-2 text-sm font-bold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
         data-testid="public-layout-retry"
         @click="loadLayout"
       >
-        Cuba Lagi
+        Try Again
       </button>
     </div>
 
@@ -48,7 +48,7 @@
       role="status"
       data-testid="public-layout-unavailable"
     >
-      Susun atur acara belum diterbitkan.
+      The event layout has not been published yet.
     </div>
 
     <div
@@ -57,7 +57,7 @@
       role="status"
       data-testid="public-layout-empty"
     >
-      Tiada susun atur awam tersedia buat masa ini.
+      No public layout is available at this time.
     </div>
 
     <template v-else-if="layout">
@@ -67,7 +67,7 @@
         role="note"
         data-testid="public-layout-historical"
       >
-        Ini ialah peta susun atur sejarah untuk acara yang telah tamat atau ditutup.
+        This is a historical layout map for an event that has ended or closed.
       </div>
 
       <p
@@ -75,16 +75,16 @@
         class="mt-5 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-900"
         data-testid="public-layout-entrance-note"
       >
-        <strong>Petunjuk masuk:</strong> {{ layout.entrance_note }}
+        <strong>Entrance guidance:</strong> {{ layout.entrance_note }}
       </p>
 
       <div class="mt-6">
-        <h4 class="text-sm font-extrabold text-gray-900">Cari Mengikut Kategori</h4>
-        <p class="mt-1 text-xs text-gray-600">Pilih kategori untuk mencari kawasan yang berkaitan.</p>
+        <h4 class="text-sm font-extrabold text-gray-900">Browse by Category</h4>
+        <p class="mt-1 text-xs text-gray-600">Select a category to find related areas.</p>
         <div
           class="mt-3 flex flex-wrap gap-2"
           role="group"
-          aria-label="Tapis peta mengikut kategori jualan"
+          aria-label="Filter map by sales category"
           data-testid="public-layout-category-filter"
         >
           <button
@@ -111,54 +111,21 @@
         role="status"
         data-testid="public-layout-category-empty"
       >
-        Tiada baris tersedia untuk kategori ini.
+        No rows are available for this category.
       </div>
 
       <div v-else class="mt-5 space-y-4" data-testid="public-layout-map">
-        <article
-          v-for="row in visibleRows"
-          :key="row.id"
-          class="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5"
-          :aria-labelledby="`public-layout-row-heading-${row.id}`"
-          :data-row-id="row.id"
-          data-testid="public-layout-row"
-        >
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h4 :id="`public-layout-row-heading-${row.id}`" class="text-base font-extrabold text-gray-900">
-                {{ row.label }}
-              </h4>
-              <p class="mt-0.5 text-sm font-bold text-brand-700">{{ row.category.label }}</p>
-              <p v-if="row.description" class="mt-1 text-sm text-gray-600">{{ row.description }}</p>
-            </div>
-            <p class="text-xs font-semibold text-gray-600">
-              {{ row.sites.length }} tapak fizikal
-            </p>
-          </div>
-
-          <ul
-            class="mt-4 grid grid-cols-2 gap-2 min-[420px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5"
-            :aria-label="`Label tapak untuk ${row.label}`"
-            data-testid="public-layout-site-grid"
-          >
-            <li
-              v-for="site in row.sites"
-              :key="site.id"
-              class="flex min-h-16 min-w-0 flex-col items-center justify-center rounded-xl border border-sky-200 bg-sky-50 px-2 py-2 text-center"
-              data-testid="public-layout-site"
-              :aria-label="siteAccessibleLabel(site, row)"
-            >
-              <span class="text-sm font-extrabold text-gray-900">{{ site.label }}</span>
-              <span v-if="site.space?.name" class="mt-1 line-clamp-1 text-[11px] text-gray-600">
-                {{ site.space.name }}
-              </span>
-            </li>
-          </ul>
-        </article>
+        <VisualParkingLayout
+          mode="public"
+          :rows="visualRows"
+          :show-legend="false"
+          :show-counts="false"
+          :force-orientation="isCanonicalLayout"
+        />
       </div>
 
       <p class="mt-5 text-xs leading-relaxed text-gray-600">
-        Label tapak membantu anda mengenal pasti kedudukan vendor semasa acara.
+        Site labels help you locate vendor positions during the event.
       </p>
     </template>
   </section>
@@ -166,6 +133,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import VisualParkingLayout from '../layout/VisualParkingLayout.vue';
 import {
   getPublicEventLayout,
   isPublicLayoutUnavailable,
@@ -175,6 +143,10 @@ import {
   normalizePublicLayout,
   publicLayoutFilterAnnouncement,
 } from '../../utils/publicEventLayout';
+import {
+  adaptPublicRows,
+  isStandardParkingLayout,
+} from '../../utils/visualParkingLayout';
 
 const props = defineProps({
   eventId: { type: [Number, String], required: true },
@@ -189,12 +161,14 @@ const liveAnnouncement = ref('');
 let loadToken = 0;
 
 const filterCategories = computed(() => [
-  { id: 'all', label: 'Semua Kategori' },
+  { id: 'all', label: 'All Categories' },
   ...(layout.value?.categories || []),
 ]);
 
 const visibleRows = computed(() =>
   filterPublicLayoutRows(layout.value?.rows || [], activeCategoryId.value));
+const visualRows = computed(() => adaptPublicRows(visibleRows.value));
+const isCanonicalLayout = computed(() => isStandardParkingLayout(visibleRows.value));
 
 async function loadLayout() {
   const token = ++loadToken;
@@ -208,7 +182,7 @@ async function loadLayout() {
     layout.value = normalizePublicLayout(data);
     activeCategoryId.value = 'all';
     liveAnnouncement.value = publicLayoutFilterAnnouncement(
-      'Semua Kategori',
+      'All Categories',
       layout.value.rows.length,
     );
   } catch (error) {
@@ -216,10 +190,10 @@ async function loadLayout() {
     layout.value = null;
     if (isPublicLayoutUnavailable(error)) {
       unavailable.value = true;
-      liveAnnouncement.value = 'Susun atur acara belum diterbitkan.';
+      liveAnnouncement.value = 'The event layout has not been published yet.';
     } else {
       loadError.value = true;
-      liveAnnouncement.value = 'Susun atur acara tidak dapat dimuatkan.';
+      liveAnnouncement.value = 'The event layout could not be loaded.';
     }
   } finally {
     if (token === loadToken) loading.value = false;
@@ -232,11 +206,6 @@ function selectCategory(category) {
     category.label,
     visibleRows.value.length,
   );
-}
-
-function siteAccessibleLabel(site, row) {
-  const space = site.space?.name ? `, jenis ruang ${site.space.name}` : '';
-  return `Tapak ${site.label}, ${row.label}, kategori ${row.category.label}${space}`;
 }
 
 watch(() => props.eventId, loadLayout, { immediate: true });

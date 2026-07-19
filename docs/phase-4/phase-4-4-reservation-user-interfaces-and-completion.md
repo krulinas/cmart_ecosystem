@@ -153,7 +153,8 @@ markers verified at zero, including prior Phase 4.3 residue.
 
 ## Deferred
 
-* Browser E2E reservation flows and final hardening (Phase 4.5)
+* Browser E2E reservation flows and final hardening — **completed in Phase 4.5**
+  (`docs/phase-4/phase-4-5-e2e-hardening-and-closure.md`)
 * Automatic expiry scheduler / timeouts
 * Payment gateway, proof upload, refunds, payouts, escrow, split payment
 * Email / push notifications, chat, delivery
@@ -162,3 +163,6 @@ markers verified at zero, including prior Phase 4.3 residue.
 ## Verdict
 
 PHASE 4.4 COMPLETE — READY FOR PHASE 4.5
+
+Phase 4.5 follow-up closed Phase 4: see
+`docs/phase-4/phase-4-5-e2e-hardening-and-closure.md`.

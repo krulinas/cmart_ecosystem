@@ -9,10 +9,14 @@ use App\Models\BookingAuditLog;
 use App\Models\BookingDayAllocation;
 use App\Models\CarbootEvent;
 use App\Models\EventDay;
+use App\Models\EventLayoutRow;
 use App\Models\EventSite;
 use App\Models\Invoice;
 use App\Models\Space;
 use App\Models\User;
+use App\Models\UserBookingPreference;
+use App\Models\VendorBusinessProfile;
+use App\Models\VendorCategory;
 use App\Services\BookingAllocationLifecycleService;
 use App\Services\BookingAllocationReservationService;
 use Illuminate\Console\Command;
@@ -41,16 +45,20 @@ class E2ESiteFixtures extends Command
     protected $description = 'Phase 2A.8.1: Create or remove temporary E2E EventSite/EventDay fixtures';
 
     public const MARKER = 'E2E-SITE-FIX';
-    private const EVENT_TITLE = self::MARKER . ' Carboot Weekend';
+
+    private const EVENT_TITLE = self::MARKER.' Carboot Weekend';
+
     private const VENDOR_EMAIL = 'e2e-site-fix-vendor@example.com';
+
     private const ORGANIZER_EMAIL = 'e2e-site-fix-organizer@example.com';
+
     private const SPACE_SIZE = 'Standard (1 Parking Lot)';
 
     public function handle(): int
     {
         $env = config('app.env');
-        if ($env !== 'local' && ! app()->runningUnitTests()) {
-            $this->error("Refusing to run: app environment is [{$env}], expected [local].");
+        if ($env !== 'local' && $env !== 'e2e' && ! app()->runningUnitTests()) {
+            $this->error("Refusing to run: app environment is [{$env}], expected [local] or [e2e].");
 
             return self::FAILURE;
         }
@@ -73,10 +81,10 @@ class E2ESiteFixtures extends Command
     {
         $this->error(
             "Unknown action [{$this->argument('action')}]. Use 'create', "
-            . "'create-paid-booking', 'create-payment-submitted-booking', "
-            . "'create-paid-three-day-booking', 'create-released-day-recovery', "
-            . "'recovery-add-competing-allocation', 'recovery-status', "
-            . "'attendance-status', or 'cleanup'.",
+            ."'create-paid-booking', 'create-payment-submitted-booking', "
+            ."'create-paid-three-day-booking', 'create-released-day-recovery', "
+            ."'recovery-add-competing-allocation', 'recovery-status', "
+            ."'attendance-status', or 'cleanup'.",
         );
 
         return self::FAILURE;
@@ -139,7 +147,7 @@ class E2ESiteFixtures extends Command
                 'carboot_event_id' => $event->id,
                 'booking_date' => $event->starts_at->toDateString(),
                 'product_category' => 'Food & Beverages',
-                'product_details' => self::MARKER . ' released-day recovery E2E booking',
+                'product_details' => self::MARKER.' released-day recovery E2E booking',
                 'approval_status' => 'Approved',
             ]);
 
@@ -149,7 +157,7 @@ class E2ESiteFixtures extends Command
                 'booking_id' => $booking->id,
                 'amount' => $reservation->amount,
                 'payment_status' => 'Paid',
-                'payment_proof_path' => self::MARKER . '/payment-proof-marker.jpg',
+                'payment_proof_path' => self::MARKER.'/payment-proof-marker.jpg',
                 'payment_submitted_at' => now(),
             ]);
             app(BookingAllocationLifecycleService::class)->confirmForBooking($booking->fresh());
@@ -229,7 +237,7 @@ class E2ESiteFixtures extends Command
         }
 
         $booking = Booking::query()
-            ->whereHas('carbootEvent', fn ($query) => $query->where('title', 'like', self::MARKER . '%'))
+            ->whereHas('carbootEvent', fn ($query) => $query->where('title', 'like', self::MARKER.'%'))
             ->whereHas('bookingDayAllocations', fn ($query) => $query->where(
                 'release_reason',
                 BookingAllocationLifecycleService::REASON_ORGANIZER_DAY_EXCEPTION,
@@ -261,7 +269,7 @@ class E2ESiteFixtures extends Command
                 'carboot_event_id' => $booking->carboot_event_id,
                 'booking_date' => EventDay::find($releasedDayId)?->operational_date,
                 'product_category' => 'Others',
-                'product_details' => self::MARKER . ' recovery competing allocation',
+                'product_details' => self::MARKER.' recovery competing allocation',
                 'approval_status' => 'Approved',
             ]);
             $allocation = BookingDayAllocation::create([
@@ -290,7 +298,7 @@ class E2ESiteFixtures extends Command
     private function recoveryStatus(): int
     {
         $booking = Booking::query()
-            ->whereHas('carbootEvent', fn ($query) => $query->where('title', 'like', self::MARKER . '%'))
+            ->whereHas('carbootEvent', fn ($query) => $query->where('title', 'like', self::MARKER.'%'))
             ->whereHas('bookingDayAllocations', fn ($query) => $query->where(
                 'release_reason',
                 BookingAllocationLifecycleService::REASON_ORGANIZER_DAY_EXCEPTION,
@@ -318,8 +326,7 @@ class E2ESiteFixtures extends Command
     private function attendanceStatus(): int
     {
         $booking = Booking::query()
-            ->whereHas('carbootEvent', fn ($query) =>
-                $query->where('title', 'like', self::MARKER . '%'))
+            ->whereHas('carbootEvent', fn ($query) => $query->where('title', 'like', self::MARKER.'%'))
             ->with('invoice')
             ->latest('id')
             ->firstOrFail();
@@ -361,8 +368,7 @@ class E2ESiteFixtures extends Command
         string $message,
         bool $confirmAllocations,
         int $dayCount,
-    ): int
-    {
+    ): int {
         $this->purge();
         $base = $this->buildBaseFixtures($dayCount);
 
@@ -377,7 +383,7 @@ class E2ESiteFixtures extends Command
                 'carboot_event_id' => $event->id,
                 'booking_date' => $event->starts_at->toDateString(),
                 'product_category' => 'Food & Beverages',
-                'product_details' => self::MARKER . ' withdrawal reconciliation E2E booking',
+                'product_details' => self::MARKER.' withdrawal reconciliation E2E booking',
                 'approval_status' => 'Approved',
                 'revision_comment' => null,
                 'whatsapp_link' => 'https://chat.whatsapp.com/CMART_OFFICIAL_GROUP_INVITE',
@@ -395,7 +401,7 @@ class E2ESiteFixtures extends Command
                 'booking_id' => $booking->id,
                 'amount' => $reservation->amount,
                 'payment_status' => $paymentStatus,
-                'payment_proof_path' => self::MARKER . '/payment-proof-marker.jpg',
+                'payment_proof_path' => self::MARKER.'/payment-proof-marker.jpg',
                 'payment_submitted_at' => now(),
             ]);
 
@@ -410,7 +416,7 @@ class E2ESiteFixtures extends Command
                 'invoice_id' => $invoice->id,
                 'invoice_amount' => (float) $invoice->amount,
                 'payment_status' => $invoice->payment_status,
-                'payment_proof_marker' => self::MARKER . '/payment-proof-marker.jpg',
+                'payment_proof_marker' => self::MARKER.'/payment-proof-marker.jpg',
                 'allocation_status' => $confirmAllocations ? 'confirmed' : 'reserved',
                 'site_labels' => $booking->bookingDayAllocations
                     ->pluck('eventSite.label')
@@ -458,7 +464,7 @@ class E2ESiteFixtures extends Command
             $starts = now()->addDays(9)->setTime(8, 0, 0);
             $event = CarbootEvent::create([
                 'title' => self::EVENT_TITLE,
-                'description' => self::MARKER . ' temporary browser E2E fixture event',
+                'description' => self::MARKER.' temporary browser E2E fixture event',
                 'starts_at' => $starts,
                 'ends_at' => $starts->copy()->addDays($dayCount - 1)->setTime(17, 0, 0),
                 'status' => 'Open',
@@ -482,10 +488,23 @@ class E2ESiteFixtures extends Command
 
             $siteIds = [];
             $siteLabels = [];
+            $food = VendorCategory::query()->where('slug', 'food-beverages')->firstOrFail();
+            $layoutRow = EventLayoutRow::create([
+                'carboot_event_id' => $event->id,
+                'vendor_category_id' => $food->id,
+                'label' => 'A',
+                'slug' => 'a-'.$event->id,
+                'description' => self::MARKER.' row A',
+                'display_order' => 1,
+                'is_active' => true,
+                'is_public' => true,
+            ]);
+
             for ($p = 1; $p <= 3; $p++) {
                 $label = sprintf('A%02d', $p);
                 $site = EventSite::create([
                     'carboot_event_id' => $event->id,
+                    'event_layout_row_id' => $layoutRow->id,
                     'space_id' => $space->id,
                     'label' => $label,
                     'row_label' => 'A',
@@ -509,6 +528,8 @@ class E2ESiteFixtures extends Command
                 'day_ids' => $dayIds,
                 'site_ids' => $siteIds,
                 'site_labels' => $siteLabels,
+                'row_a_id' => $layoutRow->id,
+                'food_category_id' => $food->id,
             ];
         });
     }
@@ -565,7 +586,7 @@ class E2ESiteFixtures extends Command
     {
         return DB::transaction(function () {
             $eventIds = CarbootEvent::query()
-                ->where('title', 'like', self::MARKER . '%')
+                ->where('title', 'like', self::MARKER.'%')
                 ->pluck('id')
                 ->all();
 
@@ -617,6 +638,7 @@ class E2ESiteFixtures extends Command
                 )->delete();
 
                 $sites = EventSite::whereIn('carboot_event_id', $eventIds)->delete();
+                EventLayoutRow::whereIn('carboot_event_id', $eventIds)->delete();
                 $days = EventDay::whereIn('carboot_event_id', $eventIds)->delete();
                 $events = CarbootEvent::whereIn('id', $eventIds)->delete();
             }
@@ -628,12 +650,12 @@ class E2ESiteFixtures extends Command
                     ->whereIn('tokenable_id', $userIds)
                     ->delete();
 
-                if (class_exists(\App\Models\UserBookingPreference::class)) {
-                    \App\Models\UserBookingPreference::whereIn('user_id', $userIds)->delete();
+                if (class_exists(UserBookingPreference::class)) {
+                    UserBookingPreference::whereIn('user_id', $userIds)->delete();
                 }
 
-                if (class_exists(\App\Models\VendorBusinessProfile::class)) {
-                    \App\Models\VendorBusinessProfile::whereIn('user_id', $userIds)->delete();
+                if (class_exists(VendorBusinessProfile::class)) {
+                    VendorBusinessProfile::whereIn('user_id', $userIds)->delete();
                 }
 
                 BookingAuditLog::whereIn('actor_user_id', $userIds)->delete();

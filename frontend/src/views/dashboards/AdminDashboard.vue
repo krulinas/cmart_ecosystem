@@ -128,7 +128,7 @@ const SECTION_LABELS = {
   bookings: 'Bookings',
   feedback: 'Feedback',
   events: 'Events',
-  layout: 'Urus Susun Atur',
+  layout: 'Layout Management',
   'item-reservations': 'Item Reservations',
   news: 'News',
   revenue: 'Revenue',

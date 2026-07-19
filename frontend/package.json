@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:e2e": "vite --port 5175 --strictPort",
+    "dev:e2e": "vite --mode e2e --port 5175 --strictPort",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "run-s lint:*",
@@ -18,7 +18,8 @@
     "test:e2e:headless": "node tests/e2e/run.js --headless",
     "test:e2e:phase39": "node tests/e2e/run.js --headless vendor.category-site-selection.spec.js",
     "test:e2e:phase310": "node tests/e2e/run.js --headless public.event-layout.spec.js",
-    "test:e2e:phase311": "node tests/e2e/run.js --headless phase3.closure.spec.js"
+    "test:e2e:phase311": "node tests/e2e/run.js --headless phase3.closure.spec.js",
+    "test:e2e:phase45": "node tests/e2e/run.js --headless phase45.reserve-confirm.spec.js phase45.stale-conflict.spec.js phase45.pending-cancel.spec.js phase45.confirmed-cancel-expire.spec.js phase45.vendor-completion.spec.js phase45.access-privacy.spec.js"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.20",

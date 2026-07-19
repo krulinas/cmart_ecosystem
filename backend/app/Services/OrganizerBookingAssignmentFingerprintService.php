@@ -2,11 +2,10 @@
 
 namespace App\Services;
 
+use App\Exceptions\AllocationValidationException;
+use App\Exceptions\DomainConflictException;
 use App\Models\Booking;
-use App\Models\BookingCategoryOverride;
 use App\Models\BookingDayAllocation;
-use App\Models\Invoice;
-use Illuminate\Support\Collection;
 
 /**
  * Phase 3.8 — deterministic optimistic concurrency token for Organizer reassignment.
@@ -49,7 +48,7 @@ class OrganizerBookingAssignmentFingerprintService
     public function assertMatches(Booking $booking, ?string $submitted): void
     {
         if ($submitted === null || trim($submitted) === '') {
-            throw new \App\Exceptions\AllocationValidationException(
+            throw new AllocationValidationException(
                 'Assignment fingerprint is required.',
                 'ASSIGNMENT_FINGERPRINT_REQUIRED',
             );
@@ -58,8 +57,8 @@ class OrganizerBookingAssignmentFingerprintService
         $current = $this->compute($booking);
 
         if (! hash_equals($current, $submitted)) {
-            throw new \App\Exceptions\DomainConflictException(
-                'Susunan tapak telah berubah. Sila muat semula dan semak semula pilihan.',
+            throw new DomainConflictException(
+                'Site assignment has changed. Refresh and review your selection.',
                 'ASSIGNMENT_CHANGED',
             );
         }

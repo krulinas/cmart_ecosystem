@@ -1,6 +1,7 @@
 <template>
   <article
     data-testid="marketplace-item-card"
+    :data-item-id="item.id"
     class="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md"
   >
     <button

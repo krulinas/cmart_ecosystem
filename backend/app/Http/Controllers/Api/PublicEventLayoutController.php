@@ -30,7 +30,7 @@ class PublicEventLayoutController extends Controller
                     'name' => $carbootEvent->title,
                 ],
                 'rows' => [],
-                'message' => 'Susun atur acara belum diterbitkan.',
+                'message' => 'The event layout has not been published.',
                 'error' => 'PUBLIC_LAYOUT_NOT_AVAILABLE',
             ], 404);
         }

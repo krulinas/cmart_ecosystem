@@ -15,7 +15,7 @@
             <h2 id="layout-site-form-title" class="text-lg font-extrabold text-ink-900">
               {{ isEdit ? copy.editSite : copy.addSite }}
             </h2>
-            <p v-if="rowLabel" class="text-xs text-ink-500">Baris: {{ rowLabel }} · {{ rowCategory }}</p>
+            <p v-if="rowLabel" class="text-xs text-ink-500">{{ copy.rowLabelPrefix }}: {{ rowLabel }} · {{ rowCategory }}</p>
           </div>
           <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="close">{{ copy.cancel }}</button>
         </header>
@@ -26,14 +26,14 @@
           </p>
 
           <div>
-            <label class="ml-label" for="layout-site-label">Label tapak</label>
+            <label class="ml-label" for="layout-site-label">Site label</label>
             <input id="layout-site-label" v-model="form.label" class="ml-input" required maxlength="32" :disabled="submitting || structureLocked" data-testid="layout-site-label-input" />
           </div>
 
           <div>
-            <label class="ml-label" for="layout-site-space">Jenis ruang</label>
+            <label class="ml-label" for="layout-site-space">Space type</label>
             <select id="layout-site-space" v-model.number="form.space_id" class="ml-input" required :disabled="submitting || structureLocked" data-testid="layout-site-space-select">
-              <option disabled value="">Pilih jenis ruang</option>
+              <option disabled value="">{{ copy.selectSpaceType }}</option>
               <option v-for="space in spaces" :key="space.id" :value="space.id">
                 {{ space.space_size }} (RM {{ Number(space.price).toFixed(2) }})
               </option>
@@ -41,10 +41,10 @@
           </div>
 
           <div v-if="isEdit && rows.length" class="space-y-1">
-            <label class="ml-label" for="layout-site-row">Baris sasaran</label>
+            <label class="ml-label" for="layout-site-row">{{ copy.targetRow }}</label>
             <select id="layout-site-row" v-model.number="form.event_layout_row_id" class="ml-input" :disabled="submitting || structureLocked" data-testid="layout-site-row-select">
               <option v-for="row in movableRows" :key="row.id" :value="row.id">
-                {{ row.label }} — {{ row.category?.label || 'Tiada kategori' }}
+                {{ row.label }} — {{ row.category?.label || copy.noCategory }}
               </option>
             </select>
           </div>
@@ -52,9 +52,9 @@
           <div>
             <label class="ml-label" for="layout-site-status">Status</label>
             <select id="layout-site-status" v-model="form.operational_status" class="ml-input" :disabled="submitting">
-              <option value="active">Aktif</option>
-              <option value="unavailable">Tidak tersedia</option>
-              <option value="disabled">Dinyahaktif</option>
+              <option value="active">Active</option>
+              <option value="unavailable">Unavailable</option>
+              <option value="disabled">Disabled</option>
             </select>
           </div>
 
@@ -62,19 +62,19 @@
             <summary class="cursor-pointer text-sm font-bold text-ink-800">{{ copy.advanced }}</summary>
             <div class="mt-3 grid grid-cols-2 gap-3">
               <div>
-                <label class="ml-label">Kedudukan</label>
+                <label class="ml-label">Position</label>
                 <input v-model.number="form.position_number" type="number" min="1" class="ml-input" :disabled="submitting || structureLocked" />
               </div>
               <div>
-                <label class="ml-label">Susunan paparan</label>
+                <label class="ml-label">{{ copy.displayOrder }}</label>
                 <input v-model.number="form.display_order" type="number" min="0" class="ml-input" :disabled="submitting" />
               </div>
               <div>
-                <label class="ml-label">Grid baris</label>
+                <label class="ml-label">Grid row</label>
                 <input v-model.number="form.grid_row" type="number" min="0" class="ml-input" :disabled="submitting || structureLocked" />
               </div>
               <div>
-                <label class="ml-label">Grid lajur</label>
+                <label class="ml-label">Grid column</label>
                 <input v-model.number="form.grid_column" type="number" min="0" class="ml-input" :disabled="submitting || structureLocked" />
               </div>
             </div>

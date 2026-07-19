@@ -58,6 +58,10 @@ export function generateLayoutSites(eventId, rowId, payload) {
   return api.post(`/organizer/events/${eventId}/layout/rows/${rowId}/sites/generate`, payload);
 }
 
+export function generateStandardParkingLayout(eventId, payload) {
+  return api.post(`/organizer/events/${eventId}/layout/standard-template`, payload);
+}
+
 export function updateLayoutSite(eventId, siteId, payload) {
   return api.patch(`/organizer/events/${eventId}/layout/sites/${siteId}`, payload);
 }

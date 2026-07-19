@@ -137,11 +137,16 @@ describe('Phase 3.9 vendor category-first site selection', () => {
   });
 
   it('includes keyboard, ARIA, live status, and responsive grid affordances', () => {
-    assert.match(selector, /aria-pressed/);
-    assert.match(selector, /aria-disabled/);
-    assert.match(selector, /focus-visible:ring-2/);
-    assert.match(selector, /grid-cols-2/);
-    assert.match(selector, /min-h-20/);
+    const visual = readFileSync(
+      new URL('../../src/components/layout/VisualParkingLayout.vue', import.meta.url),
+      'utf8',
+    );
+    assert.match(selector, /VisualParkingLayout/);
+    assert.match(selector, /mode="vendor"/);
+    assert.match(visual, /aria-pressed/);
+    assert.match(visual, /aria-disabled/);
+    assert.match(visual, /focus-visible|box-shadow: 0 0 0 3px/);
+    assert.match(visual, /minmax\(3\.25rem, 1fr\)/);
     assert.match(registration, /aria-live="polite"/);
   });
 });

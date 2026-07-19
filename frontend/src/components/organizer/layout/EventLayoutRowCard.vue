@@ -18,23 +18,23 @@
           </span>
         </div>
         <p class="mt-1 text-sm font-semibold text-brand-800">
-          {{ row.category?.label || 'Tiada kategori' }}
+          {{ row.category?.label || copy.noCategory }}
         </p>
         <div class="mt-2 flex flex-wrap gap-2 text-[11px]">
           <span class="rounded-full bg-white px-2 py-0.5 font-semibold ring-1 ring-ink-200">
-            {{ row.is_active && !row.archived_at ? 'Aktif' : 'Tidak aktif' }}
+            {{ row.is_active && !row.archived_at ? 'Active' : 'Inactive' }}
           </span>
           <span class="rounded-full bg-white px-2 py-0.5 font-semibold ring-1 ring-ink-200">
             {{ row.is_public ? 'Awam' : 'Persendirian' }}
           </span>
           <span v-if="row.archived_at" class="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-900">
-            Diarkib
+            Archived
           </span>
           <span class="rounded-full bg-white px-2 py-0.5 font-semibold ring-1 ring-ink-200">
-            {{ sites.length }} tapak
+            {{ sites.length }} sites
           </span>
           <span class="rounded-full bg-white px-2 py-0.5 font-semibold ring-1 ring-ink-200">
-            Tersedia {{ occupancy.available }} · Tempah {{ occupancy.reserved }} · Sahkan {{ occupancy.confirmed }}
+            {{ copy.available }} {{ occupancy.available }} · {{ copy.reserved }} {{ occupancy.reserved }} · {{ copy.confirmed }} {{ occupancy.confirmed }}
           </span>
         </div>
         <p v-if="row.description" class="mt-2 text-sm text-ink-600">{{ row.description }}</p>
@@ -74,7 +74,7 @@
           type="button"
           class="ml-btn-ghost text-xs text-rose-700"
           :disabled="row.locks?.delete_locked || sites.length > 0"
-          :title="(row.locks?.delete_locked || sites.length > 0) ? 'Baris ini masih mempunyai tapak.' : copy.deleteRow"
+          :title="(row.locks?.delete_locked || sites.length > 0) ? copy.rowStillHasSites : copy.deleteRow"
           @click="$emit('delete', row)"
         >
           {{ copy.deleteRow }}
@@ -84,14 +84,14 @@
 
     <div>
       <div class="mb-2 flex items-center justify-between gap-2">
-        <h4 class="text-xs font-bold uppercase tracking-wider text-ink-500">Grid Tapak</h4>
+        <h4 class="text-xs font-bold uppercase tracking-wider text-ink-500">{{ copy.siteGrid }}</h4>
         <button
           type="button"
           class="ml-btn-ghost text-[11px]"
           :disabled="sites.length < 2"
           @click="$emit('reorder-sites', row)"
         >
-          Susun Semula Tapak
+          {{ copy.reorderSites }}
         </button>
       </div>
       <div
@@ -110,7 +110,7 @@
         />
       </div>
       <p v-else class="rounded-xl border border-dashed border-ink-200 bg-ink-50 px-3 py-4 text-sm text-ink-500">
-        Tiada tapak dalam baris ini lagi.
+        {{ copy.noSitesInRow }}
       </p>
     </div>
   </section>
@@ -149,10 +149,10 @@ const sites = computed(() => sortSitesByDisplayOrder(props.row.sites || []));
 const occupancy = computed(() => occupancySummaryForRow(sites.value));
 const lockSummary = computed(() => {
   const parts = [];
-  if (props.row.locks?.rename_locked) parts.push('Nama dikunci');
-  if (props.row.locks?.category_change_locked) parts.push('Kategori dikunci');
-  if (props.row.locks?.delete_locked) parts.push('Padam dikunci');
-  if (props.row.locks?.archive_locked) parts.push('Arkib dikunci');
+  if (props.row.locks?.rename_locked) parts.push(copy.renameLocked);
+  if (props.row.locks?.category_change_locked) parts.push(copy.categoryLocked);
+  if (props.row.locks?.delete_locked) parts.push(copy.deleteLocked);
+  if (props.row.locks?.archive_locked) parts.push(copy.archiveLocked);
   return parts.join(' · ');
 });
 </script>

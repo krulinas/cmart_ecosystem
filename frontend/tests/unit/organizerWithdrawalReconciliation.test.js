@@ -118,7 +118,7 @@ describe('Organizer withdrawal reconciliation helpers', () => {
     const buttonText = [...source.matchAll(/<button[\s\S]*?<\/button>/gi)]
       .map((match) => match[0])
       .join(' ');
-    assert.doesNotMatch(buttonText, /Refund|Reverse payment|Restore booking|Reassign site/i);
+    assert.doesNotMatch(buttonText, /Refund|Reverse payment|Restore booking/i);
   });
 
   it('Vendor component does not render Organizer-only reconciliation fields', () => {

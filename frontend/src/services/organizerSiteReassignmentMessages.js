@@ -1,22 +1,22 @@
 export function reassignmentErrorMessage(errorCode, fallback) {
   const messages = {
-    BOOKING_NOT_REASSIGNABLE: 'Tempahan ini tidak boleh disusun semula pada peringkat semasa.',
-    BOOKING_PAYMENT_LOCKED: 'Tapak tidak boleh diubah selepas bayaran dihantar atau disahkan.',
-    BOOKING_ALLOCATION_CONFIRMED: 'Tapak tidak boleh diubah kerana peruntukan tempahan telah disahkan.',
-    EVENT_DAY_ALREADY_STARTED: 'Tapak tidak boleh diubah selepas hari acara bermula.',
-    SITE_COUNT_CHANGE_NOT_SUPPORTED: 'Bilangan tapak baharu mesti sama dengan tempahan asal.',
-    SITE_PRICE_CHANGE_NOT_SUPPORTED: 'Jenis atau harga tapak baharu mesti sama dengan tempahan asal.',
-    TARGET_SITE_UNAVAILABLE: 'Satu atau lebih tapak pilihan tidak lagi tersedia.',
-    TARGET_SITE_SELECTION_INVALID: 'Pilihan tapak tidak memenuhi peraturan susun atur.',
-    TARGET_SITE_MIXED_ROWS: 'Semua tapak mesti dipilih daripada baris yang sama.',
-    TARGET_SITE_MIXED_CATEGORIES: 'Semua tapak mesti menggunakan kategori baris yang sama.',
-    CATEGORY_OVERRIDE_REQUIRED: 'Pilihan ini memerlukan pengecualian kategori.',
-    CATEGORY_OVERRIDE_ACKNOWLEDGEMENT_REQUIRED: 'Sila sahkan bahawa anda memahami pengecualian kategori ini.',
-    CATEGORY_OVERRIDE_REASON_REQUIRED: 'Sila berikan sebab pengecualian.',
-    CATEGORY_OVERRIDE_REASON_TOO_SHORT: 'Sebab pengecualian terlalu pendek.',
-    ASSIGNMENT_CHANGED: 'Susunan tapak telah berubah. Sila muat semula dan semak semula pilihan.',
-    EVENT_LAYOUT_NOT_READY: 'Susun atur acara belum bersedia.',
+    BOOKING_NOT_REASSIGNABLE: 'This booking cannot be reassigned in its current state.',
+    BOOKING_PAYMENT_LOCKED: 'Sites cannot be changed after payment is submitted or verified.',
+    BOOKING_ALLOCATION_CONFIRMED: 'Sites cannot be changed because the booking allocation is confirmed.',
+    EVENT_DAY_ALREADY_STARTED: 'Sites cannot be changed after an event day has started.',
+    SITE_COUNT_CHANGE_NOT_SUPPORTED: 'The new site count must match the original booking.',
+    SITE_PRICE_CHANGE_NOT_SUPPORTED: 'The new site type or price must match the original booking.',
+    TARGET_SITE_UNAVAILABLE: 'One or more selected sites are no longer available.',
+    TARGET_SITE_SELECTION_INVALID: 'The site selection does not meet layout rules.',
+    TARGET_SITE_MIXED_ROWS: 'All sites must be selected from the same row.',
+    TARGET_SITE_MIXED_CATEGORIES: 'All sites must use the same row category.',
+    CATEGORY_OVERRIDE_REQUIRED: 'This selection requires a category exception.',
+    CATEGORY_OVERRIDE_ACKNOWLEDGEMENT_REQUIRED: 'Confirm that you understand this category exception.',
+    CATEGORY_OVERRIDE_REASON_REQUIRED: 'Provide a reason for the category exception.',
+    CATEGORY_OVERRIDE_REASON_TOO_SHORT: 'The exception reason is too short.',
+    ASSIGNMENT_CHANGED: 'Site assignment has changed. Refresh and review your selection.',
+    EVENT_LAYOUT_NOT_READY: 'The event layout is not ready yet.',
   };
 
-  return messages[errorCode] || fallback || 'Susunan tapak tidak dapat dikemas kini. Sila muat semula dan cuba semula.';
+  return messages[errorCode] || fallback || 'Site assignment could not be updated. Refresh and try again.';
 }

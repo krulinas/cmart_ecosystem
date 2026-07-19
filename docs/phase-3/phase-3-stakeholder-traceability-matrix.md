@@ -3,7 +3,7 @@
 | Feedback item | Status | Phase 3 evidence | Remaining work |
 |---|---|---|---|
 | Paid withdrawal with no refund | Implemented | withdrawal policy, audit/reconciliation UI, backend and E2E tests | none in Phase 3 |
-| Item reservation and extra charge | Deferred | explicitly excluded from Phase 3 | Phase 4 |
+| Item reservation and extra charge | Implemented (Phase 4) | excluded from Phase 3 by design; delivered in Phase 4.0–4.5 | none for Phase 3; Phase 4 closed via `docs/phase-4/phase-4-5-e2e-hardening-and-closure.md` |
 | Category-based layout | Implemented | canonical categories, rows, sites, readiness, Organizer UI, public layout | controlled database rollout |
 | Important Bahasa Melayu flows | Implemented | Organizer layout/reassignment/public navigation messages and tests | continue localization review in later phases |
 | Reuse/recycle messaging | Partially implemented | existing marketplace/reuse item language | sustainability/ESG content strategy deferred |

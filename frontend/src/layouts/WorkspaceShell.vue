@@ -9,6 +9,7 @@
           :to="item.to"
           class="shrink-0 rounded-full px-3.5 py-2 text-sm font-semibold transition"
           :class="isActiveHash(item.hash) ? theme.navActive : 'bg-ink-100 text-ink-600'"
+          :data-testid="`workspace-nav-${item.hash || item.id}`"
         >
           {{ item.label }}
         </router-link>
@@ -65,6 +66,7 @@
               :to="item.to"
               class="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[15px] text-ink-600 transition"
               :class="[theme.navHover, isActiveHash(item.hash) ? theme.navActive : '']"
+              :data-testid="`workspace-nav-${item.hash || item.id}`"
             >
               <span
                 class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-extrabold"

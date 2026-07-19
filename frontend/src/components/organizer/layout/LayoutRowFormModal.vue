@@ -19,7 +19,7 @@
 
         <form class="space-y-4 p-5" @submit.prevent="submit">
           <div>
-            <label class="ml-label" for="layout-row-label">Nama baris</label>
+            <label class="ml-label" for="layout-row-label">Row name</label>
             <input
               id="layout-row-label"
               v-model="form.label"
@@ -34,7 +34,7 @@
           </div>
 
           <div>
-            <label class="ml-label" for="layout-row-category">Kategori</label>
+            <label class="ml-label" for="layout-row-category">Category</label>
             <select
               id="layout-row-category"
               v-model.number="form.vendor_category_id"
@@ -43,32 +43,32 @@
               :disabled="submitting || categoryLocked"
               data-testid="layout-row-category-select"
             >
-              <option disabled value="">Pilih kategori</option>
+              <option disabled value="">{{ copy.selectCategory }}</option>
               <option
                 v-for="category in categories"
                 :key="category.id"
                 :value="category.id"
                 :disabled="!isCategorySelectable(category)"
               >
-                {{ category.label }}{{ isCategorySelectable(category) ? '' : ' (tidak aktif)' }}
+                {{ category.label }}{{ isCategorySelectable(category) ? '' : ' (inactive)' }}
               </option>
             </select>
             <p v-if="categoryLocked" class="mt-1 text-xs text-amber-800">{{ copy.categoryLockedHint }}</p>
           </div>
 
           <div>
-            <label class="ml-label" for="layout-row-description">Penerangan</label>
+            <label class="ml-label" for="layout-row-description">Description</label>
             <textarea id="layout-row-description" v-model="form.description" rows="3" class="ml-input" :disabled="submitting" />
           </div>
 
           <div class="grid grid-cols-2 gap-3">
             <label class="flex items-center gap-2 text-sm text-ink-800">
               <input v-model="form.is_active" type="checkbox" class="rounded border-ink-300" :disabled="submitting || Boolean(row?.archived_at)" />
-              Aktif
+              Active
             </label>
             <label class="flex items-center gap-2 text-sm text-ink-800">
               <input v-model="form.is_public" type="checkbox" class="rounded border-ink-300" :disabled="submitting" />
-              Paparan awam
+              Public display
             </label>
           </div>
 
@@ -149,7 +149,7 @@ function submit() {
   fieldErrors.label = '';
   const label = String(form.label || '').trim();
   if (!label) {
-    fieldErrors.label = 'Nama baris diperlukan.';
+    fieldErrors.label = 'Row name is required.';
     return;
   }
 

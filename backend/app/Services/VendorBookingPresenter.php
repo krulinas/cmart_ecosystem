@@ -26,6 +26,9 @@ class VendorBookingPresenter
     public const ATTENDANCE_NO_REFUND_WARNING_MS =
         'Pengecualian hari tidak mengubah jumlah bayaran. Tiada bayaran balik akan diberikan bagi hari yang dilepaskan.';
 
+    public const ATTENDANCE_NO_REFUND_WARNING_EN =
+        'Reducing attendance days does not change the invoice amount. No refund is issued for released days.';
+
     public static function eventLabel(Booking $booking): string
     {
         if ($booking->relationLoaded('carbootEvent') && $booking->carbootEvent) {
@@ -390,7 +393,9 @@ class VendorBookingPresenter
                 self::PAYMENT_STATE_PAID,
                 self::PAYMENT_STATE_PAYMENT_SUBMITTED,
             ], true),
-            'no_refund_warning' => self::ATTENDANCE_NO_REFUND_WARNING_MS,
+            'no_refund_warning' => $forOrganizer
+                ? self::ATTENDANCE_NO_REFUND_WARNING_EN
+                : self::ATTENDANCE_NO_REFUND_WARNING_MS,
         ];
 
         if ($forOrganizer) {
@@ -527,7 +532,7 @@ class VendorBookingPresenter
      */
     private static function safeInvoice(Booking $booking): ?array
     {
-        if (!$booking->invoice) {
+        if (! $booking->invoice) {
             return null;
         }
 

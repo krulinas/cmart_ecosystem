@@ -112,49 +112,19 @@
       Semua tapak untuk kategori ini telah ditempah atau tidak tersedia.
     </div>
 
-    <div v-else-if="!readinessMessage" class="space-y-4 pb-1" data-testid="event-site-map">
-      <div
-        v-for="row in groupedRows"
-        :key="row.rowId"
-        class="rounded-2xl border border-ink-200 bg-ink-50/40 p-4"
-        :data-row-id="row.rowId"
-        :data-testid="`event-site-row-${row.rowId}`"
-      >
-        <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 class="font-extrabold text-ink-900">{{ row.rowLabel }}</h3>
-            <p class="mt-0.5 text-sm font-semibold text-brand-700">{{ row.category?.label }}</p>
-            <p v-if="row.description" class="mt-1 text-xs text-ink-600">{{ row.description }}</p>
-          </div>
-          <div class="text-right text-xs text-ink-600">
-            <p><strong>{{ row.availableSiteCount }}</strong> / {{ row.siteCount }} tapak tersedia</p>
-            <p v-if="row.spaceNames.length">{{ row.spaceNames.join(', ') }}</p>
-            <p v-if="row.prices.length" class="font-bold text-brand-700">RM {{ row.prices.join(' / RM ') }}</p>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2 min-[420px]:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-          <button
-            v-for="site in row.sites"
-            :key="site.id"
-            type="button"
-            class="relative flex min-h-20 min-w-0 flex-col items-center justify-center rounded-xl border px-2 py-2 text-center transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
-            :class="tileClass(site)"
-            :disabled="!isInteractive(site)"
-            :aria-pressed="selectedSet.has(Number(site.id))"
-            :aria-disabled="!isInteractive(site)"
-            :aria-label="ariaLabel(site)"
-            :data-testid="`event-site-tile-${site.label}`"
-            @click="handleToggle(site)"
-          >
-            <span class="text-sm font-extrabold text-ink-900">{{ site.label }}</span>
-            <span class="mt-0.5 text-[10px] font-semibold uppercase tracking-wide" :class="statusTextClass(site)">
-              {{ statusLabel(site) }}
-            </span>
-            <span v-if="site.space_name" class="mt-1 text-[10px] text-ink-500 line-clamp-1">{{ shortSpaceName(site.space_name) }}</span>
-            <span class="mt-1 text-[11px] font-bold text-brand-700">RM {{ formatPrice(site.price) }}</span>
-          </button>
-        </div>
-      </div>
+    <div
+      v-else-if="!readinessMessage"
+      class="space-y-4 pb-1"
+      data-testid="event-site-map"
+    >
+      <VisualParkingLayout
+        mode="vendor"
+        :rows="visualRows"
+        :show-legend="false"
+        :show-counts="false"
+        :force-orientation="true"
+        @activate-site="onVisualActivate"
+      />
     </div>
 
     <div
@@ -192,15 +162,16 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import VisualParkingLayout from '../layout/VisualParkingLayout.vue';
 import {
   computePreviewAmount,
   formatOperationalDaysSummary,
   getSelectedSites,
   prepareAvailabilityRows,
   selectionValidationMessage,
-  siteAriaLabel,
   toggleSiteSelection,
 } from '../../utils/eventSiteSelection';
+import { adaptVendorRows } from '../../utils/visualParkingLayout';
 
 const props = defineProps({
   sites: { type: Array, default: () => [] },
@@ -229,7 +200,7 @@ const legendItems = [
 ];
 
 const groupedRows = computed(() => prepareAvailabilityRows(props.rows));
-const selectedSet = computed(() => new Set(props.selectedSiteIds.map(Number)));
+const visualRows = computed(() => adaptVendorRows(props.rows, props.selectedSiteIds));
 const selectedSites = computed(() => getSelectedSites(props.sites, props.selectedSiteIds));
 const previewAmountFormatted = computed(() => computePreviewAmount(selectedSites.value).toFixed(2));
 const selectedLabels = computed(() => selectedSites.value.map((site) => site.label).join(', '));
@@ -253,68 +224,9 @@ watch(
   },
 );
 
-function formatPrice(value) {
-  return Number(value || 0).toFixed(2);
-}
-
-function shortSpaceName(name) {
-  return String(name || '').replace(' (1 Parking Lot)', '').replace(' (2 Parking Lots)', '');
-}
-
-function isSelected(site) {
-  return selectedSet.value.has(Number(site.id));
-}
-
-function isInteractive(site) {
-  if (isSelected(site)) return true;
-  return Boolean(site.is_selectable);
-}
-
-function statusLabel(site) {
-  if (isSelected(site)) return 'Selected';
-  if (site.availability_status === 'occupied' && site.occupancy_status === 'confirmed') {
-    return 'Disahkan';
-  }
-  if (site.availability_status === 'occupied' && site.occupancy_status === 'reserved') {
-    return 'Ditempah';
-  }
-  return ({
-    available: 'Tersedia',
-    occupied: 'Ditempah',
-    unavailable: 'Tidak tersedia',
-    disabled: 'Dinyahaktifkan',
-  })[site.availability_status] || site.availability_status;
-}
-
-function statusTextClass(site) {
-  if (isSelected(site)) return 'text-brand-700';
-  return ({
-    available: 'text-emerald-700',
-    occupied: 'text-rose-700',
-    unavailable: 'text-ink-500',
-    disabled: 'text-slate-600',
-  })[site.availability_status] || 'text-ink-500';
-}
-
-function tileClass(site) {
-  if (isSelected(site)) {
-    return 'border-brand-500 bg-brand-100 shadow-sm';
-  }
-
-  if (!site.is_selectable) {
-    return 'border-ink-200 bg-ink-50 opacity-80 cursor-not-allowed';
-  }
-
-  return 'border-emerald-200 bg-emerald-50 hover:border-brand-400 hover:bg-brand-50 cursor-pointer';
-}
-
-function ariaLabel(site) {
-  const base = siteAriaLabel(site);
-  return isSelected(site) ? `${base}, dipilih` : base;
-}
-
-function handleToggle(site) {
-  const result = toggleSiteSelection(site, props.selectedSiteIds, props.sites);
+function onVisualActivate({ site }) {
+  const rawSite = site.raw || site;
+  const result = toggleSiteSelection(rawSite, props.selectedSiteIds, props.sites);
   blockedMessage.value = result.blockedMessage;
   emit('update:selectedSiteIds', result.selectedIds);
 }

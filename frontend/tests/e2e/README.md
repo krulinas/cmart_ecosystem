@@ -154,6 +154,46 @@ npm run test:e2e:headless -- auth.login.spec.js
 npm run test:e2e:headless -- auth.login.spec.js access.staff-action-guard.spec.js
 ```
 
+### Phase 4.5 item-reservation E2E
+
+Phase 4.5 uses an isolated backend database and fixture-owned credentials. Do
+**not** rely on stale Phase 3.9 users in `tests/e2e/.env.e2e`.
+
+```bash
+# Terminal 1 — E2E Laravel on 8011 against cmart_e2e_db
+cd backend
+php artisan serve --host=127.0.0.1 --port=8011 --env=e2e
+
+# Terminal 2 — Vite E2E mode (loads frontend/.env.e2e → API :8011)
+cd frontend
+npm run dev:e2e
+
+# Terminal 3 — focused Phase 4.5 suite
+cd frontend
+npm run test:e2e:phase45
+```
+
+Exact focused command:
+
+```bash
+npm run test:e2e:phase45
+```
+
+This runs:
+
+```text
+phase45.reserve-confirm.spec.js
+phase45.stale-conflict.spec.js
+phase45.pending-cancel.spec.js
+phase45.confirmed-cancel-expire.spec.js
+phase45.vendor-completion.spec.js
+phase45.access-privacy.spec.js
+```
+
+`tests/e2e/run.js` creates `e2e:item-reservation-fixtures`, injects credentials
+before Mocha preflight, and always cleans fixtures afterward. Closure evidence:
+`docs/phase-4/phase-4-5-e2e-hardening-and-closure.md`.
+
 ## Current tests
 
 | Spec | What it checks |

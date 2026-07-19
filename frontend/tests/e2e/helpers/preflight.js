@@ -76,12 +76,21 @@ const PUBLIC_ROUTE_SPECS = new Set([
   'public.event-layout.spec.js',
 ]);
 
+const PHASE45_SPECS_PREFIX = 'phase45.';
+
+export function isPhase45Spec(specPath = '') {
+  const basename = String(specPath).split(/[/\\]/).pop();
+  return basename.startsWith(PHASE45_SPECS_PREFIX);
+}
+
 export function requiresBookingData(specFiles = []) {
   if (process.env.E2E_REQUIRES_BOOKING_DATA === 'true') return true;
   if (process.env.E2E_REQUIRES_BOOKING_DATA === 'false') return false;
   if (!specFiles.length) return true;
   return specFiles.some((spec) => {
     const basename = spec.split(/[/\\]/).pop();
+    // Phase 4.5 provisions its own upcoming fee-configured event via fixtures.
+    if (isPhase45Spec(basename)) return true;
     return !LOGIN_ONLY_SPECS.has(basename) && !PUBLIC_ROUTE_SPECS.has(basename);
   });
 }

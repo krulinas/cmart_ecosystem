@@ -93,7 +93,11 @@
               </p>
             </div>
 
-            <p v-if="errorMessage" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+            <p
+              v-if="errorMessage"
+              class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+              data-testid="item-reservation-confirm-error"
+            >
               {{ errorMessage }}
             </p>
           </div>

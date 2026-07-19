@@ -46,16 +46,16 @@ describe('Vendor cinema-style site selection', function () {
 
     await openBookingForm(driver, fixtures.event_id);
 
+    await setInputValue(driver, 'booking-business-name', env.bookingBusinessName);
+    await selectBookingCategory(driver, 'Food & Beverages');
+    await setInputValue(driver, 'booking-details', `E2E-SITE-FIX success ${Date.now()}`);
+
     const daysText = await (await waitForTestId(driver, 'event-site-days-summary')).getText();
     assert.ok(daysText.length > 0, 'Active EventDay summary should be displayed.');
 
     const [labelA, labelB] = fixtures.site_labels;
     await waitForTestId(driver, `event-site-tile-${labelA}`);
     await waitForTestId(driver, `event-site-tile-${labelB}`);
-
-    await setInputValue(driver, 'booking-business-name', env.bookingBusinessName);
-    await selectBookingCategory(driver, 'Food & Beverages');
-    await setInputValue(driver, 'booking-details', `E2E-SITE-FIX success ${Date.now()}`);
 
     await clickTile(driver, labelA);
     await clickTile(driver, labelB);
@@ -98,7 +98,7 @@ describe('Vendor cinema-style site selection', function () {
     const detailsMarker = `E2E-SITE-FIX conflict ${Date.now()}`;
     await setInputValue(driver, 'booking-details', detailsMarker);
 
-    // Vendor selects an available site in the browser.
+    await waitForTestId(driver, `event-site-tile-${labelA}`);
     await clickTile(driver, labelA);
     await waitForTestId(driver, 'event-site-selection-summary');
 

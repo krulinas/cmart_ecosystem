@@ -99,7 +99,7 @@
               data-testid="manage-layout-button"
               @click="openLayout(ev)"
             >
-              Urus Susun Atur
+              Layout Management
             </button>
             <button class="ml-btn-ghost text-sm text-rose-600" :disabled="deletingId === ev.id" @click="remove(ev.id)">
               {{ deletingId === ev.id ? 'Deleting…' : 'Delete' }}

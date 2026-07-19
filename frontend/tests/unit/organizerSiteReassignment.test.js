@@ -13,11 +13,11 @@ const reassignmentModal = readFileSync(
 );
 
 describe('Organizer site reassignment', () => {
-  it('maps important backend error codes to BM messages', () => {
-    assert.match(reassignmentErrorMessage('BOOKING_PAYMENT_LOCKED'), /bayaran/i);
-    assert.match(reassignmentErrorMessage('CATEGORY_OVERRIDE_ACKNOWLEDGEMENT_REQUIRED'), /sahkan/i);
-    assert.match(reassignmentErrorMessage('ASSIGNMENT_CHANGED'), /muat semula/i);
-    assert.match(reassignmentErrorMessage('UNKNOWN_CODE'), /Susunan tapak tidak dapat dikemas kini/i);
+  it('maps important backend error codes to English messages', () => {
+    assert.match(reassignmentErrorMessage('BOOKING_PAYMENT_LOCKED'), /payment/i);
+    assert.match(reassignmentErrorMessage('CATEGORY_OVERRIDE_ACKNOWLEDGEMENT_REQUIRED'), /Confirm/i);
+    assert.match(reassignmentErrorMessage('ASSIGNMENT_CHANGED'), /Refresh/i);
+    assert.match(reassignmentErrorMessage('UNKNOWN_CODE'), /Site assignment could not be updated/i);
   });
 
   it('renders placement summary and reassignment action in organizer booking details', () => {
@@ -30,9 +30,9 @@ describe('Organizer site reassignment', () => {
     ]) {
       assert.match(organizerDetails, new RegExp(`data-testid="${testId}"`));
     }
-    assert.match(organizerDetails, /Susun Semula Tapak/);
-    assert.match(organizerDetails, /Kategori Tempahan/);
-    assert.match(organizerDetails, /Status Keserasian/);
+    assert.match(organizerDetails, /Reassign Sites/);
+    assert.match(organizerDetails, /Booking Category/);
+    assert.match(organizerDetails, /Compatibility Status/);
   });
 
   it('renders reassignment modal controls for options, mismatch reveal, and override', () => {
@@ -50,9 +50,9 @@ describe('Organizer site reassignment', () => {
     ]) {
       assert.match(reassignmentModal, new RegExp(`data-testid="${testId}"`));
     }
-    assert.match(reassignmentModal, /Tunjukkan baris kategori lain/);
-    assert.match(reassignmentModal, /Sepadan dengan kategori tempahan/);
-    assert.match(reassignmentModal, /Kategori berbeza — memerlukan pengecualian/);
+    assert.match(reassignmentModal, /Show other category rows/);
+    assert.match(reassignmentModal, /Matches booking category/);
+    assert.match(reassignmentModal, /Different category — exception required/);
     assert.match(reassignmentModal, /assignment_fingerprint/);
     assert.match(reassignmentModal, /acknowledge_category_override/);
   });

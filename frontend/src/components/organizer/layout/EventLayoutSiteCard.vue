@@ -48,7 +48,7 @@
         :aria-label="`${copy.moveSite} ${site.label}`"
         @click="$emit('move', site)"
       >
-        Pindah
+        Move
       </button>
       <button
         type="button"
@@ -68,7 +68,7 @@
         :aria-label="`${copy.deleteSite} ${site.label}`"
         @click="$emit('delete', site)"
       >
-        Padam
+        {{ copy.delete }}
       </button>
     </div>
   </article>
@@ -94,7 +94,7 @@ const copy = LAYOUT_COPY;
 const state = computed(() => siteStateKey(props.site));
 const spaceLabel = computed(() => props.site.space?.space_size || `Space #${props.site.space?.id || '—'}`);
 const statusLabel = computed(() => SITE_STATUS_LABELS[props.site.operational_status] || props.site.operational_status);
-const occupancyLabel = computed(() => OCCUPANCY_LABELS[props.site.occupancy] || props.site.occupancy || 'Tersedia');
+const occupancyLabel = computed(() => OCCUPANCY_LABELS[props.site.occupancy] || props.site.occupancy || copy.available);
 const disableBlocked = computed(() => {
   if (props.site.operational_status === 'active') {
     return Boolean(props.site.locks?.disable_locked);
@@ -105,7 +105,7 @@ const statusToggleLabel = computed(() => (
   props.site.operational_status === 'active' ? copy.disableSite : copy.enableSite
 ));
 const statusToggleShort = computed(() => (
-  props.site.operational_status === 'active' ? 'Nyahaktif' : 'Aktifkan'
+  props.site.operational_status === 'active' ? copy.disableSite : copy.enableSite
 ));
 
 const tileClasses = computed(() => {
@@ -129,9 +129,9 @@ const tileClasses = computed(() => {
 
 const lockTitle = computed(() => {
   const parts = [];
-  if (props.site.locks?.structure_locked) parts.push('Struktur dikunci');
-  if (props.site.locks?.disable_locked) parts.push('Nyahaktif dikunci');
-  if (props.site.locks?.delete_locked) parts.push('Padam dikunci');
+  if (props.site.locks?.structure_locked) parts.push(copy.structureLockedHint);
+  if (props.site.locks?.disable_locked) parts.push(copy.disableLockedHint);
+  if (props.site.locks?.delete_locked) parts.push(copy.deleteLocked);
   return parts.join(' · ') || copy.locked;
 });
 

@@ -167,8 +167,8 @@
           >
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 class="font-extrabold text-ink-900">Penempatan Kategori &amp; Tapak</h3>
-                <p class="mt-1 text-sm text-ink-600">Semak keserasian kategori tempahan dengan baris semasa.</p>
+                <h3 class="font-extrabold text-ink-900">Category &amp; Site Placement</h3>
+                <p class="mt-1 text-sm text-ink-600">Review booking category compatibility with the current row.</p>
               </div>
               <button
                 v-if="reassignmentAllowed"
@@ -177,31 +177,31 @@
                 data-testid="organizer-open-site-reassignment"
                 @click="showSiteReassignment = true"
               >
-                Susun Semula Tapak
+                Reassign Sites
               </button>
             </div>
 
             <dl class="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div class="rounded-xl bg-white p-3 ring-1 ring-violet-100">
-                <dt class="text-xs font-bold uppercase text-ink-500">Kategori Tempahan</dt>
+                <dt class="text-xs font-bold uppercase text-ink-500">Booking Category</dt>
                 <dd class="mt-1 font-semibold">{{ categoryPlacement.booking_category?.label }}</dd>
               </div>
               <div class="rounded-xl bg-white p-3 ring-1 ring-violet-100">
-                <dt class="text-xs font-bold uppercase text-ink-500">Kategori Baris Semasa</dt>
+                <dt class="text-xs font-bold uppercase text-ink-500">Current Row Category</dt>
                 <dd class="mt-1 font-semibold">{{ assignedRowCategoryLabel }}</dd>
               </div>
               <div class="rounded-xl bg-white p-3 ring-1 ring-violet-100">
-                <dt class="text-xs font-bold uppercase text-ink-500">Tapak Semasa</dt>
+                <dt class="text-xs font-bold uppercase text-ink-500">Current Sites</dt>
                 <dd class="mt-1 font-semibold">{{ currentSiteLabels }}</dd>
               </div>
               <div class="rounded-xl bg-white p-3 ring-1 ring-violet-100">
-                <dt class="text-xs font-bold uppercase text-ink-500">Status Keserasian</dt>
+                <dt class="text-xs font-bold uppercase text-ink-500">Compatibility Status</dt>
                 <dd
                   class="mt-1 font-semibold"
                   :class="categoryPlacement.current_assignment?.compatible ? 'text-emerald-700' : 'text-amber-800'"
                   data-testid="organizer-compatibility-status"
                 >
-                  {{ categoryPlacement.current_assignment?.compatible ? 'Sepadan' : 'Tidak Sepadan' }}
+                  {{ categoryPlacement.current_assignment?.compatible ? 'Compatible' : 'Incompatible' }}
                 </dd>
               </div>
             </dl>
@@ -211,8 +211,8 @@
               class="mt-4 rounded-xl bg-white p-4 ring-1 ring-amber-200"
               data-testid="organizer-active-override"
             >
-              <p class="font-semibold text-amber-900">Pengecualian: Diluluskan oleh Penganjur</p>
-              <p class="mt-1 text-sm text-ink-700">Sebab: {{ categoryPlacement.override.reason }}</p>
+              <p class="font-semibold text-amber-900">Exception: Approved by Organizer</p>
+              <p class="mt-1 text-sm text-ink-700">Reason: {{ categoryPlacement.override.reason }}</p>
               <p v-if="categoryPlacement.override.applied_by" class="mt-1 text-xs text-ink-500">
                 {{ categoryPlacement.override.applied_by.name }}
                 · {{ formatDateTime(categoryPlacement.override.applied_at) }}
@@ -224,7 +224,7 @@
               class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"
               data-testid="organizer-reassignment-blockers"
             >
-              <p class="font-semibold">Susunan semula tapak tidak tersedia:</p>
+              <p class="font-semibold">Site reassignment is not available:</p>
               <ul class="mt-2 list-disc pl-5">
                 <li v-for="blocker in reassignmentBlockers" :key="blocker.code">{{ blocker.message }}</li>
               </ul>
@@ -303,12 +303,12 @@ const reassignmentAllowed = computed(() => categoryPlacement.value?.reassignment
 const reassignmentBlockers = computed(() => categoryPlacement.value?.reassignment?.blocking_reasons || []);
 const assignedRowCategoryLabel = computed(() => {
   const rows = categoryPlacement.value?.current_assignment?.rows || [];
-  if (!rows.length) return 'Tiada';
+  if (!rows.length) return 'None';
   return rows.map((row) => row.category?.label || row.label).join(', ');
 });
 const currentSiteLabels = computed(() => {
   const sites = categoryPlacement.value?.current_assignment?.sites || [];
-  return sites.map((site) => site.label).join(', ') || 'Tiada';
+  return sites.map((site) => site.label).join(', ') || 'None';
 });
 const showAttendanceException = ref(false);
 const showSiteReassignment = ref(false);

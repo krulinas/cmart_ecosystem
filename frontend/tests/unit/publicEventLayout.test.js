@@ -75,7 +75,7 @@ describe('Phase 3.10 public event layout helpers', () => {
 
     assert.deepEqual(foodRows.map((row) => row.label), ['Row B', 'Row C']);
     assert.equal(filterPublicLayoutRows(layout.rows, 'all').length, 3);
-    assert.match(publicLayoutFilterAnnouncement('Food & Beverages', 2), /2 baris/);
+    assert.match(publicLayoutFilterAnnouncement('Food & Beverages', 2), /2 layout rows/);
   });
 });
 
@@ -108,12 +108,12 @@ describe('Phase 3.10 public event layout UI wiring', () => {
     }
 
     for (const message of [
-      'Memuatkan susun atur acara…',
-      'Susun atur acara belum diterbitkan.',
-      'Tiada susun atur awam tersedia buat masa ini.',
-      'Tiada baris tersedia untuk kategori ini.',
-      'Susun atur acara tidak dapat dimuatkan.',
-      'Cuba Lagi',
+      'Loading event layout…',
+      'The event layout has not been published yet.',
+      'No public layout is available at this time.',
+      'No rows are available for this category.',
+      'The event layout could not be loaded.',
+      'Try Again',
     ]) {
       assert.match(component, new RegExp(message.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     }
@@ -121,12 +121,14 @@ describe('Phase 3.10 public event layout UI wiring', () => {
 
   it('uses API categories, selected semantics, live announcements and non-interactive site markers', () => {
     assert.match(component, /layout\.value\?\.categories/);
-    assert.match(component, /Semua Kategori/);
+    assert.match(component, /All Categories/);
     assert.match(component, /:aria-pressed=/);
     assert.match(component, /aria-live="polite"/);
     assert.match(component, /focus-visible:ring-2/);
-    assert.match(component, /<li[\s\S]*data-testid="public-layout-site"/);
-    assert.doesNotMatch(component, /data-testid="public-layout-site"[\s\S]{0,120}@click/);
+    assert.match(component, /VisualParkingLayout/);
+    assert.match(component, /mode="public"/);
+    assert.match(component, /adaptPublicRows/);
+    assert.doesNotMatch(component, /@activate-site/);
   });
 
   it('does not render booking authority, occupancy state or Organizer controls', () => {
@@ -136,10 +138,12 @@ describe('Phase 3.10 public event layout UI wiring', () => {
 
   it('provides responsive category wrapping and practical mobile site grids', () => {
     assert.match(component, /flex flex-wrap gap-2/);
-    assert.match(component, /grid-cols-2/);
-    assert.match(component, /min-\[420px\]:grid-cols-3/);
-    assert.match(component, /sm:grid-cols-4/);
     assert.match(component, /min-h-11/);
-    assert.match(component, /min-w-0/);
+    const visual = readFileSync(
+      join(root, 'src/components/layout/VisualParkingLayout.vue'),
+      'utf8',
+    );
+    assert.match(visual, /minmax\(3\.25rem, 1fr\)/);
+    assert.match(visual, /overflow-x: auto/);
   });
 });

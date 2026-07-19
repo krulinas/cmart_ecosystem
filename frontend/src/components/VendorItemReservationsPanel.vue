@@ -51,7 +51,9 @@
             v-for="reservation in rows"
             :key="reservation.public_reference"
             data-testid="vendor-reservation-row"
+            :data-public-reference="reservation.public_reference"
             :data-reservation-status="reservation.reservation_status"
+            :data-charge-status="reservation.charge_status"
           >
             <td class="px-4 py-3 font-semibold text-ink-900">{{ reservation.public_reference }}</td>
             <td class="px-4 py-3 text-ink-700">{{ reservation.item?.name }}</td>

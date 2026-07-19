@@ -54,7 +54,9 @@
             v-for="reservation in rows"
             :key="reservation.public_reference"
             data-testid="my-reservation-row"
+            :data-public-reference="reservation.public_reference"
             :data-reservation-status="reservation.reservation_status"
+            :data-charge-status="reservation.charge_status"
           >
             <td class="px-4 py-3 font-semibold text-ink-900">{{ reservation.public_reference }}</td>
             <td class="px-4 py-3 text-ink-700">
@@ -146,9 +148,21 @@
           </p>
           <label class="mt-4 block">
             <span class="ml-label">Reason (optional)</span>
-            <textarea v-model="cancelReason" rows="3" class="ml-input" :disabled="cancelling" />
+            <textarea
+              v-model="cancelReason"
+              rows="3"
+              class="ml-input"
+              data-testid="my-reservation-cancel-reason"
+              :disabled="cancelling"
+            />
           </label>
-          <p v-if="cancelError" class="mt-3 text-sm text-rose-700">{{ cancelError }}</p>
+          <p
+            v-if="cancelError"
+            class="mt-3 text-sm text-rose-700"
+            data-testid="my-reservation-cancel-error"
+          >
+            {{ cancelError }}
+          </p>
           <div class="mt-5 flex justify-end gap-2">
             <button type="button" class="ml-btn-ghost" :disabled="cancelling" @click="closeCancel">Keep</button>
             <button

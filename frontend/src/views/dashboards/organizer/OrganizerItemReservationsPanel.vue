@@ -101,6 +101,9 @@
             v-for="row in rows"
             :key="row.public_reference"
             data-testid="organizer-reservation-row"
+            :data-public-reference="row.public_reference"
+            :data-reservation-status="row.reservation_status"
+            :data-charge-status="row.charge_status"
           >
             <td class="px-4 py-3 font-semibold text-ink-900">{{ row.public_reference }}</td>
             <td class="px-4 py-3 text-ink-700">{{ row.item_name }}</td>
@@ -288,6 +291,7 @@
               v-if="actionMode"
               class="rounded-xl border border-cyan-200 bg-cyan-50/40 p-4 space-y-3"
               data-testid="organizer-reservation-action-form"
+              :data-action-mode="actionMode"
             >
               <h4 class="font-bold text-ink-900">{{ actionTitle }}</h4>
               <p class="text-sm text-ink-600">{{ actionHelp }}</p>
@@ -317,7 +321,13 @@
                   I acknowledge that the manually confirmed service fee will not be refunded by the platform.
                 </span>
               </label>
-              <p v-if="actionError" class="text-sm text-rose-700">{{ actionError }}</p>
+              <p
+                v-if="actionError"
+                class="text-sm text-rose-700"
+                data-testid="organizer-action-error"
+              >
+                {{ actionError }}
+              </p>
               <div class="flex justify-end gap-2">
                 <button type="button" class="ml-btn-ghost text-sm" :disabled="mutating" @click="resetAction">Back</button>
                 <button
@@ -341,6 +351,7 @@
                   :key="`${audit.action}-${audit.created_at}-${index}`"
                   class="rounded-xl border border-ink-100 bg-ink-50/50 p-3 text-sm"
                   data-testid="organizer-reservation-audit-item"
+                  :data-audit-action="audit.action"
                 >
                   <p class="font-semibold text-ink-900">{{ auditActionLabel(audit.action) }}</p>
                   <p class="text-ink-600 mt-1">

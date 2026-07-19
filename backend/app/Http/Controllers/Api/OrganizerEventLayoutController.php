@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\DomainConflictException;
 use App\Http\Controllers\Controller;
 use App\Models\CarbootEvent;
 use App\Models\EventLayoutAuditLog;
@@ -10,9 +11,11 @@ use App\Models\EventSite;
 use App\Services\EventLayoutAuditLogger;
 use App\Services\EventLayoutLockService;
 use App\Services\EventLayoutReadinessService;
+use App\Services\StandardEventLayoutGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 /**
  * Phase 3.5 — Organizer event layout projection and readiness.
@@ -23,8 +26,8 @@ class OrganizerEventLayoutController extends Controller
         private readonly EventLayoutReadinessService $readiness,
         private readonly EventLayoutLockService $locks,
         private readonly EventLayoutAuditLogger $audit,
-    ) {
-    }
+        private readonly StandardEventLayoutGenerator $standardLayoutGenerator,
+    ) {}
 
     public function show(CarbootEvent $carboot_event): JsonResponse
     {
@@ -105,6 +108,58 @@ class OrganizerEventLayoutController extends Controller
         return response()->json($this->readiness->assess($carboot_event));
     }
 
+    /**
+     * Generate the empty-layout-only standard 4×16 parking template.
+     */
+    public function generateStandardTemplate(Request $request, CarbootEvent $carboot_event): JsonResponse
+    {
+        $validated = $request->validate([
+            'space_id' => 'required|integer|exists:spaces,id',
+            'row_categories' => 'required|array',
+            'row_categories.A' => 'required|integer|exists:vendor_categories,id',
+            'row_categories.B' => 'required|integer|exists:vendor_categories,id',
+            'row_categories.C' => 'required|integer|exists:vendor_categories,id',
+            'row_categories.D' => 'required|integer|exists:vendor_categories,id',
+        ]);
+
+        try {
+            $result = $this->standardLayoutGenerator->generate(
+                $carboot_event,
+                $request->user(),
+                $validated,
+            );
+        } catch (DomainConflictException $exception) {
+            return response()->json([
+                'message' => '409 Conflict: '.$exception->getMessage(),
+                'error' => $exception->error,
+            ], 409);
+        } catch (InvalidArgumentException $exception) {
+            $message = $exception->getMessage();
+            $error = 'INVALID_STANDARD_TEMPLATE';
+            $lower = strtolower($message);
+            if (str_contains($lower, 'category')) {
+                $error = 'CATEGORY_INACTIVE';
+            } elseif (str_contains($lower, 'space')) {
+                $error = 'INVALID_SPACE';
+            }
+
+            return response()->json([
+                'message' => '422 Unprocessable Entity: '.$message,
+                'error' => $error,
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => '201 Created: Standard parking layout generated successfully.',
+            'template' => 'standard_parking_4x16',
+            'rows_created' => $result['rows_created'],
+            'sites_created' => $result['sites_created'],
+            'row_labels' => $result['row_labels'],
+            'site_labels' => $result['site_labels'],
+            'readiness' => $result['readiness'],
+        ], 201);
+    }
+
     public function publish(Request $request, CarbootEvent $carboot_event): JsonResponse
     {
         $validated = $request->validate([
@@ -114,7 +169,7 @@ class OrganizerEventLayoutController extends Controller
 
         if (! $readiness['public_ready']) {
             return response()->json([
-                'message' => 'Susun atur belum bersedia untuk diterbitkan.',
+                'message' => 'The layout is not ready to publish.',
                 'error' => 'PUBLIC_LAYOUT_NOT_PUBLISHABLE',
                 'blocking_reasons' => $readiness['blocking_reasons'],
             ], 422);
@@ -143,7 +198,7 @@ class OrganizerEventLayoutController extends Controller
             );
 
             return response()->json([
-                'message' => 'Susun atur awam telah diterbitkan.',
+                'message' => 'The public layout has been published.',
                 'publication' => [
                     'published' => true,
                     'published_at' => $event->public_layout_published_at?->toIso8601String(),
@@ -175,7 +230,7 @@ class OrganizerEventLayoutController extends Controller
             );
 
             return response()->json([
-                'message' => 'Susun atur awam telah dinyahterbitkan.',
+                'message' => 'The public layout has been unpublished.',
                 'publication' => [
                     'published' => false,
                     'published_at' => null,

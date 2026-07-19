@@ -90,7 +90,7 @@ describe('organizerEventLayoutHelpers', () => {
 });
 
 describe('organizerEventLayoutMessages', () => {
-  it('maps readiness blockers and conflict codes to BM copy', () => {
+  it('maps readiness blockers and conflict codes to English operational copy', () => {
     assert.equal(readinessMessage('NO_ACTIVE_LAYOUT_ROWS'), READINESS_BLOCKER_MESSAGES.NO_ACTIVE_LAYOUT_ROWS);
     assert.equal(
       layoutErrorMessage({ response: { data: { error: 'ROW_NOT_EMPTY' } } }),
@@ -100,8 +100,12 @@ describe('organizerEventLayoutMessages', () => {
       layoutErrorMessage({ response: { data: { error: 'SITE_HAS_ALLOCATION_HISTORY' } } }),
       LAYOUT_ERROR_MESSAGES.SITE_HAS_ALLOCATION_HISTORY,
     );
-    assert.match(LAYOUT_COPY.pageTitle, /Susun Atur/);
-    assert.equal(LAYOUT_COPY.navLabel, 'Urus Susun Atur');
+    assert.equal(LAYOUT_COPY.pageTitle, 'Site Layout');
+    assert.equal(LAYOUT_COPY.navLabel, 'Layout Management');
+    assert.equal(LAYOUT_COPY.operationalNotReady, 'Not Ready for Booking');
+    assert.equal(LAYOUT_COPY.publicationTitle, 'Public Map Publication');
+    assert.match(LAYOUT_COPY.pageTitle, /Site Layout/);
+    assert.doesNotMatch(LAYOUT_COPY.navLabel, /Urus|Susun|Tapak|Tempahan/);
   });
 
   it('falls back when error code is unknown', () => {
@@ -113,10 +117,11 @@ describe('organizerEventLayoutMessages', () => {
 });
 
 describe('organizer layout UI wiring', () => {
-  it('exposes Urus Susun Atur nav for carboot operations only', () => {
+  it('exposes Layout Management nav for carboot operations only', () => {
     const nav = readFileSync(join(root, 'src/config/workspaceNav.js'), 'utf8');
     assert.match(nav, /hash: 'layout'/);
-    assert.match(nav, /Urus Susun Atur/);
+    assert.match(nav, /Layout Management/);
+    assert.doesNotMatch(nav, /Urus Susun Atur/);
     assert.match(nav, /CARBOOT_OPERATIONS/);
 
     const theme = readFileSync(join(root, 'src/config/managementWorkspaceTheme.js'), 'utf8');
@@ -125,13 +130,14 @@ describe('organizer layout UI wiring', () => {
     const dashboard = readFileSync(join(root, 'src/views/dashboards/AdminDashboard.vue'), 'utf8');
     assert.match(dashboard, /OrganizerEventLayoutPanel/);
     assert.match(dashboard, /activeSection === 'layout'/);
+    assert.match(dashboard, /Layout Management/);
 
     const eventsPanel = readFileSync(join(root, 'src/views/dashboards/staff/StaffEventsPanel.vue'), 'utf8');
-    assert.match(eventsPanel, /Urus Susun Atur/);
+    assert.match(eventsPanel, /Layout Management/);
     assert.match(eventsPanel, /manage-layout-button/);
   });
 
-  it('panel and components include required BM testids and lock copy', () => {
+  it('panel and components include required English operational labels and lock copy', () => {
     const panel = readFileSync(
       join(root, 'src/views/dashboards/organizer/OrganizerEventLayoutPanel.vue'),
       'utf8',
@@ -140,6 +146,8 @@ describe('organizer layout UI wiring', () => {
     assert.match(panel, /layout-add-row-button/);
     assert.match(panel, /layout-empty-state/);
     assert.match(panel, /layout-error-state/);
+    assert.match(panel, /copy\.publicationTitle/);
+    assert.doesNotMatch(panel, /Penerbitan Peta Awam|Terbitkan Peta Awam|Tersedia|Ditempah/);
 
     const readiness = readFileSync(
       join(root, 'src/components/organizer/layout/EventLayoutReadinessPanel.vue'),
@@ -147,6 +155,9 @@ describe('organizer layout UI wiring', () => {
     );
     assert.match(readiness, /operational-readiness-badge/);
     assert.match(readiness, /readiness-blocker-list/);
+    assert.match(readiness, /copy\.setupNoticeTitle|copy\.availabilityStatus/);
+    assert.match(panel, /VisualParkingLayout|copy\.generateStandardLayout/);
+    assert.doesNotMatch(readiness, /Status Kesediaan|Operasi tempahan/);
 
     const rowCard = readFileSync(
       join(root, 'src/components/organizer/layout/EventLayoutRowCard.vue'),
@@ -154,6 +165,7 @@ describe('organizer layout UI wiring', () => {
     );
     assert.match(rowCard, /layout-site-grid/);
     assert.match(rowCard, /renameLockedHint/);
+    assert.doesNotMatch(rowCard, /Grid Tapak|Susun Semula Tapak|Tiada tapak/);
 
     const generateModal = readFileSync(
       join(root, 'src/components/organizer/layout/LayoutSiteGenerationModal.vue'),
@@ -168,6 +180,8 @@ describe('organizer layout UI wiring', () => {
     assert.match(api, /\/organizer\/vendor-categories/);
     assert.match(api, /\/organizer\/events\/\$\{eventId\}\/layout/);
     assert.match(api, /layout\/rows\/\$\{rowId\}\/sites\/generate/);
+    assert.match(api, /layout\/standard-template/);
+    assert.match(api, /generateStandardParkingLayout/);
     assert.match(api, /layout\/sites\/\$\{siteId\}/);
     assert.match(api, /\/spaces/);
   });
