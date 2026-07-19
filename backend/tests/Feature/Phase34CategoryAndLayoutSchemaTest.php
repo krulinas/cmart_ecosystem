@@ -263,9 +263,6 @@ class Phase34CategoryAndLayoutSchemaTest extends TestCase
         );
         $this->assertSame('Electronics & Gadgets', $item->fresh()->category);
 
-        $profile->delete();
-        $preference->delete();
-        $item->delete();
     }
 
     public function test_event_layout_row_backfill_from_sites(): void

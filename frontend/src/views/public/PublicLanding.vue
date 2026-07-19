@@ -321,7 +321,7 @@ const showNewsModal = ref(false);
 const loadingEvents = ref(true);
 const loadingNews = ref(true);
 
-const { targetRef: eventsSectionRef, isVisible: eventsVisible, revealClass: eventsHeaderClass } = useScrollReveal({ threshold: 0.08 });
+const { targetRef: eventsSectionRef, revealClass: eventsHeaderClass } = useScrollReveal({ threshold: 0.08 });
 
 const openEventDetails = (event) => {
   selectedEvent.value = event;

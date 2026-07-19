@@ -55,10 +55,13 @@ class CommunityVendorIntentTest extends TestCase
 
     public function test_seeded_vendor_user_returns_vendor_mode_with_signals(): void
     {
-        $vendor = User::where('email', 'vendor@cmart.com')->first();
-        if (!$vendor) {
-            $this->markTestSkipped('Seeded vendor user not found.');
-        }
+        $vendor = $this->trackUser(User::create([
+            'name' => 'Deterministic Vendor',
+            'email' => 'intent-vendor-' . uniqid() . '@example.test',
+            'password' => bcrypt('password123'),
+            'role' => 'community',
+            'vendor_status' => 'approved',
+        ]));
 
         Sanctum::actingAs($vendor);
 
@@ -162,11 +165,13 @@ class CommunityVendorIntentTest extends TestCase
 
     public function test_management_user_payload_has_no_community_mode(): void
     {
-        // staff@cmart.com is the CMart Management demo account after PR2.
-        $management = User::where('email', 'staff@cmart.com')->first();
-        if (!$management) {
-            $this->markTestSkipped('Seeded management demo user not found.');
-        }
+        $management = $this->trackUser(User::create([
+            'name' => 'Deterministic CMart Management',
+            'email' => 'intent-management-' . uniqid() . '@example.test',
+            'password' => bcrypt('password123'),
+            'role' => 'cmart_management',
+            'vendor_status' => 'none',
+        ]));
 
         Sanctum::actingAs($management);
 

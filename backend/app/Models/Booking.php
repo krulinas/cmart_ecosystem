@@ -41,15 +41,18 @@ class Booking extends Model
         return $query->where('booking_date', '>', '1970-01-01');
     }
 
-    public function user() {
+    public function user()
+    {
         return $this->belongsTo(User::class);
     }
 
-    public function space() {
+    public function space()
+    {
         return $this->belongsTo(Space::class);
     }
 
-    public function carbootEvent() {
+    public function carbootEvent()
+    {
         return $this->belongsTo(CarbootEvent::class, 'carboot_event_id');
     }
 
@@ -58,21 +61,29 @@ class Booking extends Model
         return $this->belongsTo(VendorCategory::class);
     }
 
-    public function invoice() {
+    public function invoice()
+    {
         return $this->hasOne(Invoice::class);
     }
 
-    public function auditLogs() {
+    public function auditLogs()
+    {
         return $this->hasMany(BookingAuditLog::class);
     }
 
-    public function withdrawnBy() {
+    public function withdrawnBy()
+    {
         return $this->belongsTo(User::class, 'withdrawn_by');
     }
 
     public function bookingDayAllocations()
     {
         return $this->hasMany(BookingDayAllocation::class);
+    }
+
+    public function itemReservations()
+    {
+        return $this->hasMany(ItemReservation::class, 'vendor_booking_id');
     }
 
     public function attendanceExceptions()

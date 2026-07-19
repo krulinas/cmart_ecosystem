@@ -136,7 +136,15 @@ class VendorBookingPresenter
             return null;
         }
 
-        $sites = $allocations
+        $activeAllocations = $allocations->filter(fn ($row) => $row->occupiesSite());
+        $selectionAllocations = $activeAllocations->isNotEmpty()
+            ? $activeAllocations
+            : $allocations->reject(
+                fn ($row) => $row->release_reason
+                    === BookingAllocationLifecycleService::REASON_ORGANIZER_SITE_REASSIGNMENT,
+            );
+
+        $sites = $selectionAllocations
             ->pluck('eventSite')
             ->filter()
             ->unique('id')
@@ -154,7 +162,7 @@ class VendorBookingPresenter
             ->values()
             ->all();
 
-        $days = $allocations
+        $days = $selectionAllocations
             ->pluck('eventDay')
             ->filter()
             ->unique('id')
@@ -170,7 +178,6 @@ class VendorBookingPresenter
             ->values()
             ->all();
 
-        $activeAllocations = $allocations->filter(fn ($row) => $row->occupiesSite());
         $allocationStatus = null;
 
         if ($activeAllocations->isNotEmpty()) {
@@ -186,7 +193,7 @@ class VendorBookingPresenter
         return [
             'site_count' => count($sites),
             'active_day_count' => count($days),
-            'allocation_count' => $allocations->count(),
+            'allocation_count' => $selectionAllocations->count(),
             'allocation_status' => $allocationStatus,
             'sites' => $sites,
             'days' => $days,

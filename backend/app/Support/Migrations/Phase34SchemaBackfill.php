@@ -2,6 +2,7 @@
 
 namespace App\Support\Migrations;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -180,14 +181,17 @@ class Phase34SchemaBackfill
         $normalized = $resolved['normalized_value'];
         $hash = CategoryLegacyMapper::normalizedValueHash($normalized);
         $now = now();
+        $appendOnlySchema = Schema::hasColumn(
+            'category_migration_audits',
+            'normalized_value_hash',
+        );
 
-        DB::table('category_migration_audits')->insertOrIgnore([
+        $observation = [
             'source_table' => $sourceTable,
             'source_primary_key' => $sourcePrimaryKey,
             'source_column' => $sourceColumn,
             'original_value' => $originalValue,
             'normalized_value' => $normalized,
-            'normalized_value_hash' => $hash,
             'mapping_status' => $resolved['mapping_status'],
             'matched_vendor_category_id' => $resolved['matched_vendor_category_id'],
             'reason_code' => $resolved['reason_code'],
@@ -198,7 +202,38 @@ class Phase34SchemaBackfill
             ], JSON_THROW_ON_ERROR),
             'created_at' => $now,
             'updated_at' => $now,
-        ]);
+        ];
+        if ($appendOnlySchema) {
+            $observation['normalized_value_hash'] = $hash;
+        }
+
+        try {
+            DB::table('category_migration_audits')->insert($observation);
+        } catch (QueryException $exception) {
+            if (! self::isDuplicateKeyViolation($exception)) {
+                throw $exception;
+            }
+
+            $existingQuery = DB::table('category_migration_audits')
+                ->where('source_table', $sourceTable)
+                ->where('source_primary_key', $sourcePrimaryKey)
+                ->where('source_column', $sourceColumn)
+                ->where('backfill_version', CategoryLegacyMapper::BACKFILL_VERSION);
+
+            if ($appendOnlySchema) {
+                $existingQuery->where('normalized_value_hash', $hash);
+            }
+
+            if (! $existingQuery->exists()) {
+                throw $exception;
+            }
+        }
+    }
+
+    private static function isDuplicateKeyViolation(QueryException $exception): bool
+    {
+        return ($exception->errorInfo[0] ?? null) === '23000'
+            && (int) ($exception->errorInfo[1] ?? 0) === 1062;
     }
 
     /**

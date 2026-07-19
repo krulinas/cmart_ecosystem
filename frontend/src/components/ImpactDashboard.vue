@@ -129,7 +129,7 @@ const cards = computed(() => [
   },
 ]);
 
-const staggerCardClass = (visible, index) => {
+const staggerCardClass = (visible) => {
   const motionSafe = 'motion-reduce:opacity-100 motion-reduce:translate-y-0';
   return visible ? `opacity-100 translate-y-0 ${motionSafe}` : `opacity-0 translate-y-8 ${motionSafe}`;
 };

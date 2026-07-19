@@ -5,10 +5,13 @@ namespace Tests\Feature;
 use App\Models\Feedback;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\TracksProvisionedUsers;
 use Tests\TestCase;
 
 class FeedbackModerationTest extends TestCase
 {
+    use TracksProvisionedUsers;
+
     private ?Feedback $testFeedback = null;
 
     protected function tearDown(): void
@@ -18,15 +21,14 @@ class FeedbackModerationTest extends TestCase
             $this->testFeedback = null;
         }
 
+        $this->cleanupProvisionedUsers();
+
         parent::tearDown();
     }
 
     private function createTestFeedback(array $overrides = []): Feedback
     {
-        $vendor = User::where('email', 'vendor@cmart.com')->first();
-        if (!$vendor) {
-            $this->markTestSkipped('Seeded vendor user not found. Run database seeders.');
-        }
+        $vendor = $this->vendor();
 
         $this->testFeedback = Feedback::create(array_merge([
             'user_id' => $vendor->id,
@@ -44,10 +46,7 @@ class FeedbackModerationTest extends TestCase
 
     public function test_organizer_can_hide_and_unhide_feedback(): void
     {
-        $organizer = User::where('email', 'admin@cmart.com')->first();
-        if (!$organizer) {
-            $this->markTestSkipped('Seeded organizer user not found.');
-        }
+        $organizer = $this->organizer();
 
         $feedback = $this->createTestFeedback();
 
@@ -64,10 +63,7 @@ class FeedbackModerationTest extends TestCase
 
     public function test_organizer_can_mark_feedback_reviewed(): void
     {
-        $organizer = User::where('email', 'admin@cmart.com')->first();
-        if (!$organizer) {
-            $this->markTestSkipped('Seeded organizer user not found.');
-        }
+        $organizer = $this->organizer();
 
         $feedback = $this->createTestFeedback();
 
@@ -83,10 +79,7 @@ class FeedbackModerationTest extends TestCase
 
     public function test_cmart_management_cannot_hide_feedback(): void
     {
-        $venue = User::where('email', 'venue@cmart.com')->first();
-        if (!$venue) {
-            $this->markTestSkipped('Seeded cmart_management user not found.');
-        }
+        $venue = $this->management();
 
         $feedback = $this->createTestFeedback();
 
@@ -100,10 +93,7 @@ class FeedbackModerationTest extends TestCase
 
     public function test_cmart_management_cannot_delete_feedback(): void
     {
-        $venue = User::where('email', 'venue@cmart.com')->first();
-        if (!$venue) {
-            $this->markTestSkipped('Seeded cmart_management user not found.');
-        }
+        $venue = $this->management();
 
         $feedback = $this->createTestFeedback();
 
@@ -117,11 +107,7 @@ class FeedbackModerationTest extends TestCase
 
     public function test_organizer_can_delete_feedback(): void
     {
-        // admin@cmart.com holds the canonical organizer role after the PR1 remap.
-        $organizer = User::where('email', 'admin@cmart.com')->first();
-        if (!$organizer) {
-            $this->markTestSkipped('Seeded organizer user (admin@cmart.com) not found.');
-        }
+        $organizer = $this->organizer();
 
         $feedback = $this->createTestFeedback();
 
@@ -148,10 +134,7 @@ class FeedbackModerationTest extends TestCase
 
     public function test_public_endpoint_only_shows_published_official_reply(): void
     {
-        $organizer = User::where('email', 'admin@cmart.com')->first();
-        if (!$organizer) {
-            $this->markTestSkipped('Seeded organizer user not found.');
-        }
+        $organizer = $this->organizer();
 
         $feedback = $this->createTestFeedback([
             'official_reply_text' => 'Draft reply should not appear publicly.',
@@ -180,10 +163,7 @@ class FeedbackModerationTest extends TestCase
 
     public function test_public_endpoint_supports_rating_filter_and_summary(): void
     {
-        $vendor = User::where('email', 'vendor@cmart.com')->first();
-        if (!$vendor) {
-            $this->markTestSkipped('Seeded vendor user not found.');
-        }
+        $vendor = $this->vendor();
 
         $high = Feedback::create([
             'user_id' => $vendor->id,
@@ -221,10 +201,7 @@ class FeedbackModerationTest extends TestCase
 
     public function test_public_endpoint_search_matches_comment_text(): void
     {
-        $vendor = User::where('email', 'vendor@cmart.com')->first();
-        if (!$vendor) {
-            $this->markTestSkipped('Seeded vendor user not found.');
-        }
+        $vendor = $this->vendor();
 
         $match = Feedback::create([
             'user_id' => $vendor->id,
@@ -247,10 +224,7 @@ class FeedbackModerationTest extends TestCase
 
     public function test_public_sort_is_stable_for_same_timestamp_rows(): void
     {
-        $vendor = User::where('email', 'vendor@cmart.com')->first();
-        if (!$vendor) {
-            $this->markTestSkipped('Seeded vendor user not found.');
-        }
+        $vendor = $this->vendor();
 
         // Two rows sharing an identical created_at — id must break the tie.
         $sharedTime = now();
@@ -296,10 +270,7 @@ class FeedbackModerationTest extends TestCase
 
     public function test_public_highest_and_lowest_rating_sort(): void
     {
-        $vendor = User::where('email', 'vendor@cmart.com')->first();
-        if (!$vendor) {
-            $this->markTestSkipped('Seeded vendor user not found.');
-        }
+        $vendor = $this->vendor();
 
         $low = Feedback::create([
             'user_id' => $vendor->id,
@@ -332,5 +303,32 @@ class FeedbackModerationTest extends TestCase
         $this->assertSame([$low->id, $high->id], $lowest);
 
         Feedback::whereIn('id', [$low->id, $high->id])->delete();
+    }
+
+    private function vendor(): User
+    {
+        return $this->provisionUser(
+            'feedback-vendor@example.test',
+            'community',
+            'Feedback Vendor',
+        );
+    }
+
+    private function organizer(): User
+    {
+        return $this->provisionUser(
+            'feedback-organizer@example.test',
+            'organizer',
+            'Feedback Organizer',
+        );
+    }
+
+    private function management(): User
+    {
+        return $this->provisionUser(
+            'feedback-management@example.test',
+            'cmart_management',
+            'Feedback CMart Management',
+        );
     }
 }

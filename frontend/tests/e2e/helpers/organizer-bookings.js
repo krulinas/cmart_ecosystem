@@ -586,7 +586,7 @@ export async function approveOrganizerBooking(driver, marker, baseUrl, { booking
     // Toast may clear quickly; API poll below is authoritative.
   }
 
-  let apiApproved = false;
+  let apiApproved;
   try {
     await waitForApiBookingStatus(driver, match.bookingId, marker, APPROVED_EXPECTATION, 25000);
     apiApproved = true;
@@ -663,7 +663,7 @@ export async function requestOrganizerRevision(
   try {
     await searchOrganizerBookings(driver, marker);
     await waitForRowStatus(driver, match.bookingId, REVISION_EXPECTATION, 10000);
-  } catch (uiError) {
+  } catch {
     await applyRevisionViaApi(driver, match.bookingId, marker, revisionComment);
     await driver.navigate().refresh();
     await openOrganizerBookings(driver, baseUrl);

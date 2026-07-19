@@ -4,10 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\TracksProvisionedUsers;
 use Tests\TestCase;
 
 class StaffOperationsSummaryTest extends TestCase
 {
+    use TracksProvisionedUsers;
+
     private const OPERATIONAL_KEYS = [
         'pending_organizer_review',
         'needs_revision',
@@ -16,12 +19,15 @@ class StaffOperationsSummaryTest extends TestCase
         'feedback_to_review',
     ];
 
+    protected function tearDown(): void
+    {
+        $this->cleanupProvisionedUsers();
+        parent::tearDown();
+    }
+
     public function test_organizer_can_fetch_operations_summary_with_operational_counts_only(): void
     {
-        $organizer = User::where('email', 'admin@cmart.com')->first();
-        if (!$organizer) {
-            $this->markTestSkipped('Seeded organizer user (admin@cmart.com) not found. Run database seeders.');
-        }
+        $organizer = $this->organizer();
 
         Sanctum::actingAs($organizer);
 
@@ -43,11 +49,7 @@ class StaffOperationsSummaryTest extends TestCase
 
     public function test_organizer_demo_account_can_fetch_operations_summary(): void
     {
-        // Canonical seeded organizer demo is admin@cmart.com (legacy manager remapped in PR1).
-        $organizer = User::where('email', 'admin@cmart.com')->first();
-        if (!$organizer) {
-            $this->markTestSkipped('Seeded organizer user (admin@cmart.com) not found. Run database seeders.');
-        }
+        $organizer = $this->organizer();
 
         Sanctum::actingAs($organizer);
 
@@ -58,10 +60,11 @@ class StaffOperationsSummaryTest extends TestCase
 
     public function test_cmart_management_cannot_fetch_operations_summary(): void
     {
-        $venue = User::where('email', 'staff@cmart.com')->first();
-        if (!$venue) {
-            $this->markTestSkipped('Seeded cmart_management demo (staff@cmart.com) not found. Run database seeders.');
-        }
+        $venue = $this->provisionUser(
+            'summary-management@example.test',
+            'cmart_management',
+            'Summary CMart Management',
+        );
 
         Sanctum::actingAs($venue);
 
@@ -71,10 +74,11 @@ class StaffOperationsSummaryTest extends TestCase
 
     public function test_vendor_cannot_fetch_operations_summary(): void
     {
-        $vendor = User::where('role', 'community')->first();
-        if (!$vendor) {
-            $this->markTestSkipped('No community vendor user found in database.');
-        }
+        $vendor = $this->provisionUser(
+            'summary-vendor@example.test',
+            'community',
+            'Summary Community Vendor',
+        );
 
         Sanctum::actingAs($vendor);
 
@@ -86,5 +90,14 @@ class StaffOperationsSummaryTest extends TestCase
     {
         $this->getJson('/api/organizer/operations-summary')
             ->assertUnauthorized();
+    }
+
+    private function organizer(): User
+    {
+        return $this->provisionUser(
+            'summary-organizer@example.test',
+            'organizer',
+            'Summary Organizer',
+        );
     }
 }

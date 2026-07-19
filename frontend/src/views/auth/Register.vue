@@ -121,6 +121,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import AuthShell from '../../components/auth/AuthShell.vue';
 import AuthMethodButton from '../../components/auth/AuthMethodButton.vue';
+
+defineOptions({ name: 'UserRegistration' });
 import GoogleIcon from '../../components/auth/GoogleIcon.vue';
 import { getGoogleAuthUrl, isGoogleLoginEnabled } from '../../config/auth';
 import { resolvePostAuthRedirect, COMMUNITY_REVIEW_INTENT_PATH } from '../../utils/postAuthRedirect';

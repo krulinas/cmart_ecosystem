@@ -5,7 +5,7 @@ import {
   requireVendorCredentials,
 } from '../config/env.js';
 import { uniqueTestMarker } from '../helpers/actions.js';
-import { loginAsOrganizer, loginAsVendor, logout } from '../helpers/auth.js';
+import { loginAsOrganizer, logout } from '../helpers/auth.js';
 import { ensureE2EBookingExists } from '../helpers/booking.js';
 import { createDriver } from '../helpers/driver.js';
 import {

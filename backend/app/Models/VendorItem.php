@@ -65,6 +65,16 @@ class VendorItem extends Model
             ->orderBy('id');
     }
 
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(ItemReservation::class);
+    }
+
+    public function activeReservation(): HasOne
+    {
+        return $this->hasOne(ItemReservation::class)->where('active_lock', 1);
+    }
+
     public function galleryImagesForApi(): array
     {
         if ($this->hasGalleryTable()) {
@@ -79,14 +89,14 @@ class VendorItem extends Model
         }
 
         $legacyPath = $this->normalizedImagePath();
-        if (!$legacyPath) {
+        if (! $legacyPath) {
             return [];
         }
 
         return [[
             'id' => null,
             'image_path' => $legacyPath,
-            'image_url' => asset('storage/' . $legacyPath),
+            'image_url' => asset('storage/'.$legacyPath),
             'sort_order' => 0,
             'is_primary' => true,
         ]];
@@ -123,11 +133,11 @@ class VendorItem extends Model
     {
         $path = $this->primaryImagePath();
 
-        if (!$path) {
+        if (! $path) {
             return null;
         }
 
-        return asset('storage/' . $path);
+        return asset('storage/'.$path);
     }
 
     /**
@@ -135,7 +145,7 @@ class VendorItem extends Model
      */
     public function normalizedImagePath(): ?string
     {
-        if (!$this->image_path) {
+        if (! $this->image_path) {
             return null;
         }
 

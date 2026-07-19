@@ -210,10 +210,10 @@ class OrganizerBookingSiteReassignmentTest extends TestCase
         $options = $this->getJson("/api/organizer/bookings/{$booking->id}/site-reassignment-options")->assertOk()->json();
         $fingerprint = $options['requirements']['assignment_fingerprint'];
 
-        $this->patchJson("/api/organizer/bookings/{$booking->id}/site-assignment", [
+        $response = $this->patchJson("/api/organizer/bookings/{$booking->id}/site-assignment", [
             'event_site_ids' => [$sites['B01']->id, $sites['B02']->id],
             'assignment_fingerprint' => $fingerprint,
-        ])->assertOk();
+        ])->assertOk()->json();
 
         $booking->refresh();
         $this->assertSame($food->id, $booking->vendor_category_id);
@@ -221,6 +221,8 @@ class OrganizerBookingSiteReassignmentTest extends TestCase
         $this->assertSame('60.00', number_format((float) $booking->invoice->amount, 2, '.', ''));
         $this->assertSame('Approved', $booking->approval_status);
         $this->assertSame(0, BookingCategoryOverride::where('booking_id', $booking->id)->count());
+        $this->assertSame(2, $response['booking']['site_selection']['site_count']);
+        $this->assertSame(2, $response['booking']['site_selection']['allocation_count']);
     }
 
     public function test_compatible_reassignment_moves_sites_and_diffs_allocations(): void

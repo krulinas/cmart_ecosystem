@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { By } from 'selenium-webdriver';
 import { env } from '../config/env.js';
-import { loginAsCmartManagement, loginAsOrganizer, logout, managementApiRequest } from './auth.js';
+import { loginAsOrganizer, logout, managementApiRequest } from './auth.js';
 import { ensureE2EBookingExists } from './booking.js';
 import {
   assertRowContainsMarker,
@@ -131,7 +131,7 @@ export async function assertCmartManagementCannotAccessBookings(driver, bookingI
 }
 
 /** @deprecated Use assertCmartManagementCannotAccessBookings */
-export async function assertStaffCannotDeleteBooking(driver, bookingId, marker) {
+export async function assertStaffCannotDeleteBooking(driver, bookingId, _marker) {
   return assertCmartManagementCannotAccessBookings(driver, bookingId);
 }
 

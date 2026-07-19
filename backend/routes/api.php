@@ -1,42 +1,43 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-
-use App\Http\Controllers\Api\SpaceController;
-use App\Http\Controllers\Api\BookingController;
-use App\Http\Controllers\Api\InvoiceController;
-use App\Http\Controllers\Api\FeedbackController;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\CarbootEventController;
-use App\Http\Controllers\Api\EventRegistrationController;
-use App\Http\Controllers\Api\NewsPostController;
-use App\Http\Controllers\Api\BossAnalyticsController;
-use App\Http\Controllers\Api\VendorAnalyticsController;
-use App\Http\Controllers\Api\VendorHistoryController;
-use App\Http\Controllers\Api\VendorBusinessProfileController;
-use App\Http\Controllers\Api\VendorProfileController;
-use App\Http\Controllers\Api\VendorEventPassController;
-use App\Http\Controllers\Api\BookingPassVerificationController;
-use App\Http\Controllers\Api\VendorItemController;
-use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\AuditLogController;
-use App\Http\Controllers\Api\UserBookingPreferenceController;
-use App\Http\Controllers\Api\StaffOperationsController;
-use App\Http\Controllers\Api\ManagementReportsController;
-use App\Http\Controllers\Api\EventSiteController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BookingController;
+use App\Http\Controllers\Api\BookingPassVerificationController;
+use App\Http\Controllers\Api\BossAnalyticsController;
+use App\Http\Controllers\Api\CarbootEventController;
 use App\Http\Controllers\Api\EventDayController;
-use App\Http\Controllers\Api\VendorEventSiteAvailabilityController;
-use App\Http\Controllers\Api\VendorCategoryController;
-use App\Http\Controllers\Api\OrganizerReleasedDayRecoveryController;
-use App\Http\Controllers\Api\OrganizerVendorCategoryController;
+use App\Http\Controllers\Api\EventRegistrationController;
+use App\Http\Controllers\Api\EventSiteController;
+use App\Http\Controllers\Api\FeedbackController;
+use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\ItemReservationController;
+use App\Http\Controllers\Api\ManagementReportsController;
+use App\Http\Controllers\Api\MarketplaceController;
+use App\Http\Controllers\Api\NewsPostController;
+use App\Http\Controllers\Api\OrganizerBookingSiteAssignmentController;
 use App\Http\Controllers\Api\OrganizerEventLayoutController;
 use App\Http\Controllers\Api\OrganizerEventLayoutRowController;
 use App\Http\Controllers\Api\OrganizerEventLayoutSiteController;
-use App\Http\Controllers\Api\OrganizerBookingSiteAssignmentController;
+use App\Http\Controllers\Api\OrganizerItemReservationController;
+use App\Http\Controllers\Api\OrganizerReleasedDayRecoveryController;
+use App\Http\Controllers\Api\OrganizerVendorCategoryController;
 use App\Http\Controllers\Api\PublicEventLayoutController;
+use App\Http\Controllers\Api\SpaceController;
+use App\Http\Controllers\Api\StaffOperationsController;
+use App\Http\Controllers\Api\UserBookingPreferenceController;
+use App\Http\Controllers\Api\VendorAnalyticsController;
+use App\Http\Controllers\Api\VendorBusinessProfileController;
+use App\Http\Controllers\Api\VendorCategoryController;
+use App\Http\Controllers\Api\VendorEventPassController;
+use App\Http\Controllers\Api\VendorEventSiteAvailabilityController;
+use App\Http\Controllers\Api\VendorHistoryController;
+use App\Http\Controllers\Api\VendorItemController;
+use App\Http\Controllers\Api\VendorItemReservationController;
+use App\Http\Controllers\Api\VendorProfileController;
 use App\Support\ManagementCapability;
 use App\Support\ManagementRole;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -104,6 +105,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/vendor/items/{vendor_item}', [VendorItemController::class, 'update']);
         Route::delete('/vendor/items/{vendor_item}', [VendorItemController::class, 'destroy']);
 
+        Route::post('/reservations', [ItemReservationController::class, 'store']);
+        Route::get('/reservations/me', [ItemReservationController::class, 'mine']);
+        Route::get('/reservations/{item_reservation}', [ItemReservationController::class, 'show']);
+        Route::post('/reservations/{item_reservation}/cancel', [ItemReservationController::class, 'cancel']);
+
+        Route::get('/vendor/item-reservations', [VendorItemReservationController::class, 'index']);
+        Route::get('/vendor/item-reservations/{item_reservation}', [VendorItemReservationController::class, 'show']);
+        Route::post('/vendor/item-reservations/{item_reservation}/cancel', [VendorItemReservationController::class, 'cancel']);
+
         Route::get('/vendor/bookings', [BookingController::class, 'mine']);
         Route::get('/vendor/bookings/{booking}', [BookingController::class, 'vendorShow']);
         Route::patch('/vendor/bookings/{booking}', [BookingController::class, 'vendorUpdate']);
@@ -118,7 +128,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/vendor/events/{carboot_event}/site-availability', [VendorEventSiteAvailabilityController::class, 'show']);
     });
 
-    Route::middleware('role:' . ManagementRole::routeRoleList(ManagementRole::carbootOperationalRoles()))->group(function () {
+    Route::middleware('role:'.ManagementRole::routeRoleList(ManagementRole::carbootOperationalRoles()))->group(function () {
         // Canonical Organizer operations routes (Phase 1.3C PR3).
         Route::prefix('organizer')->group(function () {
             Route::get('/feedbacks', [FeedbackController::class, 'staffIndex']);
@@ -164,6 +174,15 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::patch('/events/{carboot_event}/layout/rows/{row}/archive', [OrganizerEventLayoutRowController::class, 'archive']);
             Route::patch('/events/{carboot_event}/layout/rows/{row}/unarchive', [OrganizerEventLayoutRowController::class, 'unarchive']);
 
+            // Phase 4.3 — manual reservation service-fee lifecycle (Organizer only).
+            Route::get('/events/{carboot_event}/item-reservations', [OrganizerItemReservationController::class, 'index']);
+            Route::get('/item-reservations/{item_reservation}', [OrganizerItemReservationController::class, 'show']);
+            Route::get('/item-reservations/{item_reservation}/audits', [OrganizerItemReservationController::class, 'audits']);
+            Route::post('/item-reservations/{item_reservation}/confirm-charge', [OrganizerItemReservationController::class, 'confirmCharge']);
+            Route::post('/item-reservations/{item_reservation}/waive-charge', [OrganizerItemReservationController::class, 'waiveCharge']);
+            Route::post('/item-reservations/{item_reservation}/cancel', [OrganizerItemReservationController::class, 'cancel']);
+            Route::post('/item-reservations/{item_reservation}/expire', [OrganizerItemReservationController::class, 'expire']);
+
             Route::post('/events/{carboot_event}/layout/rows/{row}/sites', [OrganizerEventLayoutSiteController::class, 'store']);
             Route::post('/events/{carboot_event}/layout/rows/{row}/sites/generate', [OrganizerEventLayoutSiteController::class, 'generate']);
             Route::patch('/events/{carboot_event}/layout/rows/{row}/sites/reorder', [OrganizerEventLayoutSiteController::class, 'reorder']);
@@ -192,7 +211,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/feedbacks/{feedback}/reviewed', [FeedbackController::class, 'markReviewed']);
         Route::put('/feedbacks/{feedback}/official-reply', [FeedbackController::class, 'updateOfficialReply']);
 
-        Route::middleware('role:' . ManagementRole::routeRoleList(ManagementRole::organizerEquivalentRoles()))->group(function () {
+        Route::middleware('role:'.ManagementRole::routeRoleList(ManagementRole::organizerEquivalentRoles()))->group(function () {
             Route::post('/feedbacks/{feedback}/official-reply/publish', [FeedbackController::class, 'publishOfficialReply']);
             Route::delete('/feedbacks/{feedback}', [FeedbackController::class, 'destroy']);
         });
@@ -200,11 +219,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('carboot-events', CarbootEventController::class);
     });
 
-    Route::middleware('role:' . ManagementRole::routeRoleList(ManagementRole::cmartActivityRoles()))->group(function () {
+    Route::middleware('role:'.ManagementRole::routeRoleList(ManagementRole::cmartActivityRoles()))->group(function () {
         Route::apiResource('news-posts', NewsPostController::class);
     });
 
-    Route::middleware('capability:' . ManagementCapability::GENERATED_REPORTS)->group(function () {
+    Route::middleware('capability:'.ManagementCapability::GENERATED_REPORTS)->group(function () {
         Route::get('/management/reports/operational-overview', [ManagementReportsController::class, 'operationalOverview']);
     });
 

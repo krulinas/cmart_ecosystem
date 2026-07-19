@@ -3,7 +3,6 @@ import { useAuthStore } from '../stores/auth';
 import { getWorkspaceTheme } from '../config/managementWorkspaceTheme';
 import { isOrganizerEquivalent } from '../utils/managementRoles';
 import {
-  canManageCmartActivities,
   hasCapability,
   mapsToFutureOrganizer,
   CAPABILITIES,

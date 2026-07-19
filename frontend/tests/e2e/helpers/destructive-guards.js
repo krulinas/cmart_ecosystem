@@ -1,5 +1,5 @@
 import { strict as assert } from 'node:assert';
-import { env, requireCmartManagementCredentials, requireOrganizerCredentials } from '../config/env.js';
+import { env, requireOrganizerCredentials } from '../config/env.js';
 import {
   assertCmartManagementCannotAccessBookings,
   managerApiRequest,

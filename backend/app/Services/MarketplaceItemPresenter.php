@@ -14,7 +14,11 @@ class MarketplaceItemPresenter
         $vendor = self::publicVendorSummary($profile, $item);
         $images = $item->galleryImagesForApi();
         $primaryPath = $item->primaryImagePath();
-        $event = MarketplaceEligibility::upcomingApprovedEventForUser((int) $item->user_id);
+        $booking = MarketplaceEligibility::upcomingApprovedBookingForItem($item);
+        $event = $booking?->carbootEvent;
+        $hasActiveReservation = array_key_exists('has_active_reservation', $item->getAttributes())
+            ? (bool) $item->getAttribute('has_active_reservation')
+            : $item->reservations()->active()->exists();
 
         $payload = [
             'id' => $item->id,
@@ -27,11 +31,14 @@ class MarketplaceItemPresenter
                 ? $item->description
                 : self::truncate($item->description, 140),
             'image_path' => $primaryPath,
-            'image_url' => $primaryPath ? asset('storage/' . $primaryPath) : null,
+            'image_url' => $primaryPath ? asset('storage/'.$primaryPath) : null,
             'images' => $images,
             'listed_at' => $item->created_at?->toIso8601String(),
             'vendor' => $vendor,
             'purchase_mode' => 'in-person only',
+            'is_reservable' => $event?->item_reservation_service_fee !== null
+                && ! $hasActiveReservation,
+            'has_active_reservation' => $hasActiveReservation,
             'event' => $event ? [
                 'title' => $event->title,
                 'starts_at' => $event->starts_at?->toIso8601String(),
@@ -62,7 +69,7 @@ class MarketplaceItemPresenter
 
     private static function truncate(?string $value, int $limit): ?string
     {
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 
@@ -70,6 +77,6 @@ class MarketplaceItemPresenter
             return $value;
         }
 
-        return rtrim(mb_substr($value, 0, $limit - 1)) . '…';
+        return rtrim(mb_substr($value, 0, $limit - 1)).'…';
     }
 }

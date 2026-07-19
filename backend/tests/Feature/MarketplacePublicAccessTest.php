@@ -213,10 +213,7 @@ class MarketplacePublicAccessTest extends TestCase
 
     public function test_vendor_private_items_endpoint_still_returns_own_items(): void
     {
-        $vendor = User::where('email', 'vendor@cmart.com')->first();
-        if (!$vendor) {
-            $this->markTestSkipped('Seeded vendor user (vendor@cmart.com) not found.');
-        }
+        $vendor = $this->createVendor();
 
         $item = VendorItem::create([
             'user_id' => $vendor->id,

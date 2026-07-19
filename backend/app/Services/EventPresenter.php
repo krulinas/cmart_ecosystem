@@ -6,15 +6,15 @@ use App\Models\CarbootEvent;
 
 class EventPresenter
 {
-    public static function fromModel(CarbootEvent $event): array
+    public static function fromModel(CarbootEvent $event, bool $includeOrganizerConfiguration = false): array
     {
         $event->loadMissing('images');
 
         $images = $event->galleryImagesForApi();
         $primaryPath = $event->primaryImagePath();
-        $imageUrl = $primaryPath ? asset('storage/' . $primaryPath) : null;
+        $imageUrl = $primaryPath ? asset('storage/'.$primaryPath) : null;
 
-        return array_merge($event->only([
+        $payload = array_merge($event->only([
             'id',
             'title',
             'starts_at',
@@ -31,5 +31,11 @@ class EventPresenter
             'image_url' => $imageUrl,
             'images' => $images,
         ]);
+
+        if ($includeOrganizerConfiguration) {
+            $payload['item_reservation_service_fee'] = $event->item_reservation_service_fee;
+        }
+
+        return $payload;
     }
 }

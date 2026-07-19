@@ -20,6 +20,7 @@ class CarbootEvent extends Model
         'status',
         'description',
         'max_slots',
+        'item_reservation_service_fee',
         'day_generation_mode',
         'public_layout_published_at',
         'public_layout_entrance_note',
@@ -35,10 +36,12 @@ class CarbootEvent extends Model
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
         'max_slots' => 'integer',
+        'item_reservation_service_fee' => 'decimal:2',
         'public_layout_published_at' => 'datetime',
     ];
 
     public const DAY_MODE_CALENDAR = 'calendar_days';
+
     public const DAY_MODE_SINGLE_SESSION = 'single_session';
 
     public const DAY_GENERATION_MODES = [
@@ -73,14 +76,14 @@ class CarbootEvent extends Model
         }
 
         $legacyPath = $this->normalizedImagePath();
-        if (!$legacyPath) {
+        if (! $legacyPath) {
             return [];
         }
 
         return [[
             'id' => null,
             'image_path' => $legacyPath,
-            'image_url' => asset('storage/' . $legacyPath),
+            'image_url' => asset('storage/'.$legacyPath),
             'sort_order' => 0,
             'is_primary' => true,
         ]];
@@ -102,7 +105,7 @@ class CarbootEvent extends Model
 
     public function normalizedImagePath(): ?string
     {
-        if (!$this->image_path) {
+        if (! $this->image_path) {
             return null;
         }
 
@@ -116,7 +119,7 @@ class CarbootEvent extends Model
     {
         $path = $this->primaryImagePath();
 
-        return $path ? asset('storage/' . $path) : null;
+        return $path ? asset('storage/'.$path) : null;
     }
 
     public function getImageUrlAttribute(): ?string
@@ -134,6 +137,11 @@ class CarbootEvent extends Model
     public function bookings(): HasMany
     {
         return $this->hasMany(Booking::class, 'carboot_event_id');
+    }
+
+    public function itemReservations(): HasMany
+    {
+        return $this->hasMany(ItemReservation::class);
     }
 
     public function eventLayoutRows(): HasMany

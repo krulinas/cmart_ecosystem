@@ -13,6 +13,7 @@ use Illuminate\Validation\Rule;
 class CarbootEventController extends Controller
 {
     private const STATUSES = ['Available', 'Almost Full', 'Closed'];
+
     private const MAX_IMAGES = 5;
 
     public function publicIndex()
@@ -52,7 +53,7 @@ class CarbootEventController extends Controller
             ->with('images')
             ->orderByDesc('starts_at')
             ->get()
-            ->map(fn (CarbootEvent $event) => EventPresenter::fromModel($event))
+            ->map(fn (CarbootEvent $event) => EventPresenter::fromModel($event, true))
             ->values();
 
         return response()->json($events);
@@ -67,7 +68,7 @@ class CarbootEventController extends Controller
 
         return response()->json([
             'message' => '201 Created: Carboot event created successfully.',
-            'event' => EventPresenter::fromModel($event->fresh('images')),
+            'event' => EventPresenter::fromModel($event->fresh('images'), true),
         ], 201);
     }
 
@@ -75,7 +76,7 @@ class CarbootEventController extends Controller
     {
         $carboot_event->load('images');
 
-        return response()->json(EventPresenter::fromModel($carboot_event));
+        return response()->json(EventPresenter::fromModel($carboot_event, true));
     }
 
     public function update(Request $request, CarbootEvent $carboot_event)
@@ -97,7 +98,7 @@ class CarbootEventController extends Controller
 
         return response()->json([
             'message' => '200 OK: Carboot event updated successfully.',
-            'event' => EventPresenter::fromModel($carboot_event->fresh('images')),
+            'event' => EventPresenter::fromModel($carboot_event->fresh('images'), true),
         ]);
     }
 
@@ -113,12 +114,19 @@ class CarbootEventController extends Controller
     private function validateEvent(Request $request, bool $partial = false): array
     {
         $rules = [
-            'title' => ($partial ? 'sometimes|' : '') . 'required|string|max:255',
-            'starts_at' => ($partial ? 'sometimes|' : '') . 'required|date',
-            'ends_at' => ($partial ? 'sometimes|' : '') . 'required|date|after:starts_at',
+            'title' => ($partial ? 'sometimes|' : '').'required|string|max:255',
+            'starts_at' => ($partial ? 'sometimes|' : '').'required|date',
+            'ends_at' => ($partial ? 'sometimes|' : '').'required|date|after:starts_at',
             'status' => ['sometimes', 'required', Rule::in(self::STATUSES)],
             'description' => 'nullable|string|max:5000',
             'max_slots' => 'nullable|integer|min:1',
+            'item_reservation_service_fee' => [
+                'nullable',
+                'numeric',
+                'decimal:0,2',
+                'min:0',
+                'max:99999999.99',
+            ],
             'day_generation_mode' => [
                 'sometimes',
                 'required',
@@ -126,14 +134,14 @@ class CarbootEventController extends Controller
                 Rule::in(CarbootEvent::DAY_GENERATION_MODES),
             ],
             'poster' => 'nullable|file|mimes:jpeg,jpg,png,webp|max:5120',
-            'images' => 'nullable|array|max:' . self::MAX_IMAGES,
+            'images' => 'nullable|array|max:'.self::MAX_IMAGES,
             'images.*' => 'file|mimes:jpeg,jpg,png,webp|max:5120',
             'remove_poster' => 'nullable|boolean',
             'remove_image_ids' => 'nullable|array',
             'remove_image_ids.*' => 'integer',
         ];
 
-        if (!$partial) {
+        if (! $partial) {
             $rules['status'] = ['required', Rule::in(self::STATUSES)];
         }
 
@@ -212,10 +220,10 @@ class CarbootEventController extends Controller
             $event->images()->create([
                 'image_path' => $path,
                 'sort_order' => $existingCount + $offset,
-                'is_primary' => !$hasPrimary && $offset === 0,
+                'is_primary' => ! $hasPrimary && $offset === 0,
             ]);
 
-            if ($offset === 0 && !$hasPrimary) {
+            if ($offset === 0 && ! $hasPrimary) {
                 $hasPrimary = true;
             }
         }

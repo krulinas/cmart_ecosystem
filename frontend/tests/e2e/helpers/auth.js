@@ -107,7 +107,7 @@ export async function loginAsCommunityMember(
 
   try {
     await attempt();
-  } catch (firstError) {
+  } catch {
     const diagnostics = await captureFailureDiagnostics(driver, `${roleLabel}-login-attempt-1`);
     const context = await readLoginFailureContext(driver);
 
@@ -134,7 +134,7 @@ async function loginWithRole(driver, { email, password, successUrlFragment, dash
   const passwordTestId = management ? 'management-login-password' : 'login-password';
   const ensurePage = management ? ensureManagementLoginPage : ensurePublicLoginPage;
 
-  const attempt = async (retryCount) => {
+  const attempt = async () => {
     await ensurePage(driver);
     await fillLoginField(driver, emailTestId, email);
     await fillLoginField(driver, passwordTestId, password);
@@ -145,14 +145,14 @@ async function loginWithRole(driver, { email, password, successUrlFragment, dash
   };
 
   try {
-    await attempt(0);
-  } catch (firstError) {
+    await attempt();
+  } catch {
     const diagnostics = await captureFailureDiagnostics(driver, `${roleLabel}-login-attempt-1`);
     const context = await readLoginFailureContext(driver);
 
     try {
       await clearBrowserSession(driver);
-      await attempt(1);
+      await attempt();
       return;
     } catch (retryError) {
       const retryDiagnostics = await captureFailureDiagnostics(driver, `${roleLabel}-login-failed`);

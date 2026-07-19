@@ -9,13 +9,16 @@ use App\Models\BookingAuditLog;
 use App\Models\BookingCategoryOverride;
 use App\Models\BookingDayAllocation;
 use App\Models\CarbootEvent;
+use App\Models\CategoryMigrationAudit;
 use App\Models\EventDay;
 use App\Models\EventLayoutAuditLog;
 use App\Models\EventLayoutRow;
 use App\Models\EventSite;
 use App\Models\Invoice;
 use App\Models\User;
+use App\Models\UserBookingPreference;
 use App\Models\VendorBusinessProfile;
+use App\Models\VendorItem;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -48,9 +51,21 @@ trait CleansUpTestFixtures
     /** @var list<int> */
     protected array $createdInvoiceIds = [];
 
+    /** @var list<int> */
+    protected array $createdItemReservationIds = [];
+
     protected function cleanupTrackedFixtures(): void
     {
         try {
+            if ($this->createdItemReservationIds !== []) {
+                DB::table('item_reservation_audits')
+                    ->whereIn('item_reservation_id', $this->createdItemReservationIds)
+                    ->delete();
+                DB::table('item_reservations')
+                    ->whereIn('id', $this->createdItemReservationIds)
+                    ->delete();
+            }
+
             if ($this->createdBookingIds !== []) {
                 $exceptionIds = BookingAttendanceException::whereIn(
                     'booking_id',
@@ -72,6 +87,10 @@ trait CleansUpTestFixtures
             }
 
             if ($this->createdBookingIds !== []) {
+                CategoryMigrationAudit::query()
+                    ->where('source_table', 'bookings')
+                    ->whereIn('source_primary_key', $this->createdBookingIds)
+                    ->delete();
                 BookingCategoryOverride::whereIn('booking_id', $this->createdBookingIds)->delete();
                 BookingDayAllocation::whereIn('booking_id', $this->createdBookingIds)->delete();
                 BookingAuditLog::whereIn('booking_id', $this->createdBookingIds)->delete();
@@ -115,8 +134,34 @@ trait CleansUpTestFixtures
             ->whereIn('tokenable_id', $userIds)
             ->delete();
 
-        if (class_exists(\App\Models\UserBookingPreference::class)) {
-            \App\Models\UserBookingPreference::whereIn('user_id', $userIds)->delete();
+        $profileIds = VendorBusinessProfile::query()
+            ->whereIn('user_id', $userIds)
+            ->pluck('id');
+        CategoryMigrationAudit::query()
+            ->where('source_table', 'vendor_business_profiles')
+            ->whereIn('source_primary_key', $profileIds)
+            ->delete();
+
+        if (class_exists(UserBookingPreference::class)) {
+            $preferenceIds = UserBookingPreference::query()
+                ->whereIn('user_id', $userIds)
+                ->pluck('id');
+            CategoryMigrationAudit::query()
+                ->where('source_table', 'user_booking_preferences')
+                ->whereIn('source_primary_key', $preferenceIds)
+                ->delete();
+            UserBookingPreference::whereIn('user_id', $userIds)->delete();
+        }
+
+        if (class_exists(VendorItem::class)) {
+            $itemIds = VendorItem::query()
+                ->whereIn('user_id', $userIds)
+                ->pluck('id');
+            CategoryMigrationAudit::query()
+                ->where('source_table', 'vendor_items')
+                ->whereIn('source_primary_key', $itemIds)
+                ->delete();
+            VendorItem::whereIn('user_id', $userIds)->delete();
         }
 
         VendorBusinessProfile::whereIn('user_id', $userIds)->delete();
@@ -135,6 +180,7 @@ trait CleansUpTestFixtures
         $this->createdBookingIds = [];
         $this->createdAllocationIds = [];
         $this->createdInvoiceIds = [];
+        $this->createdItemReservationIds = [];
     }
 
     protected function trackUser(User $user): User
@@ -149,5 +195,12 @@ trait CleansUpTestFixtures
         $this->createdEventIds[] = $event->id;
 
         return $event;
+    }
+
+    protected function trackItemReservationId(int $reservationId): int
+    {
+        $this->createdItemReservationIds[] = $reservationId;
+
+        return $reservationId;
     }
 }

@@ -58,33 +58,20 @@ return new class extends Migration
 
     public function down(): void
     {
-        $this->dropIndexIfExists('category_migration_audits', 'category_migration_audits_append_only_unique');
-
-        // Collapse append-only history so the pre-3.4A uniqueness can be restored.
-        // Keep the earliest observation per legacy identity key.
-        $duplicates = DB::table('category_migration_audits')
+        $collision = DB::table('category_migration_audits')
             ->select('source_table', 'source_primary_key', 'source_column', 'backfill_version')
             ->groupBy('source_table', 'source_primary_key', 'source_column', 'backfill_version')
             ->havingRaw('COUNT(*) > 1')
-            ->get();
+            ->first();
 
-        foreach ($duplicates as $group) {
-            $keepId = DB::table('category_migration_audits')
-                ->where('source_table', $group->source_table)
-                ->where('source_primary_key', $group->source_primary_key)
-                ->where('source_column', $group->source_column)
-                ->where('backfill_version', $group->backfill_version)
-                ->orderBy('id')
-                ->value('id');
-
-            DB::table('category_migration_audits')
-                ->where('source_table', $group->source_table)
-                ->where('source_primary_key', $group->source_primary_key)
-                ->where('source_column', $group->source_column)
-                ->where('backfill_version', $group->backfill_version)
-                ->where('id', '!=', $keepId)
-                ->delete();
+        if ($collision !== null) {
+            throw new RuntimeException(
+                'Phase 3.4A rollback refused: append-only category audit observations '
+                .'would collide under the legacy unique key. No schema or audit data was changed.',
+            );
         }
+
+        $this->dropIndexIfExists('category_migration_audits', 'category_migration_audits_append_only_unique');
 
         if (Schema::hasColumn('category_migration_audits', 'normalized_value_hash')) {
             Schema::table('category_migration_audits', function (Blueprint $table) {
@@ -104,18 +91,21 @@ return new class extends Migration
 
     private function dropIndexIfExists(string $table, string $index): void
     {
-        $exists = DB::table('information_schema.statistics')
-            ->where('table_schema', DB::raw('DATABASE()'))
-            ->where('table_name', $table)
-            ->where('index_name', $index)
-            ->exists();
-
-        if (! $exists) {
+        if (! $this->indexExists($table, $index)) {
             return;
         }
 
         Schema::table($table, function (Blueprint $blueprint) use ($index) {
             $blueprint->dropUnique($index);
         });
+    }
+
+    private function indexExists(string $table, string $index): bool
+    {
+        return DB::table('information_schema.statistics')
+            ->where('table_schema', DB::raw('DATABASE()'))
+            ->where('table_name', $table)
+            ->where('index_name', $index)
+            ->exists();
     }
 };

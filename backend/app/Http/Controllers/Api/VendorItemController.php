@@ -2,23 +2,22 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\AllocationValidationException;
 use App\Http\Controllers\Controller;
 use App\Models\VendorItem;
+use App\Services\VendorCategoryResolver;
 use App\Services\VendorItemPresenter;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 
 class VendorItemController extends Controller
 {
     /**
-     * Private vendor item preparation — not public marketplace listing.
      * Any authenticated community user may manage their own items without
-     * booking approval, payment, or event-day check-in.
-     *
-     * Public exposure remains disabled in MarketplaceController until a future
-     * event-day publishing flow exists.
+     * booking approval, payment, or event-day check-in. Public exposure remains
+     * independently derived by MarketplaceEligibility.
      */
     private const MAX_IMAGES = 5;
 
@@ -26,6 +25,10 @@ class VendorItemController extends Controller
     {
         $query = $request->user()
             ->vendorItems()
+            ->withExists([
+                'reservations as has_active_reservation' => fn ($reservationQuery) => $reservationQuery
+                    ->where('active_lock', 1),
+            ])
             ->latest();
 
         if (Schema::hasTable('reuse_item_images')) {
@@ -54,9 +57,13 @@ class VendorItemController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, VendorCategoryResolver $categoryResolver)
     {
-        $validated = $this->validateItem($request);
+        try {
+            $validated = $this->validateItem($request, $categoryResolver);
+        } catch (AllocationValidationException $exception) {
+            return $this->categoryValidationError($exception);
+        }
 
         $item = $request->user()->vendorItems()->create($validated);
         $this->attachUploadedImages($request, $item);
@@ -80,13 +87,20 @@ class VendorItemController extends Controller
         ]);
     }
 
-    public function update(Request $request, VendorItem $vendor_item)
-    {
+    public function update(
+        Request $request,
+        VendorItem $vendor_item,
+        VendorCategoryResolver $categoryResolver,
+    ) {
         if ($denied = $this->authorizeOwner($request, $vendor_item)) {
             return $denied;
         }
 
-        $validated = $this->validateItem($request, true);
+        try {
+            $validated = $this->validateItem($request, $categoryResolver, true);
+        } catch (AllocationValidationException $exception) {
+            return $this->categoryValidationError($exception);
+        }
         $vendor_item->update($validated);
 
         if ($request->boolean('remove_image')) {
@@ -111,6 +125,13 @@ class VendorItemController extends Controller
             return $denied;
         }
 
+        if ($vendor_item->reservations()->exists()) {
+            return response()->json([
+                'message' => 'This item has reservation history and cannot be deleted.',
+                'error' => 'item_has_reservation_history',
+            ], 409);
+        }
+
         $vendor_item->delete();
 
         return response()->json([
@@ -118,7 +139,7 @@ class VendorItemController extends Controller
         ]);
     }
 
-    private function authorizeOwner(Request $request, VendorItem $item): ?\Illuminate\Http\JsonResponse
+    private function authorizeOwner(Request $request, VendorItem $item): ?JsonResponse
     {
         if ($item->user_id !== $request->user()->id) {
             return response()->json([
@@ -129,31 +150,33 @@ class VendorItemController extends Controller
         return null;
     }
 
-    private function validateItem(Request $request, bool $partial = false): array
-    {
+    private function validateItem(
+        Request $request,
+        VendorCategoryResolver $categoryResolver,
+        bool $partial = false,
+    ): array {
         $prefix = $partial ? 'sometimes|' : '';
 
         $validated = $request->validate([
-            'name' => $prefix . 'required|string|max:255',
-            'category' => [
-                $partial ? 'sometimes' : 'required',
-                'string',
-                Rule::in([
-                    'Pre-loved / Thrift',
-                    'Food & Beverages',
-                    'Clothing & Apparel',
-                    'Handicrafts & Art',
-                    'Electronics & Gadgets',
-                    'Others',
-                ]),
+            'name' => $prefix.'required|string|max:255',
+            'vendor_category_id' => [
+                $partial ? 'sometimes' : 'required_without:category',
+                'nullable',
+                'integer',
             ],
-            'condition' => $prefix . 'required|in:New,Like New,Good,Fair,For Parts',
-            'pricing_type' => $prefix . 'required|in:fixed,free,donation',
+            'category' => [
+                $partial ? 'sometimes' : 'required_without:vendor_category_id',
+                'nullable',
+                'string',
+                'max:128',
+            ],
+            'condition' => $prefix.'required|in:New,Like New,Good,Fair,For Parts',
+            'pricing_type' => $prefix.'required|in:fixed,free,donation',
             'price' => 'nullable|numeric|min:0|max:999999.99',
             'description' => 'nullable|string|max:5000',
-            'status' => $prefix . 'required|in:active,inactive',
+            'status' => $prefix.'required|in:active,inactive',
             'image' => 'nullable|file|mimes:jpeg,jpg,png,webp|max:5120',
-            'images' => 'nullable|array|max:' . self::MAX_IMAGES,
+            'images' => 'nullable|array|max:'.self::MAX_IMAGES,
             'images.*' => 'file|mimes:jpeg,jpg,png,webp|max:5120',
             'remove_image' => 'nullable|boolean',
             'remove_image_ids' => 'nullable|array',
@@ -162,14 +185,48 @@ class VendorItemController extends Controller
 
         unset($validated['image'], $validated['images'], $validated['remove_image'], $validated['remove_image_ids']);
 
-        if (($validated['pricing_type'] ?? $request->input('pricing_type')) === 'fixed') {
-            $request->validate(['price' => ($partial ? 'sometimes|' : '') . 'required|numeric|min:0|max:999999.99']);
-            $validated['price'] = $request->input('price');
-        } else {
-            $validated['price'] = null;
+        if (array_key_exists('vendor_category_id', $validated) || array_key_exists('category', $validated)) {
+            $category = $categoryResolver->resolveForOperationalUse(
+                isset($validated['vendor_category_id'])
+                    ? (int) $validated['vendor_category_id']
+                    : null,
+                isset($validated['category']) && is_string($validated['category'])
+                    ? $validated['category']
+                    : null,
+            );
+
+            if (! $category->is_public) {
+                throw new AllocationValidationException(
+                    'The selected category is not available for vendor items.',
+                    'CATEGORY_NOT_PUBLIC',
+                );
+            }
+
+            $validated['vendor_category_id'] = (int) $category->id;
+            $validated['category'] = $category->label;
+        }
+
+        if (array_key_exists('pricing_type', $validated)) {
+            if ($validated['pricing_type'] === 'fixed') {
+                $request->validate([
+                    'price' => 'required|numeric|min:0|max:999999.99',
+                ]);
+                $validated['price'] = $request->input('price');
+            } else {
+                $validated['price'] = null;
+            }
         }
 
         return $validated;
+    }
+
+    private function categoryValidationError(
+        AllocationValidationException $exception,
+    ): JsonResponse {
+        return response()->json([
+            'message' => $exception->getMessage(),
+            'error' => $exception->error,
+        ], 422);
     }
 
     private function collectUploadFiles(Request $request): array
@@ -215,10 +272,10 @@ class VendorItemController extends Controller
             $item->images()->create([
                 'image_path' => $path,
                 'sort_order' => $existingCount + $offset,
-                'is_primary' => !$hasPrimary && $offset === 0,
+                'is_primary' => ! $hasPrimary && $offset === 0,
             ]);
 
-            if ($offset === 0 && !$hasPrimary) {
+            if ($offset === 0 && ! $hasPrimary) {
                 $hasPrimary = true;
             }
         }

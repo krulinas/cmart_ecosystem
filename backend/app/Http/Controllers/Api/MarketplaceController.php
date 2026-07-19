@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\VendorItem;
 use App\Services\MarketplaceEligibility;
 use App\Services\MarketplaceItemPresenter;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 class MarketplaceController extends Controller
@@ -25,7 +26,22 @@ class MarketplaceController extends Controller
         $perPage = min((int) ($validated['per_page'] ?? 12), 48);
 
         $query = MarketplaceEligibility::applyToVendorItemQuery(
-            VendorItem::query()->with(['user.businessProfile', 'images']),
+            VendorItem::query()
+                ->with([
+                    'user.businessProfile',
+                    'images',
+                    'user.bookings' => fn ($bookingQuery) => $bookingQuery
+                        ->where('approval_status', 'Approved')
+                        ->whereHas(
+                            'carbootEvent',
+                            fn (Builder $eventQuery) => $eventQuery->where('ends_at', '>=', now()),
+                        )
+                        ->with('carbootEvent'),
+                ])
+                ->withExists([
+                    'reservations as has_active_reservation' => fn (Builder $reservationQuery) => $reservationQuery
+                        ->where('active_lock', 1),
+                ]),
         );
 
         if ($search = trim((string) ($validated['search'] ?? ''))) {
@@ -44,15 +60,15 @@ class MarketplaceController extends Controller
             });
         }
 
-        if (!empty($validated['category'])) {
+        if (! empty($validated['category'])) {
             $query->where('category', $validated['category']);
         }
 
-        if (!empty($validated['condition'])) {
+        if (! empty($validated['condition'])) {
             $query->where('condition', $validated['condition']);
         }
 
-        if (!empty($validated['pricing_type'])) {
+        if (! empty($validated['pricing_type'])) {
             $query->where('pricing_type', $validated['pricing_type']);
         }
 
@@ -76,13 +92,26 @@ class MarketplaceController extends Controller
 
     public function show(VendorItem $vendor_item)
     {
-        if (!MarketplaceEligibility::isItemPubliclyPreviewable($vendor_item)) {
+        if (! MarketplaceEligibility::isItemPubliclyPreviewable($vendor_item)) {
             return response()->json([
                 'message' => '404 Not Found: Public item preview is unavailable.',
             ], 404);
         }
 
-        $vendor_item->load(['user.businessProfile', 'images']);
+        $vendor_item->load([
+            'user.businessProfile',
+            'images',
+            'user.bookings' => fn ($bookingQuery) => $bookingQuery
+                ->where('approval_status', 'Approved')
+                ->whereHas(
+                    'carbootEvent',
+                    fn (Builder $eventQuery) => $eventQuery->where('ends_at', '>=', now()),
+                )
+                ->with('carbootEvent'),
+        ])->loadExists([
+            'reservations as has_active_reservation' => fn (Builder $reservationQuery) => $reservationQuery
+                ->where('active_lock', 1),
+        ]);
 
         return response()->json([
             'item' => MarketplaceItemPresenter::fromItem($vendor_item, detailed: true),

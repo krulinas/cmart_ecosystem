@@ -28,6 +28,21 @@
           <input v-model.number="form.max_slots" type="number" min="1" class="ml-input" />
         </div>
         <div>
+          <label class="ml-label">Item reservation service fee (RM, optional)</label>
+          <input
+            v-model="form.item_reservation_service_fee"
+            type="number"
+            min="0"
+            max="99999999.99"
+            step="0.01"
+            class="ml-input"
+            placeholder="Not configured"
+          />
+          <p class="mt-1 text-xs text-ink-500">
+            Leave blank to keep item reservations closed. RM0.00 means no service charge is required.
+          </p>
+        </div>
+        <div>
           <label class="ml-label">Description</label>
           <textarea v-model="form.description" rows="3" class="ml-input"></textarea>
         </div>
@@ -70,6 +85,10 @@
               <div class="font-bold text-ink-900">{{ ev.title }}</div>
               <div class="text-xs text-ink-500">{{ formatEventDateTime(ev.starts_at) }} → {{ formatEventDateTime(ev.ends_at) }}</div>
               <span class="mt-1 inline-block ml-badge bg-brand-100 text-brand-800">{{ ev.status }}</span>
+              <p class="text-xs text-ink-500 mt-1">
+                Reservation fee:
+                {{ ev.item_reservation_service_fee == null ? 'Not configured' : `RM ${Number(ev.item_reservation_service_fee).toFixed(2)}` }}
+              </p>
               <p v-if="ev.description" class="text-xs text-ink-500 mt-1 line-clamp-2">{{ ev.description }}</p>
             </div>
           </div>
@@ -135,6 +154,7 @@ const emptyForm = () => ({
   status: 'Available',
   description: '',
   max_slots: null,
+  item_reservation_service_fee: '',
 });
 
 const form = reactive(emptyForm());
@@ -157,6 +177,7 @@ const buildFormData = () => {
   if (form.max_slots) {
     fd.append('max_slots', String(form.max_slots));
   }
+  fd.append('item_reservation_service_fee', form.item_reservation_service_fee);
 
   imageFiles.value.forEach((file) => {
     fd.append('images[]', file);
@@ -207,6 +228,7 @@ const edit = (ev) => {
   form.status = normalized.status;
   form.description = normalized.description || '';
   form.max_slots = normalized.max_slots;
+  form.item_reservation_service_fee = normalized.item_reservation_service_fee ?? '';
   editingImages.value = normalized.images?.filter((image) => image.id) || [];
   legacyImagePath.value = normalized.image_path || '';
   imageFiles.value = [];
@@ -233,6 +255,9 @@ const save = async () => {
     status: form.status,
     description: form.description || null,
     max_slots: form.max_slots || null,
+    item_reservation_service_fee: form.item_reservation_service_fee === ''
+      ? null
+      : form.item_reservation_service_fee,
   };
 
   const usesMultipart = imageFiles.value.length > 0

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\TracksProvisionedUsers;
 use Tests\TestCase;
@@ -31,10 +30,11 @@ class WebAnalyticsSecurityTest extends TestCase
 
     public function test_community_users_cannot_access_analytics_proxy_endpoints(): void
     {
-        $vendor = User::where('role', 'community')->first();
-        if (!$vendor) {
-            $this->markTestSkipped('No community vendor user found in database.');
-        }
+        $vendor = $this->provisionUser(
+            'analytics-community@example.test',
+            'community',
+            'Analytics Community Vendor',
+        );
 
         Sanctum::actingAs($vendor);
 
@@ -44,10 +44,11 @@ class WebAnalyticsSecurityTest extends TestCase
 
     public function test_cmart_management_demo_cannot_access_raw_analytics_proxy_endpoints(): void
     {
-        $venue = User::where('email', 'staff@cmart.com')->first();
-        if (!$venue) {
-            $this->markTestSkipped('Seeded cmart_management demo (staff@cmart.com) not found. Run database seeders.');
-        }
+        $venue = $this->provisionUser(
+            'analytics-management@example.test',
+            'cmart_management',
+            'Analytics CMart Management',
+        );
 
         Sanctum::actingAs($venue);
 

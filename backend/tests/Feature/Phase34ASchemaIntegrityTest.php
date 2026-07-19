@@ -585,4 +585,165 @@ class Phase34ASchemaIntegrityTest extends TestCase
         DB::table('vendor_business_profiles')->where('id', $profileId)->delete();
         CategoryMigrationAudit::query()->where('source_primary_key', $profileId)->where('source_table', 'vendor_business_profiles')->delete();
     }
+
+    public function test_duplicate_audit_insert_is_idempotent_but_non_duplicate_errors_are_rethrown(): void
+    {
+        $sourceId = random_int(900000, 999999);
+        $resolved = [
+            'mapping_status' => CategoryLegacyMapper::STATUS_UNRESOLVED,
+            'reason_code' => CategoryLegacyMapper::REASON_UNKNOWN_VALUE,
+            'normalized_value' => 'Unknown Phase 3.11 Category',
+            'matched_vendor_category_id' => null,
+            'matched_label' => null,
+        ];
+
+        try {
+            Phase34SchemaBackfill::writeAudit(
+                'bookings',
+                $sourceId,
+                'product_category',
+                'Unknown Phase 3.11 Category',
+                $resolved,
+            );
+            Phase34SchemaBackfill::writeAudit(
+                'bookings',
+                $sourceId,
+                'product_category',
+                'Unknown Phase 3.11 Category',
+                $resolved,
+            );
+
+            $this->assertSame(
+                1,
+                CategoryMigrationAudit::query()
+                    ->where('source_table', 'bookings')
+                    ->where('source_primary_key', $sourceId)
+                    ->count(),
+            );
+
+            try {
+                Phase34SchemaBackfill::writeAudit(
+                    str_repeat('x', 65),
+                    $sourceId + 1,
+                    'product_category',
+                    'Unknown Phase 3.11 Category',
+                    $resolved,
+                );
+                $this->fail('Expected a non-duplicate truncation error to be rethrown.');
+            } catch (QueryException $exception) {
+                $this->assertNotSame(1062, (int) ($exception->errorInfo[1] ?? 0));
+            }
+        } finally {
+            CategoryMigrationAudit::query()
+                ->whereIn('source_primary_key', [$sourceId, $sourceId + 1])
+                ->delete();
+        }
+    }
+
+    public function test_append_only_rollback_refuses_collisions_without_changing_history_or_schema(): void
+    {
+        $sourceId = random_int(800000, 899999);
+        $this->insertAuditObservation($sourceId, 'First observation');
+        $this->insertAuditObservation($sourceId, 'Second observation');
+        $before = CategoryMigrationAudit::query()
+            ->where('source_table', 'phase311_guard_test')
+            ->where('source_primary_key', $sourceId)
+            ->orderBy('id')
+            ->pluck('id')
+            ->all();
+
+        try {
+            try {
+                $this->phase34AAppendOnlyMigration()->down();
+                $this->fail('Expected guarded rollback to refuse colliding append-only observations.');
+            } catch (\RuntimeException $exception) {
+                $this->assertStringContainsString('rollback refused', strtolower($exception->getMessage()));
+            }
+
+            $after = CategoryMigrationAudit::query()
+                ->where('source_table', 'phase311_guard_test')
+                ->where('source_primary_key', $sourceId)
+                ->orderBy('id')
+                ->pluck('id')
+                ->all();
+
+            $this->assertSame($before, $after);
+            $this->assertTrue(Schema::hasColumn('category_migration_audits', 'normalized_value_hash'));
+            $this->assertTrue($this->indexExists('category_migration_audits_append_only_unique'));
+            $this->assertFalse($this->indexExists('category_migration_audits_source_unique'));
+        } finally {
+            CategoryMigrationAudit::query()
+                ->where('source_table', 'phase311_guard_test')
+                ->where('source_primary_key', $sourceId)
+                ->delete();
+        }
+    }
+
+    public function test_append_only_rollback_without_collisions_preserves_rows_and_reforwards(): void
+    {
+        CategoryMigrationAudit::query()->delete();
+        $sourceId = random_int(700000, 799999);
+        $this->insertAuditObservation($sourceId, 'Only observation');
+        $auditId = CategoryMigrationAudit::query()
+            ->where('source_table', 'phase311_guard_test')
+            ->where('source_primary_key', $sourceId)
+            ->value('id');
+        $migration = $this->phase34AAppendOnlyMigration();
+        $rolledBack = false;
+
+        try {
+            $migration->down();
+            $rolledBack = true;
+
+            $this->assertFalse(Schema::hasColumn('category_migration_audits', 'normalized_value_hash'));
+            $this->assertTrue($this->indexExists('category_migration_audits_source_unique'));
+            $this->assertDatabaseHas('category_migration_audits', ['id' => $auditId]);
+        } finally {
+            if ($rolledBack) {
+                $migration->up();
+            }
+        }
+
+        $this->assertTrue(Schema::hasColumn('category_migration_audits', 'normalized_value_hash'));
+        $this->assertTrue($this->indexExists('category_migration_audits_append_only_unique'));
+        $this->assertDatabaseHas('category_migration_audits', ['id' => $auditId]);
+
+        CategoryMigrationAudit::query()->whereKey($auditId)->delete();
+    }
+
+    private function insertAuditObservation(int $sourceId, string $value): void
+    {
+        $now = now();
+        DB::table('category_migration_audits')->insert([
+            'source_table' => 'phase311_guard_test',
+            'source_primary_key' => $sourceId,
+            'source_column' => 'legacy_category',
+            'original_value' => $value,
+            'normalized_value' => $value,
+            'normalized_value_hash' => CategoryLegacyMapper::normalizedValueHash($value),
+            'mapping_status' => CategoryLegacyMapper::STATUS_UNRESOLVED,
+            'matched_vendor_category_id' => null,
+            'reason_code' => CategoryLegacyMapper::REASON_UNKNOWN_VALUE,
+            'backfill_version' => CategoryLegacyMapper::BACKFILL_VERSION,
+            'metadata' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+    }
+
+    private function phase34AAppendOnlyMigration(): object
+    {
+        return require database_path(
+            'migrations/2026_07_16_000010_make_category_migration_audits_append_only.php',
+        );
+    }
+
+    private function indexExists(string $index): bool
+    {
+        return DB::table('information_schema.statistics')
+            ->where('table_schema', DB::raw('DATABASE()'))
+            ->where('table_name', 'category_migration_audits')
+            ->where('index_name', $index)
+            ->exists();
+    }
 }

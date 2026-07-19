@@ -20,10 +20,11 @@ class GovernanceAccessBoundaryTest extends TestCase
 
     public function test_cmart_management_cannot_access_carboot_operational_analytics_endpoints(): void
     {
-        $venue = User::where('email', 'staff@cmart.com')->first();
-        if (!$venue) {
-            $this->markTestSkipped('Seeded cmart_management demo (staff@cmart.com) not found. Run database seeders.');
-        }
+        $venue = $this->provisionUser(
+            'governance-management@example.test',
+            'cmart_management',
+            'Governance CMart Management',
+        );
 
         Sanctum::actingAs($venue);
 
@@ -92,19 +93,12 @@ class GovernanceAccessBoundaryTest extends TestCase
 
     public function test_community_vendor_can_still_access_dashboard_apis_while_pending(): void
     {
-        $vendor = User::where('role', 'community')
-            ->where('vendor_status', 'pending')
-            ->first();
-
-        if (!$vendor) {
-            $vendor = User::where('role', 'community')->first();
-            if (!$vendor) {
-                $this->markTestSkipped('No community vendor user found in database.');
-            }
-
-            $vendor->vendor_status = 'pending';
-            $vendor->save();
-        }
+        $vendor = $this->provisionUser(
+            'governance-pending-vendor@example.test',
+            'community',
+            'Governance Pending Vendor',
+        );
+        $vendor->update(['vendor_status' => 'pending']);
 
         Sanctum::actingAs($vendor);
 

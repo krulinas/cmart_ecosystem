@@ -36,13 +36,16 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="ml-label">Category</label>
-                <select v-model="form.category" class="ml-input" required>
-                  <option value="">Select category</option>
-                  <option v-for="category in PRODUCT_CATEGORIES" :key="category" :value="category">
-                    {{ category }}
+                <select v-model="form.vendor_category_id" class="ml-input" required :disabled="categoriesLoading">
+                  <option value="">{{ categoriesLoading ? 'Loading categories…' : 'Select category' }}</option>
+                  <option v-for="category in categories" :key="category.id" :value="String(category.id)">
+                    {{ category.label }}
                   </option>
                 </select>
-                <p v-if="errors.category" class="mt-1 text-xs text-rose-600">{{ errors.category }}</p>
+                <p v-if="categoryLoadError" class="mt-1 text-xs text-rose-600">{{ categoryLoadError }}</p>
+                <p v-if="errors.vendor_category_id || errors.category" class="mt-1 text-xs text-rose-600">
+                  {{ errors.vendor_category_id || errors.category }}
+                </p>
               </div>
               <div>
                 <label class="ml-label">Condition</label>
@@ -162,8 +165,8 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '../services/api';
+import { fetchVendorCategories } from '../services/vendorCategoriesApi';
 import { extractApiError } from '../utils/apiErrors';
-import { PRODUCT_CATEGORIES } from '../utils/bookingDisplay';
 import { resolveReuseItemGallery } from '../utils/imageUrl';
 import { ITEM_CONDITIONS, ITEM_PRICING_TYPES } from '../utils/vendorCatalog';
 
@@ -186,11 +189,14 @@ const existingImages = ref([]);
 const removeImageIds = ref([]);
 const newImageFiles = ref([]);
 const newImagePreviews = ref([]);
+const categories = ref([]);
+const categoriesLoading = ref(false);
+const categoryLoadError = ref('');
 let previewKeyCounter = 0;
 
 const emptyForm = () => ({
   name: '',
-  category: '',
+  vendor_category_id: '',
   condition: 'Good',
   pricing_type: 'fixed',
   price: '',
@@ -199,6 +205,21 @@ const emptyForm = () => ({
 });
 
 const form = reactive(emptyForm());
+
+const loadCategories = async () => {
+  if (categories.value.length || categoriesLoading.value) return;
+
+  categoriesLoading.value = true;
+  categoryLoadError.value = '';
+
+  try {
+    categories.value = await fetchVendorCategories(api);
+  } catch (error) {
+    categoryLoadError.value = extractApiError(error);
+  } finally {
+    categoriesLoading.value = false;
+  }
+};
 
 const revokeNewPreviews = () => {
   for (const preview of newImagePreviews.value) {
@@ -253,7 +274,9 @@ const resetForm = () => {
 
 const fillForm = (item) => {
   form.name = item?.name || '';
-  form.category = item?.category || '';
+  form.vendor_category_id = item?.vendor_category_id != null
+    ? String(item.vendor_category_id)
+    : '';
   form.condition = item?.condition || 'Good';
   form.pricing_type = item?.pricing_type || 'fixed';
   form.price = item?.price != null ? String(item.price) : '';
@@ -264,9 +287,10 @@ const fillForm = (item) => {
 
 watch(
   () => [props.modelValue, props.item],
-  ([open, item]) => {
+  async ([open, item]) => {
     if (!open) return;
     resetForm();
+    await loadCategories();
     if (item) fillForm(item);
   },
 );
@@ -315,7 +339,7 @@ const markExistingImageRemoved = (imageId) => {
 const buildFormData = () => {
   const fd = new FormData();
   fd.append('name', form.name.trim());
-  fd.append('category', form.category);
+  fd.append('vendor_category_id', form.vendor_category_id);
   fd.append('condition', form.condition);
   fd.append('pricing_type', form.pricing_type);
   fd.append('status', form.status);
@@ -350,7 +374,7 @@ const save = async () => {
       } else {
         await api.put(`/vendor/items/${props.item.id}`, {
           name: form.name.trim(),
-          category: form.category,
+          vendor_category_id: Number(form.vendor_category_id),
           condition: form.condition,
           pricing_type: form.pricing_type,
           price: form.pricing_type === 'fixed' ? Number(form.price) : null,
@@ -365,7 +389,7 @@ const save = async () => {
     } else {
       await api.post('/vendor/items', {
         name: form.name.trim(),
-        category: form.category,
+        vendor_category_id: Number(form.vendor_category_id),
         condition: form.condition,
         pricing_type: form.pricing_type,
         price: form.pricing_type === 'fixed' ? Number(form.price) : null,

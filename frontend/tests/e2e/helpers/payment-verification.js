@@ -164,7 +164,7 @@ export async function verifyPaymentAsPaid(driver, marker, { bookingId, baseUrl =
   try {
     await searchManagementPaymentRecord(driver, String(bookingId));
     await waitForManagementPaymentStatus(driver, bookingId, MANAGEMENT_PAID_STATUS, { timeoutMs: 15000 });
-  } catch (uiError) {
+  } catch {
     await applyVerifyPaymentViaApi(driver, bookingId, marker);
     await driver.navigate().refresh();
     await goToManagementPaymentRecords(driver, baseUrl);

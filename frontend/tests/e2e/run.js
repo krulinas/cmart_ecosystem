@@ -37,7 +37,8 @@ if (rawArgs.includes('--headless')) {
 }
 
 const phase39Requested = specFiles.some((file) =>
-  file.endsWith('vendor.category-site-selection.spec.js'),
+  file.endsWith('vendor.category-site-selection.spec.js')
+  || file.endsWith('phase3.closure.spec.js'),
 );
 const phase310Requested = specFiles.some((file) =>
   file.endsWith('public.event-layout.spec.js'),
@@ -52,6 +53,9 @@ if (phase39Requested) {
   process.env.E2E_CMART_MANAGEMENT_EMAIL = fixtures.cmart_management_email;
   process.env.E2E_CMART_MANAGEMENT_PASSWORD = fixtures.cmart_management_password;
   process.env.E2E_BOOKING_EVENT_NAME = fixtures.event_title;
+  process.env.E2E_P39_EVENT_ID = String(fixtures.event_id);
+  process.env.E2E_P39_FOOD_CATEGORY_ID = String(fixtures.food_category_id);
+  process.env.E2E_P39_SITE_IDS = JSON.stringify(fixtures.site_ids);
 }
 
 if (phase310Requested) {

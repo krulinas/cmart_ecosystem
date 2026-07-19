@@ -49,11 +49,13 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
-    public function bookings() {
+    public function bookings()
+    {
         return $this->hasMany(Booking::class);
     }
 
-    public function feedbacks() {
+    public function feedbacks()
+    {
         return $this->hasMany(Feedback::class);
     }
 
@@ -80,6 +82,16 @@ class User extends Authenticatable
     public function vendorItems()
     {
         return $this->hasMany(VendorItem::class);
+    }
+
+    public function itemReservations()
+    {
+        return $this->hasMany(ItemReservation::class, 'reserving_user_id');
+    }
+
+    public function ownedItemReservations()
+    {
+        return $this->hasMany(ItemReservation::class, 'vendor_user_id');
     }
 
     public function bookingPreference()
