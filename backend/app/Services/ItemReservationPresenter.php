@@ -60,6 +60,7 @@ class ItemReservationPresenter
             'chargeWaiver',
             'cancelledBy',
             'expiredBy',
+            'completedBy',
         ]);
 
         return [
@@ -79,6 +80,8 @@ class ItemReservationPresenter
             'cancelled_by' => $reservation->cancelledBy?->name,
             'expired_by' => $reservation->expiredBy?->name,
             'expired_at' => $reservation->expired_at?->toIso8601String(),
+            'completed_by' => $reservation->completedBy?->name,
+            'completed_at' => $reservation->completed_at?->toIso8601String(),
         ];
     }
 
@@ -127,6 +130,7 @@ class ItemReservationPresenter
             'cancellation_reason' => $reservation->cancellation_reason,
             'created_at' => $reservation->created_at?->toIso8601String(),
             'cancelled_at' => $reservation->cancelled_at?->toIso8601String(),
+            'completed_at' => $reservation->completed_at?->toIso8601String(),
         ];
     }
 }

@@ -113,6 +113,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/vendor/item-reservations', [VendorItemReservationController::class, 'index']);
         Route::get('/vendor/item-reservations/{item_reservation}', [VendorItemReservationController::class, 'show']);
         Route::post('/vendor/item-reservations/{item_reservation}/cancel', [VendorItemReservationController::class, 'cancel']);
+        Route::post('/vendor/item-reservations/{item_reservation}/complete', [VendorItemReservationController::class, 'complete']);
 
         Route::get('/vendor/bookings', [BookingController::class, 'mine']);
         Route::get('/vendor/bookings/{booking}', [BookingController::class, 'vendorShow']);
@@ -182,6 +183,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/item-reservations/{item_reservation}/waive-charge', [OrganizerItemReservationController::class, 'waiveCharge']);
             Route::post('/item-reservations/{item_reservation}/cancel', [OrganizerItemReservationController::class, 'cancel']);
             Route::post('/item-reservations/{item_reservation}/expire', [OrganizerItemReservationController::class, 'expire']);
+            Route::post('/item-reservations/{item_reservation}/complete', [OrganizerItemReservationController::class, 'complete']);
 
             Route::post('/events/{carboot_event}/layout/rows/{row}/sites', [OrganizerEventLayoutSiteController::class, 'store']);
             Route::post('/events/{carboot_event}/layout/rows/{row}/sites/generate', [OrganizerEventLayoutSiteController::class, 'generate']);

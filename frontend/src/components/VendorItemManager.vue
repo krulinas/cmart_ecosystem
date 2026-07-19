@@ -117,6 +117,14 @@
               {{ marketplaceVisibilityLabel(item.status) }}
             </p>
 
+            <p
+              v-if="item.has_active_reservation"
+              class="mt-2 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200"
+              data-testid="vendor-item-active-reservation-badge"
+            >
+              Active reservation hold
+            </p>
+
             <p class="mt-3 text-sm font-semibold text-brand-700">{{ formatItemPrice(item) }}</p>
             <p v-if="item.description" class="mt-2 text-xs text-ink-500 line-clamp-2">{{ item.description }}</p>
 
@@ -334,4 +342,6 @@ const removeItem = async (item) => {
 };
 
 onMounted(loadItems);
+
+defineExpose({ loadItems });
 </script>

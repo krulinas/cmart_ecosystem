@@ -348,6 +348,11 @@
         </div>
       </section>
 
+      <MyItemReservationsPanel
+        v-if="auth.isAuthenticated && auth.isCommunityMember && !auth.isVendorUser"
+        class="bg-white shadow-sm border border-gray-100"
+      />
+
       <section
         v-if="!auth.isVendorUser"
         id="become-vendor"
@@ -470,6 +475,7 @@ import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import CommunityFeedback from '../../components/CommunityFeedback.vue';
 import EventDetailsModal from '../../components/EventDetailsModal.vue';
+import MyItemReservationsPanel from '../../components/MyItemReservationsPanel.vue';
 import { useAuthStore } from '../../stores/auth';
 import api from '../../services/api';
 import { DEFAULT_EVENT_LOCATION, filterEventsByChip, mapApiEventToCard } from '../../utils/eventDisplay';

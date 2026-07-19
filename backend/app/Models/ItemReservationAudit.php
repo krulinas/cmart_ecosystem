@@ -22,6 +22,8 @@ class ItemReservationAudit extends Model
 
     public const ACTION_EXPIRED = 'reservation_expired';
 
+    public const ACTION_COMPLETED = 'reservation_completed';
+
     protected $fillable = [
         'item_reservation_id',
         'actor_user_id',

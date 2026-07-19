@@ -68,6 +68,10 @@
         v-show="activeSection === 'layout' && !showSectionLoader"
         ref="layoutPanel"
       />
+      <OrganizerItemReservationsPanel
+        v-show="activeSection === 'item-reservations' && !showSectionLoader"
+        ref="itemReservationsPanel"
+      />
       <StaffNewsPanel
         v-show="activeSection === 'news' && !showSectionLoader"
         ref="newsPanel"
@@ -107,6 +111,7 @@ import OrganizerBookingsPanel from './organizer/OrganizerBookingsPanel.vue';
 import StaffFeedbackPanel from './staff/StaffFeedbackPanel.vue';
 import StaffEventsPanel from './staff/StaffEventsPanel.vue';
 import OrganizerEventLayoutPanel from './organizer/OrganizerEventLayoutPanel.vue';
+import OrganizerItemReservationsPanel from './organizer/OrganizerItemReservationsPanel.vue';
 import StaffNewsPanel from './staff/StaffNewsPanel.vue';
 import BossRevenuePanel from './boss/BossRevenuePanel.vue';
 import BossWordCloudPanel from './boss/BossWordCloudPanel.vue';
@@ -124,6 +129,7 @@ const SECTION_LABELS = {
   feedback: 'Feedback',
   events: 'Events',
   layout: 'Urus Susun Atur',
+  'item-reservations': 'Item Reservations',
   news: 'News',
   revenue: 'Revenue',
   analytics: 'Word Cloud',
@@ -155,6 +161,7 @@ const bookingsPanel = ref(null);
 const feedbackPanel = ref(null);
 const eventsPanel = ref(null);
 const layoutPanel = ref(null);
+const itemReservationsPanel = ref(null);
 const newsPanel = ref(null);
 const revenuePanel = ref(null);
 const wordCloudPanel = ref(null);
@@ -221,6 +228,7 @@ const panelRefForSection = (section) => {
     feedback: feedbackPanel,
     events: eventsPanel,
     layout: layoutPanel,
+    'item-reservations': itemReservationsPanel,
     news: newsPanel,
     revenue: revenuePanel,
     analytics: wordCloudPanel,

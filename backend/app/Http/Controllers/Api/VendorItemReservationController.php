@@ -6,6 +6,7 @@ use App\Exceptions\DomainConflictException;
 use App\Http\Controllers\Controller;
 use App\Models\ItemReservation;
 use App\Services\ItemReservationCancellationService;
+use App\Services\ItemReservationLifecycleService;
 use App\Services\ItemReservationPresenter;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -72,6 +73,28 @@ class VendorItemReservationController extends Controller
 
         return response()->json([
             'message' => '200 OK: Item reservation cancelled successfully.',
+            'reservation' => ItemReservationPresenter::forVendor($reservation),
+        ]);
+    }
+
+    public function complete(
+        Request $request,
+        ItemReservation $item_reservation,
+        ItemReservationLifecycleService $service,
+    ): JsonResponse {
+        $this->authorizeVendor($request, $item_reservation);
+
+        try {
+            $reservation = $service->complete($item_reservation, $request->user());
+        } catch (DomainConflictException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'error' => $exception->error,
+            ], 409);
+        }
+
+        return response()->json([
+            'message' => '200 OK: Reservation marked completed and the item is now inactive.',
             'reservation' => ItemReservationPresenter::forVendor($reservation),
         ]);
     }

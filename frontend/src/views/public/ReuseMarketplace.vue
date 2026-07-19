@@ -127,6 +127,7 @@
 
 <script setup>
 import { onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import MarketplaceItemCard from '../../components/public/MarketplaceItemCard.vue';
 import MarketplaceItemDetailsModal from '../../components/MarketplaceItemDetailsModal.vue';
@@ -137,6 +138,8 @@ import { MARKETPLACE_SORT_OPTIONS } from '../../utils/vendorCatalog';
 import { normalizeReuseItem } from '../../utils/imageUrl';
 
 const auth = useAuthStore();
+const route = useRoute();
+const router = useRouter();
 
 const items = ref([]);
 const loading = ref(true);
@@ -183,5 +186,18 @@ watch(searchQuery, () => {
   searchTimer = setTimeout(fetchItems, 300);
 });
 
-onMounted(fetchItems);
+const openItemFromQuery = () => {
+  const itemId = route.query.item;
+  if (!itemId) return;
+  selectedItemId.value = itemId;
+  showDetailsModal.value = true;
+  const nextQuery = { ...route.query };
+  delete nextQuery.item;
+  router.replace({ path: '/marketplace', query: nextQuery });
+};
+
+onMounted(async () => {
+  await fetchItems();
+  openItemFromQuery();
+});
 </script>

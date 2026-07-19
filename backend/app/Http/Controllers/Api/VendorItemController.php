@@ -101,6 +101,19 @@ class VendorItemController extends Controller
         } catch (AllocationValidationException $exception) {
             return $this->categoryValidationError($exception);
         }
+
+        if (
+            array_key_exists('status', $validated)
+            && $validated['status'] === 'inactive'
+            && $vendor_item->status === 'active'
+            && $vendor_item->reservations()->active()->exists()
+        ) {
+            return response()->json([
+                'message' => 'This item has an active reservation and cannot be unpublished.',
+                'error' => 'item_has_active_reservation',
+            ], 409);
+        }
+
         $vendor_item->update($validated);
 
         if ($request->boolean('remove_image')) {

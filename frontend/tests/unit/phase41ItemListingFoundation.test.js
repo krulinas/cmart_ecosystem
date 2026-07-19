@@ -59,10 +59,11 @@ describe('Phase 4.1 item listing foundation', () => {
     );
   });
 
-  it('does not introduce a reservation call to action', () => {
+  it('keeps listing foundation free of direct reservation API calls', () => {
+    // Phase 4.4 owns the marketplace Reserve CTA; Phase 4.1 surfaces stay listing-only.
     assert.doesNotMatch(marketplaceCard, />\s*Reserve(?:\s+now)?\s*</i);
-    assert.doesNotMatch(marketplaceDetails, />\s*Reserve(?:\s+now)?\s*</i);
     assert.doesNotMatch(itemForm, /\/reservations/);
     assert.doesNotMatch(eventPanel, /\/reservations/);
+    assert.match(marketplaceDetails, /data-testid="marketplace-reserve-cta"/);
   });
 });

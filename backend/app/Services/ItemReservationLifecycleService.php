@@ -6,12 +6,14 @@ use App\Exceptions\DomainConflictException;
 use App\Models\ItemReservation;
 use App\Models\ItemReservationAudit;
 use App\Models\User;
+use App\Models\VendorItem;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Phase 4.3 — Organizer manual charge lifecycle.
+ * Phase 4.3/4.4 — Organizer manual charge lifecycle and completion.
  *
  * Confirmation and waiver record a manual, off-platform outcome only.
+ * Completion means the reserved item was collected or handed over.
  * No money is processed and booking invoices are never touched.
  */
 class ItemReservationLifecycleService
@@ -170,6 +172,60 @@ class ItemReservationLifecycleService
     }
 
     /**
+     * confirmed → completed: item collected / handed over.
+     *
+     * Lock order: ItemReservation → VendorItem → audit insert.
+     * Charge status and confirmation/waiver evidence remain immutable.
+     */
+    public function complete(
+        ItemReservation $reservation,
+        User $actor,
+    ): ItemReservation {
+        return DB::transaction(function () use ($reservation, $actor) {
+            $locked = $this->lock($reservation);
+
+            if ($locked->reservation_status !== ItemReservation::STATUS_CONFIRMED) {
+                throw new DomainConflictException(
+                    'Only a confirmed reservation may be marked completed.',
+                    'reservation_not_confirmed',
+                );
+            }
+
+            $item = VendorItem::query()
+                ->whereKey($locked->vendor_item_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $fromReservationStatus = $locked->reservation_status;
+            $fromChargeStatus = $locked->charge_status;
+
+            $locked->update([
+                'reservation_status' => ItemReservation::STATUS_COMPLETED,
+                'active_lock' => null,
+                'completed_by' => $actor->id,
+                'completed_at' => now(),
+            ]);
+
+            $item->update([
+                'status' => 'inactive',
+            ]);
+
+            $this->audit($locked, $actor, ItemReservationAudit::ACTION_COMPLETED, [
+                'from_reservation_status' => $fromReservationStatus,
+                'to_reservation_status' => ItemReservation::STATUS_COMPLETED,
+                'from_charge_status' => $fromChargeStatus,
+                'to_charge_status' => $fromChargeStatus,
+                'note' => 'Reserved item collected or handed over.',
+                'metadata' => [
+                    'item_status' => 'inactive',
+                ],
+            ]);
+
+            return $this->reload($locked);
+        });
+    }
+
+    /**
      * required terminates as cancelled; resolved charge history is preserved.
      */
     public static function chargeStatusAfterTermination(string $chargeStatus): string
@@ -254,6 +310,7 @@ class ItemReservationLifecycleService
             'chargeWaiver',
             'cancelledBy',
             'expiredBy',
+            'completedBy',
         ]);
     }
 }

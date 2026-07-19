@@ -162,7 +162,11 @@
         </div>
       </section>
 
-      <VendorItemManager @changed="onVendorItemsChanged" />
+      <VendorItemManager ref="itemManagerRef" @changed="onVendorItemsChanged" />
+
+      <VendorItemReservationsPanel @changed="onVendorReservationsChanged" />
+
+      <MyItemReservationsPanel />
 
       <!-- Event Passes & Business Profile -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -223,6 +227,8 @@ import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import VendorBusinessProfileManager from '../../components/VendorBusinessProfileManager.vue';
 import VendorEventPassesPanel from '../../components/VendorEventPassesPanel.vue';
 import VendorItemManager from '../../components/VendorItemManager.vue';
+import VendorItemReservationsPanel from '../../components/VendorItemReservationsPanel.vue';
+import MyItemReservationsPanel from '../../components/MyItemReservationsPanel.vue';
 import VendorAnalyticsDashboard from '../../components/VendorAnalyticsDashboard.vue';
 import VendorHistoryReceipts from '../../components/VendorHistoryReceipts.vue';
 import VendorOnboardingBanner from '../../components/vendor/VendorOnboardingBanner.vue';
@@ -332,6 +338,7 @@ const loadingInsights = ref(false);
 const insightsError = ref(false);
 const profileManagerRef = ref(null);
 const eventPassesRef = ref(null);
+const itemManagerRef = ref(null);
 
 const myBookings = ref([]);
 const loadingBookings = ref(false);
@@ -382,6 +389,11 @@ const scrollToBusinessProfile = () => {
 const scrollToReuseListings = () => scrollToDashboardSection('vendor-reuse-listings');
 
 const onVendorItemsChanged = async () => {
+  await fetchVendorInsights();
+};
+
+const onVendorReservationsChanged = async () => {
+  await itemManagerRef.value?.loadItems?.();
   await fetchVendorInsights();
 };
 

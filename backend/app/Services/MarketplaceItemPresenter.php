@@ -7,8 +7,11 @@ use App\Models\VendorItem;
 
 class MarketplaceItemPresenter
 {
-    public static function fromItem(VendorItem $item, bool $detailed = false): array
-    {
+    public static function fromItem(
+        VendorItem $item,
+        bool $detailed = false,
+        ?int $viewerUserId = null,
+    ): array {
         $item->loadMissing(['user.businessProfile', 'images']);
         $profile = $item->user?->businessProfile;
         $vendor = self::publicVendorSummary($profile, $item);
@@ -19,6 +22,9 @@ class MarketplaceItemPresenter
         $hasActiveReservation = array_key_exists('has_active_reservation', $item->getAttributes())
             ? (bool) $item->getAttribute('has_active_reservation')
             : $item->reservations()->active()->exists();
+
+        $feeConfigured = $event?->item_reservation_service_fee !== null;
+        $isOwnItem = $viewerUserId !== null && (int) $viewerUserId === (int) $item->user_id;
 
         $payload = [
             'id' => $item->id,
@@ -36,9 +42,13 @@ class MarketplaceItemPresenter
             'listed_at' => $item->created_at?->toIso8601String(),
             'vendor' => $vendor,
             'purchase_mode' => 'in-person only',
-            'is_reservable' => $event?->item_reservation_service_fee !== null
-                && ! $hasActiveReservation,
+            'is_reservable' => $feeConfigured && ! $hasActiveReservation,
             'has_active_reservation' => $hasActiveReservation,
+            'is_own_item' => $isOwnItem,
+            'reservation_service_fee' => $feeConfigured
+                ? round((float) $event->item_reservation_service_fee, 2)
+                : null,
+            'reservation_service_fee_currency' => $feeConfigured ? 'MYR' : null,
             'event' => $event ? [
                 'title' => $event->title,
                 'starts_at' => $event->starts_at?->toIso8601String(),

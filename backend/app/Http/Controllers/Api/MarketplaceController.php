@@ -75,10 +75,14 @@ class MarketplaceController extends Controller
         $this->applySort($query, $validated['sort'] ?? 'newest');
 
         $paginator = $query->paginate($perPage)->withQueryString();
+        $viewerUserId = $request->user('sanctum')?->id;
 
         return response()->json([
             'data' => $paginator->getCollection()
-                ->map(fn (VendorItem $item) => MarketplaceItemPresenter::fromItem($item))
+                ->map(fn (VendorItem $item) => MarketplaceItemPresenter::fromItem(
+                    $item,
+                    viewerUserId: $viewerUserId,
+                ))
                 ->values(),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
@@ -90,7 +94,7 @@ class MarketplaceController extends Controller
         ]);
     }
 
-    public function show(VendorItem $vendor_item)
+    public function show(Request $request, VendorItem $vendor_item)
     {
         if (! MarketplaceEligibility::isItemPubliclyPreviewable($vendor_item)) {
             return response()->json([
@@ -114,7 +118,11 @@ class MarketplaceController extends Controller
         ]);
 
         return response()->json([
-            'item' => MarketplaceItemPresenter::fromItem($vendor_item, detailed: true),
+            'item' => MarketplaceItemPresenter::fromItem(
+                $vendor_item,
+                detailed: true,
+                viewerUserId: $request->user('sanctum')?->id,
+            ),
         ]);
     }
 

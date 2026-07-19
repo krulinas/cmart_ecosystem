@@ -137,6 +137,17 @@ class OrganizerItemReservationController extends Controller
         ), '200 OK: Reservation manually expired by the Organizer.');
     }
 
+    public function complete(
+        Request $request,
+        ItemReservation $item_reservation,
+        ItemReservationLifecycleService $service,
+    ): JsonResponse {
+        return $this->mutate(
+            fn () => $service->complete($item_reservation, $request->user()),
+            '200 OK: Reservation marked completed and the item is now inactive.',
+        );
+    }
+
     private function mutate(callable $operation, string $message): JsonResponse
     {
         try {
