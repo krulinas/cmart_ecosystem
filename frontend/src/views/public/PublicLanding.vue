@@ -18,7 +18,7 @@
         :style="contentStyle()"
       >
         <p class="text-base sm:text-lg uppercase tracking-[0.2em] font-bold text-cyan-200 mb-5 drop-shadow-md">
-          CMart Kompleks Changlun
+          CMart Kompleks Changlun Presents
         </p>
         <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black mb-6 drop-shadow-2xl leading-tight tracking-tight">
           Carboot@CMart
