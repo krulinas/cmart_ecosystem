@@ -34,6 +34,12 @@ class UserAuthPresenter
             $payload['maps_to_future_organizer'] = ManagementCapability::mapsToFutureOrganizer($user->role);
         }
 
+        if (ManagementRole::isOrganizerEquivalent($user->role)) {
+            $payload['default_site_price'] = $user->default_site_price !== null
+                ? number_format((float) $user->default_site_price, 2, '.', '')
+                : null;
+        }
+
         if ($user->role === 'community') {
             $payload['vendor_business_profile'] = $user->businessProfile
                 ? self::presentVendorBusinessProfile($user->businessProfile)

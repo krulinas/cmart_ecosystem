@@ -31,6 +31,7 @@ trait Phase35EventLayoutFixtures
             'description' => 'Phase 3.5 layout test event',
             'max_slots' => 50,
             'day_generation_mode' => CarbootEvent::DAY_MODE_CALENDAR,
+            'site_price' => CarbootEvent::DEFAULT_SITE_PRICE,
         ], $overrides)));
     }
 

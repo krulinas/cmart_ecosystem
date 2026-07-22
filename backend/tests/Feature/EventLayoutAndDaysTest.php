@@ -287,6 +287,7 @@ class EventLayoutAndDaysTest extends TestCase
             'starts_at' => now()->addDays(5)->format('Y-m-d H:i:s'),
             'ends_at' => now()->addDays(5)->addHours(6)->format('Y-m-d H:i:s'),
             'status' => 'Available',
+            'site_price' => '20.00',
             'day_generation_mode' => 'single_session',
             'max_slots' => 20,
         ]);

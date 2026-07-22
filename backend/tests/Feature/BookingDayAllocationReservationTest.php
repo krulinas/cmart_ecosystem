@@ -104,6 +104,7 @@ class BookingDayAllocationReservationTest extends TestCase
             'description' => 'Phase 2A.6 allocation test',
             'max_slots' => 50,
             'day_generation_mode' => 'calendar_days',
+            'site_price' => CarbootEvent::DEFAULT_SITE_PRICE,
         ]);
         $this->createdEventIds[] = $event->id;
 

@@ -129,6 +129,7 @@ class VendorBookingPresenter
     public static function siteSelection(Booking $booking): ?array
     {
         $booking->loadMissing([
+            'carbootEvent',
             'bookingDayAllocations.eventSite.space',
             'bookingDayAllocations.eventDay',
         ]);
@@ -147,6 +148,14 @@ class VendorBookingPresenter
                     === BookingAllocationLifecycleService::REASON_ORGANIZER_SITE_REASSIGNMENT,
             );
 
+        $unitPrice = null;
+        if ($booking->unit_site_price !== null && (float) $booking->unit_site_price > 0) {
+            $unitPrice = number_format((float) $booking->unit_site_price, 2, '.', '');
+        } elseif ($booking->carbootEvent?->site_price !== null && (float) $booking->carbootEvent->site_price > 0) {
+            // Fallback for pre-snapshot bookings: show event price, never spaces.price.
+            $unitPrice = number_format((float) $booking->carbootEvent->site_price, 2, '.', '');
+        }
+
         $sites = $selectionAllocations
             ->pluck('eventSite')
             ->filter()
@@ -159,8 +168,9 @@ class VendorBookingPresenter
                 'row_label' => $site->row_label,
                 'position_number' => $site->position_number,
                 'space_id' => $site->space_id,
-                'space_name' => $site->space?->space_size,
-                'price' => number_format((float) ($site->space?->price ?? 0), 2, '.', ''),
+                // Current vendor flow no longer uses Standard/Large catalogue labels for pricing.
+                'space_name' => null,
+                'price' => $unitPrice,
             ])
             ->values()
             ->all();
@@ -448,7 +458,13 @@ class VendorBookingPresenter
         $siteSelection = self::siteSelection($booking);
         if ($siteSelection !== null) {
             $payload['site_selection'] = $siteSelection;
-            $payload['tapak_quantity'] = $siteSelection['site_count'];
+            $payload['tapak_quantity'] = $booking->site_quantity ?? $siteSelection['site_count'];
+        }
+        if ($booking->unit_site_price !== null) {
+            $payload['unit_site_price'] = number_format((float) $booking->unit_site_price, 2, '.', '');
+        }
+        if ($booking->site_quantity !== null) {
+            $payload['site_quantity'] = (int) $booking->site_quantity;
         }
 
         return $payload;
@@ -478,7 +494,13 @@ class VendorBookingPresenter
         $siteSelection = self::siteSelection($booking);
         if ($siteSelection !== null) {
             $payload['site_selection'] = $siteSelection;
-            $payload['tapak_quantity'] = $siteSelection['site_count'];
+            $payload['tapak_quantity'] = $booking->site_quantity ?? $siteSelection['site_count'];
+        }
+        if ($booking->unit_site_price !== null) {
+            $payload['unit_site_price'] = number_format((float) $booking->unit_site_price, 2, '.', '');
+        }
+        if ($booking->site_quantity !== null) {
+            $payload['site_quantity'] = (int) $booking->site_quantity;
         }
 
         return $payload;

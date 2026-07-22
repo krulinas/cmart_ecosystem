@@ -34,6 +34,10 @@ class EventPresenter
 
         if ($includeOrganizerConfiguration) {
             $payload['item_reservation_service_fee'] = $event->item_reservation_service_fee;
+            $payload['site_price'] = $event->site_price !== null
+                ? number_format((float) $event->site_price, 2, '.', '')
+                : null;
+            $payload['has_bookings'] = $event->bookings()->exists();
         }
 
         return $payload;

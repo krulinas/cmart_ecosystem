@@ -94,6 +94,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $starts->format('Y-m-d H:i:s'),
             'ends_at' => $ends->format('Y-m-d H:i:s'),
             'status' => 'Available',
+            'site_price' => '20.00',
         ]);
 
         $response->assertCreated();
@@ -120,6 +121,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $starts->format('Y-m-d H:i:s'),
             'ends_at' => $ends->format('Y-m-d H:i:s'),
             'status' => 'Available',
+            'site_price' => '20.00',
             'day_generation_mode' => CarbootEvent::DAY_MODE_CALENDAR,
         ]);
 
@@ -150,6 +152,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $starts->format('Y-m-d H:i:s'),
             'ends_at' => $ends->format('Y-m-d H:i:s'),
             'status' => 'Available',
+            'site_price' => '20.00',
         ])->assertCreated();
 
         $eventId = (int) $create->json('event.id');
@@ -171,6 +174,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => now()->addDays(3)->format('Y-m-d H:i:s'),
             'ends_at' => now()->addDays(3)->addHours(4)->format('Y-m-d H:i:s'),
             'status' => 'Available',
+            'site_price' => '20.00',
         ])->assertForbidden();
     }
 
@@ -184,6 +188,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $day.' 10:00:00',
             'ends_at' => $day.' 18:00:00',
             'status' => 'Available',
+            'site_price' => '20.00',
         ])->assertCreated();
 
         $eventId = (int) $create->json('event.id');
@@ -210,6 +215,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $start.' 10:00:00',
             'ends_at' => $start.' 18:00:00',
             'status' => 'Available',
+            'site_price' => '20.00',
         ])->assertCreated();
 
         $eventId = (int) $create->json('event.id');
@@ -235,6 +241,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $start.' 10:00:00',
             'ends_at' => $end.' 18:00:00',
             'status' => 'Available',
+            'site_price' => '20.00',
         ])->assertCreated();
 
         $eventId = (int) $create->json('event.id');
@@ -263,6 +270,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $day.' 10:00:00',
             'ends_at' => $day.' 18:00:00',
             'status' => 'Available',
+            'site_price' => '20.00',
         ])->assertCreated();
 
         $eventId = (int) $create->json('event.id');
@@ -289,6 +297,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $day.' 10:00:00',
             'ends_at' => $day.' 18:00:00',
             'status' => 'Available',
+            'site_price' => '20.00',
         ])->assertCreated();
 
         $eventId = (int) $create->json('event.id');
@@ -314,6 +323,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $day.' 10:00:00',
             'ends_at' => $day.' 18:00:00',
             'status' => 'Available',
+            'site_price' => '20.00',
         ])->assertCreated();
 
         $eventId = (int) $create->json('event.id');
@@ -348,6 +358,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $day.' 10:00:00',
             'ends_at' => $day.' 18:00:00',
             'status' => 'Available',
+            'site_price' => '20.00',
         ])->assertCreated();
 
         $eventId = (int) $create->json('event.id');
@@ -371,6 +382,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $day.' 10:00:00',
             'ends_at' => $day.' 18:00:00',
             'status' => 'Available',
+            'site_price' => '20.00',
         ])->assertCreated();
 
         $eventId = (int) $create->json('event.id');
@@ -403,6 +415,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $day.' 10:00:00',
             'ends_at' => $day.' 18:00:00',
             'status' => 'Available',
+            'site_price' => '20.00',
         ])->assertCreated();
 
         $eventId = (int) $create->json('event.id');
@@ -430,6 +443,7 @@ class EventDayAutomationTest extends TestCase
             'starts_at' => $starts->format('Y-m-d H:i:s'),
             'ends_at' => $ends->format('Y-m-d H:i:s'),
             'status' => 'Available',
+            'site_price' => '20.00',
             'day_generation_mode' => CarbootEvent::DAY_MODE_SINGLE_SESSION,
         ])->assertCreated();
 

@@ -27,6 +27,7 @@ class User extends Authenticatable
          * TODO: Move to vendor_business_profiles or a dedicated vendor status field.
          */
         'vendor_status',
+        'default_site_price',
         'password',
     ];
 
@@ -47,6 +48,7 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'default_site_price' => 'decimal:2',
     ];
 
     public function bookings()

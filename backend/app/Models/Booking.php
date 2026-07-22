@@ -18,6 +18,8 @@ class Booking extends Model
         'vendor_category_id',
         'category_label_snapshot',
         'product_details',
+        'unit_site_price',
+        'site_quantity',
         'approval_status',
         'checked_in_at',
         'revision_comment',
@@ -33,6 +35,8 @@ class Booking extends Model
         'booking_date' => 'date',
         'checked_in_at' => 'datetime',
         'withdrawn_at' => 'datetime',
+        'unit_site_price' => 'decimal:2',
+        'site_quantity' => 'integer',
     ];
 
     /** Exclude invalid legacy/test dates from vendor-facing lists. */

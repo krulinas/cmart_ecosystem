@@ -293,8 +293,9 @@ export const boothTypeLabel = (booking) =>
   booking?.space_type ||
   booking?.boothType ||
   booking?.space?.space_size ||
+  (booking?.site_quantity != null ? `${booking.site_quantity} tapak` : null) ||
   (booking?.space_id ? `Space #${booking.space_id}` : null) ||
-  'Standard (1 Parking Lot)';
+  'Tapak parking';
 
 export const productSummary = (booking) => {
   const category = booking?.product_category || 'Others';

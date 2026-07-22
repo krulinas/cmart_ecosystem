@@ -65,8 +65,29 @@ export function getSelectedSites(sites = [], selectedIds = []) {
     .sort((left, right) => Number(left.position_number) - Number(right.position_number));
 }
 
-export function computePreviewAmount(selectedSites = []) {
-  return selectedSites.reduce((total, site) => total + Number(site.price || 0), 0);
+export function computePreviewAmount(selectedSites = [], unitPrice = null) {
+  const count = selectedSites.length;
+  if (count === 0) return 0;
+
+  const resolvedUnit = unitPrice != null && unitPrice !== ''
+    ? Number(unitPrice)
+    : Number(selectedSites[0]?.price || 0);
+
+  if (!Number.isFinite(resolvedUnit) || resolvedUnit <= 0) return 0;
+
+  return Number((resolvedUnit * count).toFixed(2));
+}
+
+export function resolveEventUnitPrice(selectedSites = [], eventSitePrice = null) {
+  if (eventSitePrice != null && eventSitePrice !== '') {
+    const fromEvent = Number(eventSitePrice);
+    if (Number.isFinite(fromEvent) && fromEvent > 0) {
+      return fromEvent;
+    }
+  }
+
+  const fromSite = Number(selectedSites[0]?.price || 0);
+  return Number.isFinite(fromSite) && fromSite > 0 ? fromSite : 0;
 }
 
 export function arePositionsContiguous(sites = []) {
@@ -206,5 +227,5 @@ export function siteAriaLabel(site) {
     disabled: 'dinyahaktifkan',
   }[site.availability_status] || site.availability_status;
 
-  return `Tapak ${site.label}, ${site.space_name || 'Ruang'}, RM${price}, ${statusLabel}`;
+  return `Tapak ${site.label}, RM${price}, ${statusLabel}`;
 }

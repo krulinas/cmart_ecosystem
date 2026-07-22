@@ -163,6 +163,7 @@
               v-model:selected-site-ids="selectedSiteIds"
               :sites="availabilitySites"
               :rows="availabilityRows"
+              :site-price="availabilitySitePrice"
               :selected-category="selectedCategory"
               :operational-days="availabilityDays"
               :loading="availabilityLoading"
@@ -266,6 +267,7 @@ const availabilityReadiness = ref('');
 const availabilityDays = ref([]);
 const availabilityRows = ref([]);
 const availabilitySites = ref([]);
+const availabilitySitePrice = ref(null);
 const selectedSiteIds = ref([]);
 const removedStaleSiteLabels = ref([]);
 const siteSelectionError = ref('');
@@ -345,6 +347,7 @@ const resetSiteSelection = () => {
   availabilityRows.value = [];
   availabilitySites.value = [];
   availabilityDays.value = [];
+  availabilitySitePrice.value = null;
   availabilityError.value = '';
   availabilityReadiness.value = '';
   siteSelectionError.value = '';
@@ -381,6 +384,7 @@ const loadSiteAvailability = async (eventId, { preserveSelection = false } = {})
       availabilityRows.value = [];
       availabilitySites.value = [];
       availabilityDays.value = Array.isArray(data.operational_days) ? data.operational_days : [];
+      availabilitySitePrice.value = data.site_price ?? data.event?.site_price ?? null;
       availabilityReadiness.value = data.readiness?.message || 'Sila pilih kategori jualan terlebih dahulu.';
       return;
     }
@@ -388,6 +392,7 @@ const loadSiteAvailability = async (eventId, { preserveSelection = false } = {})
     availabilityRows.value = Array.isArray(data.rows) ? data.rows : [];
     availabilitySites.value = Array.isArray(data.sites) ? data.sites : [];
     availabilityDays.value = Array.isArray(data.operational_days) ? data.operational_days : [];
+    availabilitySitePrice.value = data.site_price ?? data.event?.site_price ?? null;
     availabilityReadiness.value = data.readiness?.status === 'no_compatible_sites'
       ? 'Tiada tapak tersedia untuk kategori ini.'
       : (data.readiness?.message || '');

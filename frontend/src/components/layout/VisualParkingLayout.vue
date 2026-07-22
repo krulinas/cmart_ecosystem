@@ -119,9 +119,6 @@
               <span class="vpl__tile-status" :class="statusTextClass(site.status)">
                 {{ statusLabel(mode, site.status) }}
               </span>
-              <span v-if="site.spaceName && mode !== 'organizer'" class="vpl__tile-space">
-                {{ shortSpaceName(site.spaceName) }}
-              </span>
               <span v-if="site.price != null && mode === 'vendor'" class="vpl__tile-price">
                 RM {{ site.price }}
               </span>
@@ -206,12 +203,6 @@ function gridStyle(row) {
   return {
     gridTemplateColumns: `repeat(${columns}, minmax(3.25rem, 1fr))`,
   };
-}
-
-function shortSpaceName(name) {
-  return String(name || '')
-    .replace(' (1 Parking Lot)', '')
-    .replace(' (2 Parking Lots)', '');
 }
 
 function tileTag() {

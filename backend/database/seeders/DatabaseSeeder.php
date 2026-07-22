@@ -179,6 +179,7 @@ class DatabaseSeeder extends Seeder
                 'status' => 'Available',
                 'description' => 'Standard weekend carboot at CMart Changlun.',
                 'max_slots' => 120,
+                'site_price' => CarbootEvent::DEFAULT_SITE_PRICE,
             ]
         );
 
@@ -190,6 +191,7 @@ class DatabaseSeeder extends Seeder
                 'status' => 'Almost Full',
                 'description' => 'Limited slots remaining for Sunday carboot.',
                 'max_slots' => 120,
+                'site_price' => CarbootEvent::DEFAULT_SITE_PRICE,
             ]
         );
 
@@ -201,6 +203,7 @@ class DatabaseSeeder extends Seeder
                 'status' => 'Available',
                 'description' => 'Extended hours mega carboot event.',
                 'max_slots' => 200,
+                'site_price' => CarbootEvent::DEFAULT_SITE_PRICE,
             ]
         );
 

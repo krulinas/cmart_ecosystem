@@ -204,7 +204,7 @@ export function adaptVendorRows(rows = [], selectedIds = []) {
         focused: false,
         disabled: !(Boolean(site.is_selectable) || isSelected),
         price: site.price != null ? Number(site.price).toFixed(2) : null,
-        spaceName: site.space_name || null,
+        spaceName: null,
         categoryLabel: row.category?.label || null,
         rowId: row.id,
         rowLabel: row.label,

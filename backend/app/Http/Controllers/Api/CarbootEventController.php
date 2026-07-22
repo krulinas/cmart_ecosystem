@@ -75,11 +75,17 @@ class CarbootEventController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validateEvent($request);
+        $saveAsDefault = $request->boolean('save_as_default_site_price');
+        unset($validated['save_as_default_site_price']);
 
         try {
-            $event = DB::transaction(function () use ($validated) {
+            $event = DB::transaction(function () use ($request, $validated, $saveAsDefault) {
                 $event = CarbootEvent::create($validated);
                 $this->eventDayGenerator->materializeForEvent($event);
+
+                if ($saveAsDefault) {
+                    $this->persistOrganizerDefaultSitePrice($request->user(), $event->site_price);
+                }
 
                 return $event;
             });
@@ -107,6 +113,8 @@ class CarbootEventController extends Controller
     public function update(Request $request, CarbootEvent $carboot_event)
     {
         $validated = $this->validateEvent($request, true);
+        $saveAsDefault = $request->boolean('save_as_default_site_price');
+        unset($validated['save_as_default_site_price']);
         $scheduleChanging = $this->scheduleFieldsChanging($carboot_event, $validated);
 
         if ($scheduleChanging && $this->eventDayGenerator->eventHasAllocationHistory($carboot_event)) {
@@ -122,11 +130,20 @@ class CarbootEventController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($carboot_event, $validated, $scheduleChanging) {
+            DB::transaction(function () use ($request, $carboot_event, $validated, $scheduleChanging, $saveAsDefault) {
                 $carboot_event->update($validated);
 
                 if ($scheduleChanging) {
                     $this->eventDayGenerator->materializeForEvent($carboot_event->fresh());
+                }
+
+                if ($saveAsDefault && array_key_exists('site_price', $validated)) {
+                    $this->persistOrganizerDefaultSitePrice($request->user(), $validated['site_price']);
+                } elseif ($saveAsDefault) {
+                    $this->persistOrganizerDefaultSitePrice(
+                        $request->user(),
+                        $carboot_event->fresh()->site_price,
+                    );
                 }
             });
         } catch (DomainConflictException $exception) {
@@ -222,6 +239,15 @@ class CarbootEventController extends Controller
                 'min:0',
                 'max:99999999.99',
             ],
+            'site_price' => array_values(array_filter([
+                $partial ? 'sometimes' : null,
+                'required',
+                'numeric',
+                'decimal:0,2',
+                'gt:0',
+                'max:99999999.99',
+            ])),
+            'save_as_default_site_price' => 'sometimes|boolean',
             'day_generation_mode' => [
                 'sometimes',
                 'required',
@@ -253,6 +279,10 @@ class CarbootEventController extends Controller
             $validated['max_slots'] = null;
         }
 
+        if (isset($validated['site_price'])) {
+            $validated['site_price'] = number_format((float) $validated['site_price'], 2, '.', '');
+        }
+
         if (isset($validated['starts_at'])) {
             $validated['starts_at'] = $this->normalizeEventDatetime($validated['starts_at']);
         }
@@ -262,6 +292,20 @@ class CarbootEventController extends Controller
         }
 
         return $validated;
+    }
+
+    private function persistOrganizerDefaultSitePrice($user, mixed $sitePrice): void
+    {
+        if (! $user) {
+            return;
+        }
+
+        $normalized = number_format((float) $sitePrice, 2, '.', '');
+        if ((float) $normalized <= 0) {
+            return;
+        }
+
+        $user->forceFill(['default_site_price' => $normalized])->save();
     }
 
     /**

@@ -155,9 +155,16 @@ class BookingAllocationReservationService
         // 22–23. Full day × site set; reject any active occupancy.
         $this->assertNoActiveOccupancy($activeDays, $orderedSites);
 
-        // 24–25. Derive quantity and amount from selected sites only.
+        // 24–25. Derive quantity and amount from event site price × site count.
         $tapakQuantity = $orderedSites->count();
-        $amount = $this->deriveAmount($orderedSites);
+        $unitPrice = $this->resolveEventUnitPrice($event);
+        $amount = $this->deriveAmount($tapakQuantity, $unitPrice);
+
+        // Snapshot financial fields on the booking (historical integrity).
+        $booking->forceFill([
+            'unit_site_price' => $unitPrice,
+            'site_quantity' => $tapakQuantity,
+        ])->save();
 
         // 26–29. Create reserved allocations with one reserved_at, deterministic insert order.
         $reservedAt = now();
@@ -313,25 +320,31 @@ class BookingAllocationReservationService
     }
 
     /**
-     * @param  Collection<int, EventSite>  $sites
+     * Authoritative amount: event.site_price × selected site count.
+     * Event-day count must not multiply the price.
      */
-    private function deriveAmount(Collection $sites): string
+    private function deriveAmount(int $siteCount, string $unitPrice): string
     {
-        $total = '0.00';
-
-        foreach ($sites as $site) {
-            if (! $site->space) {
-                throw new AllocationValidationException(
-                    'One or more event sites are missing a space type for pricing.',
-                    'missing_space_price',
-                );
-            }
-
-            $price = number_format((float) $site->space->price, 2, '.', '');
-            $total = bcadd($total, $price, 2);
+        if ($siteCount < 1) {
+            throw new AllocationValidationException(
+                'At least one event site must be selected.',
+                'empty_event_sites',
+            );
         }
 
-        return $total;
+        return bcmul($unitPrice, (string) $siteCount, 2);
+    }
+
+    private function resolveEventUnitPrice(CarbootEvent $event): string
+    {
+        if ($event->site_price === null || (float) $event->site_price <= 0) {
+            throw new AllocationValidationException(
+                'This event does not have a valid parking site price configured.',
+                'missing_event_site_price',
+            );
+        }
+
+        return number_format((float) $event->site_price, 2, '.', '');
     }
 
     /**

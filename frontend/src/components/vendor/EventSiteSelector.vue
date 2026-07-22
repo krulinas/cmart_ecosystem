@@ -139,11 +139,16 @@
           <dl class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
             <div><dt class="text-xs text-ink-500">Kategori Jualan</dt><dd class="font-semibold">{{ selectedCategory?.label }}</dd></div>
             <div><dt class="text-xs text-ink-500">Baris</dt><dd class="font-semibold">{{ selectedRowLabel }}</dd></div>
-            <div><dt class="text-xs text-ink-500">Tapak Dipilih</dt><dd class="font-semibold">{{ selectedLabels }}</dd></div>
-            <div><dt class="text-xs text-ink-500">Bilangan Tapak</dt><dd class="font-semibold">{{ selectedSites.length }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Tapak Dipilih</dt><dd class="font-semibold" data-testid="event-site-selected-labels">{{ selectedLabels }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Bilangan Tapak</dt><dd class="font-semibold" data-testid="event-site-selected-count">{{ selectedSites.length }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Harga Satu Tapak</dt><dd class="font-semibold" data-testid="event-site-unit-price">RM {{ unitPriceFormatted }}</dd></div>
+            <div>
+              <dt class="text-xs text-ink-500">Pengiraan</dt>
+              <dd class="font-semibold" data-testid="event-site-calculation">
+                RM {{ unitPriceFormatted }} × {{ selectedSites.length }} tapak
+              </dd>
+            </div>
             <div><dt class="text-xs text-ink-500">Hari Acara</dt><dd class="font-semibold">{{ operationalDays.length }}</dd></div>
-            <div><dt class="text-xs text-ink-500">Harga Setiap Tapak</dt><dd class="font-semibold">RM {{ unitPriceFormatted }}</dd></div>
-            <div v-if="sharedSpaceName"><dt class="text-xs text-ink-500">Jenis Ruang</dt><dd class="font-semibold">{{ sharedSpaceName }}</dd></div>
           </dl>
         </div>
         <button type="button" class="ml-btn-ghost text-sm shrink-0" data-testid="event-site-clear-selection" @click="clearSelection">
@@ -153,8 +158,8 @@
       <p class="text-lg font-extrabold text-brand-800" data-testid="event-site-preview-amount">
         Jumlah: RM {{ previewAmountFormatted }}
       </p>
-      <p class="text-xs text-ink-600">
-        Jumlah meliputi keseluruhan tempoh acara dan tidak didarab dengan bilangan hari. Jumlah akhir disahkan oleh pelayan.
+      <p class="text-xs text-ink-600" data-testid="event-site-day-note">
+        Jumlah ini adalah untuk keseluruhan tempoh acara dan tidak didarab dengan bilangan hari.
       </p>
     </div>
   </section>
@@ -168,6 +173,7 @@ import {
   formatOperationalDaysSummary,
   getSelectedSites,
   prepareAvailabilityRows,
+  resolveEventUnitPrice,
   selectionValidationMessage,
   toggleSiteSelection,
 } from '../../utils/eventSiteSelection';
@@ -179,6 +185,7 @@ const props = defineProps({
   selectedCategory: { type: Object, default: null },
   operationalDays: { type: Array, default: () => [] },
   selectedSiteIds: { type: Array, default: () => [] },
+  sitePrice: { type: [Number, String], default: null },
   loading: { type: Boolean, default: false },
   loadError: { type: String, default: '' },
   readinessMessage: { type: String, default: '' },
@@ -202,10 +209,10 @@ const legendItems = [
 const groupedRows = computed(() => prepareAvailabilityRows(props.rows));
 const visualRows = computed(() => adaptVendorRows(props.rows, props.selectedSiteIds));
 const selectedSites = computed(() => getSelectedSites(props.sites, props.selectedSiteIds));
-const previewAmountFormatted = computed(() => computePreviewAmount(selectedSites.value).toFixed(2));
+const unitPrice = computed(() => resolveEventUnitPrice(selectedSites.value, props.sitePrice));
+const previewAmountFormatted = computed(() => computePreviewAmount(selectedSites.value, unitPrice.value).toFixed(2));
 const selectedLabels = computed(() => selectedSites.value.map((site) => site.label).join(', '));
-const sharedSpaceName = computed(() => selectedSites.value[0]?.space_name || '');
-const unitPriceFormatted = computed(() => Number(selectedSites.value[0]?.price || 0).toFixed(2));
+const unitPriceFormatted = computed(() => Number(unitPrice.value || 0).toFixed(2));
 const selectedRowLabel = computed(() => {
   const rowId = Number(selectedSites.value[0]?.event_layout_row_id);
   return groupedRows.value.find((row) => row.rowId === rowId)?.rowLabel || '—';

@@ -21,6 +21,7 @@ class CarbootEvent extends Model
         'description',
         'max_slots',
         'item_reservation_service_fee',
+        'site_price',
         'day_generation_mode',
         'public_layout_published_at',
         'public_layout_entrance_note',
@@ -37,8 +38,12 @@ class CarbootEvent extends Model
         'ends_at' => 'datetime',
         'max_slots' => 'integer',
         'item_reservation_service_fee' => 'decimal:2',
+        'site_price' => 'decimal:2',
         'public_layout_published_at' => 'datetime',
     ];
+
+    /** Product default used when organizer has no saved personal default. */
+    public const DEFAULT_SITE_PRICE = '20.00';
 
     public const DAY_MODE_CALENDAR = 'calendar_days';
 

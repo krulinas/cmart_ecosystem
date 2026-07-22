@@ -79,6 +79,7 @@ class BookingCreationWithAllocationsTest extends TestCase
             'description' => 'Phase 2A.7 creation test',
             'max_slots' => 50,
             'day_generation_mode' => 'calendar_days',
+            'site_price' => CarbootEvent::DEFAULT_SITE_PRICE,
         ]);
 
         return $this->trackEvent($event);
@@ -197,13 +198,15 @@ class BookingCreationWithAllocationsTest extends TestCase
             ->assertJsonPath('booking.vendor_category_id', $this->foodCategory()->id)
             ->assertJsonPath('booking.category_label_snapshot', 'Food & Beverages')
             ->assertJsonPath('booking.product_category', 'Food & Beverages')
-            ->assertJsonPath('invoice.amount', '30.00')
+            ->assertJsonPath('invoice.amount', '20.00')
             ->json();
 
         $bookingId = $this->trackCreatedBookingResponse($response);
         $booking = Booking::findOrFail($bookingId);
 
         $this->assertSame($space->id, $booking->space_id);
+        $this->assertSame('20.00', number_format((float) $booking->unit_site_price, 2, '.', ''));
+        $this->assertSame(1, (int) $booking->site_quantity);
         $this->assertSame(1, BookingDayAllocation::where('booking_id', $bookingId)->count());
         $this->assertDatabaseHas('booking_day_allocations', [
             'booking_id' => $bookingId,
@@ -229,7 +232,7 @@ class BookingCreationWithAllocationsTest extends TestCase
             ->assertJsonPath('booking.site_selection.site_count', 2)
             ->assertJsonPath('booking.site_selection.active_day_count', 2)
             ->assertJsonPath('booking.site_selection.allocation_count', 4)
-            ->assertJsonPath('invoice.amount', '60.00')
+            ->assertJsonPath('invoice.amount', '40.00')
             ->json();
 
         $this->trackCreatedBookingResponse($response);
@@ -252,7 +255,7 @@ class BookingCreationWithAllocationsTest extends TestCase
         $response = $this->postJson('/api/bookings', $this->bookingPayload($event, collect($sites)->pluck('id')->all()))
             ->assertCreated()
             ->assertJsonPath('booking.site_selection.allocation_count', 12)
-            ->assertJsonPath('invoice.amount', '90.00')
+            ->assertJsonPath('invoice.amount', '60.00')
             ->json();
 
         $this->trackCreatedBookingResponse($response);
@@ -269,15 +272,23 @@ class BookingCreationWithAllocationsTest extends TestCase
 
         Sanctum::actingAs($vendor);
 
-        $response = $this->postJson('/api/bookings', $this->bookingPayload($event, [$site->id], [
+        $this->postJson('/api/bookings', $this->bookingPayload($event, [$site->id], [
             'tapak_quantity' => 99,
             'total_price' => 999,
             'space_id' => $large->id,
             'amount' => 999,
         ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['amount']);
+
+        $response = $this->postJson('/api/bookings', $this->bookingPayload($event, [$site->id], [
+            'tapak_quantity' => 99,
+            'total_price' => 999,
+            'space_id' => $large->id,
+        ]))
             ->assertCreated()
             ->assertJsonPath('booking.tapak_quantity', 1)
-            ->assertJsonPath('invoice.amount', '30.00')
+            ->assertJsonPath('invoice.amount', '20.00')
             ->json();
 
         $bookingId = $this->trackCreatedBookingResponse($response);

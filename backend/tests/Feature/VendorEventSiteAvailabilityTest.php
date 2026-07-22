@@ -76,6 +76,7 @@ class VendorEventSiteAvailabilityTest extends TestCase
             'description' => 'Phase 2A.8 availability test',
             'max_slots' => 50,
             'day_generation_mode' => 'calendar_days',
+            'site_price' => CarbootEvent::DEFAULT_SITE_PRICE,
         ]);
         $this->trackEvent($event);
 
@@ -140,7 +141,9 @@ class VendorEventSiteAvailabilityTest extends TestCase
             ->assertJsonPath('sites.0.label', 'A01')
             ->assertJsonPath('sites.0.availability_status', 'available')
             ->assertJsonPath('sites.0.is_selectable', true)
-            ->assertJsonPath('sites.0.price', '30.00')
+            ->assertJsonPath('sites.0.price', '20.00')
+            ->assertJsonPath('site_price', '20.00')
+            ->assertJsonPath('sites.0.space_name', null)
             ->assertJsonCount(1, 'operational_days');
 
         $json = $response->json();

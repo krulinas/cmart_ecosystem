@@ -205,6 +205,7 @@ class Phase41EventReservationFeeTest extends TestCase
             'status' => 'Available',
             'description' => 'Phase 4.1 event fee fixture',
             'max_slots' => 20,
+            'site_price' => '20.00',
         ], $overrides);
     }
 }

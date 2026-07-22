@@ -28,6 +28,41 @@
           <input v-model.number="form.max_slots" type="number" min="1" class="ml-input" />
         </div>
         <div>
+          <label class="ml-label">Harga Satu Tapak (RM)</label>
+          <div class="relative">
+            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-ink-500">RM</span>
+            <input
+              v-model="form.site_price"
+              type="number"
+              min="0.01"
+              max="99999999.99"
+              step="0.01"
+              required
+              class="ml-input pl-10"
+              data-testid="event-site-price-input"
+            />
+          </div>
+          <p class="mt-1 text-xs text-ink-500">
+            Harga seragam untuk setiap tapak parking. Jumlah tempahan = harga × bilangan tapak (bukan × hari).
+          </p>
+        </div>
+        <label class="flex items-start gap-2 text-sm text-ink-700">
+          <input
+            v-model="form.save_as_default_site_price"
+            type="checkbox"
+            class="mt-1"
+            data-testid="event-save-default-site-price"
+          />
+          <span>Simpan harga ini sebagai harga lalai untuk acara seterusnya</span>
+        </label>
+        <p
+          v-if="editingId && editingHasBookings"
+          class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+          data-testid="event-price-change-warning"
+        >
+          Perubahan harga hanya terpakai kepada tempahan baharu. Tempahan dan jumlah bayaran sedia ada tidak akan berubah.
+        </p>
+        <div>
           <label class="ml-label">Item reservation service fee (RM, optional)</label>
           <input
             v-model="form.item_reservation_service_fee"
@@ -86,6 +121,10 @@
               <div class="text-xs text-ink-500">{{ formatEventDateTime(ev.starts_at) }} → {{ formatEventDateTime(ev.ends_at) }}</div>
               <span class="mt-1 inline-block ml-badge bg-brand-100 text-brand-800">{{ ev.status }}</span>
               <p class="text-xs text-ink-500 mt-1">
+                Harga satu tapak:
+                {{ ev.site_price == null ? 'Not configured' : `RM ${Number(ev.site_price).toFixed(2)}` }}
+              </p>
+              <p class="text-xs text-ink-500 mt-1">
                 Reservation fee:
                 {{ ev.item_reservation_service_fee == null ? 'Not configured' : `RM ${Number(ev.item_reservation_service_fee).toFixed(2)}` }}
               </p>
@@ -112,7 +151,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
@@ -123,9 +162,11 @@ import {
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
 } from '../../../utils/eventDisplay';
+import { useAuthStore } from '../../../stores/auth';
 
 const toast = useToast();
 const router = useRouter();
+const auth = useAuthStore();
 const statuses = ['Available', 'Almost Full', 'Closed'];
 const events = ref([]);
 const loading = ref(false);
@@ -133,11 +174,21 @@ const hasLoaded = ref(false);
 const saving = ref(false);
 const deletingId = ref(null);
 const editingId = ref(null);
+const editingHasBookings = ref(false);
 const imageField = ref(null);
 const imageFiles = ref([]);
 const removeImageIds = ref([]);
 const editingImages = ref([]);
 const legacyImagePath = ref('');
+
+const PRODUCT_DEFAULT_SITE_PRICE = '20.00';
+
+const organizerDefaultSitePrice = computed(() => {
+  const value = auth.user?.default_site_price;
+  if (value == null || value === '') return PRODUCT_DEFAULT_SITE_PRICE;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric.toFixed(2) : PRODUCT_DEFAULT_SITE_PRICE;
+});
 
 const openLayout = (event) => {
   router.push({
@@ -154,6 +205,8 @@ const emptyForm = () => ({
   status: 'Available',
   description: '',
   max_slots: null,
+  site_price: organizerDefaultSitePrice.value,
+  save_as_default_site_price: false,
   item_reservation_service_fee: '',
 });
 
@@ -183,6 +236,8 @@ const buildFormData = () => {
   if (form.max_slots) {
     fd.append('max_slots', String(form.max_slots));
   }
+  fd.append('site_price', String(form.site_price));
+  fd.append('save_as_default_site_price', form.save_as_default_site_price ? '1' : '0');
   fd.append('item_reservation_service_fee', form.item_reservation_service_fee);
 
   imageFiles.value.forEach((file) => {
@@ -217,6 +272,7 @@ const load = async () => {
 
 const resetForm = () => {
   editingId.value = null;
+  editingHasBookings.value = false;
   editingImages.value = [];
   legacyImagePath.value = '';
   imageFiles.value = [];
@@ -228,12 +284,17 @@ const resetForm = () => {
 const edit = (ev) => {
   const normalized = normalizeEvent(ev);
   editingId.value = normalized.id;
+  editingHasBookings.value = Boolean(normalized.has_bookings);
   form.title = normalized.title;
   form.starts_at = toDatetimeLocalValue(normalized.starts_at);
   form.ends_at = toDatetimeLocalValue(normalized.ends_at);
   form.status = normalized.status;
   form.description = normalized.description || '';
   form.max_slots = normalized.max_slots;
+  form.site_price = normalized.site_price != null
+    ? Number(normalized.site_price).toFixed(2)
+    : PRODUCT_DEFAULT_SITE_PRICE;
+  form.save_as_default_site_price = false;
   form.item_reservation_service_fee = normalized.item_reservation_service_fee ?? '';
   editingImages.value = normalized.images?.filter((image) => image.id) || [];
   legacyImagePath.value = normalized.image_path || '';
@@ -253,6 +314,12 @@ const save = async () => {
     return;
   }
 
+  const sitePrice = Number(form.site_price);
+  if (!Number.isFinite(sitePrice) || sitePrice <= 0) {
+    toast.error('Harga satu tapak mesti lebih daripada RM0.00.');
+    return;
+  }
+
   saving.value = true;
   const payload = {
     title: form.title.trim(),
@@ -261,6 +328,8 @@ const save = async () => {
     status: form.status,
     description: form.description || null,
     max_slots: form.max_slots || null,
+    site_price: sitePrice.toFixed(2),
+    save_as_default_site_price: Boolean(form.save_as_default_site_price),
     item_reservation_service_fee: form.item_reservation_service_fee === ''
       ? null
       : form.item_reservation_service_fee,
@@ -287,6 +356,14 @@ const save = async () => {
     } else {
       await api.post('/carboot-events', payload);
       toast.success('Event created.');
+    }
+
+    if (payload.save_as_default_site_price) {
+      try {
+        await auth.ensureSession({ refresh: true });
+      } catch {
+        // Prefill uses organizerDefaultSitePrice on next create; refresh is best-effort.
+      }
     }
 
     resetForm();

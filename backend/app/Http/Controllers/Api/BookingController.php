@@ -66,6 +66,11 @@ class BookingController extends Controller
             'attendance_days' => 'prohibited',
             'excluded_day_ids' => 'prohibited',
             'day_exception' => 'prohibited',
+            'amount' => 'prohibited',
+            'total' => 'prohibited',
+            'invoice_amount' => 'prohibited',
+            'unit_site_price' => 'prohibited',
+            'site_quantity' => 'prohibited',
         ]);
 
         try {

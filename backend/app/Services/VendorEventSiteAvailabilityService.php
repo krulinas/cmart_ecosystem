@@ -56,6 +56,14 @@ class VendorEventSiteAvailabilityService
             );
         }
 
+        $eventUnitPrice = $this->formatEventSitePrice($event);
+        if ($eventUnitPrice === null) {
+            throw new AllocationValidationException(
+                'This event does not have a valid parking site price configured.',
+                'missing_event_site_price',
+            );
+        }
+
         $category = $this->resolveCategoryContext(
             $vendorCategoryId,
             $legacyCategory,
@@ -129,8 +137,8 @@ class VendorEventSiteAvailabilityService
                     'grid_column' => $site->grid_column,
                     'display_order' => $site->display_order,
                     'space_id' => $site->space_id,
-                    'space_name' => $site->space?->space_size,
-                    'price' => number_format((float) ($site->space?->price ?? 0), 2, '.', ''),
+                    'space_name' => null,
+                    'price' => $eventUnitPrice,
                     'operational_status' => $site->operational_status,
                     'availability_status' => $status,
                     'occupancy_status' => $occupancyBySite[(int) $site->id] ?? null,
@@ -178,11 +186,13 @@ class VendorEventSiteAvailabilityService
                 'day_generation_mode' => $event->day_generation_mode,
                 'starts_at' => $event->starts_at?->toIso8601String(),
                 'ends_at' => $event->ends_at?->toIso8601String(),
+                'site_price' => $this->formatEventSitePrice($event),
             ],
             'category' => $this->categoryResolver->presentCompact($category),
             'category_required' => false,
             'suggested_category' => $suggestedCategory,
             'excluded_incompatible_site_count' => $excludedIncompatible,
+            'site_price' => $this->formatEventSitePrice($event),
             'operational_days' => $activeDays->map(fn (EventDay $day) => [
                 'id' => $day->id,
                 'operational_date' => $day->operational_date->format('Y-m-d'),
@@ -219,11 +229,13 @@ class VendorEventSiteAvailabilityService
                 'day_generation_mode' => $event->day_generation_mode,
                 'starts_at' => $event->starts_at?->toIso8601String(),
                 'ends_at' => $event->ends_at?->toIso8601String(),
+                'site_price' => $this->formatEventSitePrice($event),
             ],
             'category' => null,
             'category_required' => true,
             'suggested_category' => $suggestedCategory,
             'excluded_incompatible_site_count' => 0,
+            'site_price' => $this->formatEventSitePrice($event),
             'operational_days' => $activeDays->map(fn (EventDay $day) => [
                 'id' => $day->id,
                 'operational_date' => $day->operational_date->format('Y-m-d'),
@@ -339,5 +351,14 @@ class VendorEventSiteAvailabilityService
         }
 
         return $event->ends_at !== null && $event->ends_at->gte(now());
+    }
+
+    private function formatEventSitePrice(CarbootEvent $event): ?string
+    {
+        if ($event->site_price === null || (float) $event->site_price <= 0) {
+            return null;
+        }
+
+        return number_format((float) $event->site_price, 2, '.', '');
     }
 }
