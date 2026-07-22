@@ -42,7 +42,18 @@
           class="rounded-xl border border-brand-200 bg-brand-50/70 p-5 mb-6"
           data-testid="booking-selected-event"
         >
-          <p class="text-xs font-bold uppercase tracking-wider text-brand-700 mb-2">Selected Event</p>
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Selected Event</p>
+            <button
+              type="button"
+              class="ml-btn-ghost text-sm shrink-0"
+              data-testid="booking-change-event-button"
+              aria-label="Change selected event"
+              @click="requestChangeEvent"
+            >
+              Change Event
+            </button>
+          </div>
           <h2 class="text-lg font-extrabold text-ink-900">{{ selectedEvent.title }}</h2>
           <dl class="mt-3 space-y-2 text-sm text-ink-700">
             <div class="flex gap-2">
@@ -203,6 +214,65 @@
       </div>
     </div>
     </div>
+
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="showChangeEventDialog"
+          class="fixed inset-0 z-[110] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="change-event-dialog-title"
+          data-testid="booking-change-event-dialog"
+          @keydown.esc="cancelChangeEvent"
+        >
+          <div class="absolute inset-0 bg-[rgba(15,23,42,0.65)] backdrop-blur-[6px]" @click="cancelChangeEvent" />
+
+          <div
+            class="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl ring-1 ring-black/5"
+            @click.stop
+          >
+            <div class="border-b border-ink-100 px-5 py-4">
+              <h3 id="change-event-dialog-title" class="text-lg font-extrabold text-ink-900">
+                Change selected event?
+              </h3>
+            </div>
+
+            <div class="px-5 py-4">
+              <p class="text-sm leading-relaxed text-ink-700">
+                Changing the event will clear your selected category, parking sites, and booking summary.
+              </p>
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 border-t border-ink-100 px-5 py-4">
+              <button
+                type="button"
+                class="ml-btn-ghost"
+                data-testid="booking-change-event-cancel"
+                @click="cancelChangeEvent"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="ml-btn-primary"
+                data-testid="booking-change-event-confirm"
+                @click="confirmChangeEvent"
+              >
+                Change Event
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -271,6 +341,7 @@ const availabilitySitePrice = ref(null);
 const selectedSiteIds = ref([]);
 const removedStaleSiteLabels = ref([]);
 const siteSelectionError = ref('');
+const showChangeEventDialog = ref(false);
 let availabilityRequestToken = 0;
 let suppressCategoryWatch = false;
 
@@ -293,6 +364,20 @@ const routeEventId = computed(() => {
 });
 
 const selectedSites = computed(() => getSelectedSites(availabilitySites.value, selectedSiteIds.value));
+
+const hasEventDependentSelections = computed(() => (
+  Boolean(bookingForm.vendor_category_id)
+  || selectedSiteIds.value.length > 0
+  || availabilityLoading.value
+  || availabilityRows.value.length > 0
+  || availabilitySites.value.length > 0
+  || availabilityDays.value.length > 0
+  || availabilitySitePrice.value != null
+  || Boolean(availabilityError.value)
+  || Boolean(siteSelectionError.value)
+  || Boolean(categoryChangeNotice.value)
+  || removedStaleSiteLabels.value.length > 0
+));
 
 const canSubmit = computed(() => {
   if (!selectedEvent.value || eventLoadError.value) return false;
@@ -351,6 +436,52 @@ const resetSiteSelection = () => {
   availabilityError.value = '';
   availabilityReadiness.value = '';
   siteSelectionError.value = '';
+};
+
+const resetEventDependentBookingState = () => {
+  availabilityRequestToken += 1;
+  availabilityLoading.value = false;
+  categoryChangeNotice.value = '';
+  suppressCategoryWatch = true;
+  bookingForm.vendor_category_id = '';
+  suppressCategoryWatch = false;
+  resetSiteSelection();
+};
+
+const clearRouteEventQuery = async () => {
+  if (!route.query.event_id) return;
+  const nextQuery = { ...route.query };
+  delete nextQuery.event_id;
+  await router.replace({ query: nextQuery });
+};
+
+const clearSelectedEvent = async () => {
+  resetEventDependentBookingState();
+  eventLoadError.value = '';
+  selectedEvent.value = null;
+  selectedEventId.value = '';
+  await clearRouteEventQuery();
+  liveAnnouncement.value = 'Select another event to continue your booking.';
+};
+
+const requestChangeEvent = () => {
+  if (hasEventDependentSelections.value) {
+    showChangeEventDialog.value = true;
+    return;
+  }
+  confirmChangeEvent();
+};
+
+const cancelChangeEvent = () => {
+  showChangeEventDialog.value = false;
+};
+
+const confirmChangeEvent = async () => {
+  showChangeEventDialog.value = false;
+  await clearSelectedEvent();
+  requestAnimationFrame(() => {
+    document.getElementById('event-select')?.focus?.();
+  });
 };
 
 const loadSiteAvailability = async (eventId, { preserveSelection = false } = {}) => {
