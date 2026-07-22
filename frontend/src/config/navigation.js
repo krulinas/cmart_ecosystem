@@ -6,13 +6,47 @@ export const PUBLIC_LINKS = [
   { label: 'Become a Vendor', to: '/community', hash: '#become-vendor', testId: 'nav-become-vendor' },
 ];
 
-/** Authenticated community visitors (no vendor activity yet) */
-export const COMMUNITY_VISITOR_LINKS = [
-  { label: 'Community', to: '/community', exact: true },
+/** Authenticated community visitors — always-visible top-level links */
+export const COMMUNITY_PRIMARY_LINKS = [
+  { label: 'Community', to: '/community', exact: true, testId: 'nav-community' },
   { label: 'My Reservations', to: '/community', hash: '#my-item-reservations', testId: 'nav-my-reservations' },
-  { label: 'Carboot Preview', to: '/marketplace', exact: true },
-  { label: 'Events', to: '/calendar' },
-  { label: 'Become a Vendor', to: '/community', hash: '#become-vendor', testId: 'nav-become-vendor' },
+];
+
+/** Community visitor — public exploration grouped under one menu */
+export const COMMUNITY_EXPLORE_MENU = {
+  id: 'explore',
+  label: 'Explore CMart',
+  testId: 'nav-explore-cmart',
+  items: [
+    { label: 'Carboot Preview', to: '/marketplace', exact: true, testId: 'nav-carboot-preview' },
+    { label: 'Events', to: '/calendar', testId: 'nav-events' },
+  ],
+};
+
+/** Single vendor-onboarding CTA for community members who are not yet eligible vendors */
+export const COMMUNITY_BECOME_VENDOR_CTA = {
+  label: 'Become a Vendor',
+  to: '/community',
+  hash: '#become-vendor',
+  testId: 'nav-become-vendor',
+};
+
+/** Community visitor — account menu (identity + logout; no vendor profile route) */
+export const COMMUNITY_ACCOUNT_MENU = {
+  id: 'account',
+  label: 'Account',
+  testId: 'nav-account-menu',
+  items: [],
+};
+
+/**
+ * @deprecated Flat list kept for backwards compatibility in tests/helpers.
+ * Prefer COMMUNITY_PRIMARY_LINKS + COMMUNITY_EXPLORE_MENU + COMMUNITY_BECOME_VENDOR_CTA.
+ */
+export const COMMUNITY_VISITOR_LINKS = [
+  ...COMMUNITY_PRIMARY_LINKS,
+  ...COMMUNITY_EXPLORE_MENU.items,
+  COMMUNITY_BECOME_VENDOR_CTA,
 ];
 
 /** Vendor workspace — primary top-level link */

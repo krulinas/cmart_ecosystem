@@ -113,6 +113,71 @@
         </div>
       </section>
 
+      <MyItemReservationsPanel
+        v-if="auth.isAuthenticated && auth.isCommunityMember && !auth.isVendorUser"
+        class="bg-white shadow-sm border border-gray-100"
+      />
+
+      <section
+        v-if="!auth.isVendorUser"
+        id="become-vendor"
+        data-testid="become-vendor-section"
+        class="bg-brand-600 rounded-3xl p-10 text-center text-white"
+      >
+        <h2 class="text-2xl font-black mb-3">Ready to become a vendor?</h2>
+        <p class="text-brand-100 mb-6 max-w-lg mx-auto">
+          {{
+            auth.isAuthenticated
+              ? 'Apply for a vendor booth at our next carboot event and unlock your vendor dashboard.'
+              : 'Create your free community account, then apply for a vendor booth at our next carboot event.'
+          }}
+        </p>
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+          <template v-if="auth.isAuthenticated">
+            <router-link
+              :to="auth.startVendorBookingPath()"
+              data-testid="start-vendor-booking-cta"
+              class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
+            >
+              Start Vendor Booking
+            </router-link>
+            <router-link
+              to="/calendar"
+              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
+            >
+              Explore Events
+            </router-link>
+            <router-link
+              to="/community#share-feedback"
+              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
+            >
+              Read Reviews
+            </router-link>
+          </template>
+          <template v-else>
+            <router-link
+              :to="registerPathWithRedirect('/vendor-booking')"
+              data-testid="start-vendor-booking-cta"
+              class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
+            >
+              Start Vendor Booking
+            </router-link>
+            <router-link
+              to="/calendar"
+              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
+            >
+              Explore Events
+            </router-link>
+            <router-link
+              :to="loginPathWithRedirect('/community#share-feedback')"
+              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
+            >
+              Sign in to Leave a Review
+            </router-link>
+          </template>
+        </div>
+      </section>
+
       <section class="max-w-6xl mx-auto">
         <div class="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
           <div class="relative pt-12 pb-8 px-8 text-center text-white z-10 bg-gradient-to-br from-brand-600 to-brand-400">
@@ -270,6 +335,13 @@
                           {{ reviewRole(review) }}
                         </span>
                         <span
+                          v-for="background in reviewBackgroundLabels(review)"
+                          :key="`${review.id}-bg-${background}`"
+                          class="ml-1 text-xs font-semibold text-ink-600 bg-ink-50 px-2 py-0.5 rounded-full"
+                        >
+                          {{ background }}
+                        </span>
+                        <span
                           v-if="reviewProofUrl(review)"
                           class="ml-1 text-xs font-semibold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full"
                         >
@@ -345,71 +417,6 @@
               </nav>
             </div>
           </div>
-        </div>
-      </section>
-
-      <MyItemReservationsPanel
-        v-if="auth.isAuthenticated && auth.isCommunityMember && !auth.isVendorUser"
-        class="bg-white shadow-sm border border-gray-100"
-      />
-
-      <section
-        v-if="!auth.isVendorUser"
-        id="become-vendor"
-        data-testid="become-vendor-section"
-        class="bg-brand-600 rounded-3xl p-10 text-center text-white"
-      >
-        <h2 class="text-2xl font-black mb-3">Ready to become a vendor?</h2>
-        <p class="text-brand-100 mb-6 max-w-lg mx-auto">
-          {{
-            auth.isAuthenticated
-              ? 'Apply for a vendor booth at our next carboot event and unlock your vendor dashboard.'
-              : 'Create your free community account, then apply for a vendor booth at our next carboot event.'
-          }}
-        </p>
-        <div class="flex flex-col sm:flex-row justify-center gap-4">
-          <template v-if="auth.isAuthenticated">
-            <router-link
-              :to="auth.startVendorBookingPath()"
-              data-testid="start-vendor-booking-cta"
-              class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
-            >
-              Start Vendor Booking
-            </router-link>
-            <router-link
-              to="/calendar"
-              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
-            >
-              Explore Events
-            </router-link>
-            <router-link
-              to="/community#share-feedback"
-              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
-            >
-              Read Reviews
-            </router-link>
-          </template>
-          <template v-else>
-            <router-link
-              :to="registerPathWithRedirect('/vendor-booking')"
-              data-testid="start-vendor-booking-cta"
-              class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
-            >
-              Start Vendor Booking
-            </router-link>
-            <router-link
-              to="/calendar"
-              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
-            >
-              Explore Events
-            </router-link>
-            <router-link
-              :to="loginPathWithRedirect('/community#share-feedback')"
-              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
-            >
-              Sign in to Leave a Review
-            </router-link>
-          </template>
         </div>
       </section>
     </main>
@@ -498,11 +505,11 @@ const RATING_FILTERS = [
 ];
 
 const REVIEWER_TYPE_FILTERS = [
-  { value: 'all', label: 'All reviewers' },
-  { value: 'Shopper', label: 'Shopper' },
-  { value: 'Vendor', label: 'Vendor' },
-  { value: 'UUM Student', label: 'UUM Student' },
-  { value: 'Local Resident', label: 'Local Resident' },
+  { value: 'all', label: 'All participants' },
+  { value: 'visitor_shopper', label: 'Visitor / Shopper' },
+  { value: 'vendor', label: 'Vendor' },
+  { value: 'organizer_event_crew', label: 'Organizer / Event Crew' },
+  { value: 'other', label: 'Other' },
 ];
 
 const auth = useAuthStore();
@@ -638,7 +645,18 @@ const goToReviewPage = async (page) => {
 };
 
 const reviewUserName = (review) => review.user_name || review.user?.name || 'Community Member';
-const reviewRole = (review) => review.role || review.reviewer_role || null;
+const reviewRole = (review) =>
+  review.participation_type_label
+  || review.role
+  || review.reviewer_role
+  || null;
+
+const reviewBackgroundLabels = (review) => {
+  if (Array.isArray(review.community_background_labels) && review.community_background_labels.length) {
+    return review.community_background_labels;
+  }
+  return [];
+};
 const reviewComment = (review) => review.comment || review.comments || '';
 const reviewRating = (review) => review.rating || null;
 const reviewProofUrl = (review) => resolveStorageUrl(review.proof_url || review.media_path || null);

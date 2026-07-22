@@ -23,7 +23,9 @@ class FeedbackSeeder extends Seeder
         $demos = [
             [
                 'comments' => 'Great atmosphere every weekend. Vendors are friendly and parking is easy to find near the main entrance.',
-                'reviewer_role' => 'Shopper',
+                'participation_type' => 'visitor_shopper',
+                'community_backgrounds' => ['changlun_resident'],
+                'reviewer_role' => 'Visitor / Shopper',
                 'rating' => 5,
                 'service_rating' => 5,
                 'value_rating' => 5,
@@ -31,6 +33,8 @@ class FeedbackSeeder extends Seeder
             ],
             [
                 'comments' => 'Booking a booth through the portal saved me a lot of time. Staff approval was quick and the process felt smooth.',
+                'participation_type' => 'vendor',
+                'community_backgrounds' => ['outside_changlun'],
                 'reviewer_role' => 'Vendor',
                 'rating' => 5,
                 'service_rating' => 5,
@@ -39,7 +43,9 @@ class FeedbackSeeder extends Seeder
             ],
             [
                 'comments' => 'Love bringing friends here after class. Plenty of food options and good prices for students on a budget.',
-                'reviewer_role' => 'UUM Student',
+                'participation_type' => 'visitor_shopper',
+                'community_backgrounds' => ['uum_student'],
+                'reviewer_role' => 'Visitor / Shopper',
                 'rating' => 4,
                 'service_rating' => 4,
                 'value_rating' => 5,
@@ -47,7 +53,9 @@ class FeedbackSeeder extends Seeder
             ],
             [
                 'comments' => 'Our family visits almost every month. Clean layout, helpful security, and a nice community vibe overall.',
-                'reviewer_role' => 'Local Resident',
+                'participation_type' => 'visitor_shopper',
+                'community_backgrounds' => ['changlun_resident'],
+                'reviewer_role' => 'Visitor / Shopper',
                 'rating' => 5,
                 'service_rating' => 5,
                 'value_rating' => 5,
@@ -55,7 +63,9 @@ class FeedbackSeeder extends Seeder
             ],
             [
                 'comments' => 'Mega carboot day was well organized with clear signage. Will definitely come again for preloved finds.',
-                'reviewer_role' => 'Shopper',
+                'participation_type' => 'visitor_shopper',
+                'community_backgrounds' => ['outside_changlun'],
+                'reviewer_role' => 'Visitor / Shopper',
                 'rating' => 4,
                 'service_rating' => 4,
                 'value_rating' => 4,
@@ -70,6 +80,8 @@ class FeedbackSeeder extends Seeder
                 ['comments' => $demo['comments']],
                 [
                     'user_id' => $userId,
+                    'participation_type' => $demo['participation_type'],
+                    'community_backgrounds' => $demo['community_backgrounds'],
                     'reviewer_role' => $demo['reviewer_role'],
                     'rating' => $demo['rating'],
                     'service_rating' => $demo['service_rating'],

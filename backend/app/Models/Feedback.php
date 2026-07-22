@@ -14,6 +14,8 @@ class Feedback extends Model
     protected $fillable = [
         'user_id',
         'reviewer_role',
+        'participation_type',
+        'community_backgrounds',
         'comments',
         'rating',
         'service_rating',
@@ -35,6 +37,7 @@ class Feedback extends Model
         'service_rating' => 'integer',
         'value_rating' => 'integer',
         'rating' => 'integer',
+        'community_backgrounds' => 'array',
         'reviewed_at' => 'datetime',
         'official_reply_published_at' => 'datetime',
     ];

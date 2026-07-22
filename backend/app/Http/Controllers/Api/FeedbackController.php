@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Feedback;
+use App\Support\FeedbackClassification;
 use App\Support\ManagementRole;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class FeedbackController extends Controller
 {
@@ -18,7 +20,11 @@ class FeedbackController extends Controller
     {
         $validated = $request->validate([
             'rating' => 'required|integer|min:1|max:5',
-            'reviewer_role' => ['required', Rule::in(['Shopper', 'Vendor', 'UUM Student', 'Local Resident'])],
+            'participation_type' => ['required', 'string', Rule::in(FeedbackClassification::PARTICIPATION_TYPES)],
+            'community_backgrounds' => ['nullable', 'array'],
+            'community_backgrounds.*' => ['string', Rule::in(FeedbackClassification::COMMUNITY_BACKGROUNDS)],
+            // Legacy clients may still send reviewer_role; ignore for write path when participation_type is present.
+            'reviewer_role' => 'nullable|string|max:50',
             'comments' => [
                 'required',
                 'string',
@@ -36,6 +42,26 @@ class FeedbackController extends Controller
             'media' => 'nullable|file|mimes:jpeg,png,jpg|max:5120',
         ]);
 
+        $backgrounds = FeedbackClassification::normalizeCommunityBackgrounds(
+            $validated['community_backgrounds'] ?? [],
+        );
+
+        $rawBackgrounds = $validated['community_backgrounds'] ?? [];
+        if (
+            is_array($rawBackgrounds)
+            && count($rawBackgrounds) > 1
+            && in_array(FeedbackClassification::PREFER_NOT_TO_SAY, $rawBackgrounds, true)
+        ) {
+            throw ValidationException::withMessages([
+                'community_backgrounds' => [
+                    '"Prefer not to say" cannot be combined with other community background options.',
+                ],
+            ]);
+        }
+
+        $participationType = $validated['participation_type'];
+        $participationLabel = FeedbackClassification::participationLabel($participationType);
+
         $mediaPath = null;
         if ($request->hasFile('media')) {
             $mediaPath = $request->file('media')->store('feedback_media', 'public');
@@ -43,7 +69,10 @@ class FeedbackController extends Controller
 
         $feedback = Feedback::create([
             'user_id' => $request->user()->id,
-            'reviewer_role' => $validated['reviewer_role'],
+            'participation_type' => $participationType,
+            'community_backgrounds' => $backgrounds === [] ? null : $backgrounds,
+            // Mirror human-readable participation label for legacy list/search surfaces.
+            'reviewer_role' => $participationLabel,
             'rating' => $validated['rating'],
             'comments' => $validated['comments'],
             'service_rating' => $validated['rating'],
@@ -264,7 +293,8 @@ class FeedbackController extends Controller
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('comments', 'like', '%' . $search . '%')
-                    ->orWhere('reviewer_role', 'like', '%' . $search . '%');
+                    ->orWhere('reviewer_role', 'like', '%' . $search . '%')
+                    ->orWhere('participation_type', 'like', '%' . $search . '%');
             });
         }
 
@@ -286,7 +316,21 @@ class FeedbackController extends Controller
 
         $reviewerType = trim($validated['reviewer_type'] ?? '');
         if ($reviewerType !== '') {
-            $query->where('reviewer_role', $reviewerType);
+            $legacyRoles = FeedbackClassification::legacyReviewerRolesForParticipation($reviewerType);
+            $query->where(function ($q) use ($reviewerType, $legacyRoles) {
+                $q->where('participation_type', $reviewerType);
+                if ($legacyRoles !== []) {
+                    $q->orWhere(function ($legacy) use ($legacyRoles) {
+                        $legacy->whereNull('participation_type')
+                            ->whereIn('reviewer_role', $legacyRoles);
+                    });
+                }
+                // Allow legacy filter values still used by older clients/bookmarks.
+                $q->orWhere(function ($legacy) use ($reviewerType) {
+                    $legacy->whereNull('participation_type')
+                        ->where('reviewer_role', $reviewerType);
+                });
+            });
         }
 
         if ($request->boolean('with_photo')) {
@@ -346,10 +390,25 @@ class FeedbackController extends Controller
 
     private function formatFeedback(Feedback $review, bool $forManagement = false): array
     {
+        $backgrounds = is_array($review->community_backgrounds)
+            ? FeedbackClassification::normalizeCommunityBackgrounds($review->community_backgrounds)
+            : [];
+
+        $participationType = $review->participation_type
+            ?: FeedbackClassification::legacyReviewerRoleToParticipation($review->reviewer_role);
+
+        $participationLabel = FeedbackClassification::participationLabel($participationType)
+            ?: ($review->reviewer_role ?: null);
+
         $data = [
             'id' => $review->id,
             'user_name' => $review->user?->name ?? 'Community Member',
-            'role' => $review->reviewer_role,
+            'participation_type' => $participationType,
+            'participation_type_label' => $participationLabel,
+            'community_backgrounds' => $backgrounds,
+            'community_background_labels' => FeedbackClassification::communityBackgroundLabelsFor($backgrounds),
+            // Legacy key retained for existing public/admin badges; prefer participation_type_label.
+            'role' => $participationLabel,
             'rating' => $this->resolveRating($review),
             'comment' => $review->comments,
             'proof_url' => $this->resolveProofUrl($review->media_path),

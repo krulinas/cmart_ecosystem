@@ -57,18 +57,48 @@
       </div>
 
       <div>
-        <label for="reviewer-role" class="block text-gray-700 font-bold mb-2">I am a...</label>
+        <label for="participation-type" class="block text-gray-700 font-bold mb-2">
+          How did you participate in Carboot@CMart?
+        </label>
         <select
-          id="reviewer-role"
-          v-model="reviewerRole"
+          id="participation-type"
+          v-model="participationType"
+          required
           class="w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-800 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition cursor-pointer"
         >
-          <option value="" disabled>Select your role</option>
-          <option v-for="role in REVIEWER_ROLES" :key="role" :value="role">
-            {{ role }}
+          <option value="" disabled>Select your participation type</option>
+          <option
+            v-for="option in PARTICIPATION_TYPE_OPTIONS"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
           </option>
         </select>
       </div>
+
+      <fieldset>
+        <legend class="block text-gray-700 font-bold mb-1">
+          Tell us about your background (optional)
+        </legend>
+        <p class="text-sm text-gray-500 mb-3">Select all that apply.</p>
+        <div class="space-y-2 rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+          <label
+            v-for="option in COMMUNITY_BACKGROUND_OPTIONS"
+            :key="option.value"
+            class="flex items-start gap-3 cursor-pointer rounded-lg px-2 py-1.5 hover:bg-white transition"
+          >
+            <input
+              v-model="communityBackgrounds"
+              type="checkbox"
+              class="mt-1 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              :value="option.value"
+              @change="onCommunityBackgroundChange(option.value)"
+            />
+            <span class="text-sm font-semibold text-gray-800">{{ option.label }}</span>
+          </label>
+        </div>
+      </fieldset>
 
       <div>
         <label class="block text-gray-700 font-bold mb-2">Your Feedback (5–100 words)</label>
@@ -127,6 +157,11 @@
 import { ref, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { loginPathWithRedirect, registerPathWithRedirect, COMMUNITY_REVIEW_INTENT_PATH } from '../utils/postAuthRedirect';
+import {
+  PARTICIPATION_TYPE_OPTIONS,
+  COMMUNITY_BACKGROUND_OPTIONS,
+  normalizeCommunityBackgrounds,
+} from '../utils/feedbackClassification';
 import api from '../services/api';
 
 const emit = defineEmits(['submitted']);
@@ -141,12 +176,12 @@ const reviewIntentPath = COMMUNITY_REVIEW_INTENT_PATH;
 const loginPath = loginPathWithRedirect(reviewIntentPath);
 const registerPath = registerPathWithRedirect(reviewIntentPath);
 
-const REVIEWER_ROLES = ['Shopper', 'Vendor', 'UUM Student', 'Local Resident'];
 const MIN_WORDS = 5;
 const MAX_WORDS = 100;
 
 const overallRating = ref(0);
-const reviewerRole = ref('');
+const participationType = ref('');
+const communityBackgrounds = ref([]);
 const comments = ref('');
 const mediaFile = ref(null);
 const mediaInput = ref(null);
@@ -170,11 +205,18 @@ const wordCountClass = computed(() => {
 
 const canSubmit = computed(() => {
   return overallRating.value >= 1
-    && reviewerRole.value !== ''
+    && participationType.value !== ''
     && wordCount.value >= MIN_WORDS
     && wordCount.value <= MAX_WORDS
     && !isSubmitting.value;
 });
+
+const onCommunityBackgroundChange = (changedValue) => {
+  communityBackgrounds.value = normalizeCommunityBackgrounds(
+    communityBackgrounds.value,
+    changedValue,
+  );
+};
 
 const handleFileUpload = (event) => {
   const file = event.target.files?.[0];
@@ -205,7 +247,8 @@ const handleFileUpload = (event) => {
 
 const resetForm = () => {
   overallRating.value = 0;
-  reviewerRole.value = '';
+  participationType.value = '';
+  communityBackgrounds.value = [];
   comments.value = '';
   mediaFile.value = null;
   if (mediaInput.value) {
@@ -221,9 +264,14 @@ const submitFeedback = async () => {
   isSubmitting.value = true;
   message.value = '';
 
+  const backgrounds = normalizeCommunityBackgrounds(communityBackgrounds.value);
+
   const formData = new FormData();
   formData.append('rating', String(overallRating.value));
-  formData.append('reviewer_role', reviewerRole.value);
+  formData.append('participation_type', participationType.value);
+  backgrounds.forEach((value, index) => {
+    formData.append(`community_backgrounds[${index}]`, value);
+  });
   formData.append('comments', comments.value);
   if (mediaFile.value) {
     formData.append('media', mediaFile.value);

@@ -42,7 +42,19 @@
           <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
             <div class="flex flex-wrap gap-2">
               <span class="ml-badge bg-brand-100 text-brand-800">{{ item.user_name || 'Community Member' }}</span>
-              <span v-if="item.role" class="ml-badge bg-ink-100 text-ink-700">{{ item.role }}</span>
+              <span
+                v-if="item.participation_type_label || item.role"
+                class="ml-badge bg-ink-100 text-ink-700"
+              >
+                {{ item.participation_type_label || item.role }}
+              </span>
+              <span
+                v-for="background in (item.community_background_labels || [])"
+                :key="`detail-bg-${background}`"
+                class="ml-badge bg-slate-100 text-slate-700"
+              >
+                {{ background }}
+              </span>
               <span v-if="item.rating" class="ml-badge bg-amber-50 text-amber-800">
                 {{ '★'.repeat(item.rating) }}{{ '☆'.repeat(5 - item.rating) }}
               </span>

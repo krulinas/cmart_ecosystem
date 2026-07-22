@@ -49,7 +49,16 @@
         <div class="flex flex-wrap justify-between gap-2 mb-2">
           <div class="flex flex-wrap items-center gap-1.5">
             <span class="font-bold text-ink-900">{{ item.user_name || 'Community Member' }}</span>
-            <span v-if="item.role" class="text-xs font-semibold text-brand-700">{{ item.role }}</span>
+            <span v-if="item.participation_type_label || item.role" class="text-xs font-semibold text-brand-700">
+              {{ item.participation_type_label || item.role }}
+            </span>
+            <span
+              v-for="background in (item.community_background_labels || [])"
+              :key="`${item.id}-${background}`"
+              class="text-xs font-semibold text-ink-600"
+            >
+              {{ background }}
+            </span>
             <span v-if="item.rating" class="text-xs text-brand-500">
               {{ '★'.repeat(item.rating) }}{{ '☆'.repeat(5 - item.rating) }}
             </span>
