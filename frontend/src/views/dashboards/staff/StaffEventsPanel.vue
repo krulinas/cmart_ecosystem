@@ -161,10 +161,16 @@ const form = reactive(emptyForm());
 
 const extractApiError = (error) => {
   const data = error.response?.data;
+  if (data?.error === 'event_operating_dates_locked_by_allocations') {
+    return 'Acara ini sudah ada tempahan vendor. Tarikh operasi tidak boleh diubah kerana tempahan sedia ada bergantung padanya.';
+  }
   if (data?.errors) {
     return Object.values(data.errors).flat().join(' ');
   }
-  return data?.message || error.message || 'Request failed.';
+  const message = data?.message || error.message || 'Request failed.';
+  return typeof message === 'string'
+    ? message.replace(/^\d{3}\s+[A-Za-z ]+:\s*/, '')
+    : message;
 };
 
 const buildFormData = () => {

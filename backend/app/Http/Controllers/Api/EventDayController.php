@@ -19,6 +19,11 @@ use InvalidArgumentException;
  */
 class EventDayController extends Controller
 {
+    public function __construct(
+        private readonly EventDayGenerator $eventDayGenerator,
+    ) {
+    }
+
     public function index(CarbootEvent $carboot_event): JsonResponse
     {
         $days = EventDay::query()
@@ -40,7 +45,7 @@ class EventDayController extends Controller
         ]);
     }
 
-    public function generate(Request $request, CarbootEvent $carboot_event, EventDayGenerator $generator): JsonResponse
+    public function generate(Request $request, CarbootEvent $carboot_event): JsonResponse
     {
         $validated = $request->validate([
             'day_generation_mode' => [
@@ -54,6 +59,13 @@ class EventDayController extends Controller
         if (isset($validated['day_generation_mode'])
             && $validated['day_generation_mode'] !== $carboot_event->day_generation_mode
         ) {
+            if ($this->eventDayGenerator->eventHasAllocationHistory($carboot_event)) {
+                return response()->json([
+                    'message' => '409 Conflict: This event already has vendor booking allocations. Its operating dates cannot be changed because existing bookings depend on those dates.',
+                    'error' => EventDayGenerator::ERROR_OPERATING_DATES_LOCKED,
+                ], 409);
+            }
+
             $carboot_event->update([
                 'day_generation_mode' => $validated['day_generation_mode'],
             ]);
@@ -61,7 +73,7 @@ class EventDayController extends Controller
         }
 
         try {
-            $result = $generator->generate(
+            $result = $this->eventDayGenerator->generate(
                 $carboot_event,
                 (bool) ($validated['replace_existing'] ?? false),
             );
@@ -92,7 +104,11 @@ class EventDayController extends Controller
 
     public function store(Request $request, CarbootEvent $carboot_event): JsonResponse
     {
-        $validated = $this->validateDay($request);
+        try {
+            $validated = $this->validateDay($request, false, $carboot_event);
+        } catch (InvalidArgumentException $exception) {
+            return $this->rangeValidationResponse($exception);
+        }
 
         try {
             $day = EventDay::create([
@@ -131,7 +147,13 @@ class EventDayController extends Controller
             }
         }
 
-        $validated = $this->validateDay($request, true);
+        $event_day->loadMissing('carbootEvent');
+
+        try {
+            $validated = $this->validateDay($request, true, $event_day->carbootEvent, $event_day);
+        } catch (InvalidArgumentException $exception) {
+            return $this->rangeValidationResponse($exception);
+        }
 
         try {
             $event_day->update($validated);
@@ -196,8 +218,12 @@ class EventDayController extends Controller
         return $blocked;
     }
 
-    private function validateDay(Request $request, bool $partial = false): array
-    {
+    private function validateDay(
+        Request $request,
+        bool $partial = false,
+        ?CarbootEvent $event = null,
+        ?EventDay $existingDay = null,
+    ): array {
         $required = $partial ? 'sometimes|' : '';
 
         $validated = $request->validate([
@@ -253,7 +279,33 @@ class EventDayController extends Controller
             $validated['display_order'] = 0;
         }
 
+        if ($event) {
+            $operationalDate = $validated['operational_date']
+                ?? optional($existingDay?->operational_date)?->toDateString();
+            $startsAt = $validated['starts_at']
+                ?? optional($existingDay?->starts_at)?->format('Y-m-d H:i:s');
+            $endsAt = $validated['ends_at']
+                ?? optional($existingDay?->ends_at)?->format('Y-m-d H:i:s');
+
+            if ($operationalDate && $startsAt && $endsAt) {
+                $this->eventDayGenerator->assertDayFitsEvent(
+                    $event,
+                    $operationalDate,
+                    $startsAt,
+                    $endsAt,
+                );
+            }
+        }
+
         return $validated;
+    }
+
+    private function rangeValidationResponse(InvalidArgumentException $exception): JsonResponse
+    {
+        return response()->json([
+            'message' => '422 Unprocessable Entity: ' . $exception->getMessage(),
+            'error' => EventDayGenerator::ERROR_DAY_OUTSIDE_EVENT_RANGE,
+        ], 422);
     }
 
     private function present(EventDay $day): array

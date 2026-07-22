@@ -2,19 +2,32 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\DomainConflictException;
 use App\Http\Controllers\Controller;
 use App\Models\CarbootEvent;
+use App\Services\EventDayGenerator;
 use App\Services\EventPresenter;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use InvalidArgumentException;
+use Throwable;
 
 class CarbootEventController extends Controller
 {
     private const STATUSES = ['Available', 'Almost Full', 'Closed'];
 
     private const MAX_IMAGES = 5;
+
+    private const SCHEDULE_FIELDS = ['starts_at', 'ends_at', 'day_generation_mode'];
+
+    public function __construct(
+        private readonly EventDayGenerator $eventDayGenerator,
+    ) {
+    }
 
     public function publicIndex()
     {
@@ -62,7 +75,19 @@ class CarbootEventController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validateEvent($request);
-        $event = CarbootEvent::create($validated);
+
+        try {
+            $event = DB::transaction(function () use ($validated) {
+                $event = CarbootEvent::create($validated);
+                $this->eventDayGenerator->materializeForEvent($event);
+
+                return $event;
+            });
+        } catch (DomainConflictException $exception) {
+            return $this->conflictResponse($exception);
+        } catch (InvalidArgumentException $exception) {
+            return $this->unprocessableResponse($exception);
+        }
 
         $this->attachUploadedImages($request, $event);
 
@@ -82,13 +107,33 @@ class CarbootEventController extends Controller
     public function update(Request $request, CarbootEvent $carboot_event)
     {
         $validated = $this->validateEvent($request, true);
+        $scheduleChanging = $this->scheduleFieldsChanging($carboot_event, $validated);
+
+        if ($scheduleChanging && $this->eventDayGenerator->eventHasAllocationHistory($carboot_event)) {
+            return $this->conflictResponse(new DomainConflictException(
+                'This event already has vendor booking allocations. Its operating dates cannot be changed because existing bookings depend on those dates.',
+                EventDayGenerator::ERROR_OPERATING_DATES_LOCKED,
+            ));
+        }
 
         if ($request->boolean('remove_poster')) {
             $this->removeAllImages($carboot_event);
             $validated['image_path'] = null;
         }
 
-        $carboot_event->update($validated);
+        try {
+            DB::transaction(function () use ($carboot_event, $validated, $scheduleChanging) {
+                $carboot_event->update($validated);
+
+                if ($scheduleChanging) {
+                    $this->eventDayGenerator->materializeForEvent($carboot_event->fresh());
+                }
+            });
+        } catch (DomainConflictException $exception) {
+            return $this->conflictResponse($exception);
+        } catch (InvalidArgumentException $exception) {
+            return $this->unprocessableResponse($exception);
+        }
 
         if ($request->filled('remove_image_ids')) {
             $this->removeImagesById($carboot_event, (array) $request->input('remove_image_ids'));
@@ -109,6 +154,56 @@ class CarbootEventController extends Controller
         return response()->json([
             'message' => '200 OK: Carboot event deleted successfully.',
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function scheduleFieldsChanging(CarbootEvent $event, array $validated): bool
+    {
+        $tz = config('app.timezone', 'Asia/Kuala_Lumpur');
+
+        foreach (self::SCHEDULE_FIELDS as $field) {
+            if (! array_key_exists($field, $validated)) {
+                continue;
+            }
+
+            if ($field === 'day_generation_mode') {
+                $incoming = $validated[$field] ?: CarbootEvent::DAY_MODE_CALENDAR;
+                $current = $event->day_generation_mode ?: CarbootEvent::DAY_MODE_CALENDAR;
+                if ($incoming !== $current) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            $incoming = Carbon::parse((string) $validated[$field], $tz)
+                ->timezone($tz)
+                ->format('Y-m-d H:i:s');
+            $current = optional($event->{$field})?->copy()->timezone($tz)->format('Y-m-d H:i:s');
+
+            if ($incoming !== $current) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function conflictResponse(DomainConflictException $exception): JsonResponse
+    {
+        return response()->json([
+            'message' => '409 Conflict: '.$exception->getMessage(),
+            'error' => $exception->error,
+        ], 409);
+    }
+
+    private function unprocessableResponse(InvalidArgumentException|Throwable $exception): JsonResponse
+    {
+        return response()->json([
+            'message' => '422 Unprocessable Entity: '.$exception->getMessage(),
+        ], 422);
     }
 
     private function validateEvent(Request $request, bool $partial = false): array
