@@ -41,7 +41,7 @@
 
             <div class="px-5 py-4 space-y-4" data-testid="invoice-payment-section">
               <p class="text-sm text-ink-700 leading-relaxed">
-                Upload your transfer receipt or payment screenshot. CMart staff will verify your payment before your booth pass is released.
+                Upload your transfer receipt or payment screenshot. The Carboot Organizer will verify your payment before your booth pass is released.
               </p>
 
               <div>

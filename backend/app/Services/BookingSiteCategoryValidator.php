@@ -40,7 +40,7 @@ class BookingSiteCategoryValidator
         throw new DomainConflictException(
             $messages !== []
                 ? implode(' ', $messages)
-                : 'Susun atur acara belum sedia untuk tempahan vendor.',
+                : 'The event layout is not ready for vendor booking yet.',
             'EVENT_LAYOUT_NOT_READY',
         );
     }
@@ -108,7 +108,7 @@ class BookingSiteCategoryValidator
 
             if ((int) $row->carboot_event_id !== $eventId) {
                 throw new DomainConflictException(
-                    'Susun atur acara telah berubah. Sila semak dan pilih tapak semula.',
+                    'The event layout has changed. Please review and select sites again.',
                     'LAYOUT_CHANGED',
                 );
             }
@@ -131,7 +131,7 @@ class BookingSiteCategoryValidator
 
             if ((int) $row->vendor_category_id !== (int) $category->id) {
                 throw new AllocationValidationException(
-                    'Tapak yang dipilih tidak sepadan dengan kategori jualan anda.',
+                    'The selected sites do not match your selling category.',
                     'SITE_CATEGORY_INCOMPATIBLE',
                 );
             }
@@ -139,7 +139,7 @@ class BookingSiteCategoryValidator
 
         if (count($categoryIdsSeen) > 1) {
             throw new AllocationValidationException(
-                'Tapak yang dipilih tidak sepadan dengan kategori jualan anda.',
+                'The selected sites do not match your selling category.',
                 'MIXED_CATEGORY_SITE_SELECTION',
             );
         }

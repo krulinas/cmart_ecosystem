@@ -26,7 +26,7 @@ class VendorCategoryResolver
 
         if (! $hasId && ! $hasLabel) {
             throw new AllocationValidationException(
-                'Sila pilih kategori jualan terlebih dahulu.',
+                'Please select a selling category first.',
                 'CATEGORY_REQUIRED',
             );
         }
@@ -73,7 +73,7 @@ class VendorCategoryResolver
         $normalized = CategoryLegacyMapper::normalize($label);
         if ($normalized === null || $normalized === '') {
             throw new AllocationValidationException(
-                'Sila pilih kategori jualan terlebih dahulu.',
+                'Please select a selling category first.',
                 'CATEGORY_REQUIRED',
             );
         }
@@ -146,14 +146,14 @@ class VendorCategoryResolver
     {
         if ($category->archived_at !== null) {
             throw new AllocationValidationException(
-                'Kategori ini tidak lagi aktif.',
+                'This category is no longer active.',
                 'CATEGORY_ARCHIVED',
             );
         }
 
         if (! $category->is_active) {
             throw new AllocationValidationException(
-                'Kategori ini tidak lagi aktif.',
+                'This category is no longer active.',
                 'CATEGORY_INACTIVE',
             );
         }

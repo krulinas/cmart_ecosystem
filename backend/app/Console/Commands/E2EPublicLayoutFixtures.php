@@ -265,7 +265,7 @@ class E2EPublicLayoutFixtures extends Command
             'max_slots' => 20,
             'day_generation_mode' => CarbootEvent::DAY_MODE_CALENDAR,
             'public_layout_published_at' => $publishedAt,
-            'public_layout_entrance_note' => 'Masuk melalui pintu utama CMart.',
+            'public_layout_entrance_note' => 'Enter through the main CMart entrance.',
         ]);
     }
 

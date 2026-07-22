@@ -23,6 +23,12 @@ class VendorBookingPresenter
     public const NO_REFUND_WARNING_MS =
         'Anda boleh menarik diri selepas bayaran dibuat, tetapi bayaran tidak akan dipulangkan. Tapak yang telah ditempah akan dibuka semula kepada vendor lain.';
 
+    public const NO_REFUND_WARNING_EN =
+        'You may withdraw after payment has been made, but no refund will be issued. Any reserved sites will be released for other vendors.';
+
+    public const UNPAID_WITHDRAWAL_WARNING_EN =
+        'Withdrawing will end this booking and release your selected sites for other vendors. This action cannot be undone from your dashboard.';
+
     public const ATTENDANCE_NO_REFUND_WARNING_MS =
         'Pengecualian hari tidak mengubah jumlah bayaran. Tiada bayaran balik akan diberikan bagi hari yang dilepaskan.';
 
@@ -113,8 +119,8 @@ class VendorBookingPresenter
             && in_array($paymentState, [self::PAYMENT_STATE_PAID, self::PAYMENT_STATE_PAYMENT_SUBMITTED], true);
 
         $warningMessage = match ($paymentState) {
-            self::PAYMENT_STATE_PAID, self::PAYMENT_STATE_PAYMENT_SUBMITTED => self::NO_REFUND_WARNING_MS,
-            default => 'Penarikan diri akan menamatkan tempahan ini dan tapak yang dipilih akan dibuka semula kepada vendor lain. Tindakan ini tidak boleh dibatalkan melalui papan pemuka.',
+            self::PAYMENT_STATE_PAID, self::PAYMENT_STATE_PAYMENT_SUBMITTED => self::NO_REFUND_WARNING_EN,
+            default => self::UNPAID_WITHDRAWAL_WARNING_EN,
         };
 
         return [
@@ -405,7 +411,7 @@ class VendorBookingPresenter
             ], true),
             'no_refund_warning' => $forOrganizer
                 ? self::ATTENDANCE_NO_REFUND_WARNING_EN
-                : self::ATTENDANCE_NO_REFUND_WARNING_MS,
+                : self::ATTENDANCE_NO_REFUND_WARNING_EN,
         ];
 
         if ($forOrganizer) {
@@ -451,7 +457,7 @@ class VendorBookingPresenter
         if ($booking->activeCategoryOverride) {
             $payload['placement_exception'] = [
                 'applied' => true,
-                'message' => 'Pihak penganjur telah menetapkan tapak anda di zon kategori berbeza.',
+                'message' => 'The organizer has placed your site in a different category zone.',
             ];
         }
 

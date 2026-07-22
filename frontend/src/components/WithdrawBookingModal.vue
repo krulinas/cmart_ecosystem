@@ -62,7 +62,7 @@
                   :disabled="submitting"
                 />
                 <span class="text-sm text-rose-900">
-                  Saya faham bahawa bayaran tidak akan dipulangkan dan tapak akan dibuka semula kepada vendor lain.
+                  I understand that no refund will be issued and my sites will be released for other vendors.
                 </span>
               </label>
 

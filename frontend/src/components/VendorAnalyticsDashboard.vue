@@ -13,7 +13,6 @@
             <InfoHelpTip
               aria-label="About vendor-only data"
               text-en="These insights only use your own vendor records, not overall CMart performance."
-              text-ms="Data ini hanya berdasarkan rekod vendor anda sendiri, bukan prestasi keseluruhan CMart."
               placement="bottom-right"
             />
           </span>
@@ -37,11 +36,8 @@
 
     <div class="rounded-2xl border border-sky-100 bg-sky-50/60 px-5 py-5 sm:px-6 sm:py-5">
       <BilingualHelpText
-        :collapsible-malay="false"
         text-en="This dashboard shows your own vendor activity at CMart, including booth bookings, verified payments, reuse listings, profile readiness, and current booth status. Use it to understand your progress and prepare for upcoming carboot events."
-        text-ms="Dashboard ini menunjukkan aktiviti vendor anda sendiri di CMart, termasuk tempahan tapak, bayaran yang telah disahkan, listing reuse, kelengkapan profil, dan status tapak semasa. Ia membantu vendor memahami perkembangan dan bersedia untuk event carboot akan datang."
         en-class="text-[15px] leading-7 text-sky-900"
-        ms-class="mt-2 text-[13px] leading-6 text-slate-500 font-normal"
       />
     </div>
 
@@ -50,9 +46,8 @@
         How to read this dashboard
       </summary>
       <ul class="mt-4 space-y-4 list-disc pl-5">
-        <li v-for="item in dashboardGuideItems" :key="item.en">
-          <span class="text-[15px] leading-7 text-slate-700">{{ item.en }}</span>
-          <span class="block mt-2 text-[13px] leading-6 text-slate-500 font-normal">{{ item.ms }}</span>
+        <li v-for="item in dashboardGuideItems" :key="item">
+          <span class="text-[15px] leading-7 text-slate-700">{{ item }}</span>
         </li>
       </ul>
     </details>
@@ -86,7 +81,6 @@
             <InfoHelpTip
               :aria-label="`About ${card.label}`"
               :text-en="card.helpEn"
-              :text-ms="card.helpMs"
             />
           </div>
           <p v-if="card.subtext" class="mt-2 text-sm text-ink-400">{{ card.subtext }}</p>
@@ -101,7 +95,6 @@
               <InfoHelpTip
                 aria-label="About Profile Completion"
                 text-en="How complete your business profile is. A complete profile improves vendor trust and booth visibility."
-                text-ms="Menunjukkan tahap kelengkapan profil bisnes. Profil lengkap membantu meningkatkan kepercayaan dan visibility vendor."
               />
             </div>
             <p class="text-[15px] leading-7 text-slate-700">Complete your business profile to improve booth visibility.</p>
@@ -134,7 +127,6 @@
           <BilingualHelpText
             class="mb-5"
             text-en="Shows how many booth bookings are linked to event dates each month. A line chart is used to make booking trends easier to see over time."
-            text-ms="Menunjukkan jumlah tempahan tapak mengikut bulan acara. Carta line digunakan supaya trend naik turun tempahan lebih mudah dilihat."
           />
           <div v-if="hasBookingTrend" class="relative h-64">
             <canvas ref="bookingTrendCanvas"></canvas>
@@ -148,7 +140,6 @@
           <BilingualHelpText
             class="mb-5"
             text-en="Shows the total verified booth payments received each month. A bar chart is used because monthly totals are easier to compare side by side."
-            text-ms="Menunjukkan jumlah bayaran tapak yang telah disahkan setiap bulan. Carta bar digunakan supaya jumlah bayaran antara bulan mudah dibandingkan."
           />
           <div v-if="hasPaymentTrend" class="relative h-64">
             <canvas ref="paymentTrendCanvas"></canvas>
@@ -161,7 +152,6 @@
           <BilingualHelpText
             class="mb-5"
             text-en="Shows how your bookings are distributed by status, such as approved, pending, rejected, revision, or withdrawn. A donut chart shows each status as part of the total."
-            text-ms="Menunjukkan pecahan status tempahan seperti approved, pending, rejected, revision, atau withdrawn. Carta donut menunjukkan setiap status sebagai sebahagian daripada jumlah keseluruhan."
           />
           <div v-if="hasBookingStatusChart" class="relative h-64">
             <canvas ref="bookingStatusCanvas"></canvas>
@@ -174,7 +164,6 @@
           <BilingualHelpText
             class="mb-5"
             text-en="Shows the status of your reuse item listings once items are added."
-            text-ms="Menunjukkan status listing barang reuse selepas item ditambah."
           />
           <div v-if="hasReuseStatusChart" class="relative h-64">
             <canvas ref="reuseStatusCanvas"></canvas>
@@ -182,7 +171,6 @@
           <div v-else class="py-8 text-center">
             <BilingualHelpText
               text-en="No reuse listing data yet. Add reuse items to see listing status insights here."
-              text-ms="Belum ada data listing reuse. Tambah barang reuse untuk melihat insight status listing di sini."
               en-class="text-[15px] leading-7 text-slate-600"
             />
             <button type="button" class="mt-5 ml-btn-ghost font-semibold" @click="$emit('manage-reuse')">
@@ -207,11 +195,11 @@
             <dd class="font-semibold text-ink-900">{{ actionableBookingCard.statusLabel }}</dd>
           </div>
           <div class="flex flex-wrap gap-x-2">
-            <dt class="text-ink-500 shrink-0">Tapak:</dt>
+            <dt class="text-ink-500 shrink-0">Site:</dt>
             <dd class="font-semibold text-ink-900">{{ actionableBookingCard.tapakLabel }}</dd>
           </div>
           <div class="flex flex-wrap gap-x-2">
-            <dt class="text-ink-500 shrink-0">Jumlah:</dt>
+            <dt class="text-ink-500 shrink-0">Amount:</dt>
             <dd class="font-semibold text-ink-900">{{ actionableBookingCard.amountLabel }}</dd>
           </div>
         </dl>
@@ -278,11 +266,11 @@ const PROFILE_FIELD_LABELS = {
 };
 
 const dashboardGuideItems = [
-  { en: 'Cards show quick totals.', ms: 'Kad menunjukkan ringkasan nombor penting.' },
-  { en: 'Line chart shows booking trend over time.', ms: 'Carta line menunjukkan trend tempahan mengikut masa.' },
-  { en: 'Bar chart compares monthly payment totals.', ms: 'Carta bar membandingkan jumlah bayaran bulanan.' },
-  { en: 'Donut chart shows booking status distribution.', ms: 'Carta donut menunjukkan pecahan status tempahan.' },
-  { en: 'A compact current-booking card appears only when a booking still needs vendor or organizer action.', ms: 'Kad tempahan semasa yang ringkas hanya muncul apabila tempahan masih memerlukan tindakan vendor atau penganjur.' },
+  'Cards show quick totals.',
+  'Line chart shows booking trend over time.',
+  'Bar chart compares monthly payment totals.',
+  'Donut chart shows booking status distribution.',
+  'A compact current-booking card appears only when a booking still needs vendor or organizer action.',
 ];
 
 const summary = computed(() => props.analytics?.summary || {});
@@ -380,7 +368,6 @@ const insightCards = computed(() => [
     displayValue: formatCount(summary.value.total_bookings),
     subtext: `${summary.value.upcoming_bookings ?? 0} upcoming`,
     helpEn: 'All booth booking requests created by this vendor.',
-    helpMs: 'Jumlah semua permohonan tempahan tapak oleh vendor ini.',
     icon: icon('M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'),
     iconClass: 'bg-brand-50 text-brand-600 border-brand-100',
   },
@@ -390,7 +377,6 @@ const insightCards = computed(() => [
     displayValue: formatCount(summary.value.upcoming_bookings),
     subtext: `${summary.value.completed_bookings ?? 0} completed`,
     helpEn: 'Bookings for upcoming events that have not happened yet.',
-    helpMs: 'Tempahan untuk event yang belum berlangsung.',
     icon: icon('M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'),
     iconClass: 'bg-sky-50 text-sky-700 border-sky-100',
   },
@@ -400,7 +386,6 @@ const insightCards = computed(() => [
     displayValue: formatCount(summary.value.total_receipts),
     subtext: 'Issued payment records',
     helpEn: 'Payment receipt records issued for this vendor\'s booth bookings.',
-    helpMs: 'Rekod resit bayaran untuk tempahan tapak vendor ini.',
     icon: icon('M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'),
     iconClass: 'bg-violet-50 text-violet-700 border-violet-100',
   },
@@ -410,7 +395,6 @@ const insightCards = computed(() => [
     displayValue: formatCurrency(summary.value.total_paid_amount),
     subtext: 'Booth payment total',
     helpEn: 'Total verified booth payments.',
-    helpMs: 'Jumlah bayaran tapak yang telah disahkan.',
     icon: icon('M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'),
     iconClass: 'bg-emerald-50 text-emerald-700 border-emerald-100',
   },
@@ -420,7 +404,6 @@ const insightCards = computed(() => [
     displayValue: formatCount(summary.value.active_reuse_listings),
     subtext: `${summary.value.total_reuse_listings ?? 0} total listings`,
     helpEn: 'Reuse items currently active or visible in the vendor preview.',
-    helpMs: 'Barang reuse yang sedang aktif atau dipaparkan dalam preview vendor.',
     icon: icon('M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z'),
     iconClass: 'bg-amber-50 text-amber-700 border-amber-100',
   },
@@ -430,7 +413,6 @@ const insightCards = computed(() => [
     displayValue: `${summary.value.profile_completion_percent ?? 0}%`,
     subtext: missingProfileFields.value.length ? 'Fields still missing' : 'Profile complete',
     helpEn: 'How complete your business profile is. A complete profile improves vendor trust and booth visibility.',
-    helpMs: 'Menunjukkan tahap kelengkapan profil bisnes. Profil lengkap membantu meningkatkan kepercayaan dan visibility vendor.',
     icon: icon('M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'),
     iconClass: 'bg-ink-50 text-ink-700 border-ink-100',
   },

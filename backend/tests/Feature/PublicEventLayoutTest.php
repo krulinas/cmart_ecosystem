@@ -46,7 +46,7 @@ class PublicEventLayoutTest extends TestCase
         $event = $this->createEvent(array_merge([
             'title' => 'P310 Public Layout ' . uniqid(),
             'public_layout_published_at' => now()->subMinute(),
-            'public_layout_entrance_note' => 'Masuk melalui pintu utama CMart.',
+            'public_layout_entrance_note' => 'Enter through the main CMart entrance.',
         ], $eventOverrides));
         $day = $this->createActiveDay($event);
 

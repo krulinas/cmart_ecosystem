@@ -254,7 +254,7 @@ class VendorEventSiteAvailabilityService
             'sites' => [],
             'readiness' => [
                 'status' => 'category_required',
-                'message' => 'Sila pilih kategori jualan terlebih dahulu.',
+                'message' => 'Please select a selling category first.',
             ],
         ];
     }
@@ -277,7 +277,7 @@ class VendorEventSiteAvailabilityService
             }
 
             throw new AllocationValidationException(
-                'Sila pilih kategori jualan terlebih dahulu.',
+                'Please select a selling category first.',
                 'CATEGORY_REQUIRED',
             );
         }

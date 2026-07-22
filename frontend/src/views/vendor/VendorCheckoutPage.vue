@@ -201,7 +201,7 @@ const payBlockedMessage = computed(() => {
   if (booking.value.invoice?.payment_status === 'Pending Verification') {
     return 'Your payment proof is awaiting CMart verification.';
   }
-  return 'Please contact CMart staff if you need help with this booking.';
+  return 'Please contact the Carboot Organizer if you need help with this booking.';
 });
 
 const loadBooking = async () => {

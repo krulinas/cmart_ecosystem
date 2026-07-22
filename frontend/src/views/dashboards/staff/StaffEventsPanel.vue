@@ -28,7 +28,7 @@
           <input v-model.number="form.max_slots" type="number" min="1" class="ml-input" />
         </div>
         <div>
-          <label class="ml-label">Harga Satu Tapak (RM)</label>
+          <label class="ml-label">Price Per Site (RM)</label>
           <div class="relative">
             <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-ink-500">RM</span>
             <input
@@ -43,7 +43,7 @@
             />
           </div>
           <p class="mt-1 text-xs text-ink-500">
-            Harga seragam untuk setiap tapak parking. Jumlah tempahan = harga × bilangan tapak (bukan × hari).
+            Uniform price for each parking site. Booking total = price × number of sites (not × days).
           </p>
         </div>
         <label class="flex items-start gap-2 text-sm text-ink-700">
@@ -53,14 +53,14 @@
             class="mt-1"
             data-testid="event-save-default-site-price"
           />
-          <span>Simpan harga ini sebagai harga lalai untuk acara seterusnya</span>
+          <span>Save this price as the default for future events</span>
         </label>
         <p
           v-if="editingId && editingHasBookings"
           class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
           data-testid="event-price-change-warning"
         >
-          Perubahan harga hanya terpakai kepada tempahan baharu. Tempahan dan jumlah bayaran sedia ada tidak akan berubah.
+          Price changes apply only to new bookings. Existing bookings and payment totals will not change.
         </p>
         <div>
           <label class="ml-label">Item reservation service fee (RM, optional)</label>
@@ -121,7 +121,7 @@
               <div class="text-xs text-ink-500">{{ formatEventDateTime(ev.starts_at) }} → {{ formatEventDateTime(ev.ends_at) }}</div>
               <span class="mt-1 inline-block ml-badge bg-brand-100 text-brand-800">{{ ev.status }}</span>
               <p class="text-xs text-ink-500 mt-1">
-                Harga satu tapak:
+                Price per site:
                 {{ ev.site_price == null ? 'Not configured' : `RM ${Number(ev.site_price).toFixed(2)}` }}
               </p>
               <p class="text-xs text-ink-500 mt-1">
@@ -215,7 +215,7 @@ const form = reactive(emptyForm());
 const extractApiError = (error) => {
   const data = error.response?.data;
   if (data?.error === 'event_operating_dates_locked_by_allocations') {
-    return 'Acara ini sudah ada tempahan vendor. Tarikh operasi tidak boleh diubah kerana tempahan sedia ada bergantung padanya.';
+    return 'This event already has vendor bookings. Operating dates cannot be changed because existing bookings depend on them.';
   }
   if (data?.errors) {
     return Object.values(data.errors).flat().join(' ');
@@ -316,7 +316,7 @@ const save = async () => {
 
   const sitePrice = Number(form.site_price);
   if (!Number.isFinite(sitePrice) || sitePrice <= 0) {
-    toast.error('Harga satu tapak mesti lebih daripada RM0.00.');
+    toast.error('Price per site must be greater than RM0.00.');
     return;
   }
 

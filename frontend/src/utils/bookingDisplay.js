@@ -181,11 +181,15 @@ export const formatWithdrawnDate = (value) => {
 export const canVendorEdit = (booking) =>
   ['Pending_Organizer', 'Needs_Revision'].includes(booking?.approval_status);
 
+/** Deferred BM copy — preserved for future locale toggle. */
 export const NO_REFUND_WITHDRAWAL_WARNING_MS =
   'Anda boleh menarik diri selepas bayaran dibuat, tetapi bayaran tidak akan dipulangkan. Tapak yang telah ditempah akan dibuka semula kepada vendor lain.';
 
+export const NO_REFUND_WITHDRAWAL_WARNING =
+  'You may withdraw after payment has been made, but no refund will be issued. Any reserved sites will be released for other vendors.';
+
 export const UNPAID_WITHDRAWAL_WARNING =
-  'Penarikan diri akan menamatkan tempahan ini dan tapak yang dipilih akan dibuka semula kepada vendor lain. Tindakan ini tidak boleh dibatalkan melalui papan pemuka.';
+  'Withdrawing will end this booking and release your selected sites for other vendors. This action cannot be undone from your dashboard.';
 
 export const withdrawalPolicyForBooking = (booking) =>
   booking?.withdrawal_policy || null;
@@ -211,7 +215,7 @@ export const requiresNoRefundAcknowledgement = (booking) => {
 export const withdrawalWarningMessage = (booking) => {
   const policy = withdrawalPolicyForBooking(booking);
   if (policy?.warning_message) return policy.warning_message;
-  if (requiresNoRefundAcknowledgement(booking)) return NO_REFUND_WITHDRAWAL_WARNING_MS;
+  if (requiresNoRefundAcknowledgement(booking)) return NO_REFUND_WITHDRAWAL_WARNING;
   return UNPAID_WITHDRAWAL_WARNING;
 };
 
@@ -293,9 +297,9 @@ export const boothTypeLabel = (booking) =>
   booking?.space_type ||
   booking?.boothType ||
   booking?.space?.space_size ||
-  (booking?.site_quantity != null ? `${booking.site_quantity} tapak` : null) ||
+  (booking?.site_quantity != null ? `${booking.site_quantity} site${booking.site_quantity === 1 ? '' : 's'}` : null) ||
   (booking?.space_id ? `Space #${booking.space_id}` : null) ||
-  'Tapak parking';
+  'Parking site';
 
 export const productSummary = (booking) => {
   const category = booking?.product_category || 'Others';

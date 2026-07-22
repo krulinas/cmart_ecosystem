@@ -1,7 +1,7 @@
 <template>
   <div>
     <p :class="enClass">{{ textEn }}</p>
-    <template v-if="textMs">
+    <template v-if="textMs && SHOW_BM_COPY">
       <template v-if="collapsibleMalay">
         <button
           type="button"
@@ -32,6 +32,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import { SHOW_BM_COPY } from '../config/locale';
 
 const props = defineProps({
   textEn: { type: String, required: true },

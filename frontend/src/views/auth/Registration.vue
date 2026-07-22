@@ -17,7 +17,7 @@
             Start Vendor Booking
           </h1>
           <p class="text-sm text-ink-500 mt-1">
-            Choose an event and submit your booth booking. CMart staff will review your application before participation is confirmed.
+            Choose an event and submit your booth booking. The Carboot Organizer will review your application before participation is confirmed.
           </p>
           <p class="mt-3 text-sm">
             <router-link to="/calendar" class="font-semibold text-brand-600 hover:text-brand-700 hover:underline">
@@ -232,7 +232,7 @@ import {
 const EVENT_UNAVAILABLE_MESSAGE = 'This event is no longer available for booking. Please choose another event.';
 const SITE_CONFLICT_MESSAGE =
   'One or more selected sites are no longer available. The latest layout has been refreshed.';
-const CATEGORY_CLEARED_MESSAGE = 'Kategori telah ditukar. Pilihan tapak sebelumnya telah dikosongkan.';
+const CATEGORY_CLEARED_MESSAGE = 'Category changed. Your previous site selection has been cleared.';
 
 const toast = useToast();
 const auth = useAuthStore();
@@ -311,7 +311,7 @@ const loadVendorCategories = async () => {
   } catch (error) {
     console.error('Failed to load vendor categories:', error);
     vendorCategories.value = [];
-    categoryLoadError.value = 'Kategori jualan tidak dapat dimuatkan.';
+    categoryLoadError.value = 'Unable to load selling categories.';
   } finally {
     loadingCategories.value = false;
   }
@@ -326,7 +326,7 @@ const loadProfileCategorySuggestion = async () => {
       if (!bookingForm.vendor_category_id) {
         suppressCategoryWatch = true;
         bookingForm.vendor_category_id = String(id);
-        liveAnnouncement.value = 'Kategori cadangan daripada profil anda telah dipilih. Anda boleh menukarnya.';
+        liveAnnouncement.value = 'A suggested category from your profile has been selected. You can change it.';
         suppressCategoryWatch = false;
       }
     }
@@ -361,7 +361,7 @@ const loadSiteAvailability = async (eventId, { preserveSelection = false } = {})
 
   if (!bookingForm.vendor_category_id) {
     resetSiteSelection();
-    availabilityReadiness.value = 'Sila pilih kategori jualan terlebih dahulu.';
+    availabilityReadiness.value = 'Please select a selling category first.';
     return;
   }
 
@@ -385,7 +385,7 @@ const loadSiteAvailability = async (eventId, { preserveSelection = false } = {})
       availabilitySites.value = [];
       availabilityDays.value = Array.isArray(data.operational_days) ? data.operational_days : [];
       availabilitySitePrice.value = data.site_price ?? data.event?.site_price ?? null;
-      availabilityReadiness.value = data.readiness?.message || 'Sila pilih kategori jualan terlebih dahulu.';
+      availabilityReadiness.value = data.readiness?.message || 'Please select a selling category first.';
       return;
     }
 
@@ -394,10 +394,10 @@ const loadSiteAvailability = async (eventId, { preserveSelection = false } = {})
     availabilityDays.value = Array.isArray(data.operational_days) ? data.operational_days : [];
     availabilitySitePrice.value = data.site_price ?? data.event?.site_price ?? null;
     availabilityReadiness.value = data.readiness?.status === 'no_compatible_sites'
-      ? 'Tiada tapak tersedia untuk kategori ini.'
+      ? 'No sites are available for this category.'
       : (data.readiness?.message || '');
     liveAnnouncement.value = availabilityRows.value.length
-      ? `${availabilitySites.value.filter((site) => site.is_selectable).length} tapak tersedia telah dimuatkan.`
+      ? `${availabilitySites.value.filter((site) => site.is_selectable).length} available sites loaded.`
       : availabilityReadiness.value;
   } catch (error) {
     if (requestToken !== availabilityRequestToken) return;
@@ -412,7 +412,7 @@ const loadSiteAvailability = async (eventId, { preserveSelection = false } = {})
     }
 
     resetSiteSelection();
-    availabilityError.value = 'Maklumat tapak tidak dapat dimuatkan.';
+    availabilityError.value = 'Unable to load site information.';
   } finally {
     if (requestToken === availabilityRequestToken) {
       availabilityLoading.value = false;
@@ -429,7 +429,7 @@ const applySelectedEvent = (event) => {
   if (event?.id && bookingForm.vendor_category_id) {
     loadSiteAvailability(event.id);
   } else if (event?.id) {
-    availabilityReadiness.value = 'Sila pilih kategori jualan terlebih dahulu.';
+    availabilityReadiness.value = 'Please select a selling category first.';
   }
 };
 
@@ -493,7 +493,7 @@ const clearSavedPreference = async () => {
 
 const chooseAnotherCategory = () => {
   bookingForm.vendor_category_id = '';
-  liveAnnouncement.value = 'Pilih kategori jualan lain.';
+  liveAnnouncement.value = 'Choose another selling category.';
   requestAnimationFrame(() => {
     document.getElementById('vendor-category-heading')?.focus?.();
   });
@@ -551,12 +551,12 @@ watch(
       toast.info(CATEGORY_CLEARED_MESSAGE);
       liveAnnouncement.value = hadSites
         ? CATEGORY_CLEARED_MESSAGE
-        : 'Kategori jualan telah ditukar. Tapak yang sesuai sedang dimuatkan.';
+        : 'Selling category changed. Loading compatible sites.';
     }
 
     if (!next) {
       resetSiteSelection();
-      availabilityReadiness.value = 'Pilih kategori jualan untuk meneruskan.';
+      availabilityReadiness.value = 'Select a selling category to continue.';
       return;
     }
 
@@ -622,9 +622,9 @@ const refreshAvailabilityAfterConflict = async (message) => {
     .map((id) => previousLabels.get(id))
     .filter(Boolean);
   selectedSiteIds.value = nextSelection;
-  siteSelectionError.value = 'Pilihan tapak telah dikemas kini kerana susun atur atau ketersediaan berubah.';
+  siteSelectionError.value = 'Site selection was updated because the layout or availability changed.';
   liveAnnouncement.value = removedStaleSiteLabels.value.length
-    ? `${siteSelectionError.value} Tapak dialih keluar: ${removedStaleSiteLabels.value.join(', ')}.`
+    ? `${siteSelectionError.value} Removed sites: ${removedStaleSiteLabels.value.join(', ')}.`
     : siteSelectionError.value;
 };
 
@@ -633,7 +633,7 @@ const submitBooking = async () => {
     toast.error(
       bookingForm.vendor_category_id
         ? 'Please select a valid event and at least one physical site before submitting.'
-        : 'Sila pilih kategori jualan terlebih dahulu.',
+        : 'Please select a selling category first.',
     );
     return;
   }

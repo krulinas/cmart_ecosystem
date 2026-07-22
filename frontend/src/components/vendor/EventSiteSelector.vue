@@ -5,13 +5,13 @@
     :aria-labelledby="headingId"
   >
     <div class="space-y-2">
-      <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Langkah 2</p>
-      <h2 :id="headingId" class="text-base font-extrabold text-ink-900">Pilih Tapak Fizikal</h2>
+      <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Step 2</p>
+      <h2 :id="headingId" class="text-base font-extrabold text-ink-900">Select Physical Sites</h2>
       <p class="text-sm text-ink-600">
-        Pilih satu atau lebih tapak bersebelahan dalam baris yang sama. Pengesahan akhir dibuat oleh pelayan semasa tempahan dihantar.
+        Select one or more adjacent sites within the same row. Final confirmation is made by the server when your booking is submitted.
       </p>
       <p v-if="selectedCategory" class="text-sm font-semibold text-brand-700" data-testid="event-site-selected-category">
-        Kategori dipilih: {{ selectedCategory.label }}
+        Selected category: {{ selectedCategory.label }}
       </p>
       <p v-if="operationalDays.length" class="text-xs text-brand-700 font-medium" data-testid="event-site-days-summary">
         {{ daysSummary }}
@@ -27,10 +27,10 @@
       <p>{{ readinessMessage }}</p>
       <div v-if="selectedCategory" class="mt-3 flex flex-wrap gap-2">
         <button type="button" class="ml-btn-ghost text-sm" @click="$emit('choose-category')">
-          Pilih kategori lain
+          Choose another category
         </button>
         <button type="button" class="ml-btn-ghost text-sm" @click="$emit('retry')">
-          Muat semula
+          Refresh
         </button>
       </div>
     </div>
@@ -50,7 +50,7 @@
       data-testid="event-site-removed-stale"
       role="status"
     >
-      Tapak yang dialih keluar: {{ removedStaleSiteLabels.join(', ') }}. Sila semak pilihan sebelum menghantar semula.
+      Removed sites: {{ removedStaleSiteLabels.join(', ') }}. Please review your selection before resubmitting.
     </div>
 
     <div
@@ -62,7 +62,7 @@
       {{ blockedMessage }}
     </div>
 
-    <div class="flex flex-wrap gap-2 text-xs" data-testid="event-site-legend" aria-label="Petunjuk status tapak">
+    <div class="flex flex-wrap gap-2 text-xs" data-testid="event-site-legend" aria-label="Site status legend">
       <span
         v-for="item in legendItems"
         :key="item.key"
@@ -75,7 +75,7 @@
     </div>
 
     <div v-if="loading" class="py-10 text-center text-sm text-ink-500" data-testid="event-site-selector-loading">
-      Memuatkan tapak yang tersedia…
+      Loading available sites…
     </div>
 
     <div
@@ -84,7 +84,7 @@
       data-testid="event-site-selector-error"
     >
       <p>{{ loadError }}</p>
-      <button type="button" class="ml-btn-ghost text-sm" @click="$emit('retry')">Cuba Lagi</button>
+      <button type="button" class="ml-btn-ghost text-sm" @click="$emit('retry')">Try Again</button>
     </div>
 
     <div
@@ -93,7 +93,7 @@
       data-testid="event-site-category-required"
       role="status"
     >
-      Pilih kategori jualan untuk meneruskan.
+      Select a selling category to continue.
     </div>
 
     <div
@@ -101,7 +101,7 @@
       class="rounded-lg border border-ink-200 bg-ink-50 px-4 py-4 text-sm text-ink-700"
       data-testid="event-site-no-compatible-rows"
     >
-      Tiada baris susun atur tersedia untuk kategori ini.
+      No layout rows are available for this category.
     </div>
 
     <div
@@ -109,7 +109,7 @@
       class="rounded-lg border border-ink-200 bg-ink-50 px-4 py-4 text-sm text-ink-700"
       data-testid="event-site-all-occupied"
     >
-      Semua tapak untuk kategori ini telah ditempah atau tidak tersedia.
+      All sites for this category are booked or unavailable.
     </div>
 
     <div
@@ -135,31 +135,31 @@
     >
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0 flex-1">
-          <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Ringkasan Tempahan</p>
+          <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Booking Summary</p>
           <dl class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-            <div><dt class="text-xs text-ink-500">Kategori Jualan</dt><dd class="font-semibold">{{ selectedCategory?.label }}</dd></div>
-            <div><dt class="text-xs text-ink-500">Baris</dt><dd class="font-semibold">{{ selectedRowLabel }}</dd></div>
-            <div><dt class="text-xs text-ink-500">Tapak Dipilih</dt><dd class="font-semibold" data-testid="event-site-selected-labels">{{ selectedLabels }}</dd></div>
-            <div><dt class="text-xs text-ink-500">Bilangan Tapak</dt><dd class="font-semibold" data-testid="event-site-selected-count">{{ selectedSites.length }}</dd></div>
-            <div><dt class="text-xs text-ink-500">Harga Satu Tapak</dt><dd class="font-semibold" data-testid="event-site-unit-price">RM {{ unitPriceFormatted }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Selling Category</dt><dd class="font-semibold">{{ selectedCategory?.label }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Row</dt><dd class="font-semibold">{{ selectedRowLabel }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Selected Sites</dt><dd class="font-semibold" data-testid="event-site-selected-labels">{{ selectedLabels }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Site Count</dt><dd class="font-semibold" data-testid="event-site-selected-count">{{ selectedSites.length }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Price Per Site</dt><dd class="font-semibold" data-testid="event-site-unit-price">RM {{ unitPriceFormatted }}</dd></div>
             <div>
-              <dt class="text-xs text-ink-500">Pengiraan</dt>
+              <dt class="text-xs text-ink-500">Calculation</dt>
               <dd class="font-semibold" data-testid="event-site-calculation">
-                RM {{ unitPriceFormatted }} × {{ selectedSites.length }} tapak
+                RM {{ unitPriceFormatted }} × {{ selectedSites.length }} site{{ selectedSites.length === 1 ? '' : 's' }}
               </dd>
             </div>
-            <div><dt class="text-xs text-ink-500">Hari Acara</dt><dd class="font-semibold">{{ operationalDays.length }}</dd></div>
+            <div><dt class="text-xs text-ink-500">Event Days</dt><dd class="font-semibold">{{ operationalDays.length }}</dd></div>
           </dl>
         </div>
         <button type="button" class="ml-btn-ghost text-sm shrink-0" data-testid="event-site-clear-selection" @click="clearSelection">
-          Kosongkan pilihan
+          Clear selection
         </button>
       </div>
       <p class="text-lg font-extrabold text-brand-800" data-testid="event-site-preview-amount">
-        Jumlah: RM {{ previewAmountFormatted }}
+        Total: RM {{ previewAmountFormatted }}
       </p>
       <p class="text-xs text-ink-600" data-testid="event-site-day-note">
-        Jumlah ini adalah untuk keseluruhan tempoh acara dan tidak didarab dengan bilangan hari.
+        This total covers the full event period and is not multiplied by the number of days.
       </p>
     </div>
   </section>
@@ -199,11 +199,11 @@ const headingId = `event-site-selector-heading-${Math.random().toString(36).slic
 const blockedMessage = ref('');
 
 const legendItems = [
-  { key: 'available', label: 'Tersedia', chipClass: 'border-emerald-200 bg-emerald-50 text-emerald-800', swatchClass: 'bg-emerald-400 border-emerald-500' },
-  { key: 'selected', label: 'Dipilih', chipClass: 'border-brand-300 bg-brand-100 text-brand-800', swatchClass: 'bg-brand-500 border-brand-600' },
-  { key: 'occupied', label: 'Ditempah', chipClass: 'border-rose-200 bg-rose-50 text-rose-800', swatchClass: 'bg-rose-300 border-rose-400' },
-  { key: 'unavailable', label: 'Tidak tersedia', chipClass: 'border-ink-200 bg-ink-50 text-ink-700', swatchClass: 'bg-ink-200 border-ink-300' },
-  { key: 'disabled', label: 'Dinyahaktifkan', chipClass: 'border-slate-200 bg-slate-50 text-slate-700', swatchClass: 'bg-slate-300 border-slate-400' },
+  { key: 'available', label: 'Available', chipClass: 'border-emerald-200 bg-emerald-50 text-emerald-800', swatchClass: 'bg-emerald-400 border-emerald-500' },
+  { key: 'selected', label: 'Selected', chipClass: 'border-brand-300 bg-brand-100 text-brand-800', swatchClass: 'bg-brand-500 border-brand-600' },
+  { key: 'occupied', label: 'Booked', chipClass: 'border-rose-200 bg-rose-50 text-rose-800', swatchClass: 'bg-rose-300 border-rose-400' },
+  { key: 'unavailable', label: 'Unavailable', chipClass: 'border-ink-200 bg-ink-50 text-ink-700', swatchClass: 'bg-ink-200 border-ink-300' },
+  { key: 'disabled', label: 'Disabled', chipClass: 'border-slate-200 bg-slate-50 text-slate-700', swatchClass: 'bg-slate-300 border-slate-400' },
 ];
 
 const groupedRows = computed(() => prepareAvailabilityRows(props.rows));

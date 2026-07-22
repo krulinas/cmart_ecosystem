@@ -80,7 +80,7 @@ const submit = async () => {
 
     if (!auth.isCmartWorker) {
       await auth.logout();
-      toast.error('This portal is restricted to authorized CMart staff and management.');
+      toast.error('This portal is restricted to authorized CMart management users.');
       return;
     }
 

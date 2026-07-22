@@ -1276,7 +1276,7 @@ class BookingController extends Controller
         );
 
         return response()->json([
-            'message' => '200 OK: Change request submitted. CMart staff will review your request.',
+            'message' => '200 OK: Change request submitted. The Carboot Organizer will review your request.',
             'booking' => $booking->fresh(['space', 'invoice']),
         ]);
     }
@@ -1313,7 +1313,7 @@ class BookingController extends Controller
         );
 
         return response()->json([
-            'message' => '200 OK: Cancellation request submitted. CMart staff will review your request.',
+            'message' => '200 OK: Cancellation request submitted. The Carboot Organizer will review your request.',
             'booking' => $booking->fresh(['space', 'invoice']),
         ]);
     }

@@ -16,7 +16,7 @@ class PublicEventLayoutController extends Controller
         if (! $carbootEvent) {
             return response()->json([
                 'layout_available' => false,
-                'message' => 'Acara tidak ditemui.',
+                'message' => 'Event not found.',
                 'error' => 'PUBLIC_EVENT_NOT_FOUND',
             ], 404);
         }

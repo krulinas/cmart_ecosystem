@@ -243,7 +243,7 @@ class BookingWithdrawalNoRefundTest extends TestCase
             ->assertJsonPath('booking.withdrawal_policy.refund_allowed', false)
             ->assertJsonPath(
                 'booking.withdrawal_policy.warning_message',
-                VendorBookingPresenter::NO_REFUND_WARNING_MS,
+                VendorBookingPresenter::NO_REFUND_WARNING_EN,
             );
 
         $invoice = Invoice::find($booking->invoice->id);

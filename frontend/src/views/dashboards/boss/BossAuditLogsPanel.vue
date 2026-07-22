@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between mb-4">
       <div>
         <h2 class="text-lg font-extrabold text-ink-900">Staff Audit Log</h2>
-        <p class="text-sm text-ink-500">Approval and rejection actions performed by CMart staff and admin.</p>
+        <p class="text-sm text-ink-500">Approval and rejection actions performed by the Carboot Organizer and admin.</p>
       </div>
       <button class="ml-btn-ghost" @click="load" :disabled="loading">{{ loading ? 'Loading…' : 'Refresh' }}</button>
     </div>

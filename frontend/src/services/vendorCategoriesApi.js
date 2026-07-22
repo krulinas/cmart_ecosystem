@@ -5,18 +5,18 @@ export async function fetchVendorCategories(api) {
 
 export function categoryConflictMessage(errorCode, fallback) {
   const messages = {
-    CATEGORY_REQUIRED: 'Sila pilih kategori jualan terlebih dahulu.',
-    SITE_CATEGORY_INCOMPATIBLE: 'Tapak yang dipilih tidak sepadan dengan kategori jualan anda.',
-    MIXED_CATEGORY_SITE_SELECTION: 'Semua tapak mesti berada dalam kategori yang sama.',
-    LAYOUT_CHANGED: 'Susun atur acara telah berubah. Sila semak dan pilih tapak semula.',
-    EVENT_LAYOUT_NOT_READY: 'Susun atur acara belum bersedia untuk tempahan.',
-    CATEGORY_INACTIVE: 'Kategori ini tidak lagi aktif.',
-    CATEGORY_ARCHIVED: 'Kategori ini tidak lagi tersedia.',
-    SITE_MISSING_LAYOUT_ROW: 'Tapak ini belum disusun dengan betul dan tidak boleh ditempah.',
-    SITE_ROW_INACTIVE: 'Baris tapak ini tidak lagi aktif.',
-    site_day_occupied: 'Satu atau lebih tapak tidak lagi tersedia.',
-    UNKNOWN_LEGACY_CATEGORY: 'Kategori ini tidak lagi aktif.',
-    CATEGORY_NOT_FOUND: 'Kategori ini tidak lagi aktif.',
+    CATEGORY_REQUIRED: 'Please select a selling category first.',
+    SITE_CATEGORY_INCOMPATIBLE: 'The selected sites do not match your selling category.',
+    MIXED_CATEGORY_SITE_SELECTION: 'All selected sites must belong to the same category.',
+    LAYOUT_CHANGED: 'The event layout has changed. Please review and select sites again.',
+    EVENT_LAYOUT_NOT_READY: 'The event layout is not ready for booking yet.',
+    CATEGORY_INACTIVE: 'This category is no longer active.',
+    CATEGORY_ARCHIVED: 'This category is no longer available.',
+    SITE_MISSING_LAYOUT_ROW: 'This site is not configured correctly and cannot be booked.',
+    SITE_ROW_INACTIVE: 'This site row is no longer active.',
+    site_day_occupied: 'One or more sites are no longer available.',
+    UNKNOWN_LEGACY_CATEGORY: 'This category is no longer active.',
+    CATEGORY_NOT_FOUND: 'This category is no longer active.',
   };
 
   return messages[errorCode] || fallback || 'Unable to submit booking.';

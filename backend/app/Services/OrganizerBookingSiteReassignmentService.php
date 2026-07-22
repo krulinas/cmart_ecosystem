@@ -218,7 +218,7 @@ class OrganizerBookingSiteReassignmentService
     {
         if (! $acknowledged) {
             throw new AllocationValidationException(
-                'Sila sahkan bahawa anda memahami pengecualian kategori ini.',
+                'Please confirm that you understand this category exception.',
                 'CATEGORY_OVERRIDE_ACKNOWLEDGEMENT_REQUIRED',
             );
         }
@@ -226,21 +226,21 @@ class OrganizerBookingSiteReassignmentService
         $trimmed = trim((string) $reason);
         if ($trimmed === '') {
             throw new AllocationValidationException(
-                'Sila berikan sebab pengecualian.',
+                'Please provide a reason for this exception.',
                 'CATEGORY_OVERRIDE_REASON_REQUIRED',
             );
         }
 
         if (mb_strlen($trimmed) < 10) {
             throw new AllocationValidationException(
-                'Sebab pengecualian terlalu pendek.',
+                'The exception reason is too short.',
                 'CATEGORY_OVERRIDE_REASON_TOO_SHORT',
             );
         }
 
         if (mb_strlen($trimmed) > 1000) {
             throw new AllocationValidationException(
-                'Sebab pengecualian terlalu panjang.',
+                'The exception reason is too long.',
                 'CATEGORY_OVERRIDE_REASON_TOO_LONG',
             );
         }

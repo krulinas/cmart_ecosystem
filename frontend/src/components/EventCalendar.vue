@@ -417,7 +417,7 @@ const createEvent = async () => {
     await loadEvents();
   } catch (e) {
     console.error('Failed to create event:', e);
-    alert('Could not create event. Ensure you are logged in as CMart staff.');
+    alert('Could not create event. Ensure you are logged in as a Carboot Organizer.');
   }
 };
 

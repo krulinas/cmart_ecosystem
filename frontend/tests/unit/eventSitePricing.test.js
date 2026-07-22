@@ -39,7 +39,7 @@ describe('event-level site pricing preview', () => {
   it('formats calculation copy for two sites', () => {
     const unit = resolveEventUnitPrice(sites, '20.00');
     const count = 2;
-    const calculation = `RM ${Number(unit).toFixed(2)} × ${count} tapak`;
-    assert.equal(calculation, 'RM 20.00 × 2 tapak');
+    const calculation = `RM ${Number(unit).toFixed(2)} × ${count} site${count === 1 ? '' : 's'}`;
+    assert.equal(calculation, 'RM 20.00 × 2 sites');
   });
 });

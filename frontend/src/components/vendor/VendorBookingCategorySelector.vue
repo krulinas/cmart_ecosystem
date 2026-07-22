@@ -6,12 +6,12 @@
   >
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Langkah 1</p>
+        <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Step 1</p>
         <h2 id="vendor-category-heading" tabindex="-1" class="mt-1 text-base font-extrabold text-ink-900 focus:outline-none">
-          Pilih Kategori Jualan
+          Select Selling Category
         </h2>
         <p class="mt-1 text-sm text-ink-600">
-          Tapak yang serasi akan dipaparkan selepas kategori dipilih.
+          Compatible sites appear after you choose a category.
         </p>
       </div>
       <button
@@ -21,7 +21,7 @@
         data-testid="vendor-category-retry"
         @click="$emit('retry')"
       >
-        Cuba Lagi
+        Try Again
       </button>
     </div>
 
@@ -31,7 +31,7 @@
       data-testid="vendor-category-loading"
       role="status"
     >
-      Memuatkan kategori…
+      Loading categories…
     </p>
 
     <p
@@ -43,7 +43,7 @@
       {{ loadError }}
     </p>
 
-    <div v-else class="mt-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Kategori jualan">
+    <div v-else class="mt-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Selling category">
       <button
         v-for="category in categories"
         :key="category.id"
@@ -66,7 +66,7 @@
           class="mt-2 inline-flex rounded-full bg-cyan-100 px-2 py-1 text-[11px] font-bold text-cyan-800"
           data-testid="vendor-category-profile-suggestion"
         >
-          Cadangan daripada profil anda
+          Suggested from your profile
         </span>
       </button>
     </div>
@@ -76,7 +76,7 @@
       class="mt-4 text-sm font-semibold text-amber-800"
       data-testid="vendor-category-required"
     >
-      Pilih kategori jualan terlebih dahulu untuk melihat tapak yang sesuai.
+      Select a selling category first to view compatible sites.
     </p>
   </section>
 </template>
@@ -100,7 +100,7 @@ function categoryClass(category) {
 
 function categoryAriaLabel(category) {
   const suggestion = String(props.profileSuggestedCategoryId) === String(category.id)
-    ? ', cadangan daripada profil anda'
+    ? ', suggested from your profile'
     : '';
   return `${category.label}${suggestion}`;
 }
