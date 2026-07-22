@@ -187,11 +187,13 @@
 
       <VendorAnalyticsDashboard
         :analytics="vendorAnalytics"
+        :bookings="validBookings"
         :loading="loadingInsights"
         :load-error="insightsError"
         @retry="fetchVendorInsights"
         @edit-profile="scrollToBusinessProfile"
         @manage-reuse="scrollToReuseListings"
+        @view-booking="openBookingDetails"
       />
 
       <VendorHistoryReceipts
@@ -433,7 +435,7 @@ const openPaymentSubmission = (row) => {
 };
 
 const onPaymentSubmitted = async () => {
-  await fetchPaymentHistory();
+  await Promise.all([fetchPaymentHistory(), fetchMyBookings()]);
 };
 
 const bookingMatchesSearch = (booking, query) => {

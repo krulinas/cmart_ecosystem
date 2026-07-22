@@ -192,67 +192,37 @@
         </div>
       </div>
 
-      <div class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7">
-        <h3 class="text-xl font-bold text-slate-900 mb-1">Recent Activity</h3>
-        <BilingualHelpText
-          class="mb-5"
-          text-en="Recent Activity lists your latest booking and payment updates so you can quickly track what changed."
-          text-ms="Recent Activity menunjukkan kemas kini tempahan dan bayaran terkini supaya vendor mudah tahu perubahan terbaru."
-        />
-        <div v-if="!recentActivity.length" class="text-base text-ink-500 py-6 text-center leading-relaxed">
-          No recent vendor activity yet. Bookings, payments, and listings will appear here.
-        </div>
-        <ul v-else class="divide-y divide-ink-100">
-          <li
-            v-for="(activity, index) in visibleActivity"
-            :key="`${activity.type}-${activity.occurred_at}-${index}`"
-            class="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
-          >
-            <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <span :class="activityBadgeClass(activity.type)">{{ activityTypeLabel(activity.type) }}</span>
-                <p class="font-semibold text-base text-ink-900 truncate">{{ activity.title }}</p>
-              </div>
-              <p class="text-sm text-ink-500 mt-1">{{ formatDateTime(activity.occurred_at) }}</p>
-            </div>
-            <div class="text-base font-semibold text-ink-700 shrink-0">
-              <span v-if="activity.amount != null">RM {{ Number(activity.amount).toFixed(2) }}</span>
-              <span v-if="activity.status" class="ml-badge bg-ink-100 text-ink-700 capitalize ml-0 sm:ml-2">
-                {{ activity.status }}
-              </span>
-            </div>
-          </li>
-        </ul>
-        <div v-if="recentActivity.length > activityLimit" class="mt-4 flex justify-center">
-          <button type="button" class="ml-btn-ghost font-semibold" @click="activityExpanded = !activityExpanded">
-            {{ activityExpanded ? 'Show Less' : `View All Activity (${recentActivity.length})` }}
-          </button>
-        </div>
-      </div>
-
-      <div class="rounded-2xl border border-brand-100 bg-brand-50/40 p-6 sm:p-7">
-        <h3 class="text-base font-bold uppercase tracking-wider text-brand-700 mb-1">Current Booth Snapshot</h3>
-        <BilingualHelpText
-          class="mb-5"
-          text-en="Shows the latest approved booth information for your upcoming or current event."
-          text-ms="Menunjukkan maklumat tapak terkini yang telah diluluskan untuk event semasa atau akan datang."
-          en-class="text-[15px] leading-7 text-brand-800"
-          ms-class="mt-2 text-[13px] leading-6 text-slate-500 font-normal"
-        />
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 text-base">
-          <div>
-            <p class="text-sm text-ink-500">Booth Status</p>
-            <p class="font-bold text-ink-900 mt-1.5">{{ booth.booth_status || 'No Active Booking' }}</p>
+      <div
+        v-if="actionableBookingCard"
+        class="rounded-2xl border border-brand-100 bg-brand-50/40 p-5 sm:p-6"
+        data-testid="vendor-current-booking-status-card"
+      >
+        <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Current Booking</p>
+        <h3 class="mt-2 text-lg font-extrabold text-ink-900 leading-snug">
+          {{ actionableBookingCard.eventName }}
+        </h3>
+        <dl class="mt-4 space-y-2 text-sm">
+          <div class="flex flex-wrap gap-x-2">
+            <dt class="text-ink-500 shrink-0">Status:</dt>
+            <dd class="font-semibold text-ink-900">{{ actionableBookingCard.statusLabel }}</dd>
           </div>
-          <div>
-            <p class="text-sm text-ink-500">Current Event</p>
-            <p class="font-bold text-ink-900 mt-1.5">{{ booth.current_event || '—' }}</p>
+          <div class="flex flex-wrap gap-x-2">
+            <dt class="text-ink-500 shrink-0">Tapak:</dt>
+            <dd class="font-semibold text-ink-900">{{ actionableBookingCard.tapakLabel }}</dd>
           </div>
-          <div>
-            <p class="text-sm text-ink-500">Booth Number</p>
-            <p class="font-bold text-ink-900 mt-1.5">{{ booth.booth_number || '—' }}</p>
+          <div class="flex flex-wrap gap-x-2">
+            <dt class="text-ink-500 shrink-0">Jumlah:</dt>
+            <dd class="font-semibold text-ink-900">{{ actionableBookingCard.amountLabel }}</dd>
           </div>
-        </div>
+        </dl>
+        <button
+          type="button"
+          class="mt-5 ml-btn-primary text-sm"
+          data-testid="vendor-current-booking-view-button"
+          @click="$emit('view-booking', actionableBookingCard.bookingId)"
+        >
+          View Booking
+        </button>
       </div>
     </template>
   </section>
@@ -264,22 +234,30 @@ import Chart from 'chart.js/auto';
 import { useToast } from 'vue-toastification';
 import api from '../services/api';
 import { extractApiError } from '../utils/apiErrors';
+import {
+  PENDING_STATUSES,
+  canVendorProceedToDemoPayment,
+  isTerminalBookingStatus,
+  isValidBookingDate,
+  siteLabelsForBooking,
+  statusLabel,
+} from '../utils/bookingDisplay';
 import { downloadVendorReportCsv, downloadVendorReportJson } from '../utils/vendorReport';
 import InfoHelpTip from './InfoHelpTip.vue';
 import BilingualHelpText from './BilingualHelpText.vue';
 
 const props = defineProps({
   analytics: { type: Object, required: true },
+  bookings: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   loadError: { type: Boolean, default: false },
 });
 
-defineEmits(['retry', 'edit-profile', 'manage-reuse']);
+defineEmits(['retry', 'edit-profile', 'manage-reuse', 'view-booking']);
 
 const toast = useToast();
-const activityLimit = 5;
-const activityExpanded = ref(false);
 const exporting = ref(false);
+const MY_TZ = 'Asia/Kuala_Lumpur';
 
 const bookingTrendCanvas = ref(null);
 const paymentTrendCanvas = ref(null);
@@ -304,25 +282,87 @@ const dashboardGuideItems = [
   { en: 'Line chart shows booking trend over time.', ms: 'Carta line menunjukkan trend tempahan mengikut masa.' },
   { en: 'Bar chart compares monthly payment totals.', ms: 'Carta bar membandingkan jumlah bayaran bulanan.' },
   { en: 'Donut chart shows booking status distribution.', ms: 'Carta donut menunjukkan pecahan status tempahan.' },
-  { en: 'Recent Activity shows the latest booking/payment updates.', ms: 'Recent Activity menunjukkan kemas kini tempahan/bayaran terkini.' },
-  { en: 'Current Booth Snapshot shows your latest approved booth assignment.', ms: 'Current Booth Snapshot menunjukkan maklumat tapak terkini yang telah diluluskan.' },
+  { en: 'A compact current-booking card appears only when a booking still needs vendor or organizer action.', ms: 'Kad tempahan semasa yang ringkas hanya muncul apabila tempahan masih memerlukan tindakan vendor atau penganjur.' },
 ];
 
 const summary = computed(() => props.analytics?.summary || {});
-const booth = computed(() => props.analytics?.booth || {});
 const trends = computed(() => props.analytics?.trends || { monthly_bookings: [], monthly_payments: [] });
 const distributions = computed(() => props.analytics?.distributions || { booking_status: {}, reuse_listing_status: {} });
-const recentActivity = computed(() => props.analytics?.recent_activity || []);
-
-const visibleActivity = computed(() =>
-  activityExpanded.value ? recentActivity.value : recentActivity.value.slice(0, activityLimit),
-);
 
 const missingProfileFields = computed(() =>
   (summary.value.profile_missing_fields || []).map(
     (field) => PROFILE_FIELD_LABELS[field] || field.replace(/_/g, ' '),
   ),
 );
+
+const todayInMyTimezone = () =>
+  new Date().toLocaleDateString('en-CA', { timeZone: MY_TZ });
+
+const bookingDateKey = (booking) => {
+  const raw = String(booking?.booking_date || '').slice(0, 10);
+  return isValidBookingDate(raw) ? raw : null;
+};
+
+const isUpcomingBooking = (booking) => {
+  const dateKey = bookingDateKey(booking);
+  return Boolean(dateKey && dateKey >= todayInMyTimezone());
+};
+
+/** Pending review/revision, or approved but still unpaid (payment action). */
+const isActionableCurrentBooking = (booking) => {
+  if (!booking?.id || !isUpcomingBooking(booking)) return false;
+  if (isTerminalBookingStatus(booking.approval_status)) return false;
+  if (PENDING_STATUSES.includes(booking.approval_status)) return true;
+  return canVendorProceedToDemoPayment(booking);
+};
+
+const resolveActionableCurrentBooking = (bookings) =>
+  [...(bookings || [])]
+    .filter(isActionableCurrentBooking)
+    .sort((a, b) => {
+      const dateDiff = String(bookingDateKey(a)).localeCompare(String(bookingDateKey(b)));
+      if (dateDiff !== 0) return dateDiff;
+      return (a.id ?? 0) - (b.id ?? 0);
+    })[0] || null;
+
+const formatCardAmount = (booking) => {
+  const amount = booking?.invoice?.amount;
+  if (amount == null || amount === '') return '—';
+  const numeric = Number(amount);
+  if (Number.isNaN(numeric)) return '—';
+  return `RM${numeric.toFixed(2)}`;
+};
+
+const formatCardEventFallback = (booking) => {
+  const dateKey = bookingDateKey(booking);
+  if (!dateKey) return `Booking #${booking.id}`;
+  const date = new Date(`${dateKey}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return `Booking #${booking.id}`;
+  return date.toLocaleDateString('en-GB', {
+    timeZone: MY_TZ,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
+const actionableBookingCard = computed(() => {
+  const booking = resolveActionableCurrentBooking(props.bookings);
+  if (!booking) return null;
+
+  const tapak = siteLabelsForBooking(booking);
+  const status = canVendorProceedToDemoPayment(booking) && booking.approval_status === 'Approved'
+    ? (booking.invoice?.payment_status || 'Unpaid')
+    : statusLabel(booking.approval_status);
+
+  return {
+    bookingId: booking.id,
+    eventName: booking.event_label || booking.carboot_event?.title || formatCardEventFallback(booking),
+    statusLabel: status,
+    tapakLabel: tapak || '—',
+    amountLabel: formatCardAmount(booking),
+  };
+});
 
 const formatCount = (value) => new Intl.NumberFormat('en-MY').format(value ?? 0);
 const formatCurrency = (value) =>
@@ -400,27 +440,6 @@ const hasBookingTrend = computed(() => (trends.value.monthly_bookings || []).som
 const hasPaymentTrend = computed(() => (trends.value.monthly_payments || []).some((row) => row.amount > 0));
 const hasBookingStatusChart = computed(() => Object.keys(distributions.value.booking_status || {}).length > 0);
 const hasReuseStatusChart = computed(() => (summary.value.total_reuse_listings ?? 0) > 0);
-
-const activityTypeLabel = (type) => ({
-  booking: 'Booking',
-  payment: 'Payment',
-  reuse_item: 'Reuse Item',
-  profile: 'Profile',
-}[type] || 'Activity');
-
-const activityBadgeClass = (type) => ({
-  booking: 'ml-badge bg-brand-100 text-brand-800',
-  payment: 'ml-badge bg-emerald-100 text-emerald-800',
-  reuse_item: 'ml-badge bg-amber-100 text-amber-800',
-  profile: 'ml-badge bg-ink-100 text-ink-700',
-}[type] || 'ml-badge bg-ink-100 text-ink-700');
-
-const formatDateTime = (value) => {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-};
 
 const CHART_TICK_FONT = { size: 13 };
 const CHART_LEGEND_FONT = { size: 13 };
