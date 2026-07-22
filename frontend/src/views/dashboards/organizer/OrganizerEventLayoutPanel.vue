@@ -31,15 +31,7 @@
             {{ copy.refresh }}
           </button>
           <button
-            type="button"
-            class="ml-btn-primary text-sm"
-            :disabled="!selectedEventId || loading || rows.length > 0 || unresolvedSites.length > 0"
-            data-testid="layout-generate-standard-button"
-            @click="openStandardGenerator"
-          >
-            {{ copy.generateStandardLayout }}
-          </button>
-          <button
+            v-if="rows.length > 0"
             type="button"
             class="ml-btn-ghost text-sm"
             :disabled="!selectedEventId || loading"
