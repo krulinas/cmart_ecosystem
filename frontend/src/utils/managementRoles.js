@@ -60,24 +60,25 @@ export const roleDisplayLabel = (role, managementProfile = null) => {
   }
 
   const normalized = normalizeRole(role);
-  if (normalized === ROLES.ORGANIZER) return 'Carboot Organizer';
+  if (normalized === ROLES.ORGANIZER) return 'SOC UUM Organizer';
   if (normalized === ROLES.CMART_MANAGEMENT) return 'CMart Management';
   if (normalized === ROLES.SUPER_ADMIN) return 'Reserved HQ Access';
   return role || 'User';
 };
 
 export const managementWorkspaceLabel = (role, managementProfile = null) => {
-  if (managementProfile?.branch_name) {
-    return `Carboot@CMart · ${managementProfile.branch_name}`;
-  }
-
   const normalized = normalizeRole(role);
-  if (normalized === ROLES.SUPER_ADMIN) return 'Carboot@CMart · Reserved HQ';
-  if (normalized === ROLES.ORGANIZER) return 'Carboot@CMart · Organizer';
-  if (normalized === ROLES.CMART_MANAGEMENT) return 'Carboot@CMart · Venue & Activities';
-  return 'Carboot@CMart';
+  const venue = managementProfile?.branch_name;
+  const venueLabel =
+    venue && venue !== 'CMart Main Branch' ? venue : 'CMart Changlun';
+
+  if (normalized === ROLES.SUPER_ADMIN) return `SOC UUM · Reserved HQ · ${venueLabel}`;
+  if (normalized === ROLES.ORGANIZER) return `SOC UUM · Carboot Event Operations · ${venueLabel}`;
+  if (normalized === ROLES.CMART_MANAGEMENT) return `CMart · Venue & Activities · ${venueLabel}`;
+  return `SOC UUM · ${venueLabel}`;
 };
 
+/** Internal tier helper — not shown in organizer UI (hideTierBadge). */
 export const managementTierLabel = (managementProfile = null, role = null) => {
   if (managementProfile?.tier) return `Tier ${managementProfile.tier}`;
   const normalized = normalizeRole(role);

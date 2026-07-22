@@ -193,7 +193,7 @@ const toast = useToast();
 const { workspaceTheme } = useManagementAccess();
 
 const theme = computed(() => ({
-  recoveryHeader: workspaceTheme.value.queueHeader || 'bg-gradient-to-r from-cyan-700 to-sky-700',
+  recoveryHeader: workspaceTheme.value.queueHeader || 'bg-gradient-to-r from-blue-800 to-indigo-800',
 }));
 
 const rows = ref([]);

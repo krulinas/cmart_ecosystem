@@ -5,10 +5,10 @@
     <template v-else-if="data">
       <div
         data-testid="carboot-analytics-guide"
-        class="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-cyan-50 px-5 py-4"
+        class="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-amber-50/40 px-5 py-4"
       >
-        <h2 class="text-sm font-bold text-sky-950">How to read this dashboard</h2>
-        <p class="mt-2 text-sm leading-relaxed text-sky-900/90">
+        <h2 class="text-sm font-bold text-blue-950">How to read this dashboard</h2>
+        <p class="mt-2 text-sm leading-relaxed text-blue-900/90">
           This dashboard separates expected revenue from collected revenue. Expected revenue comes from approved booking invoices.
           Collected revenue only counts bookings marked as Paid. Outstanding revenue shows approved invoices that still need payment follow-up.
           Pending verification payments are not counted as collected until verified. Category Mix is based on approved booking count, not revenue.
@@ -62,12 +62,12 @@
 
       <div
         data-testid="revenue-insight-summary"
-        class="ml-card border-sky-100 bg-gradient-to-br from-white to-sky-50/40"
+        class="ml-card border-blue-100 bg-gradient-to-br from-white to-blue-50/40"
       >
-        <h3 class="text-lg font-extrabold text-ink-900">Carboot Operations Insight</h3>
+        <h3 class="text-lg font-extrabold text-ink-900">Event Operations Insight</h3>
         <ul class="mt-3 space-y-2 text-sm text-ink-700">
           <li v-for="(line, index) in insightLines" :key="index" class="flex gap-2">
-            <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden="true" />
+            <span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600" aria-hidden="true" />
             <span>{{ line }}</span>
           </li>
         </ul>
@@ -79,15 +79,15 @@
         </p>
         <p
           v-if="hasPendingVerification"
-          class="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900"
+          class="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900"
         >
-          Pending verification payments are waiting for staff/manager confirmation
+          Pending verification payments are waiting for organizer confirmation
           ({{ pendingVerification.count }} invoice{{ pendingVerification.count === 1 ? '' : 's' }},
           RM {{ formatMoney(pendingVerification.amount) }}).
         </p>
         <p
           v-if="fillRateActionNote"
-          class="mt-3 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-900"
+          class="mt-3 rounded-lg border border-amber-200/80 bg-amber-50/70 px-3 py-2 text-xs text-amber-950"
         >
           {{ fillRateActionNote }}
         </p>

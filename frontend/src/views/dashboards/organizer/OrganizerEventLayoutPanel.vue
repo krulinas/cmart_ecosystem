@@ -3,7 +3,7 @@
     <section class="ml-card space-y-4">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p class="text-xs font-bold uppercase tracking-wider text-cyan-700">{{ copy.pageTitle }}</p>
+          <p class="text-xs font-bold uppercase tracking-wider text-blue-800">{{ copy.pageTitle }}</p>
           <h2 class="text-xl font-extrabold text-ink-900">
             {{ layout?.event?.name || copy.selectEventPrompt }}
           </h2>

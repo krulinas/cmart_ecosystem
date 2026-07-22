@@ -3,7 +3,7 @@
     <section class="ml-card space-y-4">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p class="text-xs font-bold uppercase tracking-wider text-cyan-700">Item Reservations</p>
+          <p class="text-xs font-bold uppercase tracking-wider text-blue-800">Item Reservations</p>
           <h2 class="text-xl font-extrabold text-ink-900">Event reservation queue</h2>
           <p class="mt-1 text-sm text-ink-500">
             Reconcile manual off-platform service fees. The platform records Organizer confirmation only and never processes payment.
@@ -289,7 +289,7 @@
 
             <div
               v-if="actionMode"
-              class="rounded-xl border border-cyan-200 bg-cyan-50/40 p-4 space-y-3"
+              class="rounded-xl border border-blue-200 bg-blue-50/40 p-4 space-y-3"
               data-testid="organizer-reservation-action-form"
               :data-action-mode="actionMode"
             >

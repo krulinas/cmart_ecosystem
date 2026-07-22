@@ -19,32 +19,32 @@
     <!-- Sidebar — fixed viewport frame -->
     <aside
       class="hidden h-screen w-72 shrink-0 flex-col border-r border-ink-200/80 bg-white shadow-sm lg:flex"
-      aria-label="Management sidebar"
+      aria-label="Organizer workspace sidebar"
     >
       <!-- Brand header -->
       <div class="shrink-0 px-4 py-4 text-white" :class="theme.sidebarHeaderBg">
         <router-link :to="homeLink" class="group flex items-center gap-3">
           <span
-            class="inline-flex h-10 w-10 items-center justify-center rounded-xl text-sm font-extrabold text-white shadow-lg ring-2 ring-white/20"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-xl text-xs font-extrabold text-white shadow-lg ring-2 ring-white/20"
             :class="theme.logoBg"
           >
-            C
+            {{ theme.logoMark || 'SU' }}
           </span>
           <div class="min-w-0 leading-tight">
-            <div class="truncate text-sm font-extrabold tracking-tight">Carboot@CMart</div>
-            <div class="text-[10px] uppercase tracking-[0.2em] text-white/70">Management Portal</div>
+            <div class="truncate text-sm font-extrabold tracking-tight">
+              {{ theme.brandTitle || 'SOC UUM' }}
+            </div>
+            <div class="text-[10px] uppercase tracking-[0.18em]" :class="theme.brandSubtitleClass || 'text-amber-200/90'">
+              {{ theme.brandSubtitle || 'Carboot Event Operations' }}
+            </div>
           </div>
         </router-link>
 
-        <div class="mt-3 space-y-1.5">
-          <div class="text-[10px] font-semibold uppercase tracking-wider text-white/60">Workspace</div>
-          <div class="text-sm font-bold leading-snug">{{ branchName }}</div>
-          <div class="flex flex-wrap gap-1.5">
-            <span class="inline-flex items-center rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white ring-1 ring-white/25">
-              {{ tierBadge }}
-            </span>
+        <div v-if="branchName" class="mt-3 space-y-1">
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-white/55">Host venue</div>
+          <div class="text-sm font-bold leading-snug text-white/95">{{ branchName }}</div>
+          <div v-if="department" class="flex flex-wrap gap-1.5 pt-0.5">
             <span
-              v-if="department"
               class="inline-flex items-center rounded-full bg-black/20 px-2.5 py-0.5 text-[10px] font-semibold text-white/90"
             >
               {{ department }}
@@ -70,7 +70,9 @@
             >
               <span
                 class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-extrabold"
-                :class="isActiveHash(item.hash) ? 'bg-white/80 shadow-sm text-cyan-700' : 'bg-ink-100 text-ink-500'"
+                :class="isActiveHash(item.hash)
+                  ? (theme.navIconActive || 'bg-white/80 shadow-sm text-blue-800')
+                  : (theme.navIconIdle || 'bg-ink-100 text-ink-500')"
               >
                 {{ item.shortIcon }}
               </span>
@@ -93,16 +95,13 @@
             <div class="min-w-0 flex-1">
               <div class="truncate text-sm font-bold text-ink-900">{{ userName }}</div>
               <div class="truncate text-xs text-ink-500">{{ userRoleLabel }}</div>
-              <div class="mt-1.5 flex flex-wrap items-center gap-1">
+              <div v-if="roleBadge" class="mt-1.5 flex flex-wrap items-center gap-1">
                 <span
                   class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ring-1"
                   :class="theme.badgeBg"
                 >
                   {{ roleBadge }}
                 </span>
-              </div>
-              <div v-if="branchName" class="mt-1 truncate text-[10px] font-medium text-ink-400">
-                {{ branchName }}
               </div>
             </div>
           </div>
@@ -120,16 +119,25 @@
           <div class="min-w-0 flex-1 space-y-2">
             <div class="flex flex-wrap items-center gap-2">
               <span
+                v-if="roleBadge"
                 class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ring-1"
-                :class="theme.tierBadgeBg"
+                :class="theme.badgeBg"
               >
-                {{ tierBadge }}
+                {{ roleBadge }}
               </span>
               <span
+                v-if="branchName"
                 class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1"
                 :class="theme.branchBadgeBg"
               >
                 {{ branchName }}
+              </span>
+              <span
+                v-if="tierBadge && !theme.hideTierBadge"
+                class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ring-1"
+                :class="theme.tierBadgeBg"
+              >
+                {{ tierBadge }}
               </span>
             </div>
             <div>
@@ -176,18 +184,18 @@ const props = defineProps({
   workspaceSubtitle: { type: String, default: '' },
   sectionSubtitle: { type: String, default: '' },
   userName: { type: String, default: 'Organizer' },
-  userRoleLabel: { type: String, default: 'Carboot Organizer' },
+  userRoleLabel: { type: String, default: 'SOC UUM Organizer' },
   roleBadge: { type: String, default: '' },
-  tierBadge: { type: String, default: 'Tier 1' },
-  branchName: { type: String, default: 'CMart Main Branch' },
+  tierBadge: { type: String, default: '' },
+  branchName: { type: String, default: '' },
   department: { type: String, default: '' },
   previewMode: { type: Boolean, default: false },
 });
 
 const userInitials = computed(() => {
-  const parts = (props.userName || 'CS').trim().split(/\s+/);
+  const parts = (props.userName || 'SU').trim().split(/\s+/);
   if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  return (parts[0]?.slice(0, 2) || 'CS').toUpperCase();
+  return (parts[0]?.slice(0, 2) || 'SU').toUpperCase();
 });
 
 const isActiveHash = (hash) => {

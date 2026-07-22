@@ -41,6 +41,12 @@ const accentMap = {
     ring: 'ring-cyan-100',
     border: 'border-cyan-100/80',
   },
+  blue: {
+    icon: 'bg-gradient-to-br from-blue-700 to-indigo-700',
+    value: 'text-blue-800',
+    ring: 'ring-blue-100',
+    border: 'border-blue-100/80',
+  },
   sky: {
     icon: 'bg-gradient-to-br from-sky-500 to-blue-500',
     value: 'text-sky-700',
@@ -73,7 +79,7 @@ const accentMap = {
   },
 };
 
-const palette = computed(() => accentMap[props.accent] ?? accentMap.cyan);
+const palette = computed(() => accentMap[props.accent] ?? accentMap.blue);
 const iconBgClass = computed(() => palette.value.icon);
 const valueClass = computed(() => palette.value.value);
 const ringClass = computed(() => `ring-1 ${palette.value.ring}`);

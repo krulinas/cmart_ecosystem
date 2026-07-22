@@ -17,10 +17,10 @@
     <template #previewBanner>
       <div
         v-if="sessionReady && showReservedHqNotice"
-        class="mb-5 flex flex-col gap-2 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-cyan-50 px-4 py-3 text-sm text-sky-950"
+        class="mb-5 flex flex-col gap-2 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-amber-50/40 px-4 py-3 text-sm text-blue-950"
       >
-        <div class="font-bold">Tier 3 · Reserved HQ Access</div>
-        <div class="text-xs text-sky-800/80">Technical override mode for Carboot operations and analytics.</div>
+        <div class="font-bold">Reserved HQ Access</div>
+        <div class="text-xs text-blue-800/80">Technical override mode for Carboot event operations and analytics.</div>
       </div>
     </template>
 
@@ -41,7 +41,7 @@
 
     <div v-if="!sessionReady" class="flex flex-col items-center justify-center rounded-2xl border border-ink-200 bg-white py-20 text-center shadow-sm">
       <div class="h-10 w-10 animate-pulse rounded-full bg-ink-200" />
-      <p class="mt-4 text-sm font-medium text-ink-500">Preparing your management workspace…</p>
+      <p class="mt-4 text-sm font-medium text-ink-500">Preparing your event workspace…</p>
     </div>
 
     <template v-else>
@@ -122,7 +122,7 @@ import { useWorkspaceNav } from '../../composables/useWorkspaceNav';
 import { useManagementAccess } from '../../composables/useManagementAccess';
 import { useSectionCache } from '../../composables/useSectionCache';
 import { ALL_WORKSPACE_HASHES, CARBOOT_ANALYTICS_HASHES, SECTION_SUBTITLES } from '../../config/workspaceNav';
-import { MANAGEMENT_WORKSPACE_ROLES, managementTierLabel, defaultManagementHashForRole } from '../../utils/managementRoles';
+import { MANAGEMENT_WORKSPACE_ROLES, defaultManagementHashForRole } from '../../utils/managementRoles';
 
 const SECTION_LABELS = {
   bookings: 'Bookings',
@@ -173,15 +173,17 @@ const authorized = computed(() => auth.hasAnyRole(MANAGEMENT_WORKSPACE_ROLES));
 const heroTitle = computed(() => workspaceTheme.value.workspaceTitle);
 const heroSubtitle = computed(() => workspaceTheme.value.workspaceSubtitle);
 const showReservedHqNotice = computed(() => auth.isSuperAdmin);
-const roleBadge = computed(() => {
-  if (showReservedHqNotice.value) return 'Tier 3 · Reserved HQ Access';
-  return workspaceTheme.value.roleBadge;
-});
+const roleBadge = computed(() => workspaceTheme.value.roleBadge || '');
 const tierBadge = computed(() => {
-  const fromProfile = managementTierLabel(auth.managementProfile, auth.role);
-  return fromProfile || workspaceTheme.value.tierLabel;
+  if (workspaceTheme.value.hideTierBadge) return '';
+  return workspaceTheme.value.tierLabel || '';
 });
-const branchName = computed(() => auth.managementProfile?.branch_name || 'CMart Main Branch');
+const branchName = computed(() => {
+  if (workspaceTheme.value.venueLabel) return workspaceTheme.value.venueLabel;
+  const profileName = auth.managementProfile?.branch_name;
+  if (profileName && profileName !== 'CMart Main Branch') return profileName;
+  return 'CMart Changlun';
+});
 
 const userRoleLabel = computed(() => auth.roleLabel);
 

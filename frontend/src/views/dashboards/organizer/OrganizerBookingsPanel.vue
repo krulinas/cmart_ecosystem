@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6 pb-10" data-testid="organizer-bookings-root">
     <div v-if="loading && !hasLoaded" class="rounded-2xl border border-ink-200 bg-white py-16 text-center shadow-sm">
-      <div class="mx-auto h-10 w-10 animate-pulse rounded-full bg-gradient-to-br from-cyan-100 to-sky-100" />
+      <div class="mx-auto h-10 w-10 animate-pulse rounded-full bg-gradient-to-br" :class="theme.loaderPulse || 'from-blue-100 to-indigo-100'" />
       <p class="mt-4 text-sm font-medium text-ink-500">Loading bookings…</p>
     </div>
 
@@ -34,7 +34,7 @@
         <button
           type="button"
           class="rounded-full px-4 py-2 text-sm font-semibold transition"
-          :class="activeWorkspaceTab === 'bookings' ? 'bg-cyan-600 text-white shadow-sm' : 'bg-white text-ink-600 ring-1 ring-ink-200'"
+          :class="activeWorkspaceTab === 'bookings' ? (theme.tabActive || 'bg-blue-700 text-white shadow-sm') : (theme.tabIdle || 'bg-white text-ink-600 ring-1 ring-ink-200')"
           data-testid="organizer-tab-bookings"
           @click="activeWorkspaceTab = 'bookings'"
         >
@@ -43,7 +43,7 @@
         <button
           type="button"
           class="rounded-full px-4 py-2 text-sm font-semibold transition"
-          :class="activeWorkspaceTab === 'recovery' ? 'bg-cyan-600 text-white shadow-sm' : 'bg-white text-ink-600 ring-1 ring-ink-200'"
+          :class="activeWorkspaceTab === 'recovery' ? (theme.tabActive || 'bg-blue-700 text-white shadow-sm') : (theme.tabIdle || 'bg-white text-ink-600 ring-1 ring-ink-200')"
           data-testid="organizer-tab-released-recovery"
           @click="switchToRecoveryTab"
         >
@@ -253,7 +253,7 @@
             class="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-[1px]"
           >
             <div class="flex items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 py-2 text-sm text-ink-600 shadow-sm">
-              <span class="h-4 w-4 animate-spin rounded-full border-2 border-cyan-200 border-t-cyan-600" />
+              <span class="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-700" />
               Updating registry…
             </div>
           </div>
@@ -491,7 +491,7 @@ const {
 } = useManagementAccess();
 
 const theme = computed(() => workspaceTheme.value);
-const themeAccent = computed(() => 'cyan');
+const themeAccent = computed(() => (theme.value.accentName === 'cyan' ? 'cyan' : 'blue'));
 
 const summary = ref({
   pending_organizer: 0,
@@ -657,7 +657,7 @@ const kpiCards = computed(() => [
     description: 'New vendor requests in your direct review queue.',
     value: kpi.value.pendingOrganizer,
     icon: 'O1',
-    accent: 'cyan',
+    accent: themeAccent.value,
   },
   {
     key: 'revision',
@@ -701,7 +701,7 @@ const emptyQueueIcon = '✓';
 
 const registryLabel = computed(() => theme.value.registryLabel);
 const registryDescription = computed(() => theme.value.registryDescription);
-const registryBadgeClass = computed(() => 'bg-cyan-50 text-cyan-800 ring-cyan-200');
+const registryBadgeClass = computed(() => theme.value.accentSoft || 'bg-blue-50 text-blue-900 ring-blue-200');
 
 const registryEmptyDescription = computed(() => {
   if (hasActiveFilters.value) {
