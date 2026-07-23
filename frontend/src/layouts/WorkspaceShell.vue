@@ -77,6 +77,13 @@
                 {{ item.shortIcon }}
               </span>
               <span class="truncate">{{ item.label }}</span>
+              <span
+                v-if="badgeCountFor(item.hash)"
+                class="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-400 px-1.5 text-[10px] font-bold text-amber-950"
+                aria-label="Unread notifications"
+              >
+                {{ badgeCountFor(item.hash) }}
+              </span>
             </router-link>
           </div>
         </div>
@@ -190,6 +197,7 @@ const props = defineProps({
   branchName: { type: String, default: '' },
   department: { type: String, default: '' },
   previewMode: { type: Boolean, default: false },
+  notificationUnreadCount: { type: Number, default: 0 },
 });
 
 const userInitials = computed(() => {
@@ -201,5 +209,13 @@ const userInitials = computed(() => {
 const isActiveHash = (hash) => {
   const current = (route.hash || '#bookings').replace('#', '');
   return current === hash;
+};
+
+const badgeCountFor = (hash) => {
+  if (!props.notificationUnreadCount) return 0;
+  if (hash === 'reports' || hash === 'report-centre') {
+    return props.notificationUnreadCount;
+  }
+  return 0;
 };
 </script>

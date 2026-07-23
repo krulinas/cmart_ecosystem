@@ -418,7 +418,9 @@ async function loadCatalogue() {
     categories.value = categoriesRes.data?.categories || [];
     spaces.value = Array.isArray(spacesRes.data) ? spacesRes.data : (spacesRes.data?.data || []);
   } catch (error) {
-    toast.error(layoutErrorMessage(error));
+    if (!error.forbiddenMessage) {
+      toast.error(layoutErrorMessage(error));
+    }
   } finally {
     loadingEvents.value = false;
   }

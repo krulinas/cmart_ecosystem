@@ -62,3 +62,33 @@
     @apply text-readable-sm text-ink-500 leading-relaxed;
   }
 }
+
+/* Print-friendly Post-Event Summary (browser print / print-to-PDF) */
+@media print {
+  aside,
+  header,
+  .print\:hidden,
+  [aria-label='Organizer workspace sidebar'],
+  [role='tablist'],
+  button,
+  .ml-btn,
+  .ml-btn-primary,
+  .ml-btn-ghost {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  .report-print-root,
+  .post-event-summary {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .report-print-root {
+    position: static !important;
+    width: 100% !important;
+  }
+}

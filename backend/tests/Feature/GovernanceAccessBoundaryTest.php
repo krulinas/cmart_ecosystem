@@ -72,7 +72,7 @@ class GovernanceAccessBoundaryTest extends TestCase
         $this->getJson('/api/boss/analytics/revenue')->assertForbidden();
         $this->getJson('/api/boss/analytics/wordcloud/feedback')->assertForbidden();
         $this->getJson('/api/boss/audit-logs')->assertForbidden();
-        $this->getJson('/api/management/reports/operational-overview')->assertOk();
+        $this->getJson('/api/management/reports/operational-overview')->assertForbidden();
         $this->getJson('/api/bookings')->assertForbidden();
         $this->getJson('/api/news-posts')->assertOk();
     }

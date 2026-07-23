@@ -9,8 +9,8 @@ use Illuminate\Http\JsonResponse;
 class ManagementReportsController extends Controller
 {
     /**
-     * Generated operational overview for CMart Management and Organizer roles.
-     * Excludes raw revenue analytics — counts only.
+     * Operational Overview — live Organizer queue counts (not a published generated report).
+     * Excludes raw revenue analytics — counts only. Organizer-equivalent roles only.
      */
     public function operationalOverview(): JsonResponse
     {

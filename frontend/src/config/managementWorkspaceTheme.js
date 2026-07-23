@@ -13,8 +13,13 @@ export const WORKSPACE_NAV_GROUPS = [
   },
   {
     id: 'generated_reports',
-    label: 'Generated Reports',
+    label: 'Reports',
     items: ['reports'],
+  },
+  {
+    id: 'report_centre',
+    label: 'Reporting',
+    items: ['report-centre'],
   },
   {
     id: 'carboot_analytics',
@@ -106,7 +111,7 @@ export const WORKSPACE_THEMES = {
     brandSubtitle: 'Venue & Activities',
     logoMark: 'CM',
     workspaceTitle: 'CMart Venue & Activities',
-    workspaceSubtitle: 'Manage venue announcements and CMart side activities. Generated reports only.',
+    workspaceSubtitle: 'Manage venue announcements and request Post-Event Summaries from the Organizer.',
     roleBadge: 'CMart Management',
     venueLabel: 'CMart Changlun',
     hideTierBadge: true,

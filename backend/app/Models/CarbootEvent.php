@@ -149,6 +149,16 @@ class CarbootEvent extends Model
         return $this->hasMany(ItemReservation::class);
     }
 
+    public function reportRequests(): HasMany
+    {
+        return $this->hasMany(ReportRequest::class, 'carboot_event_id');
+    }
+
+    public function generatedReports(): HasMany
+    {
+        return $this->hasMany(GeneratedReport::class, 'carboot_event_id');
+    }
+
     public function eventLayoutRows(): HasMany
     {
         return $this->hasMany(EventLayoutRow::class, 'carboot_event_id')

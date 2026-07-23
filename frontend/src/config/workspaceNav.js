@@ -92,6 +92,16 @@ export const WORKSPACE_NAV_ITEMS = [
     requiredCapability: CAPABILITIES.CARBOOT_OPERATIONAL_ANALYTICS,
   },
   {
+    id: 'report-centre',
+    hash: 'report-centre',
+    label: 'Report Centre',
+    shortIcon: 'RC',
+    group: 'report_centre',
+    domain: 'report_centre',
+    analyticsOnly: false,
+    requiredCapability: CAPABILITIES.CARBOOT_OPERATIONS,
+  },
+  {
     id: 'reports',
     hash: 'reports',
     label: 'Reports',
@@ -100,6 +110,7 @@ export const WORKSPACE_NAV_ITEMS = [
     domain: 'generated_reports',
     analyticsOnly: false,
     requiredCapability: CAPABILITIES.GENERATED_REPORTS,
+    // CMart-facing Report Centre only — Organizer uses Report Centre instead.
     hideWhenCapability: CAPABILITIES.CARBOOT_OPERATIONAL_ANALYTICS,
   },
 ];
@@ -126,5 +137,6 @@ export const SECTION_SUBTITLES = {
   revenue: 'Carboot operational revenue: expected vs collected payments and profit simulator.',
   analytics: 'Carboot text analytics from community feedback and vendor product listings.',
   audit: 'Trace organizer approval actions across the booking pipeline.',
-  reports: 'Generated operational overview for venue and activity teams — no raw Carboot analytics.',
+  'report-centre': 'Manage CMart report requests, generate drafts, and publish Post-Event Summaries.',
+  reports: 'Request event reports from the Organizer and view published Post-Event Summaries.',
 };

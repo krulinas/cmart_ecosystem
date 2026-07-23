@@ -6,12 +6,16 @@ use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\BookingPassVerificationController;
 use App\Http\Controllers\Api\BossAnalyticsController;
 use App\Http\Controllers\Api\CarbootEventController;
+use App\Http\Controllers\Api\CmartGeneratedReportController;
+use App\Http\Controllers\Api\CmartReportEventOptionsController;
+use App\Http\Controllers\Api\CmartReportRequestController;
 use App\Http\Controllers\Api\EventDayController;
 use App\Http\Controllers\Api\EventRegistrationController;
 use App\Http\Controllers\Api\EventSiteController;
 use App\Http\Controllers\Api\FeedbackController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\ItemReservationController;
+use App\Http\Controllers\Api\ManagementNotificationController;
 use App\Http\Controllers\Api\ManagementReportsController;
 use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\NewsPostController;
@@ -19,8 +23,10 @@ use App\Http\Controllers\Api\OrganizerBookingSiteAssignmentController;
 use App\Http\Controllers\Api\OrganizerEventLayoutController;
 use App\Http\Controllers\Api\OrganizerEventLayoutRowController;
 use App\Http\Controllers\Api\OrganizerEventLayoutSiteController;
+use App\Http\Controllers\Api\OrganizerGeneratedReportController;
 use App\Http\Controllers\Api\OrganizerItemReservationController;
 use App\Http\Controllers\Api\OrganizerReleasedDayRecoveryController;
+use App\Http\Controllers\Api\OrganizerReportRequestController;
 use App\Http\Controllers\Api\OrganizerVendorCategoryController;
 use App\Http\Controllers\Api\PublicEventLayoutController;
 use App\Http\Controllers\Api\SpaceController;
@@ -226,8 +232,55 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('news-posts', NewsPostController::class);
     });
 
-    Route::middleware('capability:'.ManagementCapability::GENERATED_REPORTS)->group(function () {
+    Route::middleware('role:'.ManagementRole::routeRoleList(ManagementRole::managementWorkspaceRoles()))->group(function () {
+        Route::get('/management/notifications', [ManagementNotificationController::class, 'index']);
+        Route::get('/management/notifications/unread-count', [ManagementNotificationController::class, 'unreadCount']);
+        Route::post('/management/notifications/mark-all-read', [ManagementNotificationController::class, 'markAllRead']);
+        Route::post('/management/notifications/{id}/read', [ManagementNotificationController::class, 'markRead']);
+    });
+
+    Route::middleware('role:'.ManagementRole::routeRoleList(ManagementRole::carbootOperationalRoles()))->group(function () {
+        // Operational overview (live queue counts) — Organizer-only; not a published report.
         Route::get('/management/reports/operational-overview', [ManagementReportsController::class, 'operationalOverview']);
+        Route::get('/organizer/generated-reports/{generated_report}/pdf', [OrganizerGeneratedReportController::class, 'downloadPdf']);
+    });
+
+    // CMart Management — report requests + event options for the request form.
+    Route::middleware('role:'.ManagementRole::CMART_MANAGEMENT)->group(function () {
+        Route::get('/cmart/report-events', [CmartReportEventOptionsController::class, 'index']);
+        Route::get('/cmart/report-requests', [CmartReportRequestController::class, 'index']);
+        Route::post('/cmart/report-requests', [CmartReportRequestController::class, 'store']);
+        Route::get('/cmart/report-requests/{report_request}', [CmartReportRequestController::class, 'show']);
+        Route::post('/cmart/report-requests/{report_request}/cancel', [CmartReportRequestController::class, 'cancel']);
+    });
+
+    // CMart Management — consume published / superseded generated reports.
+    Route::middleware([
+        'role:'.ManagementRole::CMART_MANAGEMENT,
+        'capability:'.ManagementCapability::GENERATED_REPORTS,
+    ])->group(function () {
+        Route::get('/cmart/generated-reports', [CmartGeneratedReportController::class, 'index']);
+        Route::get('/cmart/generated-reports/{generated_report}', [CmartGeneratedReportController::class, 'show']);
+        Route::get('/cmart/generated-reports/{generated_report}/pdf', [CmartGeneratedReportController::class, 'downloadPdf']);
+        Route::post('/cmart/generated-reports/{generated_report}/mark-viewed', [CmartGeneratedReportController::class, 'markViewed']);
+    });
+
+    // Organizer report centre — request handling + draft / publish / revise.
+    Route::middleware('role:'.ManagementRole::routeRoleList(ManagementRole::organizerEquivalentRoles()))->group(function () {
+        Route::get('/organizer/report-requests', [OrganizerReportRequestController::class, 'index']);
+        Route::get('/organizer/report-requests/{report_request}', [OrganizerReportRequestController::class, 'show']);
+        Route::post('/organizer/report-requests/{report_request}/acknowledge', [OrganizerReportRequestController::class, 'acknowledge']);
+        Route::post('/organizer/report-requests/{report_request}/start-preparation', [OrganizerReportRequestController::class, 'startPreparation']);
+        Route::post('/organizer/report-requests/{report_request}/decline', [OrganizerReportRequestController::class, 'decline']);
+
+        Route::get('/organizer/generated-reports', [OrganizerGeneratedReportController::class, 'index']);
+        Route::post('/organizer/generated-reports', [OrganizerGeneratedReportController::class, 'store']);
+        Route::get('/organizer/generated-reports/{generated_report}', [OrganizerGeneratedReportController::class, 'show']);
+        Route::patch('/organizer/generated-reports/{generated_report}/narratives', [OrganizerGeneratedReportController::class, 'updateNarratives']);
+        Route::post('/organizer/generated-reports/{generated_report}/regenerate', [OrganizerGeneratedReportController::class, 'regenerate']);
+        Route::post('/organizer/generated-reports/{generated_report}/publish', [OrganizerGeneratedReportController::class, 'publish']);
+        Route::delete('/organizer/generated-reports/{generated_report}', [OrganizerGeneratedReportController::class, 'destroy']);
+        Route::post('/organizer/generated-reports/{generated_report}/revise', [OrganizerGeneratedReportController::class, 'revise']);
     });
 
     Route::middleware('boss')->group(function () {

@@ -469,7 +469,9 @@ const loadEvents = async () => {
     const { data } = await getCarbootEvents();
     events.value = data.events || data.data || data || [];
   } catch (error) {
-    toast.error(reservationErrorMessage(error, 'Unable to load events.'));
+    if (!error.forbiddenMessage) {
+      toast.error(reservationErrorMessage(error, 'Unable to load events.'));
+    }
   } finally {
     loadingEvents.value = false;
   }

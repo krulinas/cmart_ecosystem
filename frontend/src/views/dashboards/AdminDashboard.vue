@@ -12,7 +12,8 @@
     :role-badge="roleBadge"
     :tier-badge="tierBadge"
     :branch-name="branchName"
-    :department="auth.managementProfile?.department || ''"
+    :department="shellDepartment"
+    :notification-unread-count="notificationUnreadCount"
   >
     <template #previewBanner>
       <div
@@ -41,7 +42,9 @@
 
     <div v-if="!sessionReady" class="flex flex-col items-center justify-center rounded-2xl border border-ink-200 bg-white py-20 text-center shadow-sm">
       <div class="h-10 w-10 animate-pulse rounded-full bg-ink-200" />
-      <p class="mt-4 text-sm font-medium text-ink-500">Preparing your event workspace…</p>
+      <p class="mt-4 text-sm font-medium text-ink-500">
+        {{ canPerformCarbootOperations ? 'Preparing your event workspace…' : 'Preparing your venue workspace…' }}
+      </p>
     </div>
 
     <template v-else>
@@ -51,33 +54,42 @@
         :message="sectionLoadingMessage"
       />
 
-      <OrganizerBookingsPanel
-        v-show="activeSection === 'bookings' && !showSectionLoader"
-        ref="bookingsPanel"
-        @refreshed="onBookingsRefreshed"
-      />
-      <StaffFeedbackPanel
-        v-show="activeSection === 'feedback' && !showSectionLoader"
-        ref="feedbackPanel"
-      />
-      <StaffEventsPanel
-        v-show="activeSection === 'events' && !showSectionLoader"
-        ref="eventsPanel"
-      />
-      <OrganizerEventLayoutPanel
-        v-show="activeSection === 'layout' && !showSectionLoader"
-        ref="layoutPanel"
-      />
-      <OrganizerItemReservationsPanel
-        v-show="activeSection === 'item-reservations' && !showSectionLoader"
-        ref="itemReservationsPanel"
-      />
+      <template v-if="canPerformCarbootOperations">
+        <OrganizerBookingsPanel
+          v-show="activeSection === 'bookings' && !showSectionLoader"
+          ref="bookingsPanel"
+          @refreshed="onBookingsRefreshed"
+        />
+        <StaffFeedbackPanel
+          v-show="activeSection === 'feedback' && !showSectionLoader"
+          ref="feedbackPanel"
+        />
+        <StaffEventsPanel
+          v-show="activeSection === 'events' && !showSectionLoader"
+          ref="eventsPanel"
+        />
+        <OrganizerEventLayoutPanel
+          v-show="activeSection === 'layout' && !showSectionLoader"
+          ref="layoutPanel"
+        />
+        <OrganizerItemReservationsPanel
+          v-show="activeSection === 'item-reservations' && !showSectionLoader"
+          ref="itemReservationsPanel"
+        />
+        <OrganizerReportCentrePanel
+          v-show="activeSection === 'report-centre' && !showSectionLoader"
+          ref="reportCentrePanel"
+        />
+      </template>
+
       <StaffNewsPanel
+        v-if="canManageCmartActivities"
         v-show="activeSection === 'news' && !showSectionLoader"
         ref="newsPanel"
       />
 
-      <ManagementReportsPanel
+      <CMartReportCentrePanel
+        v-if="canAccessGeneratedReports && !canPerformCarbootOperations"
         v-show="activeSection === 'reports' && !showSectionLoader"
         ref="reportsPanel"
       />
@@ -116,13 +128,15 @@ import StaffNewsPanel from './staff/StaffNewsPanel.vue';
 import BossRevenuePanel from './boss/BossRevenuePanel.vue';
 import BossWordCloudPanel from './boss/BossWordCloudPanel.vue';
 import BossAuditLogsPanel from './boss/BossAuditLogsPanel.vue';
-import ManagementReportsPanel from './management/ManagementReportsPanel.vue';
+import CMartReportCentrePanel from './management/CMartReportCentrePanel.vue';
+import OrganizerReportCentrePanel from './organizer/OrganizerReportCentrePanel.vue';
 import { useAuthStore } from '../../stores/auth';
 import { useWorkspaceNav } from '../../composables/useWorkspaceNav';
 import { useManagementAccess } from '../../composables/useManagementAccess';
 import { useSectionCache } from '../../composables/useSectionCache';
 import { ALL_WORKSPACE_HASHES, CARBOOT_ANALYTICS_HASHES, SECTION_SUBTITLES } from '../../config/workspaceNav';
 import { MANAGEMENT_WORKSPACE_ROLES, defaultManagementHashForRole } from '../../utils/managementRoles';
+import { getManagementUnreadNotificationCount } from '../../services/reportWorkflowApi';
 
 const SECTION_LABELS = {
   bookings: 'Bookings',
@@ -135,6 +149,7 @@ const SECTION_LABELS = {
   analytics: 'Word Cloud',
   audit: 'Audit Log',
   reports: 'Reports',
+  'report-centre': 'Report Centre',
 };
 
 const toast = useToast();
@@ -142,7 +157,13 @@ const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
 const { filteredNavItems, groupedNavItems, canAccessHash } = useWorkspaceNav();
-const { shouldLoadOrganizerAnalyticsPanels, workspaceTheme } = useManagementAccess();
+const {
+  shouldLoadOrganizerAnalyticsPanels,
+  workspaceTheme,
+  canPerformCarbootOperations,
+  canManageCmartActivities,
+  canAccessGeneratedReports,
+} = useManagementAccess();
 const {
   sections: sectionCache,
   shouldAutoLoad,
@@ -166,7 +187,9 @@ const newsPanel = ref(null);
 const revenuePanel = ref(null);
 const wordCloudPanel = ref(null);
 const reportsPanel = ref(null);
+const reportCentrePanel = ref(null);
 const auditPanel = ref(null);
+const notificationUnreadCount = ref(0);
 
 const authorized = computed(() => auth.hasAnyRole(MANAGEMENT_WORKSPACE_ROLES));
 
@@ -186,6 +209,17 @@ const branchName = computed(() => {
 });
 
 const userRoleLabel = computed(() => auth.roleLabel);
+
+const shellDepartment = computed(() => {
+  if (!canPerformCarbootOperations.value) {
+    const raw = auth.managementProfile?.department || '';
+    if (!raw || /organizer|carboot\s*ops|carboot\s*operations|tier\s*\d/i.test(raw)) {
+      return 'Venue & Activities';
+    }
+    return raw;
+  }
+  return auth.managementProfile?.department || '';
+});
 
 const sectionSubtitle = computed(() => SECTION_SUBTITLES[activeSection.value] || SECTION_SUBTITLES.bookings);
 
@@ -236,6 +270,7 @@ const panelRefForSection = (section) => {
     analytics: wordCloudPanel,
     audit: auditPanel,
     reports: reportsPanel,
+    'report-centre': reportCentrePanel,
   };
   return map[section] ?? null;
 };
@@ -334,5 +369,12 @@ onMounted(async () => {
 
   await auth.ensureSession({ refresh: true });
   sessionReady.value = auth.sessionReady;
+
+  try {
+    const { data } = await getManagementUnreadNotificationCount();
+    notificationUnreadCount.value = data.unread_count || 0;
+  } catch {
+    notificationUnreadCount.value = 0;
+  }
 });
 </script>

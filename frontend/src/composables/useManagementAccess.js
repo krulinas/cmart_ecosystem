@@ -41,6 +41,10 @@ export function useManagementAccess() {
     hasCapability(auth.role, CAPABILITIES.CMART_ACTIVITY_MANAGEMENT, governanceCapabilities.value),
   );
 
+  const canAccessGeneratedReports = computed(() =>
+    hasCapability(auth.role, CAPABILITIES.GENERATED_REPORTS, governanceCapabilities.value),
+  );
+
   const canDeleteBookings = computed(() => isOrganizerView.value);
   const canDeleteFeedback = computed(() => isOrganizerView.value);
   const canPublishOfficialReply = computed(() => isOrganizerView.value);
@@ -64,6 +68,7 @@ export function useManagementAccess() {
     canAccessCarbootAnalytics,
     canPerformCarbootOperations,
     canManageCmartActivities: canManageActivities,
+    canAccessGeneratedReports,
     canDeleteBookings,
     canDeleteFeedback,
     canPublishOfficialReply,

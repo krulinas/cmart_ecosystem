@@ -55,13 +55,18 @@ export const hasAnyManagementRole = (userRole, roles = []) =>
   roles.some((requiredRole) => matchesRole(userRole, requiredRole));
 
 export const roleDisplayLabel = (role, managementProfile = null) => {
+  const normalized = normalizeRole(role);
+
+  // Canonical CMart shell identity — never surface Organizer residue.
+  if (normalized === ROLES.CMART_MANAGEMENT) {
+    return 'CMart Management';
+  }
+
   if (managementProfile?.position_title) {
     return managementProfile.position_title;
   }
 
-  const normalized = normalizeRole(role);
   if (normalized === ROLES.ORGANIZER) return 'SOC UUM Organizer';
-  if (normalized === ROLES.CMART_MANAGEMENT) return 'CMart Management';
   if (normalized === ROLES.SUPER_ADMIN) return 'Reserved HQ Access';
   return role || 'User';
 };

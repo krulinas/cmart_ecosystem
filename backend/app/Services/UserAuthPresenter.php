@@ -28,7 +28,7 @@ class UserAuthPresenter
 
         if (ManagementRole::isCmartWorker($user->role)) {
             $payload['management_profile'] = $user->managementProfile
-                ? self::presentManagementProfile($user->managementProfile)
+                ? self::presentManagementProfile($user->managementProfile, $user->role)
                 : null;
             $payload['governance_capabilities'] = ManagementCapability::resolveForRole($user->role);
             $payload['maps_to_future_organizer'] = ManagementCapability::mapsToFutureOrganizer($user->role);
@@ -49,15 +49,37 @@ class UserAuthPresenter
         return array_merge($payload, CommunityVendorIntent::resolve($user));
     }
 
-    private static function presentManagementProfile(ManagementProfile $profile): array
+    private static function presentManagementProfile(ManagementProfile $profile, ?string $role = null): array
     {
+        $positionTitle = $profile->position_title;
+        $department = $profile->department;
+        $branchName = $profile->branch_name;
+
+        if (ManagementRole::isCmartManagementRole($role)) {
+            if ($positionTitle && preg_match('/organizer|carboot\s*ops|tier\s*\d|carboot\s*operations/i', $positionTitle)) {
+                $positionTitle = 'CMart Management';
+            }
+            if ($department && preg_match('/organizer|carboot\s*ops|carboot\s*operations|tier\s*\d/i', $department)) {
+                $department = 'Venue & Activities';
+            }
+            if (! $positionTitle) {
+                $positionTitle = 'CMart Management';
+            }
+            if (! $department) {
+                $department = 'Venue & Activities';
+            }
+            if (! $branchName || $branchName === 'CMart Main Branch') {
+                $branchName = config('cmart.default_venue_name', 'CMart Changlun');
+            }
+        }
+
         return [
             'id' => $profile->id,
             'staff_code' => $profile->staff_code,
             'tier' => $profile->tier,
-            'position_title' => $profile->position_title,
-            'department' => $profile->department,
-            'branch_name' => $profile->branch_name,
+            'position_title' => $positionTitle,
+            'department' => $department,
+            'branch_name' => $branchName,
             'is_active' => $profile->is_active,
         ];
     }
