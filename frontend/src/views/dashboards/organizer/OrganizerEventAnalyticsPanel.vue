@@ -297,44 +297,12 @@
 
         <!-- Vendors & Sales -->
         <section v-else-if="activeTab === 'vendors'" class="space-y-3">
-          <AnalyticsDataSourceBadge :sources="dataSources" filter="csv" />
-          <p class="text-sm text-ink-600">
-            Vendor survey insights for this event
-            <template v-if="respondentCount != null"> · <strong>n = {{ respondentCount }}</strong></template>
-          </p>
-          <p v-if="surveyEmpty" class="rounded-xl border border-dashed border-ink-200 bg-white px-3 py-6 text-center text-sm text-ink-500">
-            {{ overview?.survey?.message || 'No vendor survey imported for this event.' }}
-          </p>
-          <template v-else>
-            <div class="grid gap-3 lg:grid-cols-2">
-              <AnalyticsBarList
-                title="Product categories"
-                :rows="surveySection('vendors')?.product_categories"
-                :denominator="respondentCount"
-              />
-              <AnalyticsBarList
-                title="Sales purpose"
-                :rows="surveySection('vendors')?.sales_purpose"
-                :denominator="respondentCount"
-              />
-              <AnalyticsBarList
-                title="Gross sales bands (self-reported)"
-                :rows="surveySection('economics')?.gross_sales_band"
-                :denominator="respondentCount"
-              />
-              <AnalyticsBarList
-                title="Used-item sell-through"
-                :rows="surveySection('items')?.items_sold_band"
-                :denominator="respondentCount"
-              />
-              <AnalyticsBarList
-                class="lg:col-span-2"
-                title="Where vendors heard about the event"
-                :rows="surveySection('operations')?.event_info_sources"
-                :denominator="respondentCount"
-              />
-            </div>
-          </template>
+          <VendorsSalesPanel
+            :overview="overview"
+            :sources="dataSources"
+            :respondent-count="respondentCount"
+            :survey-empty="surveyEmpty"
+          />
         </section>
 
         <!-- Items & Reuse -->
@@ -506,6 +474,7 @@ import AnalyticsBarList from '../../../components/analytics/AnalyticsBarList.vue
 import AnalyticsDataSourceBadge from '../../../components/analytics/AnalyticsDataSourceBadge.vue';
 import AnalyticsDataSourceManager from '../../../components/analytics/AnalyticsDataSourceManager.vue';
 import EventCommentsWordCloud from '../../../components/analytics/EventCommentsWordCloud.vue';
+import VendorsSalesPanel from '../../../components/analytics/VendorsSalesPanel.vue';
 import { useEventAnalyticsContext } from '../../../composables/useEventAnalyticsContext';
 import {
   ANALYTICS_HUB_TAB_STORAGE_KEY,

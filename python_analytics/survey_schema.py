@@ -128,6 +128,14 @@ ITEMS_SOLD_BANDS = {
     "Tiada (hanya jual barang baharu/makanan)",
 }
 
+# Questionnaire display order (Codebook). Include zero-count rows when aggregating.
+ITEMS_SOLD_BAND_ORDER = [
+    "Tiada (hanya jual barang baharu/makanan)",
+    "Suku (25%)",
+    "Separuh (50%)",
+    "Hampir habis (75%-100%)",
+]
+
 GROSS_SALES_BANDS = {
     "Kurang daripada RM50",
     "RM51 hingga RM150",
@@ -135,11 +143,28 @@ GROSS_SALES_BANDS = {
     "Melebihi RM300",
 }
 
+GROSS_SALES_BAND_ORDER = [
+    "Kurang daripada RM50",
+    "RM51 hingga RM150",
+    "RM151 hingga RM300",
+    "Melebihi RM300",
+]
+
 SALES_PURPOSES = {
     "Pendapatan Utama",
     "Pendapatan Sampingan",
     "Hobi / Mengosongkan ruang rumah",
 }
+
+SALES_PURPOSE_ORDER = [
+    "Pendapatan Utama",
+    "Pendapatan Sampingan",
+    "Hobi / Mengosongkan ruang rumah",
+]
+
+PRODUCT_CATEGORY_ORDER = list(PRODUCT_CATEGORY_COLUMNS.values())
+
+EVENT_INFO_SOURCE_ORDER = list(EVENT_INFO_SOURCE_COLUMNS.values())
 
 EXPERIENCE_RATINGS = {
     "Sangat tidak memuaskan",

@@ -33,6 +33,17 @@ const LABEL_MAP = {
   suasana_meriah: 'Suasana meriah',
   kawasan_sesak: 'Kawasan sesak',
   suasana_bising: 'Suasana bising',
+  'Pendapatan Utama': 'Pendapatan Utama',
+  'Pendapatan Sampingan': 'Pendapatan Sampingan',
+  'Hobi / Mengosongkan ruang rumah': 'Hobi / Mengosongkan ruang rumah',
+  'Kurang daripada RM50': 'Kurang daripada RM50',
+  'RM51 hingga RM150': 'RM51 hingga RM150',
+  'RM151 hingga RM300': 'RM151 hingga RM300',
+  'Melebihi RM300': 'Melebihi RM300',
+  'Tiada (hanya jual barang baharu/makanan)': 'Tiada',
+  'Suku (25%)': 'Suku (25%)',
+  'Separuh (50%)': 'Separuh (50%)',
+  'Hampir habis (75%-100%)': 'Hampir habis (75%–100%)',
 };
 
 /**
