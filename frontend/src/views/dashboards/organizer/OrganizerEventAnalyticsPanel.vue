@@ -351,46 +351,6 @@
             :overview="overview"
             @updated="onDataSourceUpdated"
           />
-          <div class="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              class="ml-btn-ghost text-sm"
-              :disabled="!selectedEventId || loadingOverview"
-              @click="refreshAll"
-            >
-              Recompute analytics
-            </button>
-            <span class="text-xs text-ink-500">
-              Recalculates survey summaries for the selected event only.
-            </span>
-          </div>
-          <div class="grid gap-3 md:grid-cols-2">
-            <div class="rounded-xl border border-sky-100 bg-white p-3 text-sm">
-              <p class="font-bold text-ink-900">Completeness</p>
-              <ul class="mt-2 space-y-1 text-ink-700">
-                <li
-                  v-for="(check, key) in overview?.data_readiness?.checks || {}"
-                  :key="key"
-                  class="flex gap-2"
-                >
-                  <span :class="check.ready ? 'text-emerald-600' : 'text-amber-600'">●</span>
-                  <span>
-                    <strong>{{ check.label }}</strong>
-                    — {{ check.detail }}
-                  </span>
-                </li>
-              </ul>
-            </div>
-            <div class="rounded-xl border border-sky-100 bg-white p-3 text-sm">
-              <p class="font-bold text-ink-900">Survey notes</p>
-              <ul v-if="(overview?.survey?.limitations || []).length" class="mt-2 list-disc space-y-1 pl-5 text-ink-700">
-                <li v-for="(item, idx) in overview.survey.limitations" :key="idx">{{ item }}</li>
-              </ul>
-              <p v-else class="mt-2 text-ink-500">
-                No additional limitations reported for the current survey import.
-              </p>
-            </div>
-          </div>
         </section>
 
         <!-- Comments & Word Cloud -->
@@ -657,9 +617,10 @@ const refreshAll = () => loadOverview(true);
 const onDataSourceUpdated = (nextOverview) => {
   if (nextOverview) {
     overview.value = nextOverview;
-  } else {
-    loadOverview(true);
+    return;
   }
+  // Fallback: force recompute when a mutation did not return an overview payload.
+  loadOverview(true);
 };
 
 const goToReportCentre = () => {

@@ -322,7 +322,7 @@ const uploadFile = async (file, replaceExisting) => {
     const { data } = await uploadSurveyImport(props.eventId, file, { replaceExisting });
     info.value = replaceExisting ? 'Survey dataset replaced.' : 'Survey import completed.';
     toast.success(info.value);
-    emit('updated', null);
+    emit('updated', data?.overview || null);
   } catch (e) {
     const payload = e.response?.data || {};
     if (e.response?.status === 409 && payload.code === 'survey_import_duplicate') {

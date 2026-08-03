@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\RawSurveyUploadResource;
 use App\Models\CarbootEvent;
 use App\Models\RawSurveyUpload;
+use App\Services\EventAnalyticsService;
 use App\Services\SurveyImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -18,6 +19,7 @@ class OrganizerSurveyImportController extends Controller
 {
     public function __construct(
         private readonly SurveyImportService $imports,
+        private readonly EventAnalyticsService $analytics,
     ) {}
 
     public function index(CarbootEvent $event)
@@ -90,9 +92,10 @@ class OrganizerSurveyImportController extends Controller
 
         $batch->load('uploader:id,name');
 
-        return (new RawSurveyUploadResource($batch))
-            ->response()
-            ->setStatusCode(201);
+        return response()->json([
+            'data' => (new RawSurveyUploadResource($batch))->toArray($request),
+            'overview' => $this->analytics->overview($event->fresh(), true),
+        ], 201);
     }
 
     private function assertSurveyTables(): void
