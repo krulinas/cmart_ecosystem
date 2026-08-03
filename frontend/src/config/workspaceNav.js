@@ -108,7 +108,7 @@ export const WORKSPACE_NAV_ITEMS = [
 
 /** Legacy hashes that redirect into the Analytics Hub (not shown in sidebar). */
 export const LEGACY_ANALYTICS_HASH_REDIRECTS = {
-  revenue: { section: 'event-analytics', tab: 'revenue' },
+  revenue: { section: 'event-analytics', tab: 'overview' },
   analytics: { section: 'event-analytics', tab: 'comments' },
 };
 
@@ -133,7 +133,7 @@ export const SECTION_SUBTITLES = {
   layout: 'Manage category rows and physical sites for each Carboot event.',
   'item-reservations': 'Reconcile item reservation holds and record manual off-platform service fees.',
   news: 'Publish CMart venue announcements, promotions, and operational updates.',
-  'event-analytics': 'Event-scoped revenue, vendor survey insights, operations, and text analytics.',
+  'event-analytics': 'Event-scoped overview, vendor survey insights, operations, and text analytics.',
   audit: 'System booking approval history for reserved HQ access.',
   'report-centre': 'Manage CMart report requests, generate drafts, and publish Post-Event Summaries.',
   reports: 'Request event reports from the Organizer and view published Post-Event Summaries.',

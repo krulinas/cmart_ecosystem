@@ -208,6 +208,12 @@ class PostEventSummaryAggregator
             'collected' => round($collected, 2),
             'outstanding' => round($outstanding, 2),
             'invoice_count' => $invoices->count(),
+            'paid_count' => $invoices->where('payment_status', 'Paid')->count(),
+            'unpaid_count' => $invoices->where('payment_status', 'Unpaid')->count(),
+            'by_payment_status' => [
+                'Paid' => $invoices->where('payment_status', 'Paid')->count(),
+                'Unpaid' => $invoices->where('payment_status', 'Unpaid')->count(),
+            ],
             'scope' => 'Approved bookings for this event only',
         ];
     }

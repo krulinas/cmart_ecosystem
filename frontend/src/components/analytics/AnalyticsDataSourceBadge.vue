@@ -1,59 +1,44 @@
 <template>
-  <div class="flex flex-wrap items-start gap-2" data-testid="analytics-data-sources">
+  <div
+    class="flex flex-wrap items-center gap-1.5"
+    data-testid="analytics-data-sources"
+    :class="compact ? '' : 'items-start gap-2'"
+  >
     <div
       v-if="!displaySources.length"
-      class="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-ink-50 px-2.5 py-1 text-xs font-semibold text-ink-600"
+      class="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-ink-50 px-2.5 py-0.5 text-[11px] font-semibold text-ink-600"
+      title="No analytics sources available for this event"
     >
-      <span class="h-1.5 w-1.5 rounded-full bg-ink-400" />
       No Data
     </div>
 
     <template v-else>
-      <div
+      <span
         v-if="mode === 'mixed'"
-        class="inline-flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-950"
+        class="inline-flex items-center rounded-full border border-teal-200 bg-teal-50 px-2.5 py-0.5 text-[11px] font-semibold text-teal-950"
+        title="Overview combines System Data and CSV survey responses"
       >
-        <span class="h-1.5 w-1.5 rounded-full bg-teal-600" />
         Mixed Sources
-      </div>
+      </span>
 
-      <article
+      <span
         v-for="(source, idx) in displaySources"
         :key="`${source.type}-${source.batch_id || idx}`"
-        class="rounded-lg border px-2.5 py-1.5 text-xs"
-        :class="sourceCardClass(source)"
+        class="inline-flex max-w-full items-center truncate rounded-full border px-2.5 py-0.5 text-[11px] font-semibold"
+        :class="pillClass(source)"
+        :title="tooltipFor(source)"
       >
-        <p class="font-bold">
-          {{ source.type === 'csv_import' ? 'CSV Import' : 'System Data' }}
-        </p>
         <template v-if="source.type === 'csv_import'">
-          <p class="mt-0.5 truncate font-medium" :title="source.original_filename">
-            {{ source.original_filename || 'Survey file' }}
-          </p>
-          <p class="mt-0.5 text-[11px] opacity-90">
-            Batch #{{ source.batch_id }}
-            <template v-if="source.imported_at"> · {{ formatDate(source.imported_at) }}</template>
-            <template v-if="source.respondent_count != null"> · n = {{ source.respondent_count }}</template>
-            <template v-if="source.schema_version"> · {{ source.schema_name || 'schema' }} v{{ source.schema_version }}</template>
-          </p>
+          CSV: {{ source.original_filename || 'survey file' }}
         </template>
         <template v-else>
-          <p class="mt-0.5 font-medium">System Database</p>
-          <p class="mt-0.5 text-[11px] opacity-90">
-            <template v-if="source.updated_at">Updated {{ formatDate(source.updated_at) }}</template>
-            <template v-if="(source.sources || []).length">
-              · {{ humanSources(source.sources) }}
-            </template>
-          </p>
+          System Data
         </template>
-        <p
-          class="mt-1 text-[10px] font-bold uppercase tracking-wide"
-          :class="source.included_in_analytics ? 'text-emerald-700' : 'text-ink-500'"
-        >
-          {{ source.inclusion_label
-            || (source.included_in_analytics ? 'Included in analytics' : 'Excluded from analytics') }}
-        </p>
-      </article>
+        <span
+          v-if="source.included_in_analytics === false"
+          class="ml-1 font-medium opacity-70"
+        >(excluded)</span>
+      </span>
     </template>
   </div>
 </template>
@@ -63,8 +48,10 @@ import { computed } from 'vue';
 
 const props = defineProps({
   sources: { type: Array, default: () => [] },
-  /** all | system | csv — which source types to show */
+  /** all | system | csv */
   filter: { type: String, default: 'all' },
+  /** Compact pills (Overview). Non-compact keeps the same compact pills for consistency. */
+  compact: { type: Boolean, default: true },
 });
 
 const filtered = computed(() => {
@@ -74,12 +61,9 @@ const filtered = computed(() => {
   return list;
 });
 
-/** Prefer showing included sources; fall back to all filtered for provenance. */
 const displaySources = computed(() => {
   const list = filtered.value;
-  const included = list.filter((s) => s.included_in_analytics !== false);
   if (props.filter === 'all') {
-    // Overview: show Mixed based on included; still list cards that are present.
     return list.filter((s) => {
       if (s.type === 'csv_import' && !s.original_filename && s.included_in_analytics === false) {
         return false;
@@ -87,6 +71,7 @@ const displaySources = computed(() => {
       return true;
     });
   }
+  const included = list.filter((s) => s.included_in_analytics !== false);
   return included.length ? included : list;
 });
 
@@ -99,28 +84,49 @@ const mode = computed(() => {
   return 'none';
 });
 
-const sourceCardClass = (source) => {
+const pillClass = (source) => {
   const included = source.included_in_analytics !== false;
   if (source.type === 'csv_import') {
     return included
       ? 'border-amber-200 bg-amber-50 text-amber-950'
-      : 'border-ink-200 bg-ink-50 text-ink-600 opacity-80';
+      : 'border-ink-200 bg-ink-50 text-ink-500';
   }
   return included
     ? 'border-sky-200 bg-sky-50 text-sky-950'
-    : 'border-ink-200 bg-ink-50 text-ink-600 opacity-80';
+    : 'border-ink-200 bg-ink-50 text-ink-500';
 };
 
 const formatDate = (value) => {
-  if (!value) return '—';
+  if (!value) return '';
   try {
     return new Date(value).toLocaleString();
   } catch {
-    return value;
+    return String(value);
   }
 };
 
 const humanSources = (list) => (list || [])
   .map((s) => String(s).replace(/_/g, ' '))
   .join(', ');
+
+const tooltipFor = (source) => {
+  if (source.type === 'csv_import') {
+    const parts = [
+      source.original_filename || 'CSV import',
+      source.batch_id != null ? `batch #${source.batch_id}` : null,
+      source.respondent_count != null ? `n = ${source.respondent_count}` : null,
+      source.schema_version || null,
+      source.imported_at ? `imported ${formatDate(source.imported_at)}` : null,
+      source.inclusion_label || null,
+    ];
+    return parts.filter(Boolean).join(' · ');
+  }
+  const parts = [
+    'System Database',
+    humanSources(source.sources),
+    source.updated_at ? `updated ${formatDate(source.updated_at)}` : null,
+    source.inclusion_label || null,
+  ];
+  return parts.filter(Boolean).join(' · ');
+};
 </script>

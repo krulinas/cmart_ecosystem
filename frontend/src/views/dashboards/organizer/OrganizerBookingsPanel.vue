@@ -785,6 +785,21 @@ const fetchBookings = async () => {
   suppressRegistryFetch = true;
 
   try {
+    try {
+      const preEvent = sessionStorage.getItem('cmart.bookings.preselectEventId');
+      const preStatus = sessionStorage.getItem('cmart.bookings.preselectStatus');
+      if (preEvent) {
+        eventFilter.value = preEvent;
+        sessionStorage.removeItem('cmart.bookings.preselectEventId');
+      }
+      if (preStatus) {
+        statusFilter.value = preStatus;
+        sessionStorage.removeItem('cmart.bookings.preselectStatus');
+      }
+    } catch {
+      /* ignore */
+    }
+
     debouncedSearch.value = searchQuery.value.trim();
     const { data } = await api.get(bookingsListEndpoint, { params: buildQueryParams() });
     applyResponse(data);

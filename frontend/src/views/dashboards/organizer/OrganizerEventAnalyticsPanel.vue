@@ -101,68 +101,198 @@
           (threshold {{ overview.survey.small_sample_threshold }}). Interpret percentages carefully.
         </p>
 
-        <!-- Overview -->
-        <section v-if="activeTab === 'overview'" class="space-y-3">
-          <AnalyticsDataSourceBadge :sources="dataSources" />
-          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <article v-for="card in overviewCards" :key="card.label" class="rounded-xl border border-sky-100 bg-white px-3 py-3 shadow-sm">
+        <!-- Overview (includes former Revenue & Payments) -->
+        <section v-if="activeTab === 'overview'" class="space-y-3" data-testid="analytics-overview">
+          <AnalyticsDataSourceBadge :sources="dataSources" compact />
+
+          <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+            <button
+              v-for="card in overviewKpis"
+              :key="card.id"
+              type="button"
+              class="rounded-xl border border-sky-100 bg-white px-3 py-3 text-left shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+              :class="card.clickable
+                ? 'cursor-pointer hover:border-brand-300 hover:bg-sky-50/60'
+                : 'cursor-default'"
+              :disabled="!card.clickable"
+              :title="card.title"
+              @click="card.clickable && card.onClick()"
+            >
               <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-500">{{ card.label }}</p>
               <p class="mt-1 text-xl font-extrabold text-ink-900">{{ card.value }}</p>
               <p v-if="card.note" class="mt-0.5 text-xs text-ink-500">{{ card.note }}</p>
-            </article>
+            </button>
           </div>
-          <div class="grid gap-3 md:grid-cols-2">
-            <div class="rounded-xl border border-sky-100 bg-white p-3 text-sm">
-              <p class="font-bold text-ink-900">Survey readiness</p>
-              <p class="mt-1 text-ink-600">{{ surveyReadinessText }}</p>
-              <p v-if="respondentCount != null" class="mt-2 text-xs font-semibold text-ink-500">
-                Respondents n = {{ respondentCount }}
-              </p>
-            </div>
-            <div class="rounded-xl border border-sky-100 bg-white p-3 text-sm">
-              <p class="font-bold text-ink-900">Payment snapshot</p>
-              <p class="mt-1 text-ink-600">
-                Collected RM {{ formatMoney(payments?.collected) }} ·
-                Outstanding RM {{ formatMoney(payments?.outstanding) }}
-              </p>
-              <p class="mt-2 text-xs text-ink-500">Organizer platform fees for this event only.</p>
-            </div>
-          </div>
-        </section>
 
-        <!-- Revenue -->
-        <section v-else-if="activeTab === 'revenue'" class="space-y-3">
-          <AnalyticsDataSourceBadge :sources="dataSources" filter="system" />
-          <div class="rounded-xl border border-sky-100 bg-sky-50/50 px-3 py-2 text-sm text-ink-700">
-            Organizer operational revenue (platform fees) from approved booking invoices for this event only.
-            Vendor self-reported sales bands are shown under <strong>Vendors &amp; Sales</strong> and are not converted to exact RM.
+          <div class="grid gap-3 lg:grid-cols-2">
+            <!-- Financial performance -->
+            <div
+              ref="financeSectionRef"
+              class="rounded-xl border border-sky-100 bg-white p-3"
+              data-testid="overview-finance"
+            >
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 class="text-sm font-extrabold text-ink-900">Financial performance</h3>
+                  <p class="mt-0.5 text-xs text-ink-500">Platform fees for this event only</p>
+                </div>
+                <div
+                  v-if="hasInvoices"
+                  class="flex rounded-lg border border-ink-200 p-0.5 text-[11px] font-semibold"
+                  role="group"
+                  aria-label="Finance metric"
+                >
+                  <button
+                    type="button"
+                    class="rounded-md px-2 py-1 transition"
+                    :class="financeMetric === 'amount' ? 'bg-brand-600 text-white' : 'text-ink-600 hover:bg-ink-50'"
+                    @click="financeMetric = 'amount'"
+                  >
+                    Amount (RM)
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-md px-2 py-1 transition"
+                    :class="financeMetric === 'count' ? 'bg-brand-600 text-white' : 'text-ink-600 hover:bg-ink-50'"
+                    @click="financeMetric = 'count'"
+                  >
+                    Invoice count
+                  </button>
+                </div>
+              </div>
+
+              <template v-if="operationalReady && hasInvoices">
+                <dl class="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                  <div>
+                    <dt class="text-ink-500">Expected</dt>
+                    <dd class="font-bold text-ink-900">RM {{ formatMoney(payments?.expected) }}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-ink-500">Collected</dt>
+                    <dd class="font-bold text-emerald-700">RM {{ formatMoney(payments?.collected) }}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-ink-500">Outstanding</dt>
+                    <dd class="font-bold text-rose-700">RM {{ formatMoney(payments?.outstanding) }}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-ink-500">Collection rate</dt>
+                    <dd class="font-bold text-ink-900">{{ collectionRateLabel }}</dd>
+                  </div>
+                </dl>
+                <p class="mt-2 text-xs text-ink-500">
+                  {{ payments?.paid_count ?? 0 }} paid · {{ payments?.unpaid_count ?? 0 }} unpaid
+                  · {{ payments?.invoice_count ?? 0 }} invoices
+                </p>
+                <div class="mt-3">
+                  <div
+                    class="flex h-3 overflow-hidden rounded-full bg-ink-100"
+                    :title="financeBarTitle"
+                    role="img"
+                    :aria-label="financeBarTitle"
+                  >
+                    <div
+                      v-if="financeBar.collectedPct > 0"
+                      class="h-full bg-emerald-500 transition-all"
+                      :style="{ width: `${financeBar.collectedPct}%` }"
+                    />
+                    <div
+                      v-if="financeBar.outstandingPct > 0"
+                      class="h-full bg-rose-400 transition-all"
+                      :style="{ width: `${financeBar.outstandingPct}%` }"
+                    />
+                  </div>
+                  <div class="mt-1.5 flex flex-wrap gap-3 text-[11px] text-ink-500">
+                    <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-500" />Collected</span>
+                    <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-rose-400" />Outstanding</span>
+                  </div>
+                </div>
+              </template>
+              <div v-else class="mt-3 space-y-2 text-sm text-ink-600">
+                <p v-if="!operationalReady">Operational payment data is unavailable for this event.</p>
+                <p v-else-if="!Number(approvedCount)">
+                  No approved bookings yet —
+                  <button type="button" class="font-semibold text-brand-700 underline-offset-2 hover:underline" @click="goToBookings()">
+                    View Bookings
+                  </button>
+                </p>
+                <p v-else>
+                  No invoices have been generated for this event.
+                  Collection rate will appear after an invoice is issued.
+                </p>
+              </div>
+            </div>
+
+            <!-- Vendor categories -->
+            <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="overview-categories">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 class="text-sm font-extrabold text-ink-900">Approved bookings by category</h3>
+                  <p class="mt-0.5 text-xs text-ink-500">Booking counts, not invoice revenue</p>
+                </div>
+                <button
+                  type="button"
+                  class="text-xs font-semibold text-brand-700 underline-offset-2 hover:underline"
+                  @click="goToBookings({ status: 'Approved' })"
+                >
+                  View Bookings
+                </button>
+              </div>
+
+              <ul v-if="categoryRows.length" class="mt-3 space-y-2">
+                <li v-for="row in categoryRows" :key="row.key || row.label">
+                  <button
+                    type="button"
+                    class="w-full rounded-lg px-1 py-0.5 text-left transition hover:bg-sky-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                    :title="`${row.label}: ${row.display}`"
+                    @click="goToBookings({ status: 'Approved' })"
+                  >
+                    <div class="mb-1 flex justify-between gap-2 text-xs">
+                      <span class="font-semibold text-ink-800">{{ row.label }}</span>
+                      <span class="shrink-0 text-ink-600">{{ row.display }}</span>
+                    </div>
+                    <div class="h-2 overflow-hidden rounded-full bg-sky-50">
+                      <div
+                        class="h-full rounded-full bg-brand-600"
+                        :style="{ width: `${Math.min(Number(row.percent) || 0, 100)}%` }"
+                      />
+                    </div>
+                  </button>
+                </li>
+              </ul>
+              <p v-else class="mt-3 text-sm text-ink-500">
+                No approved bookings for this event yet.
+              </p>
+            </div>
           </div>
-          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
-              <p class="text-[11px] font-semibold uppercase text-ink-500">Expected</p>
-              <p class="mt-1 text-xl font-extrabold text-brand-700">RM {{ formatMoney(payments?.expected) }}</p>
-            </article>
-            <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
-              <p class="text-[11px] font-semibold uppercase text-ink-500">Collected</p>
-              <p class="mt-1 text-xl font-extrabold text-emerald-700">RM {{ formatMoney(payments?.collected) }}</p>
-            </article>
-            <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
-              <p class="text-[11px] font-semibold uppercase text-ink-500">Outstanding</p>
-              <p class="mt-1 text-xl font-extrabold text-rose-700">RM {{ formatMoney(payments?.outstanding) }}</p>
-            </article>
-            <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
-              <p class="text-[11px] font-semibold uppercase text-ink-500">Collection rate</p>
-              <p class="mt-1 text-xl font-extrabold text-ink-900">{{ collectionRateLabel }}</p>
-              <p class="mt-0.5 text-xs text-ink-500">{{ payments?.invoice_count ?? 0 }} invoices · {{ approvedCount }} approved bookings</p>
-            </article>
+
+          <!-- Survey snapshot -->
+          <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="overview-survey-snapshot">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h3 class="text-sm font-extrabold text-ink-900">Survey snapshot</h3>
+                <p class="mt-0.5 text-xs text-ink-500">
+                  <template v-if="respondentCount != null">n = {{ respondentCount }} respondents</template>
+                  <template v-else>Active CSV survey summary</template>
+                </p>
+              </div>
+              <button
+                type="button"
+                class="text-xs font-semibold text-brand-700 underline-offset-2 hover:underline"
+                @click="setActiveTab('vendors')"
+              >
+                View Survey Insights
+              </button>
+            </div>
+            <p v-if="surveyTopInsight" class="mt-2 text-sm text-ink-700">
+              {{ surveyTopInsight }}
+            </p>
+            <p v-else class="mt-2 text-sm text-ink-500">
+              {{ surveyEmpty
+                ? (overview?.survey?.message || 'No vendor survey imported for this event.')
+                : 'Open Vendors & Sales for full survey charts.' }}
+            </p>
           </div>
-          <AnalyticsBarList
-            title="Approved bookings by vendor category"
-            :rows="categoryRows"
-            :denominator="approvedCount || null"
-            empty-text="No approved bookings for this event yet."
-          />
-          <p class="text-xs text-ink-500">Category mix uses approved booking counts, not invoice revenue.</p>
         </section>
 
         <!-- Vendors & Sales -->
@@ -392,7 +522,6 @@ const { selectedEventId, setSelectedEvent, setSelectedEventId } = useEventAnalyt
 
 const tabs = [
   { id: 'overview', label: 'Overview' },
-  { id: 'revenue', label: 'Revenue & Payments' },
   { id: 'vendors', label: 'Vendors & Sales' },
   { id: 'items', label: 'Items & Reuse' },
   { id: 'experience', label: 'Experience' },
@@ -409,10 +538,13 @@ const loadingEvents = ref(false);
 const loadingOverview = ref(false);
 const overviewError = ref('');
 const activeTab = ref(readStoredTab());
+const financeMetric = ref('amount');
+const financeSectionRef = ref(null);
 
 function readStoredTab() {
   try {
-    const tab = sessionStorage.getItem(ANALYTICS_HUB_TAB_STORAGE_KEY);
+    let tab = sessionStorage.getItem(ANALYTICS_HUB_TAB_STORAGE_KEY);
+    if (tab === 'revenue') tab = 'overview';
     return TAB_IDS.has(tab) ? tab : 'overview';
   } catch {
     return 'overview';
@@ -468,34 +600,132 @@ const collectionRateLabel = computed(() => {
   return `${((collected / expected) * 100).toFixed(1)}%`;
 });
 
-const surveyReadinessText = computed(() => {
-  const status = overview.value?.survey?.status;
-  if (status === 'ready') return `${respondentCount.value} valid survey responses imported.`;
-  if (status === 'empty') return 'No survey imported for this event yet.';
-  if (status === 'degraded') return overview.value?.survey?.message || 'Survey analytics degraded.';
-  return overview.value?.survey?.message || 'Survey analytics unavailable.';
+const hasInvoices = computed(() => Number(payments.value?.invoice_count || 0) > 0);
+
+const financeBar = computed(() => {
+  if (financeMetric.value === 'count') {
+    const paid = Number(payments.value?.paid_count || 0);
+    const unpaid = Number(payments.value?.unpaid_count || 0);
+    const total = paid + unpaid;
+    if (!total) return { collectedPct: 0, outstandingPct: 0 };
+    return {
+      collectedPct: Math.round((paid / total) * 1000) / 10,
+      outstandingPct: Math.round((unpaid / total) * 1000) / 10,
+    };
+  }
+  const expected = Number(payments.value?.expected || 0);
+  const collected = Number(payments.value?.collected || 0);
+  const outstanding = Number(payments.value?.outstanding || 0);
+  if (!expected) return { collectedPct: 0, outstandingPct: 0 };
+  return {
+    collectedPct: Math.min(100, Math.round((collected / expected) * 1000) / 10),
+    outstandingPct: Math.min(100, Math.round((outstanding / expected) * 1000) / 10),
+  };
 });
 
-const overviewCards = computed(() => [
+const financeBarTitle = computed(() => {
+  if (financeMetric.value === 'count') {
+    return `${payments.value?.paid_count ?? 0} paid · ${payments.value?.unpaid_count ?? 0} unpaid invoices`;
+  }
+  return `Collected RM ${formatMoney(payments.value?.collected)} · Outstanding RM ${formatMoney(payments.value?.outstanding)}`;
+});
+
+const surveyTopInsight = computed(() => {
+  if (overview.value?.survey?.status !== 'ready') return null;
+  const cats = surveySection('vendors')?.product_categories;
+  const rows = Array.isArray(cats) ? cats : [];
+  if (!rows.length) return null;
+  const top = [...rows].sort((a, b) => Number(b.count || 0) - Number(a.count || 0))[0];
+  if (!top?.label) return null;
+  const pct = top.percent != null ? `${top.percent}%` : null;
+  return pct
+    ? `Top product category: ${top.label} (${pct} of respondents).`
+    : `Top product category: ${top.label}.`;
+});
+
+const scrollToFinance = () => {
+  financeSectionRef.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  financeMetric.value = 'amount';
+};
+
+const showPaymentBreakdown = () => {
+  financeSectionRef.value?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  financeMetric.value = 'count';
+};
+
+const goToBookings = ({ status } = {}) => {
+  if (!selectedEventId.value) return;
+  try {
+    sessionStorage.setItem('cmart.bookings.preselectEventId', String(selectedEventId.value));
+    if (status) {
+      sessionStorage.setItem('cmart.bookings.preselectStatus', status);
+    } else {
+      sessionStorage.removeItem('cmart.bookings.preselectStatus');
+    }
+  } catch {
+    /* ignore */
+  }
+  router.push({ path: '/admin', hash: '#bookings' });
+};
+
+const overviewKpis = computed(() => [
   {
+    id: 'survey_respondents',
     label: 'Survey respondents',
-    value: overview.value?.survey?.status === 'ready' ? String(respondentCount.value ?? 0) : 'Unavailable',
-    note: overview.value?.survey?.status === 'ready' ? `n = ${respondentCount.value}` : surveyReadinessText.value,
+    value: overview.value?.survey?.status === 'ready' ? String(respondentCount.value ?? 0) : '—',
+    note: overview.value?.survey?.status === 'ready'
+      ? 'View survey insights'
+      : (overview.value?.survey?.message || 'No survey yet'),
+    title: 'Open Vendors & Sales',
+    clickable: true,
+    onClick: () => setActiveTab('vendors'),
   },
   {
+    id: 'approved_bookings',
     label: 'Approved bookings',
-    value: approvedCount ?? '—',
-    note: operationalReady.value ? 'This event only' : 'Operational data unavailable',
+    value: operationalReady.value ? String(approvedCount.value ?? 0) : '—',
+    note: Number(approvedCount.value) ? 'Open bookings' : 'No approved bookings yet',
+    title: 'Open Bookings for this event',
+    clickable: operationalReady.value,
+    onClick: () => goToBookings({ status: 'Approved' }),
   },
   {
+    id: 'expected_revenue',
+    label: 'Expected revenue',
+    value: operationalReady.value ? `RM ${formatMoney(payments.value?.expected)}` : '—',
+    note: 'Platform fees',
+    title: 'Jump to financial performance',
+    clickable: operationalReady.value,
+    onClick: scrollToFinance,
+  },
+  {
+    id: 'collected_revenue',
     label: 'Collected revenue',
     value: operationalReady.value ? `RM ${formatMoney(payments.value?.collected)}` : '—',
-    note: 'Platform fees, not vendor sales',
+    note: 'Paid invoices',
+    title: 'Jump to financial performance',
+    clickable: operationalReady.value,
+    onClick: scrollToFinance,
   },
   {
-    label: 'Event status',
-    value: currentEvent.value?.status || overview.value?.event?.status || '—',
-    note: formatDateRange(currentEvent.value?.starts_at, currentEvent.value?.ends_at),
+    id: 'outstanding_revenue',
+    label: 'Outstanding revenue',
+    value: operationalReady.value ? `RM ${formatMoney(payments.value?.outstanding)}` : '—',
+    note: 'Unpaid invoices',
+    title: 'Jump to financial performance',
+    clickable: operationalReady.value,
+    onClick: scrollToFinance,
+  },
+  {
+    id: 'collection_rate',
+    label: 'Collection rate',
+    value: operationalReady.value ? collectionRateLabel.value : '—',
+    note: hasInvoices.value
+      ? `${payments.value?.paid_count ?? 0}/${payments.value?.invoice_count ?? 0} paid`
+      : 'Appears after invoices',
+    title: 'Show payment-status breakdown',
+    clickable: operationalReady.value,
+    onClick: showPaymentBreakdown,
   },
 ]);
 
