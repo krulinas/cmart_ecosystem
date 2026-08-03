@@ -15,7 +15,12 @@ import EventCalendar from '../components/EventCalendar.vue';
 import StaffVerifyBooking from '../views/staff/StaffVerifyBooking.vue';
 
 import { useAuthStore } from '../stores/auth';
-import { ALL_WORKSPACE_HASHES, CARBOOT_ANALYTICS_HASHES } from '../config/workspaceNav';
+import {
+  ALL_WORKSPACE_HASHES,
+  ANALYTICS_HUB_TAB_STORAGE_KEY,
+  CARBOOT_ANALYTICS_HASHES,
+  LEGACY_ANALYTICS_HASH_REDIRECTS,
+} from '../config/workspaceNav';
 import { hasCapability, CAPABILITIES } from '../utils/managementCapabilities';
 import { isOrganizerEquivalent, MANAGEMENT_WORKSPACE_ROLES, normalizeRole } from '../utils/managementRoles';
 
@@ -220,6 +225,16 @@ router.beforeEach(async (to) => {
 
   if (to.path === '/admin' && isManagementRole(auth)) {
     const hash = (to.hash || '#bookings').replace('#', '');
+
+    const legacy = LEGACY_ANALYTICS_HASH_REDIRECTS[hash];
+    if (legacy) {
+      try {
+        sessionStorage.setItem(ANALYTICS_HUB_TAB_STORAGE_KEY, legacy.tab);
+      } catch {
+        /* ignore */
+      }
+      return { path: '/admin', hash: `#${legacy.section}`, replace: true };
+    }
 
     if (
       CARBOOT_ANALYTICS_HASHES.includes(hash)

@@ -94,20 +94,17 @@
         ref="reportsPanel"
       />
 
-      <template v-if="shouldLoadOrganizerAnalyticsPanels">
-        <BossRevenuePanel
-          v-show="activeSection === 'revenue' && !showSectionLoader"
-          ref="revenuePanel"
-        />
-        <BossWordCloudPanel
-          v-show="activeSection === 'analytics' && !showSectionLoader"
-          ref="wordCloudPanel"
-        />
-        <BossAuditLogsPanel
-          v-show="activeSection === 'audit' && !showSectionLoader"
-          ref="auditPanel"
-        />
-      </template>
+      <OrganizerEventAnalyticsPanel
+        v-if="shouldLoadOrganizerAnalyticsPanels"
+        v-show="activeSection === 'event-analytics' && !showSectionLoader"
+        ref="eventAnalyticsPanel"
+      />
+
+      <BossAuditLogsPanel
+        v-if="auth.isSuperAdmin"
+        v-show="activeSection === 'audit' && !showSectionLoader"
+        ref="auditPanel"
+      />
       </div>
     </template>
   </WorkspaceShell>
@@ -125,16 +122,21 @@ import StaffEventsPanel from './staff/StaffEventsPanel.vue';
 import OrganizerEventLayoutPanel from './organizer/OrganizerEventLayoutPanel.vue';
 import OrganizerItemReservationsPanel from './organizer/OrganizerItemReservationsPanel.vue';
 import StaffNewsPanel from './staff/StaffNewsPanel.vue';
-import BossRevenuePanel from './boss/BossRevenuePanel.vue';
-import BossWordCloudPanel from './boss/BossWordCloudPanel.vue';
 import BossAuditLogsPanel from './boss/BossAuditLogsPanel.vue';
 import CMartReportCentrePanel from './management/CMartReportCentrePanel.vue';
 import OrganizerReportCentrePanel from './organizer/OrganizerReportCentrePanel.vue';
+import OrganizerEventAnalyticsPanel from './organizer/OrganizerEventAnalyticsPanel.vue';
 import { useAuthStore } from '../../stores/auth';
 import { useWorkspaceNav } from '../../composables/useWorkspaceNav';
 import { useManagementAccess } from '../../composables/useManagementAccess';
 import { useSectionCache } from '../../composables/useSectionCache';
-import { ALL_WORKSPACE_HASHES, CARBOOT_ANALYTICS_HASHES, SECTION_SUBTITLES } from '../../config/workspaceNav';
+import {
+  ALL_WORKSPACE_HASHES,
+  ANALYTICS_HUB_TAB_STORAGE_KEY,
+  CARBOOT_ANALYTICS_HASHES,
+  LEGACY_ANALYTICS_HASH_REDIRECTS,
+  SECTION_SUBTITLES,
+} from '../../config/workspaceNav';
 import { MANAGEMENT_WORKSPACE_ROLES, defaultManagementHashForRole } from '../../utils/managementRoles';
 import { getManagementUnreadNotificationCount } from '../../services/reportWorkflowApi';
 
@@ -145,9 +147,8 @@ const SECTION_LABELS = {
   layout: 'Layout Management',
   'item-reservations': 'Item Reservations',
   news: 'News',
-  revenue: 'Revenue',
-  analytics: 'Word Cloud',
-  audit: 'Audit Log',
+  'event-analytics': 'Analytics Hub',
+  audit: 'Booking Audit Log',
   reports: 'Reports',
   'report-centre': 'Report Centre',
 };
@@ -184,8 +185,7 @@ const eventsPanel = ref(null);
 const layoutPanel = ref(null);
 const itemReservationsPanel = ref(null);
 const newsPanel = ref(null);
-const revenuePanel = ref(null);
-const wordCloudPanel = ref(null);
+const eventAnalyticsPanel = ref(null);
 const reportsPanel = ref(null);
 const reportCentrePanel = ref(null);
 const auditPanel = ref(null);
@@ -247,6 +247,25 @@ const refreshButtonTitle = computed(() => {
 
 const syncSectionFromHash = () => {
   const hash = (route.hash || `#${defaultManagementHashForRole(auth.role)}`).replace('#', '');
+
+  const legacy = LEGACY_ANALYTICS_HASH_REDIRECTS[hash];
+  if (legacy) {
+    try {
+      sessionStorage.setItem(ANALYTICS_HUB_TAB_STORAGE_KEY, legacy.tab);
+    } catch {
+      /* ignore */
+    }
+    if (activeSection.value !== legacy.section) {
+      activeSection.value = legacy.section;
+    }
+    if (route.hash !== `#${legacy.section}`) {
+      router.replace({ path: '/admin', hash: `#${legacy.section}` });
+    }
+    // Ensure hub tab hint is applied even if the panel is already mounted.
+    nextTick(() => eventAnalyticsPanel.value?.setActiveTab?.(legacy.tab));
+    return;
+  }
+
   if (!canAccessHash(hash)) {
     const fallback = defaultManagementHashForRole(auth.role);
     activeSection.value = canAccessHash(fallback) ? fallback : 'news';
@@ -266,8 +285,7 @@ const panelRefForSection = (section) => {
     layout: layoutPanel,
     'item-reservations': itemReservationsPanel,
     news: newsPanel,
-    revenue: revenuePanel,
-    analytics: wordCloudPanel,
+    'event-analytics': eventAnalyticsPanel,
     audit: auditPanel,
     reports: reportsPanel,
     'report-centre': reportCentrePanel,
@@ -296,6 +314,11 @@ const resolvePanelInstance = async (section) => {
 const invokePanelLoad = async (section, instance) => {
   if (section === 'bookings') {
     await instance.fetchBookings?.();
+    return;
+  }
+
+  if (section === 'event-analytics') {
+    await instance.refresh?.();
     return;
   }
 
@@ -335,9 +358,9 @@ const loadSection = async (section, { force = false } = {}) => {
 const refreshActiveSection = () => loadSection(activeSection.value, { force: true });
 
 const onBookingsRefreshed = () => {
-  invalidate('revenue');
-  if (shouldLoadOrganizerAnalyticsPanels.value && activeSection.value === 'revenue') {
-    loadSection('revenue', { force: true });
+  invalidate('event-analytics');
+  if (shouldLoadOrganizerAnalyticsPanels.value && activeSection.value === 'event-analytics') {
+    loadSection('event-analytics', { force: true });
   }
 };
 

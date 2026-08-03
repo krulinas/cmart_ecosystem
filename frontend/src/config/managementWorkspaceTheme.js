@@ -25,7 +25,12 @@ export const WORKSPACE_NAV_GROUPS = [
     id: 'carboot_analytics',
     label: 'Event Analytics',
     analyticsOnly: true,
-    items: ['revenue', 'analytics', 'audit'],
+    items: ['event-analytics'],
+  },
+  {
+    id: 'administration',
+    label: 'Administration',
+    items: ['audit'],
   },
 ];
 

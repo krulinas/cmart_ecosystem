@@ -23,10 +23,13 @@ use App\Http\Controllers\Api\OrganizerBookingSiteAssignmentController;
 use App\Http\Controllers\Api\OrganizerEventLayoutController;
 use App\Http\Controllers\Api\OrganizerEventLayoutRowController;
 use App\Http\Controllers\Api\OrganizerEventLayoutSiteController;
+use App\Http\Controllers\Api\OrganizerEventAnalyticsController;
+use App\Http\Controllers\Api\OrganizerEventAnalyticsDataSourceController;
 use App\Http\Controllers\Api\OrganizerGeneratedReportController;
 use App\Http\Controllers\Api\OrganizerItemReservationController;
 use App\Http\Controllers\Api\OrganizerReleasedDayRecoveryController;
 use App\Http\Controllers\Api\OrganizerReportRequestController;
+use App\Http\Controllers\Api\OrganizerSurveyImportController;
 use App\Http\Controllers\Api\OrganizerVendorCategoryController;
 use App\Http\Controllers\Api\PublicEventLayoutController;
 use App\Http\Controllers\Api\SpaceController;
@@ -281,6 +284,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/organizer/generated-reports/{generated_report}/publish', [OrganizerGeneratedReportController::class, 'publish']);
         Route::delete('/organizer/generated-reports/{generated_report}', [OrganizerGeneratedReportController::class, 'destroy']);
         Route::post('/organizer/generated-reports/{generated_report}/revise', [OrganizerGeneratedReportController::class, 'revise']);
+
+        // Event-scoped analytics hub + vendor survey import (organizer / super_admin).
+        Route::get('/organizer/events/{event}/analytics/overview', [OrganizerEventAnalyticsController::class, 'overview']);
+        Route::get('/organizer/events/{event}/analytics/{section}', [OrganizerEventAnalyticsController::class, 'section']);
+        Route::post('/organizer/events/{event}/analytics/recompute', [OrganizerEventAnalyticsController::class, 'recompute']);
+        Route::put('/organizer/events/{event}/analytics/source-mode', [OrganizerEventAnalyticsDataSourceController::class, 'updateMode']);
+        Route::post('/organizer/events/{event}/survey-imports/undo', [OrganizerEventAnalyticsDataSourceController::class, 'undo']);
+        Route::post('/organizer/events/{event}/survey-imports/remove-from-analytics', [OrganizerEventAnalyticsDataSourceController::class, 'removeCsv']);
+        Route::post('/organizer/events/{event}/survey-imports/{batch}/activate', [OrganizerEventAnalyticsDataSourceController::class, 'activate']);
+        Route::post('/organizer/events/{event}/survey-imports/{batch}/exclude', [OrganizerEventAnalyticsDataSourceController::class, 'exclude']);
+        Route::post('/organizer/events/{event}/survey-imports/{batch}/archive', [OrganizerEventAnalyticsDataSourceController::class, 'archive']);
+        Route::post('/organizer/events/{event}/survey-imports/{batch}/restore', [OrganizerEventAnalyticsDataSourceController::class, 'restore']);
+        Route::get('/organizer/events/{event}/survey-imports', [OrganizerSurveyImportController::class, 'index']);
+        Route::post('/organizer/events/{event}/survey-imports', [OrganizerSurveyImportController::class, 'store']);
+        Route::get('/organizer/events/{event}/survey-imports/{batch}', [OrganizerSurveyImportController::class, 'show']);
     });
 
     Route::middleware('boss')->group(function () {

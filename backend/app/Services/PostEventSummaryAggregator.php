@@ -7,8 +7,10 @@ use App\Models\CarbootEvent;
 use App\Models\EventSite;
 use App\Models\Invoice;
 use App\Models\ItemReservation;
+use App\Models\SurveyResponse;
 use App\Support\CmartVenue;
 use App\Support\ReportType;
+use App\Support\SurveySchema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -56,11 +58,30 @@ class PostEventSummaryAggregator
         $reservationCounts = $this->itemReservationCounts($event->id, $dataAvailability);
         $feedbackSummary = $this->feedbackSummary($event->id, $dataAvailability);
 
+        $mode = $this->analyticsSourceMode($event);
+        $includeSystem = in_array($mode, ['combined', 'system_only'], true);
+        $includeSurvey = in_array($mode, ['combined', 'csv_only'], true);
+
+        $vendorSurveySummary = $includeSurvey
+            ? $this->vendorSurveySummary($event->id, $dataAvailability)
+            : [
+                'available' => false,
+                'respondent_count' => 0,
+                'schema_name' => SurveySchema::NAME,
+                'excluded' => true,
+                'note' => 'Vendor survey excluded by analytics source mode.',
+            ];
+
+        if (! $includeSurvey) {
+            $dataAvailability['vendor_survey'] = 'excluded';
+        }
+
         return [
             'schema_version' => self::SCHEMA_VERSION,
             'report_type' => ReportType::POST_EVENT_SUMMARY,
             'generated_at' => now()->toIso8601String(),
             'provisional' => $provisional,
+            'analytics_source_mode' => $mode,
             'venue' => $venue,
             'event' => [
                 'id' => $event->id,
@@ -72,22 +93,36 @@ class PostEventSummaryAggregator
                 'venue' => $venue,
             ],
             'sections' => [
-                'booking_pipeline' => [
+                'booking_pipeline' => $includeSystem ? [
                     'by_approval_status' => $bookingCounts,
                     'total_bookings' => array_sum($bookingCounts),
                     'approved_count' => (int) ($bookingCounts['Approved'] ?? 0),
-                ],
-                'payments' => $invoiceSummary,
-                'event_sites' => $siteSummary,
-                'item_reservations' => $reservationCounts,
-                'vendor_categories' => [
+                ] : ['excluded' => true],
+                'payments' => $includeSystem ? $invoiceSummary : ['excluded' => true],
+                'event_sites' => $includeSystem ? $siteSummary : ['excluded' => true],
+                'item_reservations' => $includeSystem ? $reservationCounts : ['excluded' => true],
+                'vendor_categories' => $includeSystem ? [
                     'distribution' => $categoryDistribution,
                     'note' => 'Counts use category labels only; no vendor identity is included.',
-                ],
-                'feedback' => $feedbackSummary,
+                ] : ['excluded' => true],
+                'feedback' => $includeSystem ? $feedbackSummary : ['excluded' => true],
+                'vendor_survey' => $vendorSurveySummary,
             ],
             'data_availability' => $dataAvailability,
         ];
+    }
+
+    private function analyticsSourceMode(CarbootEvent $event): string
+    {
+        if (! Schema::hasColumn('carboot_events', 'analytics_source_mode')) {
+            return 'combined';
+        }
+
+        $mode = (string) ($event->analytics_source_mode ?: 'combined');
+
+        return in_array($mode, ['combined', 'system_only', 'csv_only'], true)
+            ? $mode
+            : 'combined';
     }
 
     private function assertCoreSchema(): void
@@ -295,6 +330,75 @@ class PostEventSummaryAggregator
             'average_rating' => $stats->average_rating !== null
                 ? round((float) $stats->average_rating, 2)
                 : null,
+        ];
+    }
+
+    /**
+     * Aggregate-only vendor survey snapshot (no respondent-level rows).
+     *
+     * @param  array<string, mixed>  $dataAvailability
+     * @return array<string, mixed>
+     */
+    private function vendorSurveySummary(int $eventId, array &$dataAvailability): array
+    {
+        if (! Schema::hasTable('survey_responses')) {
+            $dataAvailability['vendor_survey'] = 'omitted';
+            $dataAvailability['vendor_survey_note'] = 'Survey response storage is not available in this environment.';
+
+            return [
+                'available' => false,
+                'schema_name' => SurveySchema::NAME,
+            ];
+        }
+
+        $responses = SurveyResponse::query()
+            ->forAnalytics($eventId)
+            ->get([
+                'gross_sales_band',
+                'experience_rating',
+                'sales_purpose',
+                'product_categories',
+            ]);
+
+        if ($responses->isEmpty()) {
+            $dataAvailability['vendor_survey'] = 'empty';
+            $dataAvailability['vendor_survey_note'] = 'No valid vendor survey responses imported for this event.';
+
+            return [
+                'available' => false,
+                'respondent_count' => 0,
+                'schema_name' => SurveySchema::NAME,
+                'note' => 'Survey respondents do not represent all vendors unless response rate is known.',
+            ];
+        }
+
+        $n = $responses->count();
+        $bandCounts = $responses->groupBy('gross_sales_band')
+            ->map(fn ($group) => $group->count())
+            ->filter(fn ($count, $key) => $key !== null && $key !== '')
+            ->all();
+        $experienceCounts = $responses->groupBy('experience_rating')
+            ->map(fn ($group) => $group->count())
+            ->filter(fn ($count, $key) => $key !== null && $key !== '')
+            ->all();
+        $purposeCounts = $responses->groupBy('sales_purpose')
+            ->map(fn ($group) => $group->count())
+            ->filter(fn ($count, $key) => $key !== null && $key !== '')
+            ->all();
+
+        return [
+            'available' => true,
+            'schema_name' => SurveySchema::NAME,
+            'schema_version' => SurveySchema::VERSION,
+            'respondent_count' => $n,
+            'gross_sales_band_counts' => $bandCounts,
+            'experience_rating_counts' => $experienceCounts,
+            'sales_purpose_counts' => $purposeCounts,
+            'note' => 'Categorical survey aggregates only. Exact RM sales are not computed. Respondent-level rows are excluded.',
+            'limitations' => [
+                'Describes responding vendors only.',
+                'Gross sales remain categorical bands.',
+            ],
         ];
     }
 }

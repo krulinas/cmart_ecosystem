@@ -13,6 +13,7 @@ class Feedback extends Model
 
     protected $fillable = [
         'user_id',
+        'carboot_event_id',
         'reviewer_role',
         'participation_type',
         'community_backgrounds',

@@ -19,14 +19,19 @@ class BossAnalyticsController extends Controller
 
         $baseUrl = rtrim(config('services.analytics.url'), '/');
         $apiKey = config('services.analytics.api_key');
+        $eventId = request()->query('event_id');
+        $query = [];
+        if ($eventId !== null && $eventId !== '') {
+            $query['event_id'] = (int) $eventId;
+        }
 
         try {
             $response = Http::timeout(15)
                 ->withHeaders($apiKey ? ['X-Analytics-Key' => $apiKey] : [])
-                ->get("{$baseUrl}/api/analytics/wordcloud/{$source}");
+                ->get("{$baseUrl}/api/analytics/wordcloud/{$source}", $query);
         } catch (\Throwable) {
             return response()->json([
-                'message' => 'Analytics service is unavailable. Ensure the Python service is running on port 8001.',
+                'message' => 'Analytics service is unavailable. Ensure the Python service is running on the configured analytics URL.',
             ], 502);
         }
 

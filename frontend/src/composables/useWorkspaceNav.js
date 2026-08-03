@@ -11,6 +11,7 @@ export function useWorkspaceNav() {
 
   const visibleItems = computed(() =>
     WORKSPACE_NAV_ITEMS.filter((item) => {
+      if (item.superAdminOnly && !auth.isSuperAdmin) return false;
       if (item.analyticsOnly && !canSeeOrganizerAnalytics.value) return false;
       if (
         item.hideWhenCapability
@@ -61,6 +62,7 @@ export function useWorkspaceNav() {
   const canAccessHash = (hash) => {
     const item = WORKSPACE_NAV_ITEMS.find((i) => i.hash === hash);
     if (!item) return false;
+    if (item.superAdminOnly && !auth.isSuperAdmin) return false;
     if (item.analyticsOnly && !canSeeOrganizerAnalytics.value) return false;
     if (
       item.hideWhenCapability

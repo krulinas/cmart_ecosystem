@@ -13,11 +13,18 @@ class CarbootEvent extends Model
 {
     use HasFactory;
 
+    public const ANALYTICS_MODE_COMBINED = 'combined';
+
+    public const ANALYTICS_MODE_SYSTEM_ONLY = 'system_only';
+
+    public const ANALYTICS_MODE_CSV_ONLY = 'csv_only';
+
     protected $fillable = [
         'title',
         'starts_at',
         'ends_at',
         'status',
+        'analytics_source_mode',
         'description',
         'max_slots',
         'item_reservation_service_fee',
@@ -157,6 +164,21 @@ class CarbootEvent extends Model
     public function generatedReports(): HasMany
     {
         return $this->hasMany(GeneratedReport::class, 'carboot_event_id');
+    }
+
+    public function rawSurveyUploads(): HasMany
+    {
+        return $this->hasMany(RawSurveyUpload::class, 'carboot_event_id');
+    }
+
+    public function surveyResponses(): HasMany
+    {
+        return $this->hasMany(SurveyResponse::class, 'carboot_event_id');
+    }
+
+    public function analyticsResults(): HasMany
+    {
+        return $this->hasMany(AnalyticsResult::class, 'carboot_event_id');
     }
 
     public function eventLayoutRows(): HasMany

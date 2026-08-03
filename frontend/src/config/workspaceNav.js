@@ -62,20 +62,10 @@ export const WORKSPACE_NAV_ITEMS = [
     requiredCapability: CAPABILITIES.CMART_ACTIVITY_MANAGEMENT,
   },
   {
-    id: 'revenue',
-    hash: 'revenue',
-    label: 'Revenue',
-    shortIcon: 'Rv',
-    group: 'carboot_analytics',
-    domain: 'carboot_analytics',
-    analyticsOnly: true,
-    requiredCapability: CAPABILITIES.CARBOOT_OPERATIONAL_ANALYTICS,
-  },
-  {
-    id: 'analytics',
-    hash: 'analytics',
-    label: 'Word Cloud',
-    shortIcon: 'Wc',
+    id: 'event-analytics',
+    hash: 'event-analytics',
+    label: 'Analytics Hub',
+    shortIcon: 'Ah',
     group: 'carboot_analytics',
     domain: 'carboot_analytics',
     analyticsOnly: true,
@@ -84,12 +74,13 @@ export const WORKSPACE_NAV_ITEMS = [
   {
     id: 'audit',
     hash: 'audit',
-    label: 'Audit Log',
+    label: 'Booking Audit Log',
     shortIcon: 'Au',
-    group: 'carboot_analytics',
-    domain: 'carboot_analytics',
-    analyticsOnly: true,
-    requiredCapability: CAPABILITIES.CARBOOT_OPERATIONAL_ANALYTICS,
+    group: 'administration',
+    domain: 'administration',
+    analyticsOnly: false,
+    superAdminOnly: true,
+    requiredCapability: CAPABILITIES.CARBOOT_OPERATIONS,
   },
   {
     id: 'report-centre',
@@ -115,6 +106,14 @@ export const WORKSPACE_NAV_ITEMS = [
   },
 ];
 
+/** Legacy hashes that redirect into the Analytics Hub (not shown in sidebar). */
+export const LEGACY_ANALYTICS_HASH_REDIRECTS = {
+  revenue: { section: 'event-analytics', tab: 'revenue' },
+  analytics: { section: 'event-analytics', tab: 'comments' },
+};
+
+export const ANALYTICS_HUB_TAB_STORAGE_KEY = 'cmart.eventAnalytics.activeTab';
+
 export const CARBOOT_ANALYTICS_HASHES = WORKSPACE_NAV_ITEMS.filter(
   (item) => item.domain === 'carboot_analytics',
 ).map((item) => item.hash);
@@ -134,9 +133,8 @@ export const SECTION_SUBTITLES = {
   layout: 'Manage category rows and physical sites for each Carboot event.',
   'item-reservations': 'Reconcile item reservation holds and record manual off-platform service fees.',
   news: 'Publish CMart venue announcements, promotions, and operational updates.',
-  revenue: 'Carboot operational revenue: expected vs collected payments and profit simulator.',
-  analytics: 'Carboot text analytics from community feedback and vendor product listings.',
-  audit: 'Trace organizer approval actions across the booking pipeline.',
+  'event-analytics': 'Event-scoped revenue, vendor survey insights, operations, and text analytics.',
+  audit: 'System booking approval history for reserved HQ access.',
   'report-centre': 'Manage CMart report requests, generate drafts, and publish Post-Event Summaries.',
   reports: 'Request event reports from the Organizer and view published Post-Event Summaries.',
 };

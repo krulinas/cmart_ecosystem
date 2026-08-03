@@ -222,6 +222,15 @@ const drafts = ref([]);
 const published = ref([]);
 const events = ref([]);
 const proactiveEventId = ref('');
+try {
+  const preselect = sessionStorage.getItem('cmart.reportCentre.preselectEventId');
+  if (preselect) {
+    proactiveEventId.value = String(preselect);
+    sessionStorage.removeItem('cmart.reportCentre.preselectEventId');
+  }
+} catch {
+  /* ignore */
+}
 const activeReport = ref(null);
 const narrative = ref({ observations: '', recommendations: '' });
 const requestDetail = ref(null);

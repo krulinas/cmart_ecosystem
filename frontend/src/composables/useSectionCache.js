@@ -7,11 +7,14 @@ const ALL_SECTIONS = [
   'bookings',
   'feedback',
   'events',
+  'layout',
+  'item-reservations',
   'news',
   'tools',
-  'revenue',
-  'analytics',
+  'event-analytics',
   'audit',
+  'report-centre',
+  'reports',
 ];
 
 function createSectionState() {
