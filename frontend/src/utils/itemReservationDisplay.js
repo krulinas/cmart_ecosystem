@@ -118,7 +118,7 @@ export function reserveCtaMode({
 }
 
 export function myReservationsPath(auth) {
-  if (auth?.isVendorUser) return '/dashboard#my-item-reservations';
+  if (auth?.isVendorUser) return '/my-reservations';
   return '/community#my-item-reservations';
 }
 

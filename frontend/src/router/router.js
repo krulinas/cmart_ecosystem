@@ -10,6 +10,13 @@ import Register from '../views/auth/Register.vue';
 import VendorDashboard from '../views/dashboards/VendorDashboard.vue';
 import VendorProfile from '../views/vendor/VendorProfile.vue';
 import VendorCheckoutPage from '../views/vendor/VendorCheckoutPage.vue';
+import VendorManageBookingsPage from '../views/vendor/VendorManageBookingsPage.vue';
+import VendorManageEventPassesPage from '../views/vendor/VendorManageEventPassesPage.vue';
+import VendorManageItemsPage from '../views/vendor/VendorManageItemsPage.vue';
+import VendorManageCustomerReservationsPage from '../views/vendor/VendorManageCustomerReservationsPage.vue';
+import MyReservationsPage from '../views/vendor/MyReservationsPage.vue';
+import VendorInsightsPage from '../views/vendor/VendorInsightsPage.vue';
+import VendorPaymentHistoryPage from '../views/vendor/VendorPaymentHistoryPage.vue';
 import ReuseMarketplace from '../views/public/ReuseMarketplace.vue';
 import EventCalendar from '../components/EventCalendar.vue';
 import StaffVerifyBooking from '../views/staff/StaffVerifyBooking.vue';
@@ -23,8 +30,12 @@ import {
 } from '../config/workspaceNav';
 import { hasCapability, CAPABILITIES } from '../utils/managementCapabilities';
 import { isOrganizerEquivalent, MANAGEMENT_WORKSPACE_ROLES, normalizeRole } from '../utils/managementRoles';
+import { resolveVendorDashboardLegacyHash } from '../utils/vendorDashboardLegacy';
 
 const MANAGEMENT_PROTECTED_PREFIXES = ['/admin', '/organizer/'];
+
+/** Community-authenticated vendor workspace routes (same gate as /dashboard today). */
+const COMMUNITY_AUTH_META = { requiresAuth: true, roles: ['community'] };
 
 function isManagementProtectedRoute(path) {
   return MANAGEMENT_PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
@@ -107,25 +118,67 @@ const routes = [
     path: '/dashboard',
     name: 'vendor-dashboard',
     component: VendorDashboard,
-    meta: { requiresAuth: true, roles: ['community'] },
+    meta: COMMUNITY_AUTH_META,
+  },
+  {
+    path: '/vendor/manage/bookings',
+    name: 'vendor-manage-bookings',
+    component: VendorManageBookingsPage,
+    meta: COMMUNITY_AUTH_META,
+  },
+  {
+    path: '/vendor/manage/event-passes',
+    name: 'vendor-manage-event-passes',
+    component: VendorManageEventPassesPage,
+    meta: COMMUNITY_AUTH_META,
+  },
+  {
+    path: '/vendor/manage/items',
+    name: 'vendor-manage-items',
+    component: VendorManageItemsPage,
+    meta: COMMUNITY_AUTH_META,
+  },
+  {
+    path: '/vendor/manage/customer-reservations',
+    name: 'vendor-manage-customer-reservations',
+    component: VendorManageCustomerReservationsPage,
+    meta: COMMUNITY_AUTH_META,
+  },
+  {
+    path: '/my-reservations',
+    name: 'my-reservations',
+    component: MyReservationsPage,
+    meta: COMMUNITY_AUTH_META,
+  },
+  {
+    path: '/vendor/insights',
+    name: 'vendor-insights',
+    component: VendorInsightsPage,
+    meta: COMMUNITY_AUTH_META,
+  },
+  {
+    path: '/vendor/payment-history',
+    name: 'vendor-payment-history',
+    component: VendorPaymentHistoryPage,
+    meta: COMMUNITY_AUTH_META,
   },
   {
     path: '/profile',
     name: 'vendor-profile',
     component: VendorProfile,
-    meta: { requiresAuth: true, roles: ['community'] },
+    meta: COMMUNITY_AUTH_META,
   },
   {
     path: '/dashboard/checkout/:bookingId',
     name: 'vendor-checkout',
     component: VendorCheckoutPage,
-    meta: { requiresAuth: true, roles: ['community'] },
+    meta: COMMUNITY_AUTH_META,
   },
   {
     path: '/vendor-booking',
     name: 'vendor-booking',
     component: Registration,
-    meta: { requiresAuth: true, roles: ['community'] },
+    meta: COMMUNITY_AUTH_META,
   },
   {
     path: '/organizer/verify-booking/:bookingId',
@@ -180,6 +233,14 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
+
+  // Legacy dashboard section hashes → discrete routes (bookmarks / old links).
+  if (to.path === '/dashboard' && to.hash) {
+    const legacyPath = resolveVendorDashboardLegacyHash(to.hash);
+    if (legacyPath) {
+      return { path: legacyPath, replace: true };
+    }
+  }
 
   if (isManagementProtectedRoute(to.path) && auth.token && auth.user && !isManagementRole(auth)) {
     return homeRedirectFor(auth, to.path);

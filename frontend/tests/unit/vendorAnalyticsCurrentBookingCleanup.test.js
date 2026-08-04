@@ -30,7 +30,7 @@ describe('vendor analytics current-booking card cleanup', () => {
     assert.equal(analyticsSource.includes(":bookings="), false);
   });
 
-  it('keeps My Bookings as the primary booking details entry point', () => {
+  it('keeps a compact booking summary and details entry on the slim dashboard', () => {
     assert.equal(dashboardSource.includes('data-testid="my-bookings-root"'), true);
     assert.equal(dashboardSource.includes('data-testid="booking-view-details"'), true);
     assert.equal(dashboardSource.includes('openBookingDetails'), true);
@@ -38,19 +38,22 @@ describe('vendor analytics current-booking card cleanup', () => {
     assert.equal(dashboardSource.includes(':bookings="validBookings"'), false);
     assert.equal(dashboardSource.includes('@view-booking="openBookingDetails"'), false);
     assert.equal(dashboardSource.includes('vendor-current-booking-status-card'), false);
-    assert.equal(dashboardSource.includes('View insights'), true);
+    assert.equal(dashboardSource.includes('VendorDashboardFocus'), true);
   });
 
-  it('keeps payment history behind progressive disclosure', () => {
-    assert.equal(dashboardSource.includes('hasPaymentHistoryEntry'), true);
-    assert.equal(dashboardSource.includes('showReceipts'), true);
-    assert.equal(dashboardSource.includes('Payment history'), true);
-    assert.equal(dashboardSource.includes('v-if="hasPaymentHistoryEntry"'), true);
-    assert.equal(
-      /VendorHistoryReceipts[\s\S]*v-else/.test(dashboardSource)
-        || dashboardSource.includes('v-else\n          :records="paymentRecords"')
-        || dashboardSource.includes('<VendorHistoryReceipts\n          v-else'),
-      true,
-    );
+  it('does not mount secondary workspaces or chip navigation on the slim dashboard', () => {
+    assert.equal(dashboardSource.includes('vendor-dashboard-section-nav'), false);
+    assert.equal(dashboardSource.includes('VENDOR_DASHBOARD_SECTION_LINKS'), false);
+    assert.equal(dashboardSource.includes('VendorItemManager'), false);
+    assert.equal(dashboardSource.includes('VendorItemReservationsPanel'), false);
+    assert.equal(dashboardSource.includes('MyItemReservationsPanel'), false);
+    assert.equal(dashboardSource.includes('VendorEventPassesPanel'), false);
+    assert.equal(dashboardSource.includes('VendorBusinessProfileManager'), false);
+    assert.equal(dashboardSource.includes('VendorAnalyticsDashboard'), false);
+    assert.equal(dashboardSource.includes('VendorHistoryReceipts'), false);
+    assert.equal(dashboardSource.includes('fetchVendorInsights'), false);
+    assert.equal(dashboardSource.includes('fetchPaymentHistory'), false);
+    assert.equal(dashboardSource.includes('/vendor/analytics/me'), false);
+    assert.equal(dashboardSource.includes('/vendor/history-receipts'), false);
   });
 });

@@ -6,9 +6,9 @@
   >
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
       <div>
-        <h2 class="text-2xl font-extrabold text-ink-900">Item Preparation</h2>
+        <h2 class="text-2xl font-extrabold text-ink-900">My Items</h2>
         <p class="text-base text-ink-500 leading-relaxed">
-          Prepare item previews here. Active items may appear publicly after your booking is approved.
+          Prepare items you plan to bring. Active items may appear publicly after your booking is approved.
         </p>
       </div>
       <div class="flex flex-wrap gap-2">

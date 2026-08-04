@@ -68,7 +68,7 @@ export const VENDOR_ONBOARDING_COPY = {
   active: {
     title: 'Your vendor workspace is active',
     message:
-      'Your booking has been approved. Manage your listings, receipts, and event passes from this dashboard.',
+      'Your booking has been approved. Use Manage for listings and passes, and Account for receipts and insights.',
     tone: 'success',
   },
 };

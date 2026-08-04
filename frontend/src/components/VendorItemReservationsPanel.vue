@@ -6,7 +6,7 @@
   >
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
       <div>
-        <h2 class="text-2xl font-extrabold text-ink-900">Item Reservations</h2>
+        <h2 class="text-2xl font-extrabold text-ink-900">Customer Reservations</h2>
         <p class="text-base text-ink-500 leading-relaxed">
           Track holds on your listed items. Mark collected when the item is handed over in person.
         </p>

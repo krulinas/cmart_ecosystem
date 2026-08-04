@@ -57,6 +57,23 @@ export const VENDOR_DASHBOARD_LINK = {
   testId: 'nav-vendor-dashboard',
 };
 
+/** Vendor — booth operations grouped under Manage */
+export const VENDOR_MANAGE_MENU = {
+  id: 'manage',
+  label: 'Manage',
+  testId: 'nav-manage-menu',
+  items: [
+    { label: 'My Bookings', to: '/vendor/manage/bookings', testId: 'nav-manage-bookings' },
+    { label: 'Event Passes', to: '/vendor/manage/event-passes', testId: 'nav-manage-event-passes' },
+    { label: 'My Items', to: '/vendor/manage/items', testId: 'nav-manage-items' },
+    {
+      label: 'Customer Reservations',
+      to: '/vendor/manage/customer-reservations',
+      testId: 'nav-manage-customer-reservations',
+    },
+  ],
+};
+
 /** Vendor — public exploration grouped under one menu */
 export const VENDOR_EXPLORE_MENU = {
   id: 'explore',
@@ -66,6 +83,7 @@ export const VENDOR_EXPLORE_MENU = {
     { label: 'Carboot Preview', to: '/marketplace', exact: true, testId: 'nav-carboot-preview' },
     { label: 'Community', to: '/community', exact: true, testId: 'nav-community' },
     { label: 'Events', to: '/calendar', testId: 'nav-events' },
+    { label: 'My Reservations', to: '/my-reservations', testId: 'nav-my-reservations' },
   ],
 };
 
@@ -76,25 +94,39 @@ export const VENDOR_ACCOUNT_MENU = {
   testId: 'nav-account-menu',
   items: [
     { label: 'Business Profile', to: '/profile', testId: 'nav-business-profile' },
+    { label: 'Payment History', to: '/vendor/payment-history', testId: 'nav-payment-history' },
+    { label: 'Insights', to: '/vendor/insights', testId: 'nav-insights' },
   ],
 };
 
 /**
  * @deprecated Flat list kept for backwards compatibility in tests/helpers.
- * Prefer VENDOR_DASHBOARD_LINK + VENDOR_EXPLORE_MENU + VENDOR_ACCOUNT_MENU.
+ * Prefer VENDOR_DASHBOARD_LINK + VENDOR_MANAGE_MENU + VENDOR_EXPLORE_MENU + VENDOR_ACCOUNT_MENU.
  */
 export const VENDOR_LINKS = [
   VENDOR_DASHBOARD_LINK,
+  ...VENDOR_MANAGE_MENU.items,
   ...VENDOR_EXPLORE_MENU.items,
   ...VENDOR_ACCOUNT_MENU.items,
 ];
 
-/** In-dashboard section quick links (anchor scroll targets on /dashboard) */
-export const VENDOR_DASHBOARD_SECTION_LINKS = [
-  { label: 'My Bookings', targetId: 'vendor-my-bookings', testId: 'dash-nav-bookings' },
-  { label: 'Event Passes', targetId: 'vendor-event-passes', testId: 'dash-nav-passes' },
-  { label: 'Item Preparation', targetId: 'vendor-reuse-listings', testId: 'dash-nav-item-prep' },
-  { label: 'Item Reservations', targetId: 'vendor-item-reservations', testId: 'dash-nav-item-reservations' },
-  { label: 'My Reservations', targetId: 'my-item-reservations', testId: 'dash-nav-my-reservations' },
-  { label: 'Business Profile', targetId: 'vendor-business-profile', testId: 'dash-nav-profile' },
-];
+/**
+ * Legacy in-dashboard section hashes → discrete routes (Option C IA).
+ * Kept for bookmarks and older links; prefer the path values directly in new code.
+ */
+export const VENDOR_DASHBOARD_LEGACY_HASH_REDIRECTS = {
+  'vendor-my-bookings': '/vendor/manage/bookings',
+  'vendor-event-passes': '/vendor/manage/event-passes',
+  'vendor-reuse-listings': '/vendor/manage/items',
+  'vendor-item-reservations': '/vendor/manage/customer-reservations',
+  'my-item-reservations': '/my-reservations',
+  'vendor-business-profile': '/profile',
+  'vendor-analytics': '/vendor/insights',
+  'vendor-history-receipts': '/vendor/payment-history',
+};
+
+/**
+ * @deprecated Removed with chip-nav IA. Prefer VENDOR_MANAGE_MENU / discrete routes.
+ * Retained empty so accidental imports do not crash; do not reintroduce chip navigation.
+ */
+export const VENDOR_DASHBOARD_SECTION_LINKS = [];

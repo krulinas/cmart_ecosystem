@@ -5,7 +5,7 @@
     <div class="max-w-3xl mx-auto py-10 px-4 sm:px-6 space-y-6">
       <div class="flex items-center gap-3">
         <router-link
-          to="/dashboard#vendor-my-bookings"
+          to="/vendor/manage/bookings"
           class="inline-flex items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 py-2 text-sm font-semibold text-ink-700 hover:bg-ink-50"
         >
           ← Back to My Bookings
@@ -26,7 +26,7 @@
 
       <div v-else-if="loadError" class="rounded-3xl border border-rose-200 bg-rose-50/70 p-8 text-center">
         <p class="text-sm font-semibold text-rose-900">{{ loadError }}</p>
-        <router-link to="/dashboard#vendor-my-bookings" class="mt-4 inline-flex ml-btn-primary text-sm">
+        <router-link to="/vendor/manage/bookings" class="mt-4 inline-flex ml-btn-primary text-sm">
           Back to My Bookings
         </router-link>
       </div>
@@ -40,7 +40,7 @@
         <h2 class="mt-4 text-xl font-extrabold text-emerald-900">Payment successful. Your vendor pass is now unlocked.</h2>
         <p class="mt-2 text-sm text-emerald-800">Redirecting you back to My Bookings…</p>
         <router-link
-          to="/dashboard#vendor-my-bookings"
+          to="/vendor/manage/bookings"
           class="mt-6 inline-flex ml-btn-primary text-sm"
           data-testid="vendor-checkout-back-to-bookings"
         >
@@ -132,7 +132,7 @@
         >
           <p class="font-semibold">Payment is not available for this booking.</p>
           <p class="mt-1">{{ payBlockedMessage }}</p>
-          <router-link to="/dashboard#vendor-my-bookings" class="mt-4 inline-flex ml-btn-ghost text-sm">
+          <router-link to="/vendor/manage/bookings" class="mt-4 inline-flex ml-btn-ghost text-sm">
             Back to My Bookings
           </router-link>
         </section>
@@ -211,7 +211,7 @@ const loadBooking = async () => {
     const { data } = await api.get(`/vendor/bookings/${bookingId.value}`);
     booking.value = data;
     if (!canVendorProceedToDemoPayment(data) && data.invoice?.payment_status === 'Paid') {
-      router.replace('/dashboard#vendor-my-bookings');
+      router.replace('/vendor/manage/bookings');
       toast.info('This booking is already paid.');
     }
   } catch (error) {
@@ -234,7 +234,7 @@ const submitPayment = async () => {
     success.value = true;
     toast.success(data.message || 'Payment successful. Your vendor pass is now unlocked.');
     setTimeout(() => {
-      router.push('/dashboard#vendor-my-bookings');
+      router.push('/vendor/manage/bookings');
     }, 2500);
   } catch (error) {
     toast.error(error.response?.data?.message || 'Unable to complete demo payment.');

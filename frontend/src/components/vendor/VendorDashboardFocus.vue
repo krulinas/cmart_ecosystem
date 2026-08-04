@@ -322,19 +322,16 @@ const primaryAction = computed(() => {
     };
   }
 
-  if (payment.complete && payment.canViewReceipt) {
+  // Approved + payment complete: pass unlock aligns with existing WhatsApp/pass rules.
+  // Navigate to Event Passes without fetching the full pass list on the dashboard.
+  if (
+    booking.approval_status === 'Approved'
+    && (payment.complete || isBookingPaymentPaid(booking))
+  ) {
     return {
-      type: 'view-document',
+      type: 'view-pass',
       bookingId: booking.id,
-      label: 'View Receipt',
-    };
-  }
-
-  if (payment.complete && payment.canViewInvoice) {
-    return {
-      type: 'view-document',
-      bookingId: booking.id,
-      label: 'View Invoice',
+      label: 'View Event Pass',
     };
   }
 

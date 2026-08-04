@@ -367,6 +367,7 @@ import {
   COMMUNITY_BECOME_VENDOR_CTA,
   COMMUNITY_ACCOUNT_MENU,
   VENDOR_DASHBOARD_LINK,
+  VENDOR_MANAGE_MENU,
   VENDOR_EXPLORE_MENU,
   VENDOR_ACCOUNT_MENU,
 } from '../../config/navigation';
@@ -399,7 +400,7 @@ const isCommunityVisitorNav = computed(
 );
 
 const vendorDashboardLink = VENDOR_DASHBOARD_LINK;
-const vendorMenus = [VENDOR_EXPLORE_MENU, VENDOR_ACCOUNT_MENU];
+const vendorMenus = [VENDOR_MANAGE_MENU, VENDOR_EXPLORE_MENU, VENDOR_ACCOUNT_MENU];
 const communityPrimaryLinks = COMMUNITY_PRIMARY_LINKS;
 const communityExploreMenu = COMMUNITY_EXPLORE_MENU;
 const communityBecomeVendorCta = COMMUNITY_BECOME_VENDOR_CTA;
