@@ -7,7 +7,6 @@
       @retry="fetchVendorInsights"
       @edit-profile="router.push('/profile')"
       @manage-reuse="router.push('/vendor/manage/items')"
-      @close="router.push('/dashboard')"
     />
   </VendorPageShell>
 </template>

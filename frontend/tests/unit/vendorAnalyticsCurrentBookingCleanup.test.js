@@ -56,4 +56,20 @@ describe('vendor analytics current-booking card cleanup', () => {
     assert.equal(dashboardSource.includes('/vendor/analytics/me'), false);
     assert.equal(dashboardSource.includes('/vendor/history-receipts'), false);
   });
+
+  it('does not expose vendor Insights CSV/JSON export or Close controls', () => {
+    assert.equal(analyticsSource.includes('Export CSV'), false);
+    assert.equal(analyticsSource.includes('Download JSON'), false);
+    assert.equal(analyticsSource.includes("$emit('close')"), false);
+    assert.equal(analyticsSource.includes(", 'close'"), false);
+    assert.equal(analyticsSource.includes("'close']"), false);
+    assert.equal(analyticsSource.includes('exportReport'), false);
+    assert.equal(analyticsSource.includes('exporting'), false);
+    assert.equal(analyticsSource.includes('downloadVendorReportCsv'), false);
+    assert.equal(analyticsSource.includes('downloadVendorReportJson'), false);
+    assert.equal(analyticsSource.includes('/vendor/analytics/report'), false);
+    assert.equal(analyticsSource.includes('vendorReport'), false);
+    assert.equal(analyticsSource.includes('data-testid="vendor-insights-refresh"'), true);
+    assert.equal(analyticsSource.includes('How to read these insights'), true);
+  });
 });

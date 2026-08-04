@@ -23,18 +23,15 @@
           Your bookings, payments, and reuse listings at a glance.
         </p>
       </div>
-      <div class="flex flex-wrap gap-2 shrink-0">
-        <button type="button" class="ml-btn-ghost min-h-[44px]" :disabled="loading || exporting" @click="$emit('retry')">
+      <div class="shrink-0">
+        <button
+          type="button"
+          class="ml-btn-ghost min-h-[44px]"
+          :disabled="loading"
+          data-testid="vendor-insights-refresh"
+          @click="$emit('retry')"
+        >
           {{ loading ? 'Refreshing…' : 'Refresh' }}
-        </button>
-        <button type="button" class="ml-btn-primary min-h-[44px]" :disabled="loading || exporting || loadError" @click="exportReport('csv')">
-          {{ exporting ? 'Exporting…' : 'Export CSV' }}
-        </button>
-        <button type="button" class="ml-btn-ghost min-h-[44px]" :disabled="loading || exporting || loadError" @click="exportReport('json')">
-          Download JSON
-        </button>
-        <button type="button" class="ml-btn-ghost min-h-[44px]" @click="$emit('close')">
-          Close
         </button>
       </div>
     </div>
@@ -189,10 +186,6 @@
 <script setup>
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Chart from 'chart.js/auto';
-import { useToast } from 'vue-toastification';
-import api from '../services/api';
-import { extractApiError } from '../utils/apiErrors';
-import { downloadVendorReportCsv, downloadVendorReportJson } from '../utils/vendorReport';
 import InfoHelpTip from './InfoHelpTip.vue';
 
 const props = defineProps({
@@ -201,10 +194,7 @@ const props = defineProps({
   loadError: { type: Boolean, default: false },
 });
 
-defineEmits(['retry', 'edit-profile', 'manage-reuse', 'close']);
-
-const toast = useToast();
-const exporting = ref(false);
+defineEmits(['retry', 'edit-profile', 'manage-reuse']);
 
 const bookingTrendCanvas = ref(null);
 const paymentTrendCanvas = ref(null);
@@ -392,25 +382,6 @@ const renderCharts = () => {
       },
       options: donutChartOptions,
     });
-  }
-};
-
-const exportReport = async (format) => {
-  exporting.value = true;
-  try {
-    const { data } = await api.get('/vendor/analytics/report');
-    if (format === 'csv') {
-      downloadVendorReportCsv(data);
-      toast.success('CSV report downloaded.');
-    } else {
-      downloadVendorReportJson(data);
-      toast.success('JSON report downloaded.');
-    }
-  } catch (error) {
-    console.error('Unable to export vendor report:', error);
-    toast.error(extractApiError(error));
-  } finally {
-    exporting.value = false;
   }
 };
 
