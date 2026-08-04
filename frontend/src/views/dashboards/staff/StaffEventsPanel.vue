@@ -140,7 +140,7 @@
             >
               Layout Management
             </button>
-            <button class="ml-btn-ghost text-sm text-rose-600" :disabled="deletingId === ev.id" @click="remove(ev.id)">
+            <button class="ml-btn-ghost text-sm text-rose-600" :disabled="deletingId === ev.id" @click="remove(ev)">
               {{ deletingId === ev.id ? 'Deleting…' : 'Delete' }}
             </button>
           </div>
@@ -214,6 +214,9 @@ const form = reactive(emptyForm());
 
 const extractApiError = (error) => {
   const data = error.response?.data;
+  if (data?.code === 'event_has_dependencies' || data?.error === 'event_has_dependencies') {
+    return 'This event already has bookings, analytics or report history and cannot be permanently deleted.';
+  }
   if (data?.error === 'event_operating_dates_locked_by_allocations') {
     return 'This event already has vendor bookings. Operating dates cannot be changed because existing bookings depend on them.';
   }
@@ -221,9 +224,34 @@ const extractApiError = (error) => {
     return Object.values(data.errors).flat().join(' ');
   }
   const message = data?.message || error.message || 'Request failed.';
-  return typeof message === 'string'
+  const text = typeof message === 'string'
     ? message.replace(/^\d{3}\s+[A-Za-z ]+:\s*/, '')
     : message;
+  // Never surface raw SQL / integrity constraint noise in the UI.
+  if (typeof text === 'string' && /SQLSTATE|Integrity constraint|1451|QueryException/i.test(text)) {
+    return 'Unable to complete this action. The event could not be permanently deleted.';
+  }
+  return text;
+};
+
+const closeEventInstead = async (event) => {
+  if (!event?.id) return;
+  if (event.status === 'Closed') {
+    toast.info('This event is already Closed.');
+    return;
+  }
+  const confirmed = window.confirm(
+    'This event cannot be permanently deleted. Set status to Closed instead?',
+  );
+  if (!confirmed) return;
+
+  try {
+    await api.put(`/carboot-events/${event.id}`, { status: 'Closed' });
+    toast.success('Event status set to Closed.');
+    await load();
+  } catch (error) {
+    toast.error(extractApiError(error));
+  }
 };
 
 const buildFormData = () => {
@@ -376,7 +404,8 @@ const save = async () => {
   }
 };
 
-const remove = async (id) => {
+const remove = async (event) => {
+  const id = event?.id ?? event;
   if (!window.confirm('Delete this event? This cannot be undone.')) return;
 
   deletingId.value = id;
@@ -385,8 +414,11 @@ const remove = async (id) => {
     toast.success('Event deleted.');
     await load();
   } catch (error) {
-    console.error('Failed to delete event:', error);
+    const code = error.response?.data?.code || error.response?.data?.error;
     toast.error(extractApiError(error));
+    if (code === 'event_has_dependencies' && event && typeof event === 'object') {
+      await closeEventInstead(event);
+    }
   } finally {
     deletingId.value = null;
   }

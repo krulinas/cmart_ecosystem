@@ -71,7 +71,8 @@ class EventAnalyticsService
                 'modes' => EventAnalyticsDataSourceService::MODES,
                 'selected_mode' => $mode,
                 'active_batch_id' => $this->activeImportBatch($event)?->id,
-                'undo_available' => $this->undoAvailable($event),
+                'permanent_delete_supported' => true,
+                'soft_lifecycle_deprecated' => true,
             ],
         ];
     }
@@ -123,14 +124,27 @@ class EventAnalyticsService
                 'survey' => $overview['survey']['sections']['operations'] ?? null,
                 'survey_status' => $overview['survey']['status'] ?? 'unavailable',
             ],
-            'data-quality', 'data_quality' => $base + [
-                'section' => 'data-quality',
-                'data_readiness' => $overview['data_readiness'],
-                'survey' => $overview['survey']['sections']['data_quality'] ?? null,
+            'survey-results', 'survey_results' => $base + [
+                'section' => 'survey-results',
+                'survey' => $overview['survey']['sections'] ?? null,
                 'survey_status' => $overview['survey']['status'] ?? 'unavailable',
+                'respondent_count' => $overview['survey']['respondent_count'] ?? 0,
+            ],
+            'vendor-comments', 'vendor_comments', 'comments' => $base + [
+                'section' => 'vendor-comments',
+                'survey' => $overview['survey']['sections']['experience'] ?? null,
+                'qualitative' => $overview['survey']['sections']['experience']['qualitative_comments']
+                    ?? $overview['survey']['sections']['experience']['comments_and_suggestions']
+                    ?? null,
+                'survey_status' => $overview['survey']['status'] ?? 'unavailable',
+                'operational_feedback' => $overview['operational']['sections']['feedback'] ?? null,
+            ],
+            'data-sources', 'data_sources', 'data-quality', 'data_quality' => $base + [
+                'section' => 'data-sources',
+                'data_readiness' => $overview['data_readiness'],
                 'latest_import' => $this->latestImportSummary($event),
-                'import_history' => $overview['import_history'] ?? [],
-                'analytics_source_mode' => $overview['analytics_source_mode'] ?? EventAnalyticsDataSourceService::MODE_COMBINED,
+                'analytics_source_mode' => $overview['analytics_source_mode']
+                    ?? EventAnalyticsDataSourceService::MODE_SYSTEM_ONLY,
                 'data_source_manager' => $overview['data_source_manager'] ?? null,
             ],
             default => throw new RuntimeException('Unknown analytics section.'),
@@ -168,10 +182,11 @@ class EventAnalyticsService
     {
         return [
             'status' => 'excluded',
+            'state' => 'excluded',
             'degraded' => false,
             'available' => false,
             'included_in_analytics' => false,
-            'message' => 'CSV survey data is excluded by the current analytics source mode.',
+            'message' => 'Survey CSV is excluded by the current source mode. System Data remains stored.',
             'respondent_count' => 0,
             'sections' => [],
             'unavailable_metrics' => ['vendor_survey'],
@@ -181,35 +196,20 @@ class EventAnalyticsService
     private function sourceMode(CarbootEvent $event): string
     {
         if (! Schema::hasColumn('carboot_events', 'analytics_source_mode')) {
-            return EventAnalyticsDataSourceService::MODE_COMBINED;
+            return EventAnalyticsDataSourceService::MODE_SYSTEM_ONLY;
         }
 
-        $mode = (string) ($event->analytics_source_mode ?: EventAnalyticsDataSourceService::MODE_COMBINED);
+        $mode = (string) ($event->analytics_source_mode ?: EventAnalyticsDataSourceService::MODE_SYSTEM_ONLY);
 
         return in_array($mode, EventAnalyticsDataSourceService::MODES, true)
             ? $mode
-            : EventAnalyticsDataSourceService::MODE_COMBINED;
+            : EventAnalyticsDataSourceService::MODE_SYSTEM_ONLY;
     }
 
     private function undoAvailable(CarbootEvent $event): bool
     {
-        $active = $this->activeImportBatch($event);
-        if (! $active) {
-            return false;
-        }
-
-        return RawSurveyUpload::query()
-            ->where('carboot_event_id', $event->id)
-            ->where('schema_name', $active->schema_name)
-            ->where('schema_version', $active->schema_version)
-            ->where('id', '<', $active->id)
-            ->whereIn('status', [
-                RawSurveyUpload::STATUS_SUPERSEDED,
-                RawSurveyUpload::STATUS_EXCLUDED,
-                RawSurveyUpload::STATUS_COMPLETED,
-                RawSurveyUpload::STATUS_COMPLETED_WITH_ERRORS,
-            ])
-            ->exists();
+        // Soft undo lifecycle is deprecated; permanent delete + re-upload is the recovery path.
+        return false;
     }
 
     /**
@@ -267,10 +267,11 @@ class EventAnalyticsService
 
         if ($responseCount === 0) {
             return [
-                'status' => 'empty',
+                'status' => 'missing_source',
+                'state' => 'missing_source',
                 'degraded' => false,
                 'available' => false,
-                'message' => 'No valid vendor survey responses imported for this event.',
+                'message' => 'No CSV data is connected to this event.',
                 'respondent_count' => 0,
                 'import_batch_id' => $latestBatch?->id,
                 'sections' => [],
@@ -303,19 +304,23 @@ class EventAnalyticsService
                     'respondent_id',
                     'source_row_number',
                     'product_categories',
+                    'product_categories_other_text',
                     'item_conditions',
                     'has_difficulty',
                     'difficulty_details',
                     'event_info_sources',
+                    'event_info_sources_other_text',
                     'items_sold_band',
                     'gross_sales_band',
                     'unsold_item_actions',
                     'sales_purpose',
                     'experience_rating',
                     'improvement_areas',
+                    'improvement_areas_other_text',
                     'comments_and_suggestions',
                     'supporting_activity_attracted_visitors',
                     'supporting_activity_impacts',
+                    'supporting_activity_impacts_other_text',
                 ]))
                 ->all();
 
@@ -462,9 +467,16 @@ class EventAnalyticsService
                 'label' => 'Approved bookings',
                 'value' => $includeSystem ? ($pipeline['approved_count'] ?? null) : null,
                 'source' => 'operational',
-                'display' => $includeSystem
-                    ? (string) ($pipeline['approved_count'] ?? '—')
-                    : 'Excluded',
+                'state' => ! $includeSystem
+                    ? 'excluded'
+                    : (($operational['available'] ?? false)
+                        ? (((int) ($pipeline['approved_count'] ?? 0) === 0) ? 'zero' : 'available')
+                        : 'unavailable'),
+                'display' => ! $includeSystem
+                    ? 'Bookings excluded by source mode'
+                    : (! ($operational['available'] ?? false)
+                        ? 'Booking data unavailable'
+                        : (string) ($pipeline['approved_count'] ?? 0)),
             ],
             [
                 'key' => 'collected_fees',
@@ -472,26 +484,44 @@ class EventAnalyticsService
                 'value' => $includeSystem ? ($payments['collected'] ?? null) : null,
                 'source' => 'operational',
                 'note' => 'Platform fees, not vendor gross sales',
-                'display' => $includeSystem
-                    ? (string) ($payments['collected'] ?? '—')
-                    : 'Excluded',
+                'state' => ! $includeSystem
+                    ? 'excluded'
+                    : (($operational['available'] ?? false) ? 'available' : 'unavailable'),
+                'display' => ! $includeSystem
+                    ? 'Payments excluded by source mode'
+                    : (! ($operational['available'] ?? false)
+                        ? 'Payment data unavailable'
+                        : (string) ($payments['collected'] ?? 0)),
             ],
             [
                 'key' => 'survey_respondents',
                 'label' => 'Survey respondents',
-                'value' => $includeSurvey ? ($survey['respondent_count'] ?? 0) : 0,
+                'value' => $includeSurvey ? ($survey['respondent_count'] ?? 0) : null,
                 'source' => 'survey',
+                'state' => ! $includeSurvey
+                    ? 'excluded'
+                    : match ($survey['status'] ?? '') {
+                        'ready' => ((int) ($survey['respondent_count'] ?? 0) === 0) ? 'zero' : 'available',
+                        'missing_source', 'empty' => 'missing_source',
+                        'excluded' => 'excluded',
+                        'degraded' => 'degraded',
+                        default => 'unavailable',
+                    },
                 'display' => ! $includeSurvey
-                    ? 'Excluded'
-                    : ((($survey['status'] ?? '') === 'ready')
-                        ? (string) ($survey['respondent_count'] ?? 0)
-                        : 'Unavailable'),
+                    ? 'Survey excluded by source mode'
+                    : match ($survey['status'] ?? '') {
+                        'ready' => (string) ($survey['respondent_count'] ?? 0),
+                        'missing_source', 'empty' => 'No survey CSV connected',
+                        'degraded' => 'Survey analytics unavailable',
+                        default => 'Survey data unavailable',
+                    },
             ],
             [
                 'key' => 'survey_status',
                 'label' => 'Survey analytics status',
                 'value' => $includeSurvey ? ($survey['status'] ?? 'unavailable') : 'excluded',
                 'source' => 'survey',
+                'state' => ! $includeSurvey ? 'excluded' : ($survey['status'] ?? 'unavailable'),
             ],
         ];
     }

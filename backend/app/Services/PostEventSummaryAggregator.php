@@ -115,14 +115,14 @@ class PostEventSummaryAggregator
     private function analyticsSourceMode(CarbootEvent $event): string
     {
         if (! Schema::hasColumn('carboot_events', 'analytics_source_mode')) {
-            return 'combined';
+            return 'system_only';
         }
 
-        $mode = (string) ($event->analytics_source_mode ?: 'combined');
+        $mode = (string) ($event->analytics_source_mode ?: 'system_only');
 
         return in_array($mode, ['combined', 'system_only', 'csv_only'], true)
             ? $mode
-            : 'combined';
+            : 'system_only';
     }
 
     private function assertCoreSchema(): void
@@ -364,16 +364,23 @@ class PostEventSummaryAggregator
                 'experience_rating',
                 'sales_purpose',
                 'product_categories',
+                'product_categories_other_text',
+                'difficulty_details',
+                'event_info_sources_other_text',
+                'improvement_areas_other_text',
+                'comments_and_suggestions',
+                'supporting_activity_impacts_other_text',
             ]);
 
         if ($responses->isEmpty()) {
             $dataAvailability['vendor_survey'] = 'empty';
-            $dataAvailability['vendor_survey_note'] = 'No valid vendor survey responses imported for this event.';
+            $dataAvailability['vendor_survey_note'] = 'No CSV data is connected to this event.';
 
             return [
                 'available' => false,
                 'respondent_count' => 0,
                 'schema_name' => SurveySchema::NAME,
+                'state' => 'missing_source',
                 'note' => 'Survey respondents do not represent all vendors unless response rate is known.',
             ];
         }
@@ -392,19 +399,104 @@ class PostEventSummaryAggregator
             ->filter(fn ($count, $key) => $key !== null && $key !== '')
             ->all();
 
+        $qualitative = $this->qualitativeCommentGroups($responses);
+
         return [
             'available' => true,
+            'state' => 'available',
             'schema_name' => SurveySchema::NAME,
             'schema_version' => SurveySchema::VERSION,
             'respondent_count' => $n,
             'gross_sales_band_counts' => $bandCounts,
             'experience_rating_counts' => $experienceCounts,
             'sales_purpose_counts' => $purposeCounts,
+            'qualitative_comments' => $qualitative,
             'note' => 'Categorical survey aggregates only. Exact RM sales are not computed. Respondent-level rows are excluded.',
             'limitations' => [
                 'Describes responding vendors only.',
                 'Gross sales remain categorical bands.',
             ],
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, SurveyResponse>  $responses
+     * @return array<string, mixed>
+     */
+    private function qualitativeCommentGroups($responses): array
+    {
+        $nonSubstantive = [
+            'tiada', 'tiada komen', 'tiada cadangan', 'tidak ada', 'n/a', 'na', 'none', '-', '—',
+        ];
+
+        $isSubstantive = static function (?string $text) use ($nonSubstantive): bool {
+            $trimmed = trim((string) $text);
+            if ($trimmed === '') {
+                return false;
+            }
+            if (preg_match('/^[\s\p{P}]+$/u', $trimmed)) {
+                return false;
+            }
+
+            return ! in_array(mb_strtolower($trimmed), $nonSubstantive, true);
+        };
+
+        $groups = [
+            'operational_difficulties' => [],
+            'improvement_suggestions' => [],
+            'general_comments' => [],
+            'supporting_activity_impacts' => [],
+            'other_responses' => [],
+        ];
+
+        foreach ($responses as $row) {
+            if ($isSubstantive($row->difficulty_details)) {
+                $groups['operational_difficulties'][] = [
+                    'text' => mb_substr(trim((string) $row->difficulty_details), 0, 500),
+                    'source_question' => 'Operational difficulties',
+                ];
+            }
+            if ($isSubstantive($row->improvement_areas_other_text)) {
+                $groups['improvement_suggestions'][] = [
+                    'text' => mb_substr(trim((string) $row->improvement_areas_other_text), 0, 500),
+                    'source_question' => 'Improvement suggestions',
+                ];
+            }
+            if ($isSubstantive($row->comments_and_suggestions)) {
+                $groups['general_comments'][] = [
+                    'text' => mb_substr(trim((string) $row->comments_and_suggestions), 0, 500),
+                    'source_question' => 'General comments',
+                ];
+            }
+            if ($isSubstantive($row->supporting_activity_impacts_other_text)) {
+                $groups['supporting_activity_impacts'][] = [
+                    'text' => mb_substr(trim((string) $row->supporting_activity_impacts_other_text), 0, 500),
+                    'source_question' => 'Supporting-activity impacts',
+                ];
+            }
+            foreach ([
+                'product_categories_other_text' => 'Other product category',
+                'event_info_sources_other_text' => 'Other information source',
+            ] as $field => $label) {
+                if ($isSubstantive($row->{$field} ?? null)) {
+                    $groups['other_responses'][] = [
+                        'text' => mb_substr(trim((string) $row->{$field}), 0, 500),
+                        'source_question' => $label,
+                    ];
+                }
+            }
+        }
+
+        $substantiveCount = array_sum(array_map('count', $groups));
+        $actionableCount = count($groups['improvement_suggestions'])
+            + count($groups['operational_difficulties'])
+            + count($groups['supporting_activity_impacts']);
+
+        return [
+            'substantive_count' => $substantiveCount,
+            'actionable_suggestion_count' => $actionableCount,
+            'groups' => $groups,
+            'source' => 'Vendor Survey CSV',
         ];
     }
 }

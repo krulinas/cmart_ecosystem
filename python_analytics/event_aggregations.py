@@ -118,15 +118,86 @@ def aggregate_survey_records(
     )
 
     comments = []
+    qualitative_groups = {
+        "operational_difficulties": [],
+        "improvement_suggestions": [],
+        "general_comments": [],
+        "supporting_activity_impacts": [],
+        "other_responses": [],
+    }
+    NON_SUBSTANTIVE = {
+        "tiada",
+        "tiada komen",
+        "tiada cadangan",
+        "tidak ada",
+        "n/a",
+        "na",
+        "none",
+        "-",
+        "—",
+    }
+
+    def _is_substantive(value: Any) -> bool:
+        text = (value or "").strip() if isinstance(value, str) else ""
+        if not text:
+            return False
+        if all(ch.isspace() or (not ch.isalnum()) for ch in text):
+            return False
+        return text.lower() not in NON_SUBSTANTIVE
+
+    def _append_comment(group_key: str, text: str, source_question: str) -> None:
+        entry = {
+            "text": text[:500],
+            "source_question": source_question,
+        }
+        qualitative_groups[group_key].append(entry)
+        if group_key == "general_comments":
+            comments.append({"text": text[:500]})
+
     for r in records:
-        text = (r.get("comments_and_suggestions") or "").strip()
-        if text and text.lower() != "tiada":
-            comments.append(
-                {
-                    "respondent_id": r.get("respondent_id"),
-                    "text": text[:500],
-                }
+        if _is_substantive(r.get("difficulty_details")):
+            _append_comment(
+                "operational_difficulties",
+                str(r.get("difficulty_details")).strip(),
+                "Operational difficulties",
             )
+        if _is_substantive(r.get("improvement_areas_other_text")):
+            _append_comment(
+                "improvement_suggestions",
+                str(r.get("improvement_areas_other_text")).strip(),
+                "Improvement suggestions",
+            )
+        if _is_substantive(r.get("comments_and_suggestions")):
+            _append_comment(
+                "general_comments",
+                str(r.get("comments_and_suggestions")).strip(),
+                "General comments",
+            )
+        if _is_substantive(r.get("supporting_activity_impacts_other_text")):
+            _append_comment(
+                "supporting_activity_impacts",
+                str(r.get("supporting_activity_impacts_other_text")).strip(),
+                "Supporting-activity impacts",
+            )
+        if _is_substantive(r.get("product_categories_other_text")):
+            _append_comment(
+                "other_responses",
+                str(r.get("product_categories_other_text")).strip(),
+                "Other product category",
+            )
+        if _is_substantive(r.get("event_info_sources_other_text")):
+            _append_comment(
+                "other_responses",
+                str(r.get("event_info_sources_other_text")).strip(),
+                "Other information source",
+            )
+
+    substantive_count = sum(len(v) for v in qualitative_groups.values())
+    actionable_count = (
+        len(qualitative_groups["improvement_suggestions"])
+        + len(qualitative_groups["operational_difficulties"])
+        + len(qualitative_groups["supporting_activity_impacts"])
+    )
 
     answered_denominators = {
         "items_sold_band": sum(items_sold.values()),
@@ -215,7 +286,22 @@ def aggregate_survey_records(
                 "supporting_activity_impacts": _distribution(impact_counter, n),
                 "comments_and_suggestions": {
                     "substantive_count": len(comments),
-                    "items": comments[:50],
+                    "items": [c["text"] for c in comments[:50]],
+                },
+                "qualitative_comments": {
+                    "substantive_count": substantive_count,
+                    "actionable_suggestion_count": actionable_count,
+                    "groups": {
+                        key: value[:50] for key, value in qualitative_groups.items()
+                    },
+                    "source": "Vendor Survey CSV",
+                    "theme_summary": [
+                        {"label": "Operational difficulties", "count": len(qualitative_groups["operational_difficulties"])},
+                        {"label": "Improvement suggestions", "count": len(qualitative_groups["improvement_suggestions"])},
+                        {"label": "General comments", "count": len(qualitative_groups["general_comments"])},
+                        {"label": "Supporting-activity impacts", "count": len(qualitative_groups["supporting_activity_impacts"])},
+                        {"label": "Other responses", "count": len(qualitative_groups["other_responses"])},
+                    ],
                 },
             },
             "operations": {

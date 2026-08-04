@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class CarbootEvent extends Model
@@ -231,6 +232,15 @@ class CarbootEvent extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (self $event) {
+            if (
+                Schema::hasColumn('carboot_events', 'analytics_source_mode')
+                && ($event->analytics_source_mode === null || $event->analytics_source_mode === '')
+            ) {
+                $event->analytics_source_mode = self::ANALYTICS_MODE_SYSTEM_ONLY;
+            }
+        });
+
         static::deleting(function (self $event) {
             $event->loadMissing('images');
 

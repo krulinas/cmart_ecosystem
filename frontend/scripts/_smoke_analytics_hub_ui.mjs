@@ -85,13 +85,10 @@ try {
 
   const tabLabels = [
     'Overview',
-    'Revenue & Payments',
-    'Vendors & Sales',
-    'Items & Reuse',
-    'Experience',
+    'Survey Results',
+    'Vendor Comments',
     'Operations',
-    'Data Quality',
-    'Comments & Word Cloud',
+    'Data Sources',
   ];
   for (const label of tabLabels) {
     const btn = page.getByRole('button', { name: label });
@@ -103,21 +100,21 @@ try {
     note(`Tab loads: ${label}`, visible);
   }
 
-  await page.getByRole('button', { name: 'Data Quality' }).click();
+  await page.getByRole('button', { name: 'Data Sources' }).click();
   await page.waitForTimeout(400);
-  note('CSV import under Data Quality', await page.locator('[data-testid="survey-import-card"]').isVisible());
+  note('CSV source under Data Sources', await page.locator('[data-testid="current-csv-source"]').isVisible());
 
-  await page.getByRole('button', { name: 'Items & Reuse' }).click();
+  await page.getByRole('button', { name: 'Survey Results' }).click();
   await page.waitForTimeout(500);
   const itemsText = await page.locator('[data-testid="organizer-event-analytics-hub"]').innerText();
   note('No raw snake_case tidak_berkenaan', !itemsText.includes('tidak_berkenaan'));
-  note('Humanized Tidak berkenaan or empty survey state', itemsText.includes('Tidak berkenaan') || /No vendor survey/i.test(itemsText));
+  note('Humanized Tidak berkenaan or empty survey state', itemsText.includes('Tidak berkenaan') || /No CSV data|No vendor survey/i.test(itemsText));
 
-  await page.getByRole('button', { name: 'Revenue & Payments' }).click();
+  await page.getByRole('button', { name: 'Overview' }).click();
   await page.waitForTimeout(400);
   const revText = await page.locator('[data-testid="organizer-event-analytics-hub"]').innerText();
-  note('Revenue tab is event-scoped copy', /this event/i.test(revText) && /platform fees/i.test(revText));
-  note('Sales bands kept categorical note', /not converted to exact RM|Vendors & Sales/i.test(revText));
+  note('Overview is event-scoped copy', /this event/i.test(revText) && /platform/i.test(revText));
+  note('Sales bands kept categorical note', /not exact RM|categorical bands|platform/i.test(revText));
 
   const hasEvent6 = await page.locator('[data-testid="organizer-event-analytics-hub"] select option[value="6"]').count();
   if (hasEvent6) {

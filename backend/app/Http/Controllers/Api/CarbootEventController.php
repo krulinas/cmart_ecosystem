@@ -8,9 +8,11 @@ use App\Models\CarbootEvent;
 use App\Services\EventDayGenerator;
 use App\Services\EventPresenter;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
@@ -166,11 +168,124 @@ class CarbootEventController extends Controller
 
     public function destroy(CarbootEvent $carboot_event)
     {
-        $carboot_event->delete();
+        $dependencies = $this->eventDeletionDependencies($carboot_event);
+        $blocking = array_filter($dependencies, fn ($count) => $count > 0);
+
+        if ($blocking !== []) {
+            return response()->json([
+                'message' => 'This event cannot be permanently deleted because it already has operational or report records. Cancel or archive the event instead.',
+                'code' => 'event_has_dependencies',
+                'suggested_action' => 'set_status_closed',
+                'available_statuses' => self::STATUSES,
+                'dependencies' => $blocking,
+            ], 409);
+        }
+
+        try {
+            $carboot_event->delete();
+        } catch (QueryException $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'This event cannot be permanently deleted because it already has operational or report records. Cancel or archive the event instead.',
+                'code' => 'event_has_dependencies',
+                'suggested_action' => 'set_status_closed',
+                'available_statuses' => self::STATUSES,
+            ], 409);
+        } catch (Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'message' => 'Unable to delete this event. Please try again or set the event status to Closed.',
+                'code' => 'event_delete_failed',
+            ], 500);
+        }
 
         return response()->json([
             'message' => '200 OK: Carboot event deleted successfully.',
         ]);
+    }
+
+    /**
+     * Count foreign-key / operational dependencies that block permanent event deletion.
+     * Does not mutate or cascade-delete report requests, published reports, or bookings.
+     *
+     * @return array<string, int>
+     */
+    private function eventDeletionDependencies(CarbootEvent $event): array
+    {
+        $eventId = (int) $event->id;
+        $counts = [];
+
+        $checks = [
+            'report_requests' => fn () => Schema::hasTable('report_requests')
+                ? (int) DB::table('report_requests')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'generated_reports' => fn () => Schema::hasTable('generated_reports')
+                ? (int) DB::table('generated_reports')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'report_workflow_audits' => fn () => Schema::hasTable('report_workflow_audits')
+                ? (int) DB::table('report_workflow_audits')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'bookings' => fn () => Schema::hasTable('bookings')
+                ? (int) DB::table('bookings')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'invoices' => function () use ($eventId) {
+                if (! Schema::hasTable('invoices') || ! Schema::hasTable('bookings')) {
+                    return 0;
+                }
+
+                return (int) DB::table('invoices')
+                    ->whereIn('booking_id', function ($query) use ($eventId) {
+                        $query->select('id')
+                            ->from('bookings')
+                            ->where('carboot_event_id', $eventId);
+                    })
+                    ->count();
+            },
+            'item_reservations' => fn () => Schema::hasTable('item_reservations')
+                ? (int) DB::table('item_reservations')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'event_sites' => fn () => Schema::hasTable('event_sites')
+                ? (int) DB::table('event_sites')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'event_layout_rows' => fn () => Schema::hasTable('event_layout_rows')
+                ? (int) DB::table('event_layout_rows')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'event_days' => fn () => Schema::hasTable('event_days')
+                ? (int) DB::table('event_days')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'event_layout_audit_logs' => fn () => Schema::hasTable('event_layout_audit_logs')
+                ? (int) DB::table('event_layout_audit_logs')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'raw_survey_uploads' => fn () => Schema::hasTable('raw_survey_uploads')
+                ? (int) DB::table('raw_survey_uploads')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'survey_responses' => fn () => Schema::hasTable('survey_responses')
+                ? (int) DB::table('survey_responses')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'analytics_results' => fn () => Schema::hasTable('analytics_results')
+                ? (int) DB::table('analytics_results')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'feedbacks' => fn () => Schema::hasTable('feedbacks') && Schema::hasColumn('feedbacks', 'carboot_event_id')
+                ? (int) DB::table('feedbacks')->where('carboot_event_id', $eventId)->count()
+                : 0,
+            'registrations' => fn () => Schema::hasTable('event_user')
+                ? (int) DB::table('event_user')->where('carboot_event_id', $eventId)->count()
+                : 0,
+        ];
+
+        foreach ($checks as $key => $counter) {
+            try {
+                $counts[$key] = $counter();
+            } catch (Throwable $e) {
+                report($e);
+                // Treat unknown schema/query failure as a blocking dependency to avoid unsafe delete.
+                $counts[$key] = 1;
+            }
+        }
+
+        return $counts;
     }
 
     /**

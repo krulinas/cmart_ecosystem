@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Support\SurveySchema;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -24,7 +25,8 @@ class SurveyImportService
     ) {}
 
     /**
-     * Synchronous MVP import path (QUEUE_CONNECTION=sync environments).
+     * Validate-first CSV import. Destructive replacement occurs only after successful validation
+     * and explicit replace_existing confirmation.
      *
      * @throws DuplicateSurveyImportException
      * @throws SurveyReplacementRequiredException
@@ -40,7 +42,15 @@ class SurveyImportService
             throw new RuntimeException('Unable to checksum the survey CSV.');
         }
 
-        $existingSameFile = RawSurveyUpload::query()
+        $activeBatch = $this->activeBatchForEventSchema($event->id, SurveySchema::NAME, SurveySchema::VERSION);
+
+        // Byte-identical to the currently active CSV — keep existing dataset, no new rows.
+        if ($activeBatch && hash_equals((string) $activeBatch->sha256, $checksum)) {
+            throw new DuplicateSurveyImportException($activeBatch);
+        }
+
+        // Same checksum already kept as an active/completed dataset for this event+schema.
+        $existingKeeper = RawSurveyUpload::query()
             ->where('carboot_event_id', $event->id)
             ->where('schema_name', SurveySchema::NAME)
             ->where('schema_version', SurveySchema::VERSION)
@@ -49,8 +59,6 @@ class SurveyImportService
                 $query->whereIn('status', [
                     RawSurveyUpload::STATUS_COMPLETED,
                     RawSurveyUpload::STATUS_COMPLETED_WITH_ERRORS,
-                    RawSurveyUpload::STATUS_DUPLICATE,
-                    RawSurveyUpload::STATUS_SUPERSEDED,
                 ]);
                 if (Schema::hasColumn('raw_survey_uploads', 'is_active')) {
                     $query->orWhere('is_active', true);
@@ -59,22 +67,15 @@ class SurveyImportService
             ->orderBy('id')
             ->first();
 
-        if ($existingSameFile) {
-            $reportBatch = $existingSameFile;
-            if ($existingSameFile->duplicate_of_id) {
-                $reportBatch = RawSurveyUpload::query()->find($existingSameFile->duplicate_of_id)
-                    ?: $existingSameFile;
-            }
-            throw new DuplicateSurveyImportException($reportBatch);
+        if ($existingKeeper) {
+            throw new DuplicateSurveyImportException($existingKeeper);
         }
-
-        $activeBatch = $this->activeBatchForEventSchema($event->id, SurveySchema::NAME, SurveySchema::VERSION);
 
         if ($activeBatch && ! $replaceExisting) {
             throw new SurveyReplacementRequiredException($activeBatch);
         }
 
-        // Validate before mutating the active dataset when replacing.
+        // Validate completely before any mutation of the current dataset.
         $tempPath = $file->getRealPath();
         try {
             $preValidation = $this->python->validateSurveyCsv($tempPath, $file->getClientOriginalName());
@@ -129,12 +130,21 @@ class SurveyImportService
         $batch = RawSurveyUpload::query()->create($batchAttrs);
 
         try {
-            return $this->processBatch($batch, $activeBatch, $preValidation);
+            // Pass previous active batch for transactional total replacement after validation.
+            return $this->processBatch(
+                $batch,
+                $replaceExisting ? $activeBatch : null,
+                $preValidation,
+                $replaceExisting,
+            );
         } catch (Throwable $e) {
-            // Keep previous active dataset unchanged on failure.
-            if ($activeBatch) {
-                $activeBatch->refresh();
-            }
+            Log::warning('Survey import persistence failed after validation.', [
+                'carboot_event_id' => $event->id,
+                'batch_id' => $batch->id,
+                'error' => $e->getMessage(),
+            ]);
+            // Failed new batch must not leave a half-imported active dataset.
+            // Previous active batch (if any) remains untouched until processBatch succeeds.
             throw $e;
         }
     }
@@ -144,8 +154,9 @@ class SurveyImportService
      */
     public function processBatch(
         RawSurveyUpload $batch,
-        ?RawSurveyUpload $batchToSupersede = null,
+        ?RawSurveyUpload $batchToReplace = null,
         ?array $preValidation = null,
+        bool $totalReplace = false,
     ): RawSurveyUpload {
         $batch->update([
             'status' => RawSurveyUpload::STATUS_PROCESSING,
@@ -194,19 +205,33 @@ class SurveyImportService
             throw new RuntimeException('No valid survey rows were imported. The existing dataset was left unchanged.');
         }
 
+        $storageCleanup = [];
+
         try {
             DB::transaction(function () use (
                 $batch,
-                $batchToSupersede,
+                $batchToReplace,
+                $totalReplace,
                 $normalized,
                 $validation,
                 $validRows,
                 $totalRows,
                 $invalidRows,
-                $rowErrors
+                $rowErrors,
+                &$storageCleanup
             ) {
-                if ($batchToSupersede) {
-                    $this->supersedeBatch($batchToSupersede, $batch);
+                // Total replacement: purge previous CSV dataset only after validation succeeded,
+                // inside the same transaction that activates the new batch.
+                if ($totalReplace || $batchToReplace) {
+                    $storageCleanup = array_merge(
+                        $storageCleanup,
+                        $this->purgeOtherCsvBatchesInTransaction(
+                            (int) $batch->carboot_event_id,
+                            (string) $batch->schema_name,
+                            (string) $batch->schema_version,
+                            (int) $batch->id,
+                        ),
+                    );
                 }
 
                 SurveyResponse::query()->where('import_batch_id', $batch->id)->delete();
@@ -304,7 +329,70 @@ class SurveyImportService
             throw $e;
         }
 
+        foreach ($storageCleanup as $file) {
+            try {
+                Storage::disk($file['disk'])->delete($file['path']);
+            } catch (Throwable $e) {
+                Log::warning('Failed to delete replaced survey CSV file.', [
+                    'carboot_event_id' => $batch->carboot_event_id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return $batch->fresh();
+    }
+
+    /**
+     * Delete other CSV batches/responses for the event+schema, keeping $keepBatchId.
+     *
+     * @return list<array{disk: string, path: string}>
+     */
+    private function purgeOtherCsvBatchesInTransaction(
+        int $eventId,
+        string $schemaName,
+        string $schemaVersion,
+        int $keepBatchId,
+    ): array {
+        $batches = RawSurveyUpload::query()
+            ->where('carboot_event_id', $eventId)
+            ->where('schema_name', $schemaName)
+            ->where('schema_version', $schemaVersion)
+            ->where('id', '!=', $keepBatchId)
+            ->lockForUpdate()
+            ->get();
+
+        $storageCleanup = [];
+        $batchIds = $batches->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        if ($batchIds === []) {
+            return $storageCleanup;
+        }
+
+        $responseQuery = SurveyResponse::query()
+            ->where('carboot_event_id', $eventId)
+            ->whereIn('import_batch_id', $batchIds);
+
+        if (Schema::hasColumn('survey_responses', 'submission_source')) {
+            $responseQuery->where(function ($q) {
+                $q->where('submission_source', SurveyResponse::SOURCE_CSV_IMPORT)
+                    ->orWhereNull('submission_source');
+            });
+        }
+        $responseQuery->delete();
+
+        foreach ($batches as $old) {
+            if ($old->storage_disk && $old->storage_path) {
+                $storageCleanup[] = [
+                    'disk' => $old->storage_disk,
+                    'path' => $old->storage_path,
+                ];
+            }
+        }
+
+        RawSurveyUpload::query()->whereIn('id', $batchIds)->delete();
+
+        return $storageCleanup;
     }
 
     /**
@@ -339,33 +427,5 @@ class SurveyImportService
         }
 
         return $query->orderBy('id')->first();
-    }
-
-    private function supersedeBatch(RawSurveyUpload $previous, RawSurveyUpload $replacement): void
-    {
-        $attrs = [
-            'status' => RawSurveyUpload::STATUS_SUPERSEDED,
-        ];
-        if (Schema::hasColumn('raw_survey_uploads', 'is_active')) {
-            $attrs['is_active'] = false;
-        }
-        if (Schema::hasColumn('raw_survey_uploads', 'active_dedup_key')) {
-            $attrs['active_dedup_key'] = null;
-        }
-        if (Schema::hasColumn('raw_survey_uploads', 'superseded_at')) {
-            $attrs['superseded_at'] = now();
-        }
-        if (Schema::hasColumn('raw_survey_uploads', 'superseded_by_id')) {
-            $attrs['superseded_by_id'] = $replacement->id;
-        }
-        $previous->update($attrs);
-
-        if (Schema::hasColumn('survey_responses', 'is_active')) {
-            SurveyResponse::query()
-                ->where('import_batch_id', $previous->id)
-                ->update(['is_active' => false]);
-        } else {
-            SurveyResponse::query()->where('import_batch_id', $previous->id)->delete();
-        }
     }
 }

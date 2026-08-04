@@ -621,4 +621,37 @@ Answer in order. Do not implement until answered.
 
 ---
 
-*End of audit. No application code, database data, or runtime service was changed to produce this document.*
+## 20. Stakeholder decisions — locked
+
+Final product decisions locked for implementation (2026-08-04). Audit findings above remain historical; this section records the chosen recovery path.
+
+| ID | Decision |
+|---|---|
+| **D1** | New event default source mode is `system_only`. Organizer selection remains manual. |
+| **D2** | Available modes: `combined`, `system_only`, `csv_only`. |
+| **D3** | Empty `csv_only` is allowed and shows CSV onboarding (`No CSV data is connected to this event.` + Upload CTA). System Data stays stored but hidden. |
+| **D4** | “Delete CSV Data” is **permanent deletion** of CSV-imported responses, batch records, raw files, checksum twins, and CSV-derived analytics cache. Mode returns to `system_only`. No Undo/Restore/Archive. System Data and published report snapshots are preserved. |
+| **D5** | CSV replacement is validate-first, then total replacement (never append/merge). Failed validation keeps the old dataset. Successful replacement leaves only the new CSV. Mode is retained unless invalid. |
+| **D6** | CSV upload and source selection live under primary tab **Data Sources**. Overview shows **Add Survey Data** when no active CSV. **Data Quality** label removed. |
+| **D7** | Hub navigation is exactly five tabs: Overview · Survey Results · Vendor Comments · Operations · Data Sources. |
+| **D8** | New report drafts follow the same event, source mode, active System/CSV data, respondent count, quantitative analytics, qualitative comments, and provenance. Published snapshots remain immutable. |
+| **D9** | Direct vendor survey submission is out of scope for this recovery; keep future-ready model support; do not imply it exists in UI copy. |
+| **D10** | Vendor Comments show original substantive text, question grouping, simple themes, and actionable suggestions. No ML sentiment. Word cloud is optional/conditional. |
+
+**State transitions (locked):**
+
+```text
+New event → system_only
+system_only + upload CSV → keep manually selected mode; CSV becomes available
+combined + delete CSV → system_only
+csv_only + delete CSV → system_only
+any mode + successful total replacement → retain current mode
+csv_only + no CSV → onboarding state
+hard delete completed → same checksum becomes importable again
+```
+
+Soft exclude / archive / restore / undo are disconnected from organizer UX (organizer routes return 410 where applicable).
+
+---
+
+*End of audit document. Section 20 records locked decisions; subsequent implementation is source-only unless a separate runtime verification task is opened.*

@@ -290,12 +290,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/organizer/events/{event}/analytics/{section}', [OrganizerEventAnalyticsController::class, 'section']);
         Route::post('/organizer/events/{event}/analytics/recompute', [OrganizerEventAnalyticsController::class, 'recompute']);
         Route::put('/organizer/events/{event}/analytics/source-mode', [OrganizerEventAnalyticsDataSourceController::class, 'updateMode']);
-        Route::post('/organizer/events/{event}/survey-imports/undo', [OrganizerEventAnalyticsDataSourceController::class, 'undo']);
-        Route::post('/organizer/events/{event}/survey-imports/remove-from-analytics', [OrganizerEventAnalyticsDataSourceController::class, 'removeCsv']);
-        Route::post('/organizer/events/{event}/survey-imports/{batch}/activate', [OrganizerEventAnalyticsDataSourceController::class, 'activate']);
-        Route::post('/organizer/events/{event}/survey-imports/{batch}/exclude', [OrganizerEventAnalyticsDataSourceController::class, 'exclude']);
-        Route::post('/organizer/events/{event}/survey-imports/{batch}/archive', [OrganizerEventAnalyticsDataSourceController::class, 'archive']);
-        Route::post('/organizer/events/{event}/survey-imports/{batch}/restore', [OrganizerEventAnalyticsDataSourceController::class, 'restore']);
+        // Permanent CSV deletion (canonical only). Legacy soft-remove and soft lifecycle return 410.
+        Route::delete('/organizer/events/{event}/survey-imports/current', [OrganizerEventAnalyticsDataSourceController::class, 'destroyCurrent']);
+        Route::post('/organizer/events/{event}/survey-imports/remove-from-analytics', [OrganizerEventAnalyticsDataSourceController::class, 'removeCsv']); // deprecated 410 — never hard-deletes
+        Route::post('/organizer/events/{event}/survey-imports/undo', [OrganizerEventAnalyticsDataSourceController::class, 'undo']); // deprecated 410
+        Route::post('/organizer/events/{event}/survey-imports/{batch}/activate', [OrganizerEventAnalyticsDataSourceController::class, 'activate']); // deprecated 410
+        Route::post('/organizer/events/{event}/survey-imports/{batch}/exclude', [OrganizerEventAnalyticsDataSourceController::class, 'exclude']); // deprecated 410
+        Route::post('/organizer/events/{event}/survey-imports/{batch}/archive', [OrganizerEventAnalyticsDataSourceController::class, 'archive']); // deprecated 410
+        Route::post('/organizer/events/{event}/survey-imports/{batch}/restore', [OrganizerEventAnalyticsDataSourceController::class, 'restore']); // deprecated 410
         Route::get('/organizer/events/{event}/survey-imports', [OrganizerSurveyImportController::class, 'index']);
         Route::post('/organizer/events/{event}/survey-imports', [OrganizerSurveyImportController::class, 'store']);
         Route::get('/organizer/events/{event}/survey-imports/{batch}', [OrganizerSurveyImportController::class, 'show']);

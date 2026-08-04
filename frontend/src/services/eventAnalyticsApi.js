@@ -29,23 +29,14 @@ export const uploadSurveyImport = (eventId, file, { replaceExisting = false } = 
 export const setAnalyticsSourceMode = (eventId, mode) =>
   api.put(`/organizer/events/${eventId}/analytics/source-mode`, { mode });
 
-export const removeCsvFromAnalytics = (eventId) =>
-  api.post(`/organizer/events/${eventId}/survey-imports/remove-from-analytics`);
-
-export const activateSurveyImport = (eventId, batchId) =>
-  api.post(`/organizer/events/${eventId}/survey-imports/${batchId}/activate`);
-
-export const excludeSurveyImport = (eventId, batchId) =>
-  api.post(`/organizer/events/${eventId}/survey-imports/${batchId}/exclude`);
-
-export const archiveSurveyImport = (eventId, batchId) =>
-  api.post(`/organizer/events/${eventId}/survey-imports/${batchId}/archive`);
-
-export const restoreSurveyImport = (eventId, batchId) =>
-  api.post(`/organizer/events/${eventId}/survey-imports/${batchId}/restore`);
-
-export const undoSurveyImport = (eventId) =>
-  api.post(`/organizer/events/${eventId}/survey-imports/undo`);
+/**
+ * Permanent CSV deletion (canonical).
+ * Requires confirm_permanent_deletion — soft-exclude / remove-from-analytics is not accepted.
+ */
+export const deleteCurrentSurveyCsv = (eventId) =>
+  api.delete(`/organizer/events/${eventId}/survey-imports/current`, {
+    data: { confirm_permanent_deletion: true },
+  });
 
 export const listCarbootEventsForAnalytics = () => api.get('/carboot-events');
 

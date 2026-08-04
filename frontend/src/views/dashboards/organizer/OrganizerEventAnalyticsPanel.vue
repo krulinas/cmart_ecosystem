@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-4" data-testid="organizer-event-analytics-hub">
-    <!-- Compact event header -->
     <header class="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div class="min-w-0">
@@ -9,9 +8,10 @@
             {{ currentEvent?.title || 'Select an event' }}
           </h2>
           <p v-if="currentEvent" class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-600">
-            <span>Status: <strong class="text-ink-800">{{ currentEvent.status || '—' }}</strong></span>
+            <span>Status: <strong class="text-ink-800">{{ currentEvent.status || 'Unknown' }}</strong></span>
             <span>{{ formatDateRange(currentEvent.starts_at, currentEvent.ends_at) }}</span>
             <span v-if="overview?.computed_at">Updated {{ formatDate(overview.computed_at) }}</span>
+            <span v-if="sourceModeLabel">Source: <strong class="text-ink-800">{{ sourceModeLabel }}</strong></span>
           </p>
         </div>
 
@@ -29,7 +29,6 @@
             type="button"
             class="ml-btn-ghost text-sm"
             :disabled="!selectedEventId || loadingOverview"
-            :title="!selectedEventId ? 'Select an event first' : 'Refresh analytics for this event'"
             @click="refreshAll"
           >
             {{ loadingOverview ? 'Refreshing…' : 'Refresh' }}
@@ -38,7 +37,6 @@
             type="button"
             class="ml-btn-primary text-sm"
             :disabled="!selectedEventId"
-            :title="!selectedEventId ? 'Select an event first' : 'Open Report Centre with this event'"
             @click="goToReportCentre"
           >
             Generate Event Report
@@ -85,13 +83,13 @@
           </button>
         </nav>
 
-        <div
+        <p
           v-if="surveyDegraded"
           class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
         >
           Survey analytics temporarily unavailable.
           {{ overview?.survey?.message || 'Operational metrics below remain usable where available.' }}
-        </div>
+        </p>
 
         <p
           v-if="overview?.survey?.small_sample"
@@ -101,9 +99,22 @@
           (threshold {{ overview.survey.small_sample_threshold }}). Interpret percentages carefully.
         </p>
 
-        <!-- Overview (includes former Revenue & Payments) -->
+        <!-- Overview -->
         <section v-if="activeTab === 'overview'" class="space-y-3" data-testid="analytics-overview">
           <AnalyticsDataSourceBadge :sources="dataSources" compact />
+
+          <div
+            v-if="showAddSurveyCta"
+            class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-brand-200 bg-brand-50/40 px-4 py-3"
+          >
+            <div>
+              <p class="text-sm font-semibold text-ink-900">Add Survey Data</p>
+              <p class="text-xs text-ink-500">Connect a vendor post-event CSV to unlock Survey Results.</p>
+            </div>
+            <button type="button" class="ml-btn-primary text-sm" @click="setActiveTab('data-sources')">
+              Add Survey Data
+            </button>
+          </div>
 
           <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             <button
@@ -125,7 +136,6 @@
           </div>
 
           <div class="grid gap-3 lg:grid-cols-2">
-            <!-- Financial performance -->
             <div
               ref="financeSectionRef"
               class="rounded-xl border border-sky-100 bg-white p-3"
@@ -134,10 +144,10 @@
               <div class="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <h3 class="text-sm font-extrabold text-ink-900">Financial performance</h3>
-                  <p class="mt-0.5 text-xs text-ink-500">Platform fees for this event only</p>
+                  <p class="mt-0.5 text-xs text-ink-500">Platform booking revenue for this event only</p>
                 </div>
                 <div
-                  v-if="hasInvoices"
+                  v-if="systemIncluded && hasInvoices"
                   class="flex rounded-lg border border-ink-200 p-0.5 text-[11px] font-semibold"
                   role="group"
                   aria-label="Finance metric"
@@ -161,7 +171,7 @@
                 </div>
               </div>
 
-              <template v-if="operationalReady && hasInvoices">
+              <template v-if="systemIncluded && operationalReady && hasInvoices">
                 <dl class="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
                   <div>
                     <dt class="text-ink-500">Expected</dt>
@@ -184,34 +194,12 @@
                   {{ payments?.paid_count ?? 0 }} paid · {{ payments?.unpaid_count ?? 0 }} unpaid
                   · {{ payments?.invoice_count ?? 0 }} invoices
                 </p>
-                <div class="mt-3">
-                  <div
-                    class="flex h-3 overflow-hidden rounded-full bg-ink-100"
-                    :title="financeBarTitle"
-                    role="img"
-                    :aria-label="financeBarTitle"
-                  >
-                    <div
-                      v-if="financeBar.collectedPct > 0"
-                      class="h-full bg-emerald-500 transition-all"
-                      :style="{ width: `${financeBar.collectedPct}%` }"
-                    />
-                    <div
-                      v-if="financeBar.outstandingPct > 0"
-                      class="h-full bg-rose-400 transition-all"
-                      :style="{ width: `${financeBar.outstandingPct}%` }"
-                    />
-                  </div>
-                  <div class="mt-1.5 flex flex-wrap gap-3 text-[11px] text-ink-500">
-                    <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-500" />Collected</span>
-                    <span><span class="mr-1 inline-block h-2 w-2 rounded-full bg-rose-400" />Outstanding</span>
-                  </div>
-                </div>
               </template>
               <div v-else class="mt-3 space-y-2 text-sm text-ink-600">
-                <p v-if="!operationalReady">Operational payment data is unavailable for this event.</p>
+                <p v-if="!systemIncluded">Payments excluded by source mode.</p>
+                <p v-else-if="!operationalReady">Booking data unavailable for this event.</p>
                 <p v-else-if="!Number(approvedCount)">
-                  No approved bookings yet —
+                  0 approved bookings —
                   <button type="button" class="font-semibold text-brand-700 underline-offset-2 hover:underline" @click="goToBookings()">
                     View Bookings
                   </button>
@@ -223,242 +211,128 @@
               </div>
             </div>
 
-            <!-- Vendor categories -->
-            <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="overview-categories">
-              <div class="flex flex-wrap items-start justify-between gap-2">
+            <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="overview-highlights">
+              <h3 class="text-sm font-extrabold text-ink-900">Highlights</h3>
+              <div class="mt-3 space-y-3 text-sm text-ink-700">
                 <div>
-                  <h3 class="text-sm font-extrabold text-ink-900">Approved bookings by category</h3>
-                  <p class="mt-0.5 text-xs text-ink-500">Booking counts, not invoice revenue</p>
+                  <p class="text-[11px] font-semibold uppercase text-ink-500">Survey</p>
+                  <p v-if="surveyTopInsight">{{ surveyTopInsight }}</p>
+                  <p v-else-if="surveyExcluded">Survey excluded by source mode.</p>
+                  <p v-else-if="surveyMissing">No survey CSV connected.</p>
+                  <p v-else-if="surveyReady">Survey ready · n = {{ respondentCount }}</p>
+                  <p v-else>Survey data unavailable.</p>
                 </div>
-                <button
-                  type="button"
-                  class="text-xs font-semibold text-brand-700 underline-offset-2 hover:underline"
-                  @click="goToBookings({ status: 'Approved' })"
-                >
-                  View Bookings
-                </button>
+                <div>
+                  <p class="text-[11px] font-semibold uppercase text-ink-500">Operations</p>
+                  <p v-if="!systemIncluded">Operations excluded by source mode.</p>
+                  <p v-else-if="!operationalReady">Operational data unavailable.</p>
+                  <p v-else>
+                    {{ approvedCount ?? 0 }} approved bookings
+                    <template v-if="sites?.total != null"> · {{ sites.total }} sites</template>
+                  </p>
+                </div>
               </div>
-
-              <ul v-if="categoryRows.length" class="mt-3 space-y-2">
-                <li v-for="row in categoryRows" :key="row.key || row.label">
-                  <button
-                    type="button"
-                    class="w-full rounded-lg px-1 py-0.5 text-left transition hover:bg-sky-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-                    :title="`${row.label}: ${row.display}`"
-                    @click="goToBookings({ status: 'Approved' })"
-                  >
-                    <div class="mb-1 flex justify-between gap-2 text-xs">
-                      <span class="font-semibold text-ink-800">{{ row.label }}</span>
-                      <span class="shrink-0 text-ink-600">{{ row.display }}</span>
-                    </div>
-                    <div class="h-2 overflow-hidden rounded-full bg-sky-50">
-                      <div
-                        class="h-full rounded-full bg-brand-600"
-                        :style="{ width: `${Math.min(Number(row.percent) || 0, 100)}%` }"
-                      />
-                    </div>
-                  </button>
-                </li>
-              </ul>
-              <p v-else class="mt-3 text-sm text-ink-500">
-                No approved bookings for this event yet.
-              </p>
             </div>
-          </div>
-
-          <!-- Survey snapshot -->
-          <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="overview-survey-snapshot">
-            <div class="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <h3 class="text-sm font-extrabold text-ink-900">Survey snapshot</h3>
-                <p class="mt-0.5 text-xs text-ink-500">
-                  <template v-if="respondentCount != null">n = {{ respondentCount }} respondents</template>
-                  <template v-else>Active CSV survey summary</template>
-                </p>
-              </div>
-              <button
-                type="button"
-                class="text-xs font-semibold text-brand-700 underline-offset-2 hover:underline"
-                @click="setActiveTab('vendors')"
-              >
-                View Survey Insights
-              </button>
-            </div>
-            <p v-if="surveyTopInsight" class="mt-2 text-sm text-ink-700">
-              {{ surveyTopInsight }}
-            </p>
-            <p v-else class="mt-2 text-sm text-ink-500">
-              {{ surveyEmpty
-                ? (overview?.survey?.message || 'No vendor survey imported for this event.')
-                : 'Open Vendors & Sales for full survey charts.' }}
-            </p>
           </div>
         </section>
 
-        <!-- Vendors & Sales -->
-        <section v-else-if="activeTab === 'vendors'" class="space-y-3">
-          <VendorsSalesPanel
+        <!-- Survey Results -->
+        <section v-else-if="activeTab === 'survey-results'" class="space-y-3">
+          <SurveyResultsPanel
             :overview="overview"
             :sources="dataSources"
             :respondent-count="respondentCount"
             :survey-empty="surveyEmpty"
+            :show-add-csv-cta="showAddSurveyCta || csvOnlyOnboarding"
+            @open-data-sources="setActiveTab('data-sources')"
           />
         </section>
 
-        <!-- Items & Reuse -->
-        <section v-else-if="activeTab === 'items'" class="space-y-3">
-          <AnalyticsDataSourceBadge :sources="dataSources" filter="csv" />
-          <p v-if="surveyEmpty" class="rounded-xl border border-dashed border-ink-200 bg-white px-3 py-6 text-center text-sm text-ink-500">
-            {{ overview?.survey?.message || 'No vendor survey imported for this event.' }}
-          </p>
-          <template v-else>
-            <div class="grid gap-3 lg:grid-cols-2">
-              <AnalyticsBarList
-                title="Item conditions"
-                :rows="surveySection('vendors')?.item_conditions"
-                :denominator="respondentCount"
-              />
-              <AnalyticsBarList
-                title="Used-item sell-through"
-                :rows="surveySection('items')?.items_sold_band"
-                :denominator="respondentCount"
-              />
-              <AnalyticsBarList
-                class="lg:col-span-2"
-                title="Unsold-item actions"
-                :rows="surveySection('items')?.unsold_item_actions"
-                :denominator="respondentCount"
-              />
-            </div>
-            <div
-              v-if="surveySection('items')?.circularity_proxies"
-              class="rounded-xl border border-sky-100 bg-white p-3 text-sm text-ink-700"
-            >
-              <p class="font-bold text-ink-900">Reuse / circularity proxies</p>
-              <p class="mt-1">
-                Positive reuse actions:
-                <strong>{{ surveySection('items').circularity_proxies.positive_action_display }}</strong>
-              </p>
-              <p>
-                Discarded:
-                <strong>{{ surveySection('items').circularity_proxies.discard_action_display }}</strong>
-              </p>
-              <p class="mt-1 text-xs text-ink-500">{{ surveySection('items').circularity_proxies.note }}</p>
-            </div>
-          </template>
-        </section>
-
-        <!-- Experience -->
-        <section v-else-if="activeTab === 'experience'" class="space-y-3">
-          <AnalyticsDataSourceBadge :sources="dataSources" filter="csv" />
-          <p v-if="surveyEmpty" class="rounded-xl border border-dashed border-ink-200 bg-white px-3 py-6 text-center text-sm text-ink-500">
-            {{ overview?.survey?.message || 'No vendor survey imported for this event.' }}
-          </p>
-          <template v-else>
-            <div class="grid gap-3 lg:grid-cols-2">
-              <AnalyticsBarList
-                title="Experience rating"
-                :rows="surveySection('experience')?.experience_rating"
-                :denominator="respondentCount"
-              />
-              <AnalyticsBarList
-                title="Supporting activity attracted visitors"
-                :rows="surveySection('experience')?.supporting_activity_attracted_visitors"
-                :denominator="respondentCount"
-              />
-              <AnalyticsBarList
-                title="Supporting activity impacts"
-                :rows="surveySection('experience')?.supporting_activity_impacts"
-                :denominator="respondentCount"
-              />
-              <AnalyticsBarList
-                title="Improvement priorities"
-                :rows="surveySection('operations')?.improvement_areas"
-                :denominator="respondentCount"
-              />
-            </div>
-            <div
-              v-if="surveySection('operations')?.has_difficulty"
-              class="rounded-xl border border-sky-100 bg-white p-3 text-sm text-ink-700"
-            >
-              <p class="font-bold text-ink-900">Vendor difficulties (registration / info)</p>
-              <p class="mt-1">
-                Yes: <strong>{{ surveySection('operations').has_difficulty.yes_display }}</strong>
-                · No: <strong>{{ surveySection('operations').has_difficulty.no_display }}</strong>
-              </p>
-            </div>
-          </template>
-        </section>
-
-        <!-- Operations (Laravel operational only) -->
-        <section v-else-if="activeTab === 'operations'" class="space-y-3">
-          <AnalyticsDataSourceBadge :sources="dataSources" filter="system" />
-          <div
-            v-if="!operationalReady"
-            class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
-          >
-            {{ overview?.operational?.error || 'Operational snapshot unavailable for this event.' }}
-          </div>
-          <div v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
-              <p class="text-[11px] font-semibold uppercase text-ink-500">Total bookings</p>
-              <p class="mt-1 text-xl font-extrabold">{{ pipeline?.total_bookings ?? '—' }}</p>
-            </article>
-            <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
-              <p class="text-[11px] font-semibold uppercase text-ink-500">Approved</p>
-              <p class="mt-1 text-xl font-extrabold">{{ approvedCount ?? '—' }}</p>
-            </article>
-            <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
-              <p class="text-[11px] font-semibold uppercase text-ink-500">Sites / slots</p>
-              <p class="mt-1 text-xl font-extrabold">{{ sites?.total ?? '—' }}</p>
-              <p class="mt-0.5 text-xs text-ink-500">By status below when available</p>
-            </article>
-            <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
-              <p class="text-[11px] font-semibold uppercase text-ink-500">Item reservations</p>
-              <p class="mt-1 text-xl font-extrabold">
-                {{ reservations?.available === false ? 'Unavailable' : (reservations?.total ?? '—') }}
-              </p>
-            </article>
-          </div>
-          <div class="grid gap-3 lg:grid-cols-2">
-            <AnalyticsBarList
-              title="Bookings by approval status"
-              :rows="bookingStatusRows"
-              :denominator="pipeline?.total_bookings || null"
-              empty-text="No bookings for this event."
-            />
-            <AnalyticsBarList
-              title="Sites by operational status"
-              :rows="siteStatusRows"
-              :denominator="sites?.total || null"
-              empty-text="No site layout data for this event."
-            />
-          </div>
-          <div class="rounded-xl border border-dashed border-ink-200 bg-white px-3 py-3 text-sm text-ink-600">
-            Attendance / check-in:
-            <strong>Unavailable</strong>
-            — event-level check-in totals are not aggregated in this hub yet.
-          </div>
-        </section>
-
-        <!-- Data Quality -->
-        <section v-else-if="activeTab === 'data-quality'" class="space-y-3">
-          <AnalyticsDataSourceBadge :sources="dataSources" />
-          <AnalyticsDataSourceManager
-            :event-id="selectedEventId"
-            :overview="overview"
-            @updated="onDataSourceUpdated"
-          />
-        </section>
-
-        <!-- Comments & Word Cloud -->
+        <!-- Vendor Comments -->
         <section v-else-if="activeTab === 'comments'" class="space-y-3">
           <AnalyticsDataSourceBadge :sources="dataSources" filter="csv" />
           <EventCommentsWordCloud
             :event-id="selectedEventId"
-            :comments="surveyComments"
+            :qualitative="qualitativeComments"
             :respondent-count="respondentCount"
             :feedback-link-ready="feedbackLinkReady"
+            :survey-status="overview?.survey?.status || ''"
+          />
+        </section>
+
+        <!-- Operations -->
+        <section v-else-if="activeTab === 'operations'" class="space-y-3">
+          <AnalyticsDataSourceBadge :sources="dataSources" filter="system" />
+          <div
+            v-if="!systemIncluded"
+            class="rounded-xl border border-dashed border-ink-200 bg-white px-3 py-6 text-center text-sm text-ink-600"
+          >
+            Operations are hidden because the current source mode excludes System Data.
+          </div>
+          <div
+            v-else-if="!operationalReady"
+            class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+          >
+            {{ overview?.operational?.error || 'Operational snapshot unavailable for this event.' }}
+          </div>
+          <template v-else>
+            <div
+              v-if="!hasOperationalRecords"
+              class="rounded-xl border border-dashed border-ink-200 bg-white px-3 py-6 text-center text-sm text-ink-600"
+            >
+              No operational records have been created for this event yet.
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
+                <p class="text-[11px] font-semibold uppercase text-ink-500">Total bookings</p>
+                <p class="mt-1 text-xl font-extrabold">{{ pipeline?.total_bookings ?? 0 }}</p>
+              </article>
+              <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
+                <p class="text-[11px] font-semibold uppercase text-ink-500">Approved</p>
+                <p class="mt-1 text-xl font-extrabold">{{ approvedCount ?? 0 }}</p>
+              </article>
+              <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
+                <p class="text-[11px] font-semibold uppercase text-ink-500">Sites / slots</p>
+                <p class="mt-1 text-xl font-extrabold">{{ sites?.total ?? 0 }}</p>
+              </article>
+              <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
+                <p class="text-[11px] font-semibold uppercase text-ink-500">Item reservations</p>
+                <p class="mt-1 text-xl font-extrabold">
+                  {{ reservations?.available === false ? 'Unavailable' : (reservations?.total ?? 0) }}
+                </p>
+              </article>
+            </div>
+            <div class="grid gap-3 lg:grid-cols-2">
+              <AnalyticsBarList
+                title="Bookings by approval status"
+                :rows="bookingStatusRows"
+                :denominator="pipeline?.total_bookings || null"
+                empty-text="0 bookings recorded for this event."
+              />
+              <AnalyticsBarList
+                title="Sites by operational status"
+                :rows="siteStatusRows"
+                :denominator="sites?.total || null"
+                empty-text="No site layout data for this event."
+              />
+            </div>
+            <div class="rounded-xl border border-dashed border-ink-200 bg-white px-3 py-3 text-sm text-ink-600">
+              Attendance / check-in:
+              <strong>Unavailable</strong>
+              — event-level check-in totals are not aggregated in this hub yet.
+            </div>
+          </template>
+        </section>
+
+        <!-- Data Sources -->
+        <section v-else-if="activeTab === 'data-sources'" class="space-y-3">
+          <AnalyticsDataSourceBadge :sources="dataSources" />
+          <AnalyticsDataSourceManager
+            :event-id="selectedEventId"
+            :event-title="currentEvent?.title || ''"
+            :overview="overview"
+            @updated="onDataSourceUpdated"
+            @view-survey-results="setActiveTab('survey-results')"
           />
         </section>
       </template>
@@ -474,11 +348,9 @@ import AnalyticsBarList from '../../../components/analytics/AnalyticsBarList.vue
 import AnalyticsDataSourceBadge from '../../../components/analytics/AnalyticsDataSourceBadge.vue';
 import AnalyticsDataSourceManager from '../../../components/analytics/AnalyticsDataSourceManager.vue';
 import EventCommentsWordCloud from '../../../components/analytics/EventCommentsWordCloud.vue';
-import VendorsSalesPanel from '../../../components/analytics/VendorsSalesPanel.vue';
+import SurveyResultsPanel from '../../../components/analytics/SurveyResultsPanel.vue';
 import { useEventAnalyticsContext } from '../../../composables/useEventAnalyticsContext';
-import {
-  ANALYTICS_HUB_TAB_STORAGE_KEY,
-} from '../../../config/workspaceNav';
+import { ANALYTICS_HUB_TAB_STORAGE_KEY } from '../../../config/workspaceNav';
 import {
   getEventAnalyticsOverview,
   listCarbootEventsForAnalytics,
@@ -491,15 +363,26 @@ const { selectedEventId, setSelectedEvent, setSelectedEventId } = useEventAnalyt
 
 const tabs = [
   { id: 'overview', label: 'Overview' },
-  { id: 'vendors', label: 'Vendors & Sales' },
-  { id: 'items', label: 'Items & Reuse' },
-  { id: 'experience', label: 'Experience' },
+  { id: 'survey-results', label: 'Survey Results' },
+  { id: 'comments', label: 'Vendor Comments' },
   { id: 'operations', label: 'Operations' },
-  { id: 'data-quality', label: 'Data Quality' },
-  { id: 'comments', label: 'Comments & Word Cloud' },
+  { id: 'data-sources', label: 'Data Sources' },
 ];
 
 const TAB_IDS = new Set(tabs.map((t) => t.id));
+
+const LEGACY_TAB_MAP = {
+  revenue: 'overview',
+  vendors: 'survey-results',
+  items: 'survey-results',
+  experience: 'survey-results',
+  'data-quality': 'data-sources',
+  'data-sources': 'data-sources',
+  comments: 'comments',
+  'survey-results': 'survey-results',
+  operations: 'operations',
+  overview: 'overview',
+};
 
 const events = ref([]);
 const overview = ref(null);
@@ -510,21 +393,25 @@ const activeTab = ref(readStoredTab());
 const financeMetric = ref('amount');
 const financeSectionRef = ref(null);
 
+function normalizeTab(tab) {
+  if (!tab) return 'overview';
+  const mapped = LEGACY_TAB_MAP[tab] || tab;
+  return TAB_IDS.has(mapped) ? mapped : 'overview';
+}
+
 function readStoredTab() {
   try {
-    let tab = sessionStorage.getItem(ANALYTICS_HUB_TAB_STORAGE_KEY);
-    if (tab === 'revenue') tab = 'overview';
-    return TAB_IDS.has(tab) ? tab : 'overview';
+    return normalizeTab(sessionStorage.getItem(ANALYTICS_HUB_TAB_STORAGE_KEY));
   } catch {
     return 'overview';
   }
 }
 
 const setActiveTab = (tabId) => {
-  if (!TAB_IDS.has(tabId)) return;
-  activeTab.value = tabId;
+  const next = normalizeTab(tabId);
+  activeTab.value = next;
   try {
-    sessionStorage.setItem(ANALYTICS_HUB_TAB_STORAGE_KEY, tabId);
+    sessionStorage.setItem(ANALYTICS_HUB_TAB_STORAGE_KEY, next);
   } catch {
     /* ignore */
   }
@@ -534,15 +421,52 @@ const currentEvent = computed(() =>
   events.value.find((e) => String(e.id) === String(selectedEventId.value)) || null,
 );
 
+const sourceMode = computed(() => overview.value?.analytics_source_mode || 'system_only');
+
+const sourceModeLabel = computed(() => {
+  switch (sourceMode.value) {
+    case 'system_only': return 'System Data';
+    case 'csv_only': return 'Survey CSV Only';
+    case 'combined': return 'System + Survey CSV';
+    default: return sourceMode.value;
+  }
+});
+
+const systemIncluded = computed(() =>
+  sourceMode.value === 'system_only' || sourceMode.value === 'combined',
+);
+
+const surveyIncluded = computed(() =>
+  sourceMode.value === 'csv_only' || sourceMode.value === 'combined',
+);
+
 const surveyDegraded = computed(() => overview.value?.survey?.degraded === true
   || overview.value?.survey?.status === 'degraded');
 
-const surveyEmpty = computed(() => overview.value?.survey?.status !== 'ready');
+const surveyReady = computed(() => overview.value?.survey?.status === 'ready');
+const surveyExcluded = computed(() => overview.value?.survey?.status === 'excluded');
+const surveyMissing = computed(() =>
+  ['missing_source', 'empty'].includes(overview.value?.survey?.status)
+  || (surveyIncluded.value && !surveyReady.value && !surveyDegraded.value && !surveyExcluded.value),
+);
+
+const surveyEmpty = computed(() => !surveyReady.value);
 
 const respondentCount = computed(() => {
-  if (overview.value?.survey?.status !== 'ready') return null;
+  if (!surveyReady.value) return null;
   return overview.value?.survey?.respondent_count ?? null;
 });
+
+const showAddSurveyCta = computed(() =>
+  surveyIncluded.value
+  && !surveyReady.value
+  && !surveyExcluded.value
+  && sourceMode.value !== 'csv_only',
+);
+
+const csvOnlyOnboarding = computed(() =>
+  sourceMode.value === 'csv_only' && !surveyReady.value,
+);
 
 const operationalReady = computed(() => overview.value?.operational?.available === true);
 const payments = computed(() => overview.value?.operational?.sections?.payments || null);
@@ -551,57 +475,34 @@ const sites = computed(() => overview.value?.operational?.sections?.event_sites 
 const reservations = computed(() => overview.value?.operational?.sections?.item_reservations || null);
 const approvedCount = computed(() => pipeline.value?.approved_count ?? null);
 
+const hasOperationalRecords = computed(() =>
+  Number(pipeline.value?.total_bookings || 0) > 0
+  || Number(sites.value?.total || 0) > 0
+  || Number(reservations.value?.total || 0) > 0,
+);
+
 const feedbackLinkReady = computed(() =>
   Boolean(overview.value?.data_readiness?.checks?.community_feedback_event_link?.ready),
 );
 
-const surveyComments = computed(() => {
-  const items = overview.value?.survey?.sections?.experience?.comments_and_suggestions?.items;
-  return Array.isArray(items) ? items.filter(Boolean) : [];
-});
+const qualitativeComments = computed(() =>
+  overview.value?.survey?.sections?.experience?.qualitative_comments || null,
+);
 
 const dataSources = computed(() => overview.value?.data_sources || []);
 
 const collectionRateLabel = computed(() => {
   const expected = Number(payments.value?.expected || 0);
   const collected = Number(payments.value?.collected || 0);
-  if (!expected) return '—';
+  if (!expected) return 'No invoices yet';
   return `${((collected / expected) * 100).toFixed(1)}%`;
 });
 
 const hasInvoices = computed(() => Number(payments.value?.invoice_count || 0) > 0);
 
-const financeBar = computed(() => {
-  if (financeMetric.value === 'count') {
-    const paid = Number(payments.value?.paid_count || 0);
-    const unpaid = Number(payments.value?.unpaid_count || 0);
-    const total = paid + unpaid;
-    if (!total) return { collectedPct: 0, outstandingPct: 0 };
-    return {
-      collectedPct: Math.round((paid / total) * 1000) / 10,
-      outstandingPct: Math.round((unpaid / total) * 1000) / 10,
-    };
-  }
-  const expected = Number(payments.value?.expected || 0);
-  const collected = Number(payments.value?.collected || 0);
-  const outstanding = Number(payments.value?.outstanding || 0);
-  if (!expected) return { collectedPct: 0, outstandingPct: 0 };
-  return {
-    collectedPct: Math.min(100, Math.round((collected / expected) * 1000) / 10),
-    outstandingPct: Math.min(100, Math.round((outstanding / expected) * 1000) / 10),
-  };
-});
-
-const financeBarTitle = computed(() => {
-  if (financeMetric.value === 'count') {
-    return `${payments.value?.paid_count ?? 0} paid · ${payments.value?.unpaid_count ?? 0} unpaid invoices`;
-  }
-  return `Collected RM ${formatMoney(payments.value?.collected)} · Outstanding RM ${formatMoney(payments.value?.outstanding)}`;
-});
-
 const surveyTopInsight = computed(() => {
-  if (overview.value?.survey?.status !== 'ready') return null;
-  const cats = surveySection('vendors')?.product_categories;
+  if (!surveyReady.value) return null;
+  const cats = overview.value?.survey?.sections?.vendors?.product_categories;
   const rows = Array.isArray(cats) ? cats : [];
   if (!rows.length) return null;
   const top = [...rows].sort((a, b) => Number(b.count || 0) - Number(a.count || 0))[0];
@@ -637,79 +538,90 @@ const goToBookings = ({ status } = {}) => {
   router.push({ path: '/admin', hash: '#bookings' });
 };
 
+const kpiSurveyValue = computed(() => {
+  if (!surveyIncluded.value) return 'Excluded';
+  if (surveyReady.value) return String(respondentCount.value ?? 0);
+  if (surveyMissing.value) return 'No CSV';
+  if (surveyDegraded.value) return 'Unavailable';
+  return 'Unavailable';
+});
+
+const kpiBookingsValue = computed(() => {
+  if (!systemIncluded.value) return 'Excluded';
+  if (!operationalReady.value) return 'Unavailable';
+  return String(approvedCount.value ?? 0);
+});
+
 const overviewKpis = computed(() => [
   {
     id: 'survey_respondents',
     label: 'Survey respondents',
-    value: overview.value?.survey?.status === 'ready' ? String(respondentCount.value ?? 0) : '—',
-    note: overview.value?.survey?.status === 'ready'
-      ? 'View survey insights'
-      : (overview.value?.survey?.message || 'No survey yet'),
-    title: 'Open Vendors & Sales',
+    value: kpiSurveyValue.value,
+    note: surveyReady.value
+      ? 'View Survey Results'
+      : (surveyIncluded.value ? (overview.value?.survey?.message || 'No survey CSV connected') : 'Hidden by source mode'),
+    title: 'Open Survey Results',
     clickable: true,
-    onClick: () => setActiveTab('vendors'),
+    onClick: () => setActiveTab(surveyReady.value ? 'survey-results' : 'data-sources'),
   },
   {
     id: 'approved_bookings',
     label: 'Approved bookings',
-    value: operationalReady.value ? String(approvedCount.value ?? 0) : '—',
-    note: Number(approvedCount.value) ? 'Open bookings' : 'No approved bookings yet',
+    value: kpiBookingsValue.value,
+    note: !systemIncluded.value
+      ? 'Excluded by source mode'
+      : (Number(approvedCount.value) ? 'Open bookings' : '0 approved bookings'),
     title: 'Open Bookings for this event',
-    clickable: operationalReady.value,
+    clickable: systemIncluded.value && operationalReady.value,
     onClick: () => goToBookings({ status: 'Approved' }),
   },
   {
     id: 'expected_revenue',
-    label: 'Expected revenue',
-    value: operationalReady.value ? `RM ${formatMoney(payments.value?.expected)}` : '—',
+    label: 'Expected platform revenue',
+    value: !systemIncluded.value
+      ? 'Excluded'
+      : (!operationalReady.value ? 'Unavailable' : `RM ${formatMoney(payments.value?.expected)}`),
     note: 'Platform fees',
     title: 'Jump to financial performance',
-    clickable: operationalReady.value,
+    clickable: systemIncluded.value && operationalReady.value,
     onClick: scrollToFinance,
   },
   {
     id: 'collected_revenue',
-    label: 'Collected revenue',
-    value: operationalReady.value ? `RM ${formatMoney(payments.value?.collected)}` : '—',
+    label: 'Collected platform revenue',
+    value: !systemIncluded.value
+      ? 'Excluded'
+      : (!operationalReady.value ? 'Unavailable' : `RM ${formatMoney(payments.value?.collected)}`),
     note: 'Paid invoices',
     title: 'Jump to financial performance',
-    clickable: operationalReady.value,
+    clickable: systemIncluded.value && operationalReady.value,
     onClick: scrollToFinance,
   },
   {
     id: 'outstanding_revenue',
-    label: 'Outstanding revenue',
-    value: operationalReady.value ? `RM ${formatMoney(payments.value?.outstanding)}` : '—',
+    label: 'Outstanding platform revenue',
+    value: !systemIncluded.value
+      ? 'Excluded'
+      : (!operationalReady.value ? 'Unavailable' : `RM ${formatMoney(payments.value?.outstanding)}`),
     note: 'Unpaid invoices',
     title: 'Jump to financial performance',
-    clickable: operationalReady.value,
+    clickable: systemIncluded.value && operationalReady.value,
     onClick: scrollToFinance,
   },
   {
     id: 'collection_rate',
     label: 'Collection rate',
-    value: operationalReady.value ? collectionRateLabel.value : '—',
+    value: !systemIncluded.value
+      ? 'Excluded'
+      : (!operationalReady.value ? 'Unavailable' : collectionRateLabel.value),
     note: hasInvoices.value
       ? `${payments.value?.paid_count ?? 0}/${payments.value?.invoice_count ?? 0} paid`
       : 'Appears after invoices',
     title: 'Show payment-status breakdown',
-    clickable: operationalReady.value,
+    clickable: systemIncluded.value && operationalReady.value,
     onClick: showPaymentBreakdown,
   },
 ]);
-
-const categoryRows = computed(() => {
-  const dist = overview.value?.operational?.sections?.vendor_categories?.distribution || [];
-  const total = approvedCount.value || dist.reduce((sum, row) => sum + (row.count || 0), 0) || 0;
-  return dist.map((row) => ({
-    key: row.label,
-    label: row.label,
-    count: row.count,
-    denominator: total,
-    percent: total ? Math.round((row.count / total) * 1000) / 10 : 0,
-    display: total ? `${row.count} of ${total} approved (${((row.count / total) * 100).toFixed(1)}%)` : `${row.count}`,
-  }));
-});
 
 const bookingStatusRows = computed(() => {
   const by = pipeline.value?.by_approval_status || {};
@@ -737,17 +649,15 @@ const siteStatusRows = computed(() => {
   }));
 });
 
-const surveySection = (name) => overview.value?.survey?.sections?.[name] || null;
-
 const formatMoney = (value) => {
-  if (value == null || value === '') return '—';
+  if (value == null || value === '') return '0.00';
   const n = Number(value);
-  if (Number.isNaN(n)) return '—';
+  if (Number.isNaN(n)) return '0.00';
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 const formatDate = (value) => {
-  if (!value) return '—';
+  if (!value) return 'Unknown';
   try {
     return new Date(value).toLocaleString();
   } catch {
@@ -756,7 +666,7 @@ const formatDate = (value) => {
 };
 
 const formatDateRange = (start, end) => {
-  if (!start && !end) return '—';
+  if (!start && !end) return 'Dates not set';
   const fmt = (v) => {
     try {
       return new Date(v).toLocaleDateString();
@@ -818,7 +728,6 @@ const onDataSourceUpdated = (nextOverview) => {
     overview.value = nextOverview;
     return;
   }
-  // Fallback: force recompute when a mutation did not return an overview payload.
   loadOverview(true);
 };
 
@@ -838,10 +747,9 @@ watch(selectedEventId, (id) => {
 });
 
 onMounted(async () => {
-  // Consume redirect tab hint set by AdminDashboard legacy hash handling.
   try {
     const redirectedTab = sessionStorage.getItem(ANALYTICS_HUB_TAB_STORAGE_KEY);
-    if (TAB_IDS.has(redirectedTab)) activeTab.value = redirectedTab;
+    if (redirectedTab) activeTab.value = normalizeTab(redirectedTab);
   } catch {
     /* ignore */
   }
