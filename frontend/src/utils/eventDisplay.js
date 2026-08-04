@@ -1,5 +1,9 @@
 import { resolveEventImageUrl, normalizeEvent } from './imageUrl';
 
+/**
+ * Shared venue label for site branding (About / ICS when event has no location field).
+ * Not a per-event database value — events have no location column today.
+ */
 export const DEFAULT_EVENT_LOCATION = 'CMart Kompleks Changlun, Changlun';
 
 export const EVENT_TZ = 'Asia/Kuala_Lumpur';
@@ -211,7 +215,7 @@ export const getUpcomingPublicEvents = (events) => {
 };
 
 /** Map raw API events to sorted upcoming public cards. */
-export const mapApiEventsToUpcomingCards = (rawEvents, location = DEFAULT_EVENT_LOCATION) => {
+export const mapApiEventsToUpcomingCards = (rawEvents, location = '') => {
   const cards = (Array.isArray(rawEvents) ? rawEvents : []).map((ev) => mapApiEventToCard(ev, location));
   return getUpcomingPublicEvents(cards);
 };
@@ -230,7 +234,8 @@ export const buildEventIcsContent = (event) => {
   const uid = `carboot-event-${event.id}@cmart`;
   const summary = (event.title || 'Carboot Event').replace(/[,;\\]/g, '');
   const description = (event.description || '').replace(/\n/g, '\\n').replace(/[,;\\]/g, '');
-  const location = (event.location || DEFAULT_EVENT_LOCATION).replace(/[,;\\]/g, '');
+  const location = (event.location || '').replace(/[,;\\]/g, '');
+  const stampParts = getEventZonedParts(new Date()) || startParts;
 
   const lines = [
     'BEGIN:VCALENDAR',
@@ -239,20 +244,21 @@ export const buildEventIcsContent = (event) => {
     'CALSCALE:GREGORIAN',
     'BEGIN:VEVENT',
     `UID:${uid}`,
-    `DTSTART;TZID=Asia/Kuala_Lumpur:${toIcsLocal(startParts)}`,
+    `DTSTAMP:${toIcsLocal(stampParts)}`,
+    `DTSTART;TZID=${EVENT_TZ}:${toIcsLocal(startParts)}`,
   ];
 
   if (endParts) {
-    lines.push(`DTEND;TZID=Asia/Kuala_Lumpur:${toIcsLocal(endParts)}`);
+    lines.push(`DTEND;TZID=${EVENT_TZ}:${toIcsLocal(endParts)}`);
   }
-
-  lines.push(
-    `SUMMARY:${summary}`,
-    `DESCRIPTION:${description}`,
-    `LOCATION:${location}`,
-    'END:VEVENT',
-    'END:VCALENDAR',
-  );
+  lines.push(`SUMMARY:${summary}`);
+  if (description) {
+    lines.push(`DESCRIPTION:${description}`);
+  }
+  if (location) {
+    lines.push(`LOCATION:${location}`);
+  }
+  lines.push('END:VEVENT', 'END:VCALENDAR');
 
   return lines.join('\r\n');
 };
@@ -334,9 +340,10 @@ export const formatCalendarMonthTitle = (anchorDate) => {
   return `${monthName} ${parts.year} · ${parts.month}/${parts.year}`;
 };
 
-export const mapApiEventToCard = (ev, location = DEFAULT_EVENT_LOCATION) => {
+export const mapApiEventToCard = (ev, location = '') => {
   const normalized = normalizeEvent(ev);
   const { day, month } = getEventCalendarParts(normalized.starts_at);
+  const resolvedLocation = (normalized.location || location || '').trim();
 
   return {
     id: normalized.id,
@@ -346,8 +353,8 @@ export const mapApiEventToCard = (ev, location = DEFAULT_EVENT_LOCATION) => {
     time: formatEventTime(normalized.starts_at, normalized.ends_at),
     dateLabel: formatEventDate(normalized.starts_at),
     dateNumeric: formatEventNumericDate(normalized.starts_at),
-    location,
-    description: normalized.description || 'Join us for a weekend of bargains, local vendors, and community fun.',
+    location: resolvedLocation,
+    description: (normalized.description || '').trim(),
     status: normalized.status,
     statusClass: statusClassForEvent(normalized.status),
     posterUrl: resolveEventImageUrl(normalized),

@@ -1,10 +1,12 @@
 <template>
-  <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-7 sm:p-9 shadow-xl shadow-brand-900/5 space-y-10">
+  <section
+    class="rounded-2xl border border-ink-100 bg-white p-5 sm:p-6 shadow-sm space-y-6"
+    data-testid="vendor-analytics-dashboard"
+  >
     <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
       <div class="min-w-0">
-        <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">Vendor Portal</span>
         <div class="flex flex-wrap items-center gap-2">
-          <h2 class="text-2xl sm:text-3xl font-extrabold text-ink-900 tracking-tight">Analytics &amp; Reports</h2>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-ink-900 tracking-tight">Analytics &amp; Reports</h2>
           <span
             class="ml-badge bg-sky-100 text-sky-800 inline-flex items-center gap-1"
             title="These insights only use your own vendor records, not overall CMart performance."
@@ -17,37 +19,33 @@
             />
           </span>
         </div>
-        <p class="mt-2 text-base text-ink-500 max-w-2xl leading-relaxed">
-          Personal insights from your bookings, payments, reuse listings, and booth activity.
+        <p class="mt-1 text-sm text-ink-500">
+          Your bookings, payments, and reuse listings at a glance.
         </p>
       </div>
       <div class="flex flex-wrap gap-2 shrink-0">
-        <button type="button" class="ml-btn-ghost" :disabled="loading || exporting" @click="$emit('retry')">
+        <button type="button" class="ml-btn-ghost min-h-[44px]" :disabled="loading || exporting" @click="$emit('retry')">
           {{ loading ? 'Refreshing…' : 'Refresh' }}
         </button>
-        <button type="button" class="ml-btn-primary" :disabled="loading || exporting || loadError" @click="exportReport('csv')">
+        <button type="button" class="ml-btn-primary min-h-[44px]" :disabled="loading || exporting || loadError" @click="exportReport('csv')">
           {{ exporting ? 'Exporting…' : 'Export CSV' }}
         </button>
-        <button type="button" class="ml-btn-ghost" :disabled="loading || exporting || loadError" @click="exportReport('json')">
+        <button type="button" class="ml-btn-ghost min-h-[44px]" :disabled="loading || exporting || loadError" @click="exportReport('json')">
           Download JSON
+        </button>
+        <button type="button" class="ml-btn-ghost min-h-[44px]" @click="$emit('close')">
+          Close
         </button>
       </div>
     </div>
 
-    <div class="rounded-2xl border border-sky-100 bg-sky-50/60 px-5 py-5 sm:px-6 sm:py-5">
-      <BilingualHelpText
-        text-en="This dashboard shows your own vendor activity at CMart, including booth bookings, verified payments, reuse listings, profile readiness, and current booth status. Use it to understand your progress and prepare for upcoming carboot events."
-        en-class="text-[15px] leading-7 text-sky-900"
-      />
-    </div>
-
-    <details class="rounded-2xl border border-ink-100 bg-white/70 px-5 py-4 sm:px-6">
-      <summary class="cursor-pointer text-base font-bold text-ink-800 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-lg">
-        How to read this dashboard
+    <details class="rounded-xl border border-ink-100 bg-ink-50/50 px-4 py-3">
+      <summary class="cursor-pointer text-sm font-bold text-ink-700 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-lg">
+        How to read these insights
       </summary>
-      <ul class="mt-4 space-y-4 list-disc pl-5">
+      <ul class="mt-3 space-y-2 list-disc pl-5">
         <li v-for="item in dashboardGuideItems" :key="item">
-          <span class="text-[15px] leading-7 text-slate-700">{{ item }}</span>
+          <span class="text-sm leading-6 text-ink-600">{{ item }}</span>
         </li>
       </ul>
     </details>
@@ -120,132 +118,93 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <div class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7">
-          <h3 class="text-xl font-bold text-slate-900 mb-1">Monthly Bookings</h3>
-          <p class="text-sm text-slate-500 mb-3">Last 6 months by event date</p>
-          <BilingualHelpText
-            class="mb-5"
-            text-en="Shows how many booth bookings are linked to event dates each month. A line chart is used to make booking trends easier to see over time."
-          />
-          <div v-if="hasBookingTrend" class="relative h-64">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="rounded-xl border border-ink-100 bg-ink-50/40 p-5">
+          <div class="flex items-center gap-1.5 mb-1">
+            <h3 class="text-base font-bold text-ink-900">Monthly Bookings</h3>
+            <InfoHelpTip
+              aria-label="About Monthly Bookings"
+              text-en="Shows how many booth bookings are linked to event dates each month."
+            />
+          </div>
+          <p class="text-xs text-ink-500 mb-4">Last 6 months by event date</p>
+          <div v-if="hasBookingTrend" class="relative h-56">
             <canvas ref="bookingTrendCanvas"></canvas>
           </div>
-          <p v-else class="text-base text-ink-500 py-10 text-center">No booking trend data yet.</p>
+          <p v-else class="text-sm text-ink-500 py-8 text-center">No booking trend data yet.</p>
         </div>
 
-        <div class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7">
-          <h3 class="text-xl font-bold text-slate-900 mb-1">Monthly Payments</h3>
-          <p class="text-sm text-slate-500 mb-3">Paid booth invoices over the last 6 months</p>
-          <BilingualHelpText
-            class="mb-5"
-            text-en="Shows the total verified booth payments received each month. A bar chart is used because monthly totals are easier to compare side by side."
-          />
-          <div v-if="hasPaymentTrend" class="relative h-64">
+        <div class="rounded-xl border border-ink-100 bg-ink-50/40 p-5">
+          <div class="flex items-center gap-1.5 mb-1">
+            <h3 class="text-base font-bold text-ink-900">Monthly Payments</h3>
+            <InfoHelpTip
+              aria-label="About Monthly Payments"
+              text-en="Shows the total verified booth payments received each month."
+            />
+          </div>
+          <p class="text-xs text-ink-500 mb-4">Paid booth invoices over the last 6 months</p>
+          <div v-if="hasPaymentTrend" class="relative h-56">
             <canvas ref="paymentTrendCanvas"></canvas>
           </div>
-          <p v-else class="text-base text-ink-500 py-10 text-center">No payment trend data yet.</p>
+          <p v-else class="text-sm text-ink-500 py-8 text-center">No payment trend data yet.</p>
         </div>
 
-        <div class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7">
-          <h3 class="text-xl font-bold text-slate-900 mb-1">Booking Status</h3>
-          <BilingualHelpText
-            class="mb-5"
-            text-en="Shows how your bookings are distributed by status, such as approved, pending, rejected, revision, or withdrawn. A donut chart shows each status as part of the total."
-          />
-          <div v-if="hasBookingStatusChart" class="relative h-64">
+        <div class="rounded-xl border border-ink-100 bg-ink-50/40 p-5">
+          <div class="flex items-center gap-1.5 mb-3">
+            <h3 class="text-base font-bold text-ink-900">Booking Status</h3>
+            <InfoHelpTip
+              aria-label="About Booking Status"
+              text-en="Shows how your bookings are distributed by status."
+            />
+          </div>
+          <div v-if="hasBookingStatusChart" class="relative h-56">
             <canvas ref="bookingStatusCanvas"></canvas>
           </div>
-          <p v-else class="text-base text-ink-500 py-10 text-center">No booking status data yet.</p>
+          <p v-else class="text-sm text-ink-500 py-8 text-center">No booking status data yet.</p>
         </div>
 
-        <div class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7">
-          <h3 class="text-xl font-bold text-slate-900 mb-1">Reuse Listing Status</h3>
-          <BilingualHelpText
-            class="mb-5"
-            text-en="Shows the status of your reuse item listings once items are added."
-          />
-          <div v-if="hasReuseStatusChart" class="relative h-64">
+        <div class="rounded-xl border border-ink-100 bg-ink-50/40 p-5">
+          <div class="flex items-center gap-1.5 mb-3">
+            <h3 class="text-base font-bold text-ink-900">Reuse Listing Status</h3>
+            <InfoHelpTip
+              aria-label="About Reuse Listing Status"
+              text-en="Shows the status of your reuse item listings once items are added."
+            />
+          </div>
+          <div v-if="hasReuseStatusChart" class="relative h-56">
             <canvas ref="reuseStatusCanvas"></canvas>
           </div>
-          <div v-else class="py-8 text-center">
-            <BilingualHelpText
-              text-en="No reuse listing data yet. Add reuse items to see listing status insights here."
-              en-class="text-[15px] leading-7 text-slate-600"
-            />
-            <button type="button" class="mt-5 ml-btn-ghost font-semibold" @click="$emit('manage-reuse')">
+          <div v-else class="py-6 text-center">
+            <p class="text-sm text-ink-500">No reuse listing data yet.</p>
+            <button type="button" class="mt-4 ml-btn-ghost font-semibold min-h-[44px]" @click="$emit('manage-reuse')">
               Manage Reuse Listings
             </button>
           </div>
         </div>
-      </div>
-
-      <div
-        v-if="actionableBookingCard"
-        class="rounded-2xl border border-brand-100 bg-brand-50/40 p-5 sm:p-6"
-        data-testid="vendor-current-booking-status-card"
-      >
-        <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Current Booking</p>
-        <h3 class="mt-2 text-lg font-extrabold text-ink-900 leading-snug">
-          {{ actionableBookingCard.eventName }}
-        </h3>
-        <dl class="mt-4 space-y-2 text-sm">
-          <div class="flex flex-wrap gap-x-2">
-            <dt class="text-ink-500 shrink-0">Status:</dt>
-            <dd class="font-semibold text-ink-900">{{ actionableBookingCard.statusLabel }}</dd>
-          </div>
-          <div class="flex flex-wrap gap-x-2">
-            <dt class="text-ink-500 shrink-0">Site:</dt>
-            <dd class="font-semibold text-ink-900">{{ actionableBookingCard.tapakLabel }}</dd>
-          </div>
-          <div class="flex flex-wrap gap-x-2">
-            <dt class="text-ink-500 shrink-0">Amount:</dt>
-            <dd class="font-semibold text-ink-900">{{ actionableBookingCard.amountLabel }}</dd>
-          </div>
-        </dl>
-        <button
-          type="button"
-          class="mt-5 ml-btn-primary text-sm"
-          data-testid="vendor-current-booking-view-button"
-          @click="$emit('view-booking', actionableBookingCard.bookingId)"
-        >
-          View Booking
-        </button>
       </div>
     </template>
   </section>
 </template>
 
 <script setup>
-import { computed, h, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Chart from 'chart.js/auto';
 import { useToast } from 'vue-toastification';
 import api from '../services/api';
 import { extractApiError } from '../utils/apiErrors';
-import {
-  PENDING_STATUSES,
-  canVendorProceedToDemoPayment,
-  isTerminalBookingStatus,
-  isValidBookingDate,
-  siteLabelsForBooking,
-  statusLabel,
-} from '../utils/bookingDisplay';
 import { downloadVendorReportCsv, downloadVendorReportJson } from '../utils/vendorReport';
 import InfoHelpTip from './InfoHelpTip.vue';
-import BilingualHelpText from './BilingualHelpText.vue';
 
 const props = defineProps({
   analytics: { type: Object, required: true },
-  bookings: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   loadError: { type: Boolean, default: false },
 });
 
-defineEmits(['retry', 'edit-profile', 'manage-reuse', 'view-booking']);
+defineEmits(['retry', 'edit-profile', 'manage-reuse', 'close']);
 
 const toast = useToast();
 const exporting = ref(false);
-const MY_TZ = 'Asia/Kuala_Lumpur';
 
 const bookingTrendCanvas = ref(null);
 const paymentTrendCanvas = ref(null);
@@ -270,7 +229,6 @@ const dashboardGuideItems = [
   'Line chart shows booking trend over time.',
   'Bar chart compares monthly payment totals.',
   'Donut chart shows booking status distribution.',
-  'A compact current-booking card appears only when a booking still needs vendor or organizer action.',
 ];
 
 const summary = computed(() => props.analytics?.summary || {});
@@ -282,75 +240,6 @@ const missingProfileFields = computed(() =>
     (field) => PROFILE_FIELD_LABELS[field] || field.replace(/_/g, ' '),
   ),
 );
-
-const todayInMyTimezone = () =>
-  new Date().toLocaleDateString('en-CA', { timeZone: MY_TZ });
-
-const bookingDateKey = (booking) => {
-  const raw = String(booking?.booking_date || '').slice(0, 10);
-  return isValidBookingDate(raw) ? raw : null;
-};
-
-const isUpcomingBooking = (booking) => {
-  const dateKey = bookingDateKey(booking);
-  return Boolean(dateKey && dateKey >= todayInMyTimezone());
-};
-
-/** Pending review/revision, or approved but still unpaid (payment action). */
-const isActionableCurrentBooking = (booking) => {
-  if (!booking?.id || !isUpcomingBooking(booking)) return false;
-  if (isTerminalBookingStatus(booking.approval_status)) return false;
-  if (PENDING_STATUSES.includes(booking.approval_status)) return true;
-  return canVendorProceedToDemoPayment(booking);
-};
-
-const resolveActionableCurrentBooking = (bookings) =>
-  [...(bookings || [])]
-    .filter(isActionableCurrentBooking)
-    .sort((a, b) => {
-      const dateDiff = String(bookingDateKey(a)).localeCompare(String(bookingDateKey(b)));
-      if (dateDiff !== 0) return dateDiff;
-      return (a.id ?? 0) - (b.id ?? 0);
-    })[0] || null;
-
-const formatCardAmount = (booking) => {
-  const amount = booking?.invoice?.amount;
-  if (amount == null || amount === '') return '—';
-  const numeric = Number(amount);
-  if (Number.isNaN(numeric)) return '—';
-  return `RM${numeric.toFixed(2)}`;
-};
-
-const formatCardEventFallback = (booking) => {
-  const dateKey = bookingDateKey(booking);
-  if (!dateKey) return `Booking #${booking.id}`;
-  const date = new Date(`${dateKey}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return `Booking #${booking.id}`;
-  return date.toLocaleDateString('en-GB', {
-    timeZone: MY_TZ,
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-};
-
-const actionableBookingCard = computed(() => {
-  const booking = resolveActionableCurrentBooking(props.bookings);
-  if (!booking) return null;
-
-  const tapak = siteLabelsForBooking(booking);
-  const status = canVendorProceedToDemoPayment(booking) && booking.approval_status === 'Approved'
-    ? (booking.invoice?.payment_status || 'Unpaid')
-    : statusLabel(booking.approval_status);
-
-  return {
-    bookingId: booking.id,
-    eventName: booking.event_label || booking.carboot_event?.title || formatCardEventFallback(booking),
-    statusLabel: status,
-    tapakLabel: tapak || '—',
-    amountLabel: formatCardAmount(booking),
-  };
-});
 
 const formatCount = (value) => new Intl.NumberFormat('en-MY').format(value ?? 0);
 const formatCurrency = (value) =>
@@ -462,7 +351,7 @@ const renderCharts = () => {
       type: 'line',
       data: {
         labels: bookingMonths.map((row) => row.label),
-        datasets: [{ label: 'Bookings', data: bookingMonths.map((row) => row.count), borderColor: '#ea580c', backgroundColor: 'rgba(234,88,12,0.15)', tension: 0.3, fill: true }],
+        datasets: [{ label: 'Bookings', data: bookingMonths.map((row) => row.count), borderColor: '#0277BD', backgroundColor: 'rgba(41,182,246,0.18)', tension: 0.3, fill: true }],
       },
       options: axisChartOptions,
     });
@@ -535,6 +424,13 @@ watch(
   },
   { deep: true },
 );
+
+onMounted(async () => {
+  if (!props.loading && !props.loadError) {
+    await nextTick();
+    renderCharts();
+  }
+});
 
 onBeforeUnmount(destroyCharts);
 </script>

@@ -10,11 +10,18 @@ use Illuminate\Support\Facades\Storage;
 class FeedbackSeeder extends Seeder
 {
     /**
-     * Idempotent demo feedback for local/dev visibility.
+     * Idempotent demo feedback for local/dev visibility only.
+     * Invoked by DemoContentSeeder - not by DatabaseSeeder.
      * Uses text-only rows when orphan media files are absent.
      */
     public function run(): void
     {
+        if (app()->environment(['production', 'prod', 'uat', 'staging'])) {
+            throw new \RuntimeException(
+                'FeedbackSeeder refused: demo feedback must not run in production, UAT, or staging.'
+            );
+        }
+
         $vendor = User::where('email', 'vendor@cmart.com')->first();
         $userId = $vendor?->id;
 

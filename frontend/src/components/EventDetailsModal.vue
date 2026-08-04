@@ -219,12 +219,7 @@ const showBookingCta = computed(() => {
   return isEventBookable(props.event.status) && urgencyLabel.value !== 'Event ended';
 });
 
-const defaultDescription = 'Join us for a weekend of bargains, local vendors, and community fun.';
-
-const showDescription = computed(() => {
-  const text = props.event?.description;
-  return text && text !== defaultDescription;
-});
+const showDescription = computed(() => Boolean(props.event?.description?.trim()));
 
 const descriptionIsLong = computed(() => (props.event?.description?.length || 0) > 220);
 

@@ -1,36 +1,235 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-ink-50 via-brand-50/30 to-ink-50" data-testid="vendor-dashboard-root">
+  <div class="min-h-screen bg-gradient-to-br from-ink-50 via-brand-50/40 to-white" data-testid="vendor-dashboard-root">
     <AppNavbar :variant="auth.isVendorUser ? 'vendor' : 'public'" />
 
-    <div class="max-w-page mx-auto py-12 px-4 sm:px-6 lg:px-8 space-y-10">
+    <div class="max-w-page mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6">
       <VendorOnboardingBanner
         v-if="onboardingState !== 'active'"
         :state="onboardingState"
-        class="mb-2"
         @review-booking="openLatestActionableBooking"
       />
 
-      <header class="rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-7 sm:p-9 shadow-xl shadow-brand-900/5">
-        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div>
-            <span class="ml-badge bg-brand-100 text-brand-700">Vendor Hub</span>
-            <h1 class="mt-2 text-3xl sm:text-4xl font-black text-ink-900 tracking-tight">My Dashboard</h1>
-            <p class="mt-2 text-base text-ink-500 leading-relaxed">
-              Welcome back, {{ userDisplayName }}. Track approvals, booth details, and your vendor history in one place.
-            </p>
-          </div>
+      <!-- Compact header -->
+      <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="min-w-0">
+          <h1 class="text-2xl sm:text-3xl font-black text-ink-900 tracking-tight">
+            Hi, {{ userDisplayName }}
+          </h1>
+          <p class="mt-1 text-sm text-ink-500">Your booth overview for today's CMart work.</p>
+        </div>
+        <div class="flex flex-wrap gap-2 shrink-0">
           <router-link
             to="/vendor-booking"
             data-testid="nav-booking-events"
-            class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-6 py-3 min-h-[44px] text-[15px] font-bold text-white shadow-lg shadow-brand-500/25 hover:bg-brand-600 transition shrink-0"
+            class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-3 min-h-[44px] text-[15px] font-bold text-white shadow-md shadow-brand-500/20 hover:bg-brand-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 transition"
           >
             {{ validBookings.length ? 'Book a Space' : 'Start Vendor Booking' }}
           </router-link>
+          <button
+            type="button"
+            class="ml-btn-ghost min-h-[44px]"
+            :disabled="loadingBookings"
+            @click="refreshPrimaryData"
+          >
+            {{ loadingBookings ? 'Refreshing…' : 'Refresh' }}
+          </button>
         </div>
       </header>
 
+      <!-- Above the fold: next booking + status -->
+      <VendorDashboardFocus
+        :booking="focusBooking"
+        :payment-record="focusPaymentRecord"
+        :booth-status="vendorAnalytics.booth?.booth_status"
+        :booth-number="vendorAnalytics.booth?.booth_number"
+        :current-event-label="vendorAnalytics.booth?.current_event"
+        :loading="loadingBookings"
+        @primary-action="handleFocusPrimaryAction"
+      />
+
+      <!-- Announcements (real published news only) -->
+      <section
+        v-if="announcements.length"
+        class="rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-4 sm:px-5"
+        data-testid="vendor-announcements"
+        aria-label="Event announcements"
+      >
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-sky-800">Announcements</h2>
+          <router-link to="/community" class="text-sm font-semibold text-brand-700 hover:text-brand-800">
+            View more
+          </router-link>
+        </div>
+        <ul class="space-y-2">
+          <li
+            v-for="item in announcements"
+            :key="item.id"
+            class="rounded-xl border border-white/80 bg-white/90 px-4 py-3"
+          >
+            <p class="text-sm font-bold text-ink-900 leading-snug">{{ item.title }}</p>
+            <p class="mt-0.5 text-xs text-ink-500">
+              <span v-if="item.category">{{ item.category }} · </span>{{ item.dateLabel }}
+            </p>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Compact upcoming bookings -->
+      <section
+        id="vendor-my-bookings"
+        class="rounded-2xl border border-ink-100 bg-white p-5 sm:p-6 shadow-sm"
+        data-testid="my-bookings-root"
+      >
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-lg font-extrabold text-ink-900">My Bookings</h2>
+            <p class="text-sm text-ink-500">Upcoming first. Open details when you need the full timeline.</p>
+          </div>
+          <router-link
+            to="/vendor-booking"
+            class="text-sm font-semibold text-brand-700 hover:text-brand-800 min-h-[44px] inline-flex items-center"
+          >
+            {{ validBookings.length ? 'New booking' : 'Start booking' }}
+          </router-link>
+        </div>
+
+        <div v-if="loadingBookings" class="space-y-2" aria-busy="true">
+          <div v-for="n in 2" :key="n" class="h-16 rounded-xl bg-ink-100 animate-pulse"></div>
+        </div>
+
+        <div
+          v-else-if="!priorityBookings.length"
+          class="rounded-xl border border-dashed border-ink-200 bg-ink-50/60 px-4 py-8 text-center text-sm text-ink-500"
+        >
+          No booking records are currently available.
+          <router-link to="/vendor-booking" class="mt-2 block font-semibold text-brand-700 hover:text-brand-800">
+            Submit your first booking →
+          </router-link>
+        </div>
+
+        <ul v-else class="space-y-2">
+          <li
+            v-for="booking in compactBookings"
+            :key="booking.id"
+            data-testid="booking-list-item"
+            :data-booking-id="booking.id"
+            :data-booking-status="booking.approval_status"
+            class="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-ink-100 bg-ink-50/40 px-4 py-3 hover:border-brand-200 hover:bg-brand-50/30 transition"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-bold text-ink-900 truncate">
+                {{ booking.event_label || booking.carboot_event?.title || formatBookingDate(booking.booking_date) }}
+                <span class="font-semibold text-ink-500"> · #{{ booking.id }}</span>
+              </p>
+              <p class="mt-0.5 text-xs text-ink-500">
+                {{ formatBookingDate(booking.booking_date) }}
+                <span v-if="boothTypeLabel(booking)"> · {{ boothTypeLabel(booking) }}</span>
+              </p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span :class="statusBadgeClass(booking.approval_status)" data-testid="booking-status">
+                {{ statusLabel(booking.approval_status) }}
+              </span>
+              <button
+                type="button"
+                class="ml-btn-ghost text-sm min-h-[44px]"
+                data-testid="booking-view-details"
+                @click="openBookingDetails(booking.id)"
+              >
+                View Details
+              </button>
+            </div>
+          </li>
+        </ul>
+
+        <div v-if="priorityBookings.length > COMPACT_BOOKING_LIMIT || bookingsExpanded" class="mt-4">
+          <button
+            type="button"
+            class="text-sm font-semibold text-brand-700 hover:text-brand-800 min-h-[44px] inline-flex items-center"
+            data-testid="view-all-bookings"
+            @click="toggleBookingsExpanded"
+          >
+            {{ bookingsExpanded ? 'Show less' : `View all bookings (${priorityBookings.length})` }}
+          </button>
+        </div>
+
+        <!-- Full list tools (only when expanded) -->
+        <div v-if="bookingsExpanded" class="mt-5 space-y-4 border-t border-ink-100 pt-5">
+          <div class="flex flex-col sm:flex-row gap-3">
+            <input
+              v-model="bookingSearchQuery"
+              type="search"
+              placeholder="Search bookings…"
+              data-testid="booking-search"
+              class="w-full sm:max-w-sm rounded-xl border border-ink-200 bg-white px-4 py-2.5 min-h-[44px] text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            />
+            <button class="ml-btn-ghost min-h-[44px]" :disabled="loadingBookings" @click="fetchMyBookings">
+              {{ loadingBookings ? 'Refreshing…' : 'Refresh list' }}
+            </button>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="tab in FILTER_TABS"
+              :key="tab.id"
+              type="button"
+              class="rounded-full px-4 py-2 min-h-[40px] text-sm font-semibold transition"
+              :class="filterTabClass(selectedBookingStatus === tab.id)"
+              @click="selectedBookingStatus = tab.id"
+            >
+              {{ tab.label }}
+              <span class="ml-1 opacity-75">({{ filterCounts[tab.id] || 0 }})</span>
+            </button>
+          </div>
+
+          <div v-if="!filteredBookings.length" class="rounded-xl border border-dashed border-ink-200 px-4 py-6 text-center text-sm text-ink-500">
+            No bookings match your search.
+          </div>
+
+          <div v-else class="overflow-x-auto rounded-xl border border-ink-100">
+            <table class="min-w-full divide-y divide-ink-100 text-sm">
+              <thead class="bg-ink-50/80">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Booking ID</th>
+                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Event Date</th>
+                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Booth Type</th>
+                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Product</th>
+                  <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Status</th>
+                  <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-ink-100 bg-white">
+                <tr
+                  v-for="booking in filteredBookings"
+                  :key="`full-${booking.id}`"
+                  class="hover:bg-brand-50/40 transition-colors"
+                >
+                  <td class="px-4 py-3 font-semibold text-ink-900">#{{ booking.id }}</td>
+                  <td class="px-4 py-3 text-ink-600">{{ formatBookingDate(booking.booking_date) }}</td>
+                  <td class="px-4 py-3 text-ink-600">{{ boothTypeLabel(booking) }}</td>
+                  <td class="px-4 py-3 text-ink-600 max-w-[220px] truncate" :title="productSummary(booking)">
+                    {{ productSummary(booking) }}
+                  </td>
+                  <td class="px-4 py-3">
+                    <span :class="statusBadgeClass(booking.approval_status)">
+                      {{ statusLabel(booking.approval_status) }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <button class="ml-btn-ghost text-sm min-h-[44px]" @click="openBookingDetails(booking.id)">
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Secondary tools -->
       <nav
-        aria-label="Dashboard sections"
+        aria-label="More vendor tools"
         class="flex flex-wrap gap-2"
         data-testid="vendor-dashboard-section-nav"
       >
@@ -38,129 +237,35 @@
           v-for="link in dashboardSectionLinks"
           :key="link.targetId"
           type="button"
-          class="rounded-full px-4 py-2 text-sm font-semibold transition border"
+          class="rounded-full px-4 py-2 min-h-[40px] text-sm font-semibold transition border"
           :class="activeSectionId === link.targetId
-            ? 'bg-brand-50 text-brand-700 border-brand-200 ring-1 ring-brand-200/80'
-            : 'bg-white/80 text-ink-600 border-ink-200 hover:bg-brand-50/60 hover:text-brand-700 hover:border-brand-200'"
+            ? 'bg-brand-50 text-brand-700 border-brand-200'
+            : 'bg-white text-ink-600 border-ink-200 hover:bg-brand-50/60 hover:text-brand-700 hover:border-brand-200'"
           :data-testid="link.testId"
           @click="scrollToDashboardSection(link.targetId)"
         >
           {{ link.label }}
         </button>
+        <button
+          type="button"
+          class="rounded-full px-4 py-2 min-h-[40px] text-sm font-semibold transition border border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
+          data-testid="dash-nav-insights"
+          :aria-expanded="showAnalytics"
+          @click="toggleAnalytics"
+        >
+          {{ showAnalytics ? 'Hide insights' : 'View insights' }}
+        </button>
+        <button
+          v-if="hasPaymentHistoryEntry"
+          type="button"
+          class="rounded-full px-4 py-2 min-h-[40px] text-sm font-semibold transition border border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
+          data-testid="dash-nav-receipts"
+          :aria-expanded="showReceipts"
+          @click="toggleReceipts"
+        >
+          {{ showReceipts ? 'Hide payment history' : 'Payment history' }}
+        </button>
       </nav>
-
-      <!-- My Bookings -->
-      <section
-        id="vendor-my-bookings"
-        class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-7 sm:p-9 shadow-xl shadow-brand-900/5"
-        data-testid="my-bookings-root"
-      >
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-          <div>
-            <h2 class="text-2xl font-extrabold text-ink-900">My Bookings</h2>
-            <p class="text-base text-ink-500 leading-relaxed">Your booth requests at a glance. Open details for the full approval timeline.</p>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <router-link
-              to="/vendor-booking"
-              class="ml-btn-primary"
-            >
-              {{ validBookings.length ? 'New Booking' : 'Start Vendor Booking' }}
-            </router-link>
-            <button class="ml-btn-ghost" :disabled="loadingBookings" @click="fetchMyBookings">
-              {{ loadingBookings ? 'Refreshing…' : 'Refresh' }}
-            </button>
-          </div>
-        </div>
-
-        <div class="mb-4">
-          <input
-            v-model="bookingSearchQuery"
-            type="search"
-            placeholder="Search bookings…"
-            data-testid="booking-search"
-            class="w-full sm:max-w-sm rounded-xl border border-ink-200 bg-white/80 px-4 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-          />
-        </div>
-
-        <div class="flex flex-wrap gap-2 mb-5">
-          <button
-            v-for="tab in FILTER_TABS"
-            :key="tab.id"
-            type="button"
-            class="rounded-full px-4 py-1.5 text-sm font-semibold transition"
-            :class="filterTabClass(selectedBookingStatus === tab.id)"
-            @click="selectedBookingStatus = tab.id"
-          >
-            {{ tab.label }}
-            <span class="ml-1 opacity-75">({{ filterCounts[tab.id] || 0 }})</span>
-          </button>
-        </div>
-
-        <div v-if="!filteredBookings.length" class="rounded-2xl border border-dashed border-ink-300 bg-ink-50/50 p-10 text-center text-ink-500">
-          <template v-if="!validBookings.length">
-            No booking records are currently available.
-            <router-link to="/vendor-booking" class="mt-3 block text-brand-600 font-semibold hover:text-brand-700">
-              Submit your first booking →
-            </router-link>
-          </template>
-          <template v-else>
-            No bookings match your search.
-          </template>
-        </div>
-
-        <div v-else class="overflow-x-auto rounded-2xl border border-ink-100">
-          <table class="min-w-full divide-y divide-ink-100 text-sm">
-            <thead class="bg-ink-50/80">
-              <tr>
-                <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Booking ID</th>
-                <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Event Date</th>
-                <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Booth Type</th>
-                <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Product</th>
-                <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Status</th>
-                <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">Action</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-ink-100 bg-white/70">
-              <tr
-                v-for="booking in visibleBookings"
-                :key="booking.id"
-                data-testid="booking-list-item"
-                :data-booking-id="booking.id"
-                :data-booking-status="booking.approval_status"
-                class="hover:bg-brand-50/40 transition-colors"
-              >
-                <td class="px-4 py-3 font-semibold text-ink-900">#{{ booking.id }}</td>
-                <td class="px-4 py-3 text-ink-600">{{ formatBookingDate(booking.booking_date) }}</td>
-                <td class="px-4 py-3 text-ink-600">{{ boothTypeLabel(booking) }}</td>
-                <td class="px-4 py-3 text-ink-600 max-w-[220px] truncate" :title="productSummary(booking)">
-                  {{ productSummary(booking) }}
-                </td>
-                <td class="px-4 py-3">
-                  <span :class="statusBadgeClass(booking.approval_status)" data-testid="booking-status">
-                    {{ statusLabel(booking.approval_status) }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-right">
-                  <button
-                    class="ml-btn-ghost text-sm"
-                    data-testid="booking-view-details"
-                    @click="openBookingDetails(booking.id)"
-                  >
-                    View Details
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div v-if="filteredBookings.length > VISIBLE_LIST_LIMIT" class="mt-4 flex justify-center">
-          <button class="ml-btn-ghost text-sm font-semibold" @click="bookingsExpanded = !bookingsExpanded">
-            {{ bookingsExpanded ? 'Show Less' : `View All Bookings (${filteredBookings.length})` }}
-          </button>
-        </div>
-      </section>
 
       <VendorItemManager ref="itemManagerRef" @changed="onVendorItemsChanged" />
 
@@ -168,8 +273,7 @@
 
       <MyItemReservationsPanel />
 
-      <!-- Event Passes & Business Profile -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div class="lg:col-span-2">
           <VendorEventPassesPanel
             ref="eventPassesRef"
@@ -185,25 +289,73 @@
         />
       </div>
 
-      <VendorAnalyticsDashboard
-        :analytics="vendorAnalytics"
-        :bookings="validBookings"
-        :loading="loadingInsights"
-        :load-error="insightsError"
-        @retry="fetchVendorInsights"
-        @edit-profile="scrollToBusinessProfile"
-        @manage-reuse="scrollToReuseListings"
-        @view-booking="openBookingDetails"
-      />
+      <!-- Progressive disclosure: analytics -->
+      <div id="vendor-analytics" class="scroll-mt-24">
+        <div
+          v-if="!showAnalytics"
+          class="rounded-2xl border border-dashed border-ink-200 bg-white/70 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+        >
+          <div>
+            <p class="text-sm font-bold text-ink-800">Analytics &amp; Reports</p>
+            <p class="text-sm text-ink-500">Optional trends, exports, and profile readiness.</p>
+          </div>
+          <button
+            type="button"
+            class="ml-btn-ghost min-h-[44px] shrink-0"
+            data-testid="open-vendor-insights"
+            @click="toggleAnalytics"
+          >
+            View insights
+          </button>
+        </div>
 
-      <VendorHistoryReceipts
-        :records="paymentRecords"
-        :loading="loadingHistory"
-        :load-error="historyError"
-        @retry="fetchPaymentHistory"
-        @view-document="openBookingDocument"
-        @submit-payment="openPaymentSubmission"
-      />
+        <VendorAnalyticsDashboard
+          v-else
+          :analytics="vendorAnalytics"
+          :loading="loadingInsights"
+          :load-error="insightsError"
+          @retry="fetchVendorInsights"
+          @edit-profile="scrollToBusinessProfile"
+          @manage-reuse="scrollToReuseListings"
+          @close="showAnalytics = false"
+        />
+      </div>
+
+      <!-- Progressive disclosure: payment history (hidden when empty) -->
+      <div
+        v-if="hasPaymentHistoryEntry"
+        id="vendor-history-receipts"
+        class="scroll-mt-24"
+      >
+        <div
+          v-if="!showReceipts"
+          class="rounded-2xl border border-dashed border-ink-200 bg-white/70 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+        >
+          <div>
+            <p class="text-sm font-bold text-ink-800">Payment history</p>
+            <p class="text-sm text-ink-500">Past invoices and receipts for your booth bookings.</p>
+          </div>
+          <button
+            type="button"
+            class="ml-btn-ghost min-h-[44px] shrink-0"
+            data-testid="open-vendor-receipts"
+            @click="toggleReceipts"
+          >
+            View receipts
+          </button>
+        </div>
+
+        <VendorHistoryReceipts
+          v-else
+          :records="paymentRecords"
+          :loading="loadingHistory"
+          :load-error="historyError"
+          @retry="fetchPaymentHistory"
+          @view-document="openBookingDocument"
+          @submit-payment="openPaymentSubmission"
+          @close="showReceipts = false"
+        />
+      </div>
     </div>
 
     <VendorBookingDetailsModal
@@ -234,6 +386,7 @@ import MyItemReservationsPanel from '../../components/MyItemReservationsPanel.vu
 import VendorAnalyticsDashboard from '../../components/VendorAnalyticsDashboard.vue';
 import VendorHistoryReceipts from '../../components/VendorHistoryReceipts.vue';
 import VendorOnboardingBanner from '../../components/vendor/VendorOnboardingBanner.vue';
+import VendorDashboardFocus from '../../components/vendor/VendorDashboardFocus.vue';
 import VendorBookingDetailsModal from '../../components/VendorBookingDetailsModal.vue';
 import VendorPaymentModal from '../../components/VendorPaymentModal.vue';
 import api from '../../services/api';
@@ -242,14 +395,17 @@ import { VENDOR_DASHBOARD_SECTION_LINKS } from '../../config/navigation';
 import {
   FILTER_TABS,
   boothTypeLabel,
+  canVendorProceedToDemoPayment,
   filterTabClass,
   formatBookingDate,
+  isTerminalBookingStatus,
   isValidBookingDate,
   matchesStatusFilter,
   productSummary,
   statusBadgeClass,
   statusLabel,
 } from '../../utils/bookingDisplay';
+import { mapApiNewsToCard } from '../../utils/newsDisplay';
 import { resolveVendorOnboardingState } from '../../utils/vendorOnboarding';
 
 const toast = useToast();
@@ -260,14 +416,54 @@ const dashboardSectionLinks = VENDOR_DASHBOARD_SECTION_LINKS;
 const activeSectionId = ref('vendor-my-bookings');
 let sectionObserver = null;
 
+const COMPACT_BOOKING_LIMIT = 2;
+const MY_TZ = 'Asia/Kuala_Lumpur';
+
+const showAnalytics = ref(false);
+const showReceipts = ref(false);
+
 const scrollToDashboardSection = (targetId) => {
   activeSectionId.value = targetId;
   document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
+const toggleAnalytics = () => {
+  showAnalytics.value = !showAnalytics.value;
+  if (showAnalytics.value) {
+    requestAnimationFrame(() => {
+      document.getElementById('vendor-analytics')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+};
+
+const toggleReceipts = () => {
+  showReceipts.value = !showReceipts.value;
+  if (showReceipts.value) {
+    requestAnimationFrame(() => {
+      document.getElementById('vendor-history-receipts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+};
+
 const syncSectionFromHash = () => {
   const hash = (route.hash || '').replace('#', '');
   if (!hash) return;
+  if (hash === 'vendor-analytics') {
+    showAnalytics.value = true;
+    activeSectionId.value = hash;
+    requestAnimationFrame(() => {
+      document.getElementById('vendor-analytics')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return;
+  }
+  if (hash === 'vendor-history-receipts') {
+    showReceipts.value = true;
+    activeSectionId.value = hash;
+    requestAnimationFrame(() => {
+      document.getElementById('vendor-history-receipts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return;
+  }
   const match = dashboardSectionLinks.find((link) => link.targetId === hash);
   if (match) {
     activeSectionId.value = match.targetId;
@@ -297,15 +493,11 @@ const setupSectionObserver = () => {
     { rootMargin: '-20% 0px -55% 0px', threshold: [0.1, 0.35, 0.6] },
   );
 
-  dashboardSectionLinks.forEach((link) => {
-    const el = document.getElementById(link.targetId);
+  [...dashboardSectionLinks.map((link) => link.targetId), 'vendor-analytics', 'vendor-history-receipts', 'vendor-my-bookings'].forEach((id) => {
+    const el = document.getElementById(id);
     if (el) sectionObserver.observe(el);
   });
 };
-
-const VISIBLE_LIST_LIMIT = 5;
-
-const normalizeSearch = (value) => String(value ?? '').toLowerCase().trim();
 
 const DEFAULT_ANALYTICS = {
   summary: {
@@ -353,6 +545,7 @@ const showPaymentModal = ref(false);
 const paymentBookingId = ref(null);
 const paymentInvoiceAmount = ref(null);
 const businessProfile = ref(null);
+const announcements = ref([]);
 
 const paymentRecords = ref([]);
 const loadingHistory = ref(false);
@@ -361,6 +554,13 @@ const historyError = ref(false);
 const userDisplayName = computed(() => businessProfile.value?.business_name || auth.user?.name || 'Vendor');
 
 const onboardingState = computed(() => resolveVendorOnboardingState(validBookings.value));
+
+const todayKey = () => new Date().toLocaleDateString('en-CA', { timeZone: MY_TZ });
+
+const bookingDateKey = (booking) => {
+  const raw = String(booking?.booking_date || '').slice(0, 10);
+  return isValidBookingDate(raw) ? raw : null;
+};
 
 const openLatestActionableBooking = () => {
   const sorted = [...validBookings.value].sort((a, b) => (b.id ?? 0) - (a.id ?? 0));
@@ -429,13 +629,35 @@ const openBookingDocument = (bookingId) => {
 };
 
 const openPaymentSubmission = (row) => {
-  paymentBookingId.value = row?.booking_id ?? null;
-  paymentInvoiceAmount.value = row?.amount ?? null;
+  paymentBookingId.value = row?.booking_id ?? row?.id ?? null;
+  paymentInvoiceAmount.value = row?.amount ?? row?.invoice?.amount ?? null;
   showPaymentModal.value = true;
+};
+
+const handleFocusPrimaryAction = (action) => {
+  if (!action) return;
+  if (action.type === 'pay') {
+    openPaymentSubmission({
+      booking_id: action.bookingId,
+      amount: action.amount,
+    });
+    return;
+  }
+  if (action.type === 'view-document' && action.bookingId) {
+    openBookingDocument(action.bookingId);
+    return;
+  }
+  if (action.type === 'view-booking' && action.bookingId) {
+    openBookingDetails(action.bookingId);
+  }
 };
 
 const onPaymentSubmitted = async () => {
   await Promise.all([fetchPaymentHistory(), fetchMyBookings()]);
+};
+
+const refreshPrimaryData = async () => {
+  await Promise.all([fetchMyBookings(), fetchPaymentHistory(), fetchAnnouncements()]);
 };
 
 const bookingMatchesSearch = (booking, query) => {
@@ -464,21 +686,65 @@ const validBookings = computed(() =>
   myBookings.value.filter((booking) => isValidBookingDate(booking.booking_date)),
 );
 
-const filteredBookings = computed(() => {
-  const query = normalizeSearch(bookingSearchQuery.value);
+const sortBookingsByPriority = (bookings) => {
+  const today = todayKey();
+  return [...bookings].sort((a, b) => {
+    const aKey = bookingDateKey(a) || '9999-99-99';
+    const bKey = bookingDateKey(b) || '9999-99-99';
+    const aUpcoming = aKey >= today;
+    const bUpcoming = bKey >= today;
+    if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
+    if (aKey !== bKey) return aUpcoming ? aKey.localeCompare(bKey) : bKey.localeCompare(aKey);
+    return (b.id ?? 0) - (a.id ?? 0);
+  });
+};
 
-  return validBookings.value.filter(
+const priorityBookings = computed(() => sortBookingsByPriority(validBookings.value));
+
+const focusBooking = computed(() => {
+  const today = todayKey();
+  const candidates = priorityBookings.value.filter((booking) => {
+    if (isTerminalBookingStatus(booking.approval_status)) return false;
+    const key = bookingDateKey(booking);
+    return Boolean(key && key >= today);
+  });
+
+  const actionable = candidates.find(
+    (booking) =>
+      booking.approval_status === 'Needs_Revision'
+      || canVendorProceedToDemoPayment(booking)
+      || ['Pending_Organizer', 'Pending_Staff', 'Pending_Boss'].includes(booking.approval_status),
+  );
+
+  return actionable || candidates[0] || priorityBookings.value[0] || null;
+});
+
+const focusPaymentRecord = computed(() => {
+  const bookingId = focusBooking.value?.id;
+  if (!bookingId) return null;
+  return paymentRecords.value.find((row) => Number(row.booking_id) === Number(bookingId)) || null;
+});
+
+/** Show payment-history entry only when records exist or a load error needs recovery. */
+const hasPaymentHistoryEntry = computed(() =>
+  historyError.value || paymentRecords.value.length > 0,
+);
+
+const compactBookings = computed(() =>
+  bookingsExpanded.value
+    ? []
+    : priorityBookings.value.slice(0, COMPACT_BOOKING_LIMIT),
+);
+
+const filteredBookings = computed(() => {
+  const query = String(bookingSearchQuery.value ?? '').toLowerCase().trim();
+
+  return priorityBookings.value.filter(
     (booking) =>
       matchesStatusFilter(booking, selectedBookingStatus.value) &&
       bookingMatchesSearch(booking, query),
   );
 });
-
-const visibleBookings = computed(() =>
-  bookingsExpanded.value
-    ? filteredBookings.value
-    : filteredBookings.value.slice(0, VISIBLE_LIST_LIMIT),
-);
 
 const filterCounts = computed(() =>
   FILTER_TABS.reduce((counts, tab) => {
@@ -487,8 +753,12 @@ const filterCounts = computed(() =>
   }, {}),
 );
 
+const toggleBookingsExpanded = () => {
+  bookingsExpanded.value = !bookingsExpanded.value;
+};
+
 watch([bookingSearchQuery, selectedBookingStatus], () => {
-  bookingsExpanded.value = false;
+  if (!bookingsExpanded.value) return;
 });
 
 const openBookingDetails = (bookingId) => {
@@ -504,7 +774,12 @@ onMounted(async () => {
       // Public fallback handled by router on protected routes
     }
   }
-  await Promise.all([fetchMyBookings(), fetchVendorInsights(), fetchPaymentHistory()]);
+  await Promise.all([
+    fetchMyBookings(),
+    fetchVendorInsights(),
+    fetchPaymentHistory(),
+    fetchAnnouncements(),
+  ]);
   syncSectionFromHash();
   setupSectionObserver();
 });
@@ -514,6 +789,28 @@ onBeforeUnmount(() => {
 });
 
 watch(() => route.hash, syncSectionFromHash);
+
+const fetchAnnouncements = async () => {
+  try {
+    const { data } = await api.get('/news');
+    const rows = Array.isArray(data) ? data : (data?.data ?? []);
+    announcements.value = rows
+      .slice(0, 2)
+      .map((row) => {
+        const card = mapApiNewsToCard(row);
+        return {
+          id: card.id,
+          title: card.title,
+          category: card.category || null,
+          dateLabel: card.publishedDateShort || '',
+        };
+      })
+      .filter((row) => row.title);
+  } catch (error) {
+    console.error('Unable to retrieve announcements for vendor dashboard:', error);
+    announcements.value = [];
+  }
+};
 
 const fetchPaymentHistory = async () => {
   loadingHistory.value = true;

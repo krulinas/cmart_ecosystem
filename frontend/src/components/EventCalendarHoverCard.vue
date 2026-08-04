@@ -65,7 +65,7 @@ const props = defineProps({
 
 const descriptionSnippet = computed(() => {
   const text = props.event?.description;
-  if (!text || text.startsWith('Join us for a weekend')) return '';
+  if (!text) return '';
   return text;
 });
 

@@ -188,7 +188,7 @@
                   id="staff-event-title"
                   v-model="newEventTitle"
                   class="w-full border rounded-lg p-3 border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-                  placeholder="CMart Weekly Carboot"
+                  placeholder="Event title"
                 />
               </div>
               <div>
@@ -241,7 +241,6 @@ import { vendorBookingLink } from '../utils/vendorBooking';
 import EventDetailsModal from './EventDetailsModal.vue';
 import EventCalendarHoverCard from './EventCalendarHoverCard.vue';
 import {
-  DEFAULT_EVENT_LOCATION,
   EVENT_TZ,
   eventDateKey,
   filterEventsByChip,
@@ -363,7 +362,7 @@ const loadEvents = async () => {
   try {
     const { data } = await api.get('/events');
     const raw = Array.isArray(data) ? data : [];
-    cardEvents.value = raw.map((ev) => mapApiEventToCard(ev, DEFAULT_EVENT_LOCATION));
+    cardEvents.value = raw.map((ev) => mapApiEventToCard(ev));
     hasLoaded.value = true;
     syncCalendarEvents();
   } catch (e) {

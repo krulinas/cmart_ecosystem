@@ -485,7 +485,7 @@ import EventDetailsModal from '../../components/EventDetailsModal.vue';
 import MyItemReservationsPanel from '../../components/MyItemReservationsPanel.vue';
 import { useAuthStore } from '../../stores/auth';
 import api from '../../services/api';
-import { DEFAULT_EVENT_LOCATION, filterEventsByChip, mapApiEventToCard } from '../../utils/eventDisplay';
+import { filterEventsByChip, mapApiEventToCard } from '../../utils/eventDisplay';
 import { loginPathWithRedirect, registerPathWithRedirect } from '../../utils/postAuthRedirect';
 import { resolveStorageUrl } from '../../utils/imageUrl';
 
@@ -586,7 +586,7 @@ const fetchEvents = async () => {
   try {
     const { data } = await api.get('/events');
     const events = Array.isArray(data) ? data : [];
-    const cards = events.map((ev) => mapApiEventToCard(ev, DEFAULT_EVENT_LOCATION));
+    const cards = events.map((ev) => mapApiEventToCard(ev));
     upcomingEvents.value = filterEventsByChip(cards, 'upcoming');
   } catch (error) {
     console.error('Failed to load community events:', error);

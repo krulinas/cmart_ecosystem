@@ -38,7 +38,7 @@ export const mapApiNewsToCard = (post) => {
     title: normalized.title,
     excerpt: normalized.excerpt || '',
     body: normalized.body || '',
-    category: normalized.category || 'Announcement',
+    category: normalized.category || '',
     publishedAt: normalized.published_at,
     published_at: normalized.published_at,
     image_url: normalized.external_image_url || normalized.image_url || '',

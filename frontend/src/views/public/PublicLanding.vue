@@ -57,9 +57,20 @@
             <div v-for="n in 3" :key="n" class="bg-white rounded-2xl border border-gray-100 p-6 animate-pulse h-80"></div>
           </div>
 
+          <div v-else-if="eventsError" class="text-center py-16 bg-white rounded-2xl border border-rose-100">
+            <p class="text-rose-700 text-lg">Unable to load upcoming events right now.</p>
+            <button
+              type="button"
+              class="mt-4 inline-flex items-center justify-center rounded-full border-2 border-brand-600 px-5 py-2.5 text-sm font-bold text-brand-700 hover:bg-brand-50"
+              @click="fetchEvents"
+            >
+              Retry
+            </button>
+          </div>
+
           <div v-else-if="!upcomingEvents.length" class="text-center py-16 bg-white rounded-2xl border border-gray-100">
-            <p class="text-gray-500 text-lg">No upcoming events scheduled right now.</p>
-            <p class="text-gray-400 text-sm mt-2">Check back soon or follow our news for the next market date.</p>
+            <p class="text-gray-500 text-lg">No upcoming events are currently available.</p>
+            <p class="text-gray-400 text-sm mt-2">Check back soon or follow News &amp; Updates for the next market date.</p>
           </div>
 
           <UpcomingEventsCarousel
@@ -176,8 +187,19 @@
             </div>
           </div>
 
+          <div v-else-if="newsError" class="text-center py-16 bg-white rounded-2xl border border-rose-100">
+            <p class="text-rose-700">Unable to load news and updates right now.</p>
+            <button
+              type="button"
+              class="mt-4 inline-flex items-center justify-center rounded-full border-2 border-brand-600 px-5 py-2.5 text-sm font-bold text-brand-700 hover:bg-brand-50"
+              @click="fetchNews"
+            >
+              Retry
+            </button>
+          </div>
+
           <div v-else-if="!newsPosts.length" class="text-center py-16 bg-white rounded-2xl border border-gray-100">
-            <p class="text-gray-500">No news posts yet. Check back for announcements and updates.</p>
+            <p class="text-gray-500">No news or updates have been published yet.</p>
           </div>
 
           <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -210,9 +232,13 @@
               </div>
               <div class="p-6 flex flex-col flex-grow pointer-events-none">
                 <div class="flex items-center justify-between gap-2 mb-3">
-                  <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-full">
+                  <span
+                    v-if="post.category"
+                    class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-full"
+                  >
                     {{ post.category }}
                   </span>
+                  <span v-else></span>
                   <time v-if="post.publishedDateShort" class="text-xs text-gray-400 font-medium">{{ post.publishedDateShort }}</time>
                 </div>
                 <h3 class="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{{ post.title }}</h3>
@@ -320,6 +346,8 @@ const selectedNews = ref(null);
 const showNewsModal = ref(false);
 const loadingEvents = ref(true);
 const loadingNews = ref(true);
+const eventsError = ref(false);
+const newsError = ref(false);
 
 const { targetRef: eventsSectionRef, revealClass: eventsHeaderClass } = useScrollReveal({ threshold: 0.08 });
 
@@ -384,11 +412,14 @@ const vendorCards = [
 
 const fetchEvents = async () => {
   loadingEvents.value = true;
+  eventsError.value = false;
   try {
     const { data } = await api.get('/events');
     upcomingEvents.value = mapApiEventsToUpcomingCards(data);
   } catch (error) {
     console.error('Failed to load events:', error);
+    upcomingEvents.value = [];
+    eventsError.value = true;
   } finally {
     loadingEvents.value = false;
   }
@@ -396,12 +427,15 @@ const fetchEvents = async () => {
 
 const fetchNews = async () => {
   loadingNews.value = true;
+  newsError.value = false;
   try {
     const { data } = await api.get('/news');
     const posts = Array.isArray(data) ? data : [];
     newsPosts.value = posts.map(mapApiNewsToCard);
   } catch (error) {
     console.error('Failed to load news:', error);
+    newsPosts.value = [];
+    newsError.value = true;
   } finally {
     loadingNews.value = false;
   }

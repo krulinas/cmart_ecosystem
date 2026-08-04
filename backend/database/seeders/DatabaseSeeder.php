@@ -5,18 +5,27 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Space;
-use App\Models\CarbootEvent;
-use App\Models\NewsPost;
-use App\Models\Booking;
-use App\Models\Invoice;
 use App\Models\ManagementProfile;
-use Illuminate\Support\Carbon;
+use RuntimeException;
 
+/**
+ * Baseline catalogue / RBAC seed for local development.
+ *
+ * Does NOT create demo events, news, bookings, or feedback.
+ * For opt-in local demo business content only:
+ *   php artisan db:seed --class=DemoContentSeeder
+ */
 class DatabaseSeeder extends Seeder
 {
     public function run()
     {
-        // Demo accounts for Carboot@CMart RBAC.
+        if (app()->environment(['production', 'prod', 'uat', 'staging'])) {
+            throw new RuntimeException(
+                'DatabaseSeeder refused: do not seed demo accounts or catalogues into production, UAT, or staging via db:seed.'
+            );
+        }
+
+        // Development RBAC accounts (local/testing/e2e only).
         User::updateOrCreate(['email' => 'vendor@cmart.com'], [
             'name' => 'Inas (Test Vendor)',
             'password' => bcrypt('password123'),
@@ -33,7 +42,6 @@ class DatabaseSeeder extends Seeder
             'vendor_status' => 'approved',
         ]);
 
-        // Legacy demo login retained; canonical Organizer role.
         User::updateOrCreate(['email' => 'admin@cmart.com'], [
             'name' => 'Carboot Organizer (Ops)',
             'password' => bcrypt('password123'),
@@ -42,7 +50,6 @@ class DatabaseSeeder extends Seeder
             'vendor_status' => 'none',
         ]);
 
-        // Former staff demo account — now CMart Management (venue-side personnel).
         User::updateOrCreate(['email' => 'staff@cmart.com'], [
             'name' => 'CMart Management Demo',
             'password' => bcrypt('password123'),
@@ -105,10 +112,10 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        $hqAdmin = User::where('email', 'hq@cmart.com')->first();
-        if ($hqAdmin) {
+        $hq = User::where('email', 'hq@cmart.com')->first();
+        if ($hq) {
             ManagementProfile::updateOrCreate(
-                ['user_id' => $hqAdmin->id],
+                ['user_id' => $hq->id],
                 [
                     'staff_code' => 'CM-HQ-001',
                     'tier' => 3,
@@ -135,10 +142,10 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        $venueManager = User::where('email', 'venue@cmart.com')->first();
-        if ($venueManager) {
+        $venue = User::where('email', 'venue@cmart.com')->first();
+        if ($venue) {
             ManagementProfile::updateOrCreate(
-                ['user_id' => $venueManager->id],
+                ['user_id' => $venue->id],
                 [
                     'staff_code' => 'CM-VEN-001',
                     'tier' => 2,
@@ -150,133 +157,25 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        // Create default rentable spaces.
         Space::updateOrCreate(['space_size' => 'Standard (1 Parking Lot)'], [
             'space_size' => 'Standard (1 Parking Lot)',
             'price' => 30.00,
-            'status' => 'Available'
+            'status' => 'Available',
         ]);
 
         Space::updateOrCreate(['space_size' => 'Large (2 Parking Lots)'], [
             'space_size' => 'Large (2 Parking Lots)',
             'price' => 50.00,
-            'status' => 'Available'
+            'status' => 'Available',
         ]);
 
-        // Upcoming events use relative dates so E2E booking specs stay bookable after re-seeding.
-        $weeklyStart = Carbon::now()->addDays(7)->setTime(8, 0, 0);
-        $weeklyEnd = $weeklyStart->copy()->addHours(6);
-        $almostFullStart = Carbon::now()->addDays(14)->setTime(8, 0, 0);
-        $almostFullEnd = $almostFullStart->copy()->addHours(6);
-        $megaStart = Carbon::now()->addDays(21)->setTime(8, 0, 0);
-        $megaEnd = $megaStart->copy()->addHours(10);
+        $this->call(VendorCategorySeeder::class);
 
-        $weeklyEvent = CarbootEvent::updateOrCreate(
-            ['title' => 'CMart Weekly Carboot'],
-            [
-                'starts_at' => $weeklyStart,
-                'ends_at' => $weeklyEnd,
-                'status' => 'Available',
-                'description' => 'Standard weekend carboot at CMart Changlun.',
-                'max_slots' => 120,
-                'site_price' => CarbootEvent::DEFAULT_SITE_PRICE,
-            ]
-        );
-
-        CarbootEvent::updateOrCreate(
-            ['title' => 'CMart Weekly Carboot (Almost Full)'],
-            [
-                'starts_at' => $almostFullStart,
-                'ends_at' => $almostFullEnd,
-                'status' => 'Almost Full',
-                'description' => 'Limited slots remaining for Sunday carboot.',
-                'max_slots' => 120,
-                'site_price' => CarbootEvent::DEFAULT_SITE_PRICE,
-            ]
-        );
-
-        CarbootEvent::updateOrCreate(
-            ['title' => 'Changlun Mega Carboot'],
-            [
-                'starts_at' => $megaStart,
-                'ends_at' => $megaEnd,
-                'status' => 'Available',
-                'description' => 'Extended hours mega carboot event.',
-                'max_slots' => 200,
-                'site_price' => CarbootEvent::DEFAULT_SITE_PRICE,
-            ]
-        );
-
-        $admin = User::where('email', 'admin@cmart.com')->first();
-
-        NewsPost::updateOrCreate(
-            ['title' => 'Digital System Introduced with OIB Developers'],
-            [
-                'excerpt' => 'CMart proudly launches a new booking portal to simplify invoice management...',
-                'body' => 'The new Carboot@CMart digital ecosystem is now live for vendors and community members.',
-                'category' => 'Announcement',
-                'image_url' => 'https://images.unsplash.com/photo-1556761175-5973dc0f32b7?q=80&w=800&auto=format&fit=crop',
-                'published_at' => '2026-05-12 09:00:00',
-                'is_published' => true,
-                'author_id' => $admin?->id,
-            ]
-        );
-
-        NewsPost::updateOrCreate(
-            ['title' => 'Flea Market Vendors Transition to CMart'],
-            [
-                'excerpt' => 'Over 20 vendors from outside sites have joined our ecosystem...',
-                'body' => 'CMart welcomes flea market vendors into the unified booking and approval pipeline.',
-                'category' => 'Community',
-                'image_url' => 'https://images.unsplash.com/photo-1472851294608-062f18ce0411?q=80&w=800&auto=format&fit=crop',
-                'published_at' => '2026-05-10 09:00:00',
-                'is_published' => true,
-                'author_id' => $admin?->id,
-            ]
-        );
-
-        NewsPost::updateOrCreate(
-            ['title' => 'How to Choose the Right Space Size?'],
-            [
-                'excerpt' => 'Do you need an M or L sized space? Learn the exact dimensions and pricing...',
-                'body' => 'Compare Standard and Large parking-lot spaces before you submit your vendor booking.',
-                'category' => 'Vendor Tips',
-                'image_url' => 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=800&auto=format&fit=crop',
-                'published_at' => '2026-05-05 09:00:00',
-                'is_published' => true,
-                'author_id' => $admin?->id,
-            ]
-        );
-
-        $vendor = User::where('email', 'vendor@cmart.com')->first();
-        $standardSpace = Space::where('space_size', 'Standard (1 Parking Lot)')->first();
-
-        if ($vendor && $standardSpace && $weeklyEvent) {
-            $demoBooking = Booking::updateOrCreate(
-                [
-                    'user_id' => $vendor->id,
-                    'carboot_event_id' => $weeklyEvent->id,
-                ],
-                [
-                    'space_id' => $standardSpace->id,
-                    'booking_date' => $weeklyStart->toDateString(),
-                    'product_category' => 'Food & Beverages',
-                    'product_details' => 'Ayam Gunting, Ramen',
-                    'approval_status' => 'Approved',
-                    'revision_comment' => null,
-                    'whatsapp_link' => 'https://chat.whatsapp.com/CMART_OFFICIAL_GROUP_INVITE',
-                ]
-            );
-
-            Invoice::updateOrCreate(
-                ['booking_id' => $demoBooking->id],
-                [
-                    'amount' => $standardSpace->price,
-                    'payment_status' => 'Paid',
-                ]
+        if ($this->command) {
+            $this->command->warn(
+                'Demo events/news/bookings/feedback were NOT seeded. '
+                .'For local demo content only: php artisan db:seed --class=DemoContentSeeder'
             );
         }
-
-        $this->call(FeedbackSeeder::class);
     }
 }

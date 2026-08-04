@@ -292,7 +292,7 @@ import VendorBookingCategorySelector from '../../components/vendor/VendorBooking
 import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 import { fetchVendorCategories, categoryConflictMessage } from '../../services/vendorCategoriesApi';
-import { DEFAULT_EVENT_LOCATION, mapApiEventToCard } from '../../utils/eventDisplay';
+import { mapApiEventToCard } from '../../utils/eventDisplay';
 import {
   getSelectedSites,
   pruneInvalidSelections,
@@ -423,7 +423,7 @@ const loadProfileCategorySuggestion = async () => {
 const loadBookableEvents = async () => {
   const { data } = await api.get('/events');
   bookableEvents.value = (Array.isArray(data) ? data : [])
-    .map((ev) => mapApiEventToCard(ev, DEFAULT_EVENT_LOCATION));
+    .map((ev) => mapApiEventToCard(ev));
 };
 
 const resetSiteSelection = () => {
@@ -637,7 +637,7 @@ const loadSelectedEventFromRoute = async () => {
 
   try {
     const { data } = await api.get(`/events/${routeEventId.value}`);
-    applySelectedEvent(mapApiEventToCard(data, DEFAULT_EVENT_LOCATION));
+    applySelectedEvent(mapApiEventToCard(data));
   } catch {
     const fallback = bookableEvents.value.find((event) => event.id === routeEventId.value);
     if (fallback) {

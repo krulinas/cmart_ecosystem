@@ -44,12 +44,28 @@ class E2EPublicLayoutFixtures extends Command
 
     public function handle(): int
     {
+        if ($denied = $this->refuseUnsafeEnvironment()) {
+            return $denied;
+        }
+
         return match ($this->argument('action')) {
             'create' => $this->createFixtures(),
             'status' => $this->status(),
             'cleanup' => $this->cleanupFixtures(),
             default => $this->failUnknownAction(),
         };
+    }
+
+    private function refuseUnsafeEnvironment(): ?int
+    {
+        $env = config('app.env');
+        if ($env !== 'local' && $env !== 'e2e' && ! app()->runningUnitTests()) {
+            $this->error("Refusing to run: app environment is [{$env}], expected [local] or [e2e].");
+
+            return self::FAILURE;
+        }
+
+        return null;
     }
 
     private function createFixtures(): int

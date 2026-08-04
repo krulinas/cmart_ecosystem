@@ -170,6 +170,14 @@ def seed_feedbacks(cursor) -> int:
 
 
 def main() -> None:
+    env = load_laravel_env(LARAVEL_ENV_PATH)
+    app_env = (env.get("APP_ENV") or os.getenv("APP_ENV", "local")).lower()
+    if app_env in {"production", "prod", "uat", "staging"}:
+        raise SystemExit(
+            f"Refusing to seed dummy word-cloud data: APP_ENV={app_env}. "
+            "This script is for local/demo analytics only."
+        )
+
     config = get_db_config()
     print(f"Connecting to MySQL at {config['host']}:{config['port']}/{config['database']} ...")
 

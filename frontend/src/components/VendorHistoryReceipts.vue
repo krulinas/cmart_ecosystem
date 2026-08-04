@@ -1,22 +1,31 @@
 <template>
   <section
-    id="vendor-history-receipts"
-    class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5 overflow-hidden"
+    id="vendor-history-receipts-panel"
+    class="rounded-2xl border border-ink-100 bg-white p-5 sm:p-6 shadow-sm overflow-hidden scroll-mt-24"
     data-testid="vendor-history-receipts-root"
   >
-    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
       <div>
-        <h2 class="text-xl font-extrabold text-ink-900">Booking Receipts</h2>
-        <p class="text-sm text-ink-500">Payment records for your booth bookings and issued invoices.</p>
+        <h2 class="text-lg font-extrabold text-ink-900">Payment history</h2>
+        <p class="text-sm text-ink-500">Invoices and receipts for your booth bookings.</p>
       </div>
-      <button
-        type="button"
-        class="ml-btn-ghost text-sm shrink-0"
-        :disabled="loading"
-        @click="$emit('retry')"
-      >
-        {{ loading ? 'Refreshing…' : 'Refresh' }}
-      </button>
+      <div class="flex flex-wrap gap-2 shrink-0">
+        <button
+          type="button"
+          class="ml-btn-ghost text-sm min-h-[44px]"
+          :disabled="loading"
+          @click="$emit('retry')"
+        >
+          {{ loading ? 'Refreshing…' : 'Refresh' }}
+        </button>
+        <button
+          type="button"
+          class="ml-btn-ghost text-sm min-h-[44px]"
+          @click="$emit('close')"
+        >
+          Close
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="overflow-x-auto rounded-2xl border border-ink-100" data-testid="vendor-receipts-loading">
@@ -63,7 +72,7 @@
           type="search"
           placeholder="Search payment records…"
           data-testid="receipt-search"
-          class="w-full sm:max-w-sm rounded-xl border border-ink-200 bg-white/80 px-4 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          class="w-full sm:max-w-sm rounded-xl border border-ink-200 bg-white px-4 py-2.5 min-h-[44px] text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         />
       </div>
 
@@ -72,7 +81,7 @@
           v-for="tab in RECEIPT_FILTER_TABS"
           :key="tab.id"
           type="button"
-          class="rounded-full px-4 py-1.5 text-sm font-semibold transition"
+          class="rounded-full px-4 py-2 min-h-[40px] text-sm font-semibold transition"
           :class="filterTabClass(selectedReceiptStatus === tab.id)"
           @click="selectedReceiptStatus = tab.id"
         >
@@ -83,105 +92,92 @@
 
       <div
         v-if="!filteredRecords.length"
-        class="rounded-2xl border border-dashed border-ink-300 bg-ink-50/50 p-10 text-center text-ink-500"
+        class="rounded-xl border border-dashed border-ink-200 px-4 py-6 text-center text-sm text-ink-500"
       >
         No payment records match your search.
       </div>
 
-      <template v-else>
-        <div class="overflow-x-auto rounded-2xl border border-ink-100">
-          <table class="min-w-full divide-y divide-ink-100 text-sm">
-            <thead class="bg-ink-50/80">
-              <tr>
-                <th
-                  v-for="column in columns"
-                  :key="column"
-                  scope="col"
-                  class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-ink-500"
-                  :class="column === 'Amount' || column === 'Action' ? 'text-right' : 'text-left'"
-                >
-                  {{ column }}
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-ink-100 bg-white/60">
-              <tr
-                v-for="row in visibleRecords"
-                :key="`${row.booking_id}-${row.id}`"
-                data-testid="receipt-list-item"
-                :data-booking-id="row.booking_id"
-                :data-payment-status="row.payment_status"
-                class="hover:bg-brand-50/40 transition-colors"
+      <div v-else class="overflow-x-auto rounded-xl border border-ink-100">
+        <table class="min-w-full divide-y divide-ink-100 text-sm">
+          <thead class="bg-ink-50/80">
+            <tr>
+              <th
+                v-for="column in columns"
+                :key="column"
+                scope="col"
+                class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-ink-500"
+                :class="column === 'Amount' || column === 'Action' ? 'text-right' : 'text-left'"
               >
-                <td class="px-4 py-4 font-semibold text-ink-900" data-testid="receipt-event-label">{{ row.event }}</td>
-                <td class="px-4 py-4 text-ink-600">{{ formatRecordDate(row.date) }}</td>
-                <td class="px-4 py-4 text-ink-600" data-testid="receipt-booth-label">{{ row.booth_number || '—' }}</td>
-                <td class="px-4 py-4 text-right font-semibold text-ink-900" data-testid="receipt-amount">RM {{ formatAmount(row.amount) }}</td>
-                <td class="px-4 py-4">
-                  <span :class="statusBadgeClass(row)" data-testid="receipt-payment-status">{{ displayStatus(row) }}</span>
-                </td>
-                <td class="px-4 py-4 text-right space-x-1">
-                  <button
-                    v-if="canSubmitPayment(row)"
-                    type="button"
-                    class="ml-btn-ghost text-sm font-semibold text-brand-700"
-                    data-testid="payment-action-button"
-                    @click="$emit('submit-payment', row)"
-                  >
-                    Submit Payment
-                  </button>
-                  <button
-                    v-if="row.receipt_available"
-                    type="button"
-                    class="ml-btn-ghost text-sm font-semibold"
-                    data-testid="view-receipt-button"
-                    @click="$emit('view-document', row.booking_id)"
-                  >
-                    View Receipt
-                  </button>
-                  <button
-                    v-else-if="row.invoice_available"
-                    type="button"
-                    class="ml-btn-ghost text-sm font-semibold"
-                    data-testid="view-invoice-button"
-                    @click="$emit('view-document', row.booking_id)"
-                  >
-                    View Invoice
-                  </button>
-                  <button
-                    v-else
-                    type="button"
-                    class="ml-btn-ghost text-sm font-semibold opacity-50 cursor-not-allowed"
-                    disabled
-                  >
-                    No Receipt
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div v-if="filteredRecords.length > VISIBLE_LIST_LIMIT" class="mt-4 flex justify-center">
-          <button
-            type="button"
-            class="ml-btn-ghost text-sm font-semibold"
-            @click="receiptsExpanded = !receiptsExpanded"
-          >
-            {{ receiptsExpanded ? 'Show Less' : `View All Payment Records (${filteredRecords.length})` }}
-          </button>
-        </div>
-      </template>
+                {{ column }}
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-ink-100 bg-white">
+            <tr
+              v-for="row in filteredRecords"
+              :key="`${row.booking_id}-${row.id}`"
+              data-testid="receipt-list-item"
+              :data-booking-id="row.booking_id"
+              :data-payment-status="row.payment_status"
+              class="hover:bg-brand-50/40 transition-colors"
+            >
+              <td class="px-4 py-4 font-semibold text-ink-900" data-testid="receipt-event-label">{{ row.event }}</td>
+              <td class="px-4 py-4 text-ink-600">{{ formatRecordDate(row.date) }}</td>
+              <td class="px-4 py-4 text-ink-600" data-testid="receipt-booth-label">{{ row.booth_number || '—' }}</td>
+              <td class="px-4 py-4 text-right font-semibold text-ink-900" data-testid="receipt-amount">RM {{ formatAmount(row.amount) }}</td>
+              <td class="px-4 py-4">
+                <span :class="statusBadgeClass(row)" data-testid="receipt-payment-status">{{ displayStatus(row) }}</span>
+              </td>
+              <td class="px-4 py-4 text-right space-x-1">
+                <button
+                  v-if="canSubmitPayment(row)"
+                  type="button"
+                  class="ml-btn-ghost text-sm font-semibold text-brand-700 min-h-[44px]"
+                  data-testid="payment-action-button"
+                  @click="$emit('submit-payment', row)"
+                >
+                  Submit Payment
+                </button>
+                <button
+                  v-if="row.receipt_available"
+                  type="button"
+                  class="ml-btn-ghost text-sm font-semibold min-h-[44px]"
+                  data-testid="view-receipt-button"
+                  @click="$emit('view-document', row.booking_id)"
+                >
+                  View Receipt
+                </button>
+                <button
+                  v-else-if="row.invoice_available"
+                  type="button"
+                  class="ml-btn-ghost text-sm font-semibold min-h-[44px]"
+                  data-testid="view-invoice-button"
+                  @click="$emit('view-document', row.booking_id)"
+                >
+                  View Invoice
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="ml-btn-ghost text-sm font-semibold opacity-50 cursor-not-allowed min-h-[44px]"
+                  disabled
+                >
+                  No Receipt
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </template>
   </section>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { filterTabClass } from '../utils/bookingDisplay';
 
 const columns = ['Event', 'Date', 'Booth', 'Amount', 'Status', 'Action'];
-const VISIBLE_LIST_LIMIT = 5;
 
 const RECEIPT_FILTER_TABS = [
   { id: 'all', label: 'All' },
@@ -199,7 +195,7 @@ const props = defineProps({
   loadError: { type: Boolean, default: false },
 });
 
-defineEmits(['retry', 'view-document', 'submit-payment']);
+defineEmits(['retry', 'view-document', 'submit-payment', 'close']);
 
 const canSubmitPayment = (row) =>
   row.invoice_available
@@ -208,7 +204,6 @@ const canSubmitPayment = (row) =>
 
 const receiptsSearchQuery = ref('');
 const selectedReceiptStatus = ref('all');
-const receiptsExpanded = ref(false);
 
 const normalizeSearch = (value) => String(value ?? '').toLowerCase().trim();
 
@@ -279,22 +274,12 @@ const filteredRecords = computed(() => {
   );
 });
 
-const visibleRecords = computed(() =>
-  receiptsExpanded.value
-    ? filteredRecords.value
-    : filteredRecords.value.slice(0, VISIBLE_LIST_LIMIT),
-);
-
 const receiptFilterCounts = computed(() =>
   RECEIPT_FILTER_TABS.reduce((counts, tab) => {
     counts[tab.id] = props.records.filter((row) => matchesReceiptStatusFilter(row, tab.id)).length;
     return counts;
   }, {}),
 );
-
-watch([receiptsSearchQuery, selectedReceiptStatus], () => {
-  receiptsExpanded.value = false;
-});
 
 const statusBadgeClass = (row) => {
   const status = displayStatus(row);

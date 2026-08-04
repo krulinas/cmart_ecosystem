@@ -92,10 +92,9 @@ export const VENDOR_LINKS = [
 /** In-dashboard section quick links (anchor scroll targets on /dashboard) */
 export const VENDOR_DASHBOARD_SECTION_LINKS = [
   { label: 'My Bookings', targetId: 'vendor-my-bookings', testId: 'dash-nav-bookings' },
+  { label: 'Event Passes', targetId: 'vendor-event-passes', testId: 'dash-nav-passes' },
   { label: 'Item Preparation', targetId: 'vendor-reuse-listings', testId: 'dash-nav-item-prep' },
   { label: 'Item Reservations', targetId: 'vendor-item-reservations', testId: 'dash-nav-item-reservations' },
   { label: 'My Reservations', targetId: 'my-item-reservations', testId: 'dash-nav-my-reservations' },
   { label: 'Business Profile', targetId: 'vendor-business-profile', testId: 'dash-nav-profile' },
-  { label: 'Event Passes', targetId: 'vendor-event-passes', testId: 'dash-nav-passes' },
-  { label: 'Receipts', targetId: 'vendor-history-receipts', testId: 'dash-nav-receipts' },
 ];

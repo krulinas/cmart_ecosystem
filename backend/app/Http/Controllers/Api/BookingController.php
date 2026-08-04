@@ -1378,6 +1378,13 @@ class BookingController extends Controller
         Booking $booking,
         BookingAllocationLifecycleService $allocationLifecycle,
     ) {
+        if (! app()->environment(['local', 'testing', 'e2e'])) {
+            return response()->json([
+                'message' => 'Demo payment is not available in this environment.',
+                'code' => 'demo_payment_disabled',
+            ], 403);
+        }
+
         if ($denied = $this->authorizeVendorBooking($request, $booking)) {
             return $denied;
         }
