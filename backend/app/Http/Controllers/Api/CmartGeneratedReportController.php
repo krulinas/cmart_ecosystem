@@ -9,6 +9,7 @@ use App\Models\ReportWorkflowAudit;
 use App\Services\ReportWorkflowAuditor;
 use App\Services\ReportNotificationReadService;
 use App\Support\GeneratedReportStatus;
+use App\Support\PostEventReportPdfViewData;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -75,10 +76,10 @@ class CmartGeneratedReportController extends Controller
             $generated_report->version,
         );
 
-        $pdf = Pdf::loadView('reports.post_event_summary', [
-            'report' => $generated_report,
-            'generatedAt' => now(),
-        ])->setPaper('a4');
+        $pdf = Pdf::loadView(
+            'reports.post_event_summary',
+            PostEventReportPdfViewData::forAudience($generated_report, 'cmart'),
+        )->setPaper('a4');
 
         app(ReportWorkflowAuditor::class)->record(
             ReportWorkflowAudit::ACTION_DOWNLOADED,

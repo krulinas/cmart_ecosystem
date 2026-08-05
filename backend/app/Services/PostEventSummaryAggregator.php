@@ -3,14 +3,18 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\BookingDayAllocation;
 use App\Models\CarbootEvent;
+use App\Models\EventDay;
 use App\Models\EventSite;
 use App\Models\Invoice;
 use App\Models\ItemReservation;
 use App\Models\SurveyResponse;
 use App\Support\CmartVenue;
+use App\Support\ReportDateTimeFormatter;
 use App\Support\ReportType;
 use App\Support\SurveySchema;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -18,13 +22,16 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Builds a safe, non-PII Post-Event Summary snapshot for a carboot event.
+ * Builds a privacy-safe, event-scoped Post-Event Summary snapshot.
  *
  * Core schema failures abort generation. Optional metrics are marked unavailable.
+ * Missing data is never invented as zero when the metric was not calculated.
  */
 class PostEventSummaryAggregator
 {
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_VERSION = 2;
+
+    public const TIMEZONE = ReportDateTimeFormatter::TIMEZONE;
 
     /**
      * @return array<string, mixed>
@@ -34,13 +41,17 @@ class PostEventSummaryAggregator
         $this->assertCoreSchema();
 
         $dataAvailability = [];
+        $warnings = [];
         $provisional = $this->isProvisional($event);
         $venue = CmartVenue::resolve($event);
+        $generatedAt = now()->timezone(self::TIMEZONE);
 
         try {
-            $bookingCounts = $this->bookingApprovalCounts($event->id);
-            $invoiceSummary = $this->invoiceSummaryForApprovedBookings($event->id);
+            $bookingPipeline = $this->bookingPipeline($event->id);
+            $attendance = $this->attendanceSummary($event->id, $dataAvailability);
+            $invoiceSummary = $this->financialSummary($event->id, $warnings);
             $siteSummary = $this->eventSiteSummary($event->id);
+            $siteDayUtilisation = $this->siteDayUtilisation($event->id, $dataAvailability);
             $categoryDistribution = $this->vendorCategoryDistribution($event->id);
         } catch (Throwable $e) {
             Log::error('Post-event summary core aggregation failed.', [
@@ -60,55 +71,54 @@ class PostEventSummaryAggregator
 
         $mode = $this->analyticsSourceMode($event);
         $includeSystem = in_array($mode, ['combined', 'system_only'], true);
-        $includeSurvey = in_array($mode, ['combined', 'csv_only'], true);
 
-        $vendorSurveySummary = $includeSurvey
-            ? $this->vendorSurveySummary($event->id, $dataAvailability)
-            : [
-                'available' => false,
-                'respondent_count' => 0,
-                'schema_name' => SurveySchema::NAME,
-                'excluded' => true,
-                'note' => 'Vendor survey excluded by analytics source mode.',
-            ];
+        // Survey is always evaluated; response membership is mode-filtered in forAnalytics().
+        $vendorSurveySummary = $this->vendorSurveySummary($event->id, $dataAvailability, $mode);
+        $environmental = $this->environmentalProxies($vendorSurveySummary);
 
-        if (! $includeSurvey) {
-            $dataAvailability['vendor_survey'] = 'excluded';
-        }
+        $startsIso = optional($event->starts_at)?->toIso8601String();
+        $endsIso = optional($event->ends_at)?->toIso8601String();
 
         return [
             'schema_version' => self::SCHEMA_VERSION,
             'report_type' => ReportType::POST_EVENT_SUMMARY,
-            'generated_at' => now()->toIso8601String(),
+            'generated_at' => $generatedAt->toIso8601String(),
+            'generated_at_display' => ReportDateTimeFormatter::datetime($generatedAt->toIso8601String()),
+            'timezone' => self::TIMEZONE,
             'provisional' => $provisional,
+            'report_lifecycle_label' => $provisional ? 'Provisional' : 'Final',
             'analytics_source_mode' => $mode,
             'venue' => $venue,
+            'language' => 'en',
             'event' => [
                 'id' => $event->id,
                 'title' => $event->title,
-                'status' => $event->status,
-                'starts_at' => optional($event->starts_at)?->toIso8601String(),
-                'ends_at' => optional($event->ends_at)?->toIso8601String(),
-                'max_slots' => $event->max_slots,
+                'starts_at' => $startsIso,
+                'ends_at' => $endsIso,
+                'starts_at_display' => ReportDateTimeFormatter::datetime($startsIso),
+                'ends_at_display' => ReportDateTimeFormatter::datetime($endsIso),
+                'date_range_display' => ReportDateTimeFormatter::range($startsIso, $endsIso),
                 'venue' => $venue,
             ],
             'sections' => [
-                'booking_pipeline' => $includeSystem ? [
-                    'by_approval_status' => $bookingCounts,
-                    'total_bookings' => array_sum($bookingCounts),
-                    'approved_count' => (int) ($bookingCounts['Approved'] ?? 0),
-                ] : ['excluded' => true],
+                'booking_pipeline' => $includeSystem ? $bookingPipeline : ['excluded' => true],
+                'attendance' => $includeSystem ? $attendance : ['excluded' => true],
                 'payments' => $includeSystem ? $invoiceSummary : ['excluded' => true],
                 'event_sites' => $includeSystem ? $siteSummary : ['excluded' => true],
+                'site_day_utilisation' => $includeSystem ? $siteDayUtilisation : ['excluded' => true],
                 'item_reservations' => $includeSystem ? $reservationCounts : ['excluded' => true],
                 'vendor_categories' => $includeSystem ? [
+                    'available' => true,
                     'distribution' => $categoryDistribution,
-                    'note' => 'Counts use category labels only; no vendor identity is included.',
+                    'note' => 'Counts use booking category labels only; no vendor identity is included.',
                 ] : ['excluded' => true],
                 'feedback' => $includeSystem ? $feedbackSummary : ['excluded' => true],
                 'vendor_survey' => $vendorSurveySummary,
+                'environmental_social' => $environmental,
             ],
+            'methodology' => $this->methodologyNotes($provisional, $generatedAt, $warnings, $dataAvailability, $attendance, $siteDayUtilisation, $vendorSurveySummary, $invoiceSummary),
             'data_availability' => $dataAvailability,
+            'data_quality_warnings' => $warnings,
         ];
     }
 
@@ -127,15 +137,7 @@ class PostEventSummaryAggregator
 
     private function assertCoreSchema(): void
     {
-        $requiredTables = [
-            'carboot_events',
-            'bookings',
-            'invoices',
-            'event_sites',
-            'vendor_categories',
-        ];
-
-        foreach ($requiredTables as $table) {
+        foreach (['carboot_events', 'bookings', 'invoices', 'event_sites', 'vendor_categories'] as $table) {
             if (! Schema::hasTable($table)) {
                 throw new RuntimeException(
                     "Unable to generate the Post-Event Summary because required table \"{$table}\" is missing."
@@ -174,47 +176,186 @@ class PostEventSummaryAggregator
     }
 
     /**
-     * @return array<string, int>
+     * @return array<string, mixed>
      */
-    private function bookingApprovalCounts(int $eventId): array
+    private function bookingPipeline(int $eventId): array
     {
-        return Booking::query()
+        $byStatus = Booking::query()
             ->where('carboot_event_id', $eventId)
             ->select('approval_status', DB::raw('count(*) as aggregate'))
             ->groupBy('approval_status')
             ->pluck('aggregate', 'approval_status')
             ->map(fn ($count) => (int) $count)
             ->all();
+
+        $total = array_sum($byStatus);
+        $approved = (int) ($byStatus['Approved'] ?? 0);
+
+        $pendingStatuses = ['Pending_Organizer', 'Pending_Staff', 'Pending_Boss'];
+        $pendingTotal = 0;
+        foreach ($pendingStatuses as $status) {
+            $pendingTotal += (int) ($byStatus[$status] ?? 0);
+        }
+
+        $uniqueApplicants = (int) Booking::query()
+            ->where('carboot_event_id', $eventId)
+            ->whereNotNull('user_id')
+            ->selectRaw('COUNT(DISTINCT user_id) as aggregate')
+            ->value('aggregate');
+
+        $approvedUniqueVendors = (int) Booking::query()
+            ->where('carboot_event_id', $eventId)
+            ->where('approval_status', 'Approved')
+            ->whereNotNull('user_id')
+            ->selectRaw('COUNT(DISTINCT user_id) as aggregate')
+            ->value('aggregate');
+
+        return [
+            'available' => true,
+            'by_approval_status' => $byStatus,
+            'total_bookings' => $total,
+            'pending_count' => $pendingTotal,
+            'pending_organizer_count' => (int) ($byStatus['Pending_Organizer'] ?? 0),
+            'needs_revision_count' => (int) ($byStatus['Needs_Revision'] ?? 0),
+            'approved_count' => $approved,
+            'rejected_count' => (int) ($byStatus['Rejected'] ?? 0),
+            'cancelled_count' => (int) ($byStatus['Cancelled'] ?? 0),
+            'withdrawn_count' => (int) ($byStatus['Withdrawn'] ?? 0),
+            'unique_applicants' => $uniqueApplicants,
+            'approved_unique_vendors' => $approvedUniqueVendors,
+            'labels' => [
+                'total_bookings' => 'Total booking applications',
+                'unique_applicants' => 'Unique applicants',
+                'approved_count' => 'Approved bookings',
+                'approved_unique_vendors' => 'Approved unique vendors',
+            ],
+            'note' => 'Booking counts and unique-vendor counts are separate. Approved bookings are not verified attendance.',
+        ];
     }
 
     /**
-     * @return array{expected: float, collected: float, outstanding: float, invoice_count: int, scope: string}
+     * @param  array<string, mixed>  $dataAvailability
+     * @return array<string, mixed>
      */
-    private function invoiceSummaryForApprovedBookings(int $eventId): array
+    private function attendanceSummary(int $eventId, array &$dataAvailability): array
     {
-        $invoices = Invoice::query()
-            ->whereHas('booking', function ($query) use ($eventId) {
-                $query->where('carboot_event_id', $eventId)
-                    ->where('approval_status', 'Approved');
-            })
-            ->get(['amount', 'payment_status']);
+        if (! Schema::hasColumn('bookings', 'checked_in_at')) {
+            $dataAvailability['attendance'] = 'omitted';
+            $dataAvailability['attendance_note'] = 'Check-in column is not available.';
 
-        $expected = (float) $invoices->sum('amount');
-        $collected = (float) $invoices->where('payment_status', 'Paid')->sum('amount');
-        $outstanding = (float) $invoices->where('payment_status', 'Unpaid')->sum('amount');
+            return [
+                'available' => false,
+                'recorded' => false,
+                'message' => 'Attendance verification was not recorded for this event.',
+            ];
+        }
+
+        $checkedIn = (int) Booking::query()
+            ->where('carboot_event_id', $eventId)
+            ->whereNotNull('checked_in_at')
+            ->count();
+
+        if ($checkedIn === 0) {
+            $dataAvailability['attendance'] = 'not_recorded';
+
+            return [
+                'available' => true,
+                'recorded' => false,
+                'verified_check_in_count' => null,
+                'label' => 'Verified vendor check-ins',
+                'message' => 'Attendance verification was not recorded for this event.',
+                'note' => 'A single check-in timestamp does not prove complete multi-day attendance.',
+            ];
+        }
 
         return [
-            'expected' => round($expected, 2),
-            'collected' => round($collected, 2),
-            'outstanding' => round($outstanding, 2),
-            'invoice_count' => $invoices->count(),
-            'paid_count' => $invoices->where('payment_status', 'Paid')->count(),
-            'unpaid_count' => $invoices->where('payment_status', 'Unpaid')->count(),
-            'by_payment_status' => [
-                'Paid' => $invoices->where('payment_status', 'Paid')->count(),
-                'Unpaid' => $invoices->where('payment_status', 'Unpaid')->count(),
+            'available' => true,
+            'recorded' => true,
+            'verified_check_in_count' => $checkedIn,
+            'label' => 'Verified vendor check-ins',
+            'message' => null,
+            'note' => 'Approved bookings are not labelled as attendance. A single check-in timestamp does not prove complete multi-day attendance.',
+        ];
+    }
+
+    /**
+     * @param  list<string>  $warnings
+     * @return array<string, mixed>
+     */
+    private function financialSummary(int $eventId, array &$warnings): array
+    {
+        $approvedBookingIds = Booking::query()
+            ->where('carboot_event_id', $eventId)
+            ->where('approval_status', 'Approved')
+            ->pluck('id');
+
+        $approvedInvoices = Invoice::query()
+            ->whereIn('booking_id', $approvedBookingIds)
+            ->get(['id', 'booking_id', 'amount', 'payment_status']);
+
+        $approvedWithoutInvoice = max(0, $approvedBookingIds->count() - $approvedInvoices->pluck('booking_id')->unique()->count());
+        if ($approvedWithoutInvoice > 0) {
+            $warnings[] = sprintf(
+                '%d approved booking(s) have no invoice; expected booth fees may be incomplete.',
+                $approvedWithoutInvoice,
+            );
+        }
+
+        $paidWithdrawnInvoices = Invoice::query()
+            ->where('payment_status', 'Paid')
+            ->whereHas('booking', function ($query) use ($eventId) {
+                $query->where('carboot_event_id', $eventId)
+                    ->where('approval_status', 'Withdrawn');
+            })
+            ->get(['amount', 'booking_id']);
+
+        $paidWithdrawalAmount = round((float) $paidWithdrawnInvoices->sum('amount'), 2);
+        $paidWithdrawalCount = $paidWithdrawnInvoices->count();
+
+        $expectedApproved = round((float) $approvedInvoices->sum('amount'), 2);
+        $collectedApprovedPaid = round((float) $approvedInvoices->where('payment_status', 'Paid')->sum('amount'), 2);
+        $unpaid = round((float) $approvedInvoices->where('payment_status', 'Unpaid')->sum('amount'), 2);
+        $pendingVerification = round((float) $approvedInvoices->where('payment_status', 'Pending Verification')->sum('amount'), 2);
+        $refunded = round((float) $approvedInvoices->where('payment_status', 'Refunded')->sum('amount'), 2);
+
+        $collectedTotal = round($collectedApprovedPaid + $paidWithdrawalAmount, 2);
+
+        return [
+            'available' => true,
+            'currency' => 'MYR',
+            'expected_booth_fees' => $expectedApproved,
+            'collected_booth_fees' => $collectedTotal,
+            'collected_from_approved_paid' => $collectedApprovedPaid,
+            'unpaid_approved' => $unpaid,
+            'pending_verification_approved' => $pendingVerification,
+            'refunded_approved' => $refunded,
+            // Legacy aliases for EventAnalyticsService / older consumers.
+            'expected' => $expectedApproved,
+            'collected' => $collectedTotal,
+            'outstanding' => $unpaid,
+            'approved_bookings_without_invoice' => $approvedWithoutInvoice,
+            'invoice_count_approved' => $approvedInvoices->count(),
+            'by_payment_status_approved' => [
+                'Paid' => $approvedInvoices->where('payment_status', 'Paid')->count(),
+                'Unpaid' => $approvedInvoices->where('payment_status', 'Unpaid')->count(),
+                'Pending Verification' => $approvedInvoices->where('payment_status', 'Pending Verification')->count(),
+                'Refunded' => $approvedInvoices->where('payment_status', 'Refunded')->count(),
             ],
-            'scope' => 'Approved bookings for this event only',
+            'paid_withdrawals' => [
+                'count' => $paidWithdrawalCount,
+                'amount' => $paidWithdrawalAmount,
+                'included_in_collected' => true,
+                'disclosure' => $paidWithdrawalCount > 0
+                    ? sprintf(
+                        'Includes RM %s from %d paid withdrawn booking(s) under the non-refundable withdrawal policy.',
+                        number_format($paidWithdrawalAmount, 2, '.', ''),
+                        $paidWithdrawalCount,
+                    )
+                    : null,
+            ],
+            'potentially_incomplete' => $approvedWithoutInvoice > 0,
+            'scope' => 'Booth-fee invoices for this event. Vendor survey sales are not organizer revenue.',
+            'note' => 'Paid withdrawn bookings are included in collected booth-fee revenue but are not approved participation or attendance.',
         ];
     }
 
@@ -234,7 +375,75 @@ class PostEventSummaryAggregator
         return [
             'available' => true,
             'total' => array_sum($counts),
+            'active_count' => (int) ($counts[EventSite::STATUS_ACTIVE] ?? 0),
             'by_operational_status' => $counts,
+            'note' => 'Operational site status is not the same as site-day occupancy.',
+        ];
+    }
+
+    /**
+     * Occupied active site-days ÷ available active site-days × 100.
+     *
+     * @param  array<string, mixed>  $dataAvailability
+     * @return array<string, mixed>
+     */
+    private function siteDayUtilisation(int $eventId, array &$dataAvailability): array
+    {
+        if (! Schema::hasTable('event_days') || ! Schema::hasTable('booking_day_allocations')) {
+            $dataAvailability['site_day_utilisation'] = 'omitted';
+            $dataAvailability['site_day_utilisation_note'] = 'Event days or allocations are not available.';
+
+            return [
+                'available' => false,
+                'message' => 'Not available for this event',
+            ];
+        }
+
+        $activeSiteIds = EventSite::query()
+            ->where('carboot_event_id', $eventId)
+            ->where('operational_status', EventSite::STATUS_ACTIVE)
+            ->pluck('id');
+
+        $dayIds = EventDay::query()
+            ->where('carboot_event_id', $eventId)
+            ->pluck('id');
+
+        $availableSiteDays = $activeSiteIds->count() * $dayIds->count();
+
+        if ($availableSiteDays === 0) {
+            $dataAvailability['site_day_utilisation'] = 'unavailable_denominator';
+
+            return [
+                'available' => false,
+                'available_active_site_days' => null,
+                'occupied_site_days' => null,
+                'utilisation_percent' => null,
+                'message' => 'Not available for this event',
+                'formula' => 'occupied active site-days ÷ available active site-days × 100',
+                'note' => 'Site-day utilisation requires at least one active site and one event day. max_slots is not used as booth capacity.',
+            ];
+        }
+
+        $occupiedPairs = BookingDayAllocation::query()
+            ->whereIn('event_day_id', $dayIds)
+            ->whereIn('event_site_id', $activeSiteIds)
+            ->whereIn('allocation_status', BookingDayAllocation::OCCUPYING_STATUSES)
+            ->where('active_lock', 1)
+            ->select('event_site_id', 'event_day_id')
+            ->distinct()
+            ->get();
+
+        $occupied = $occupiedPairs->count();
+        $percent = round(($occupied / $availableSiteDays) * 100, 1);
+
+        return [
+            'available' => true,
+            'label' => 'Site-day utilisation',
+            'available_active_site_days' => $availableSiteDays,
+            'occupied_site_days' => $occupied,
+            'utilisation_percent' => $percent,
+            'formula' => 'occupied active site-days ÷ available active site-days × 100',
+            'note' => 'Unavailable and disabled sites are excluded from the denominator. Duplicate site/day allocations are counted once. This is site-day utilisation, not unique physical-booth occupancy. max_slots is not used.',
         ];
     }
 
@@ -246,11 +455,8 @@ class PostEventSummaryAggregator
     {
         if (! Schema::hasTable('item_reservations')) {
             $dataAvailability['item_reservations'] = 'omitted';
-            $dataAvailability['item_reservations_note'] = 'Item reservation table is not available in this environment.';
 
-            return [
-                'available' => false,
-            ];
+            return ['available' => false];
         }
 
         $counts = ItemReservation::query()
@@ -265,21 +471,16 @@ class PostEventSummaryAggregator
             'available' => true,
             'total' => array_sum($counts),
             'by_reservation_status' => $counts,
+            'note' => 'Marketplace holds for this event only; not vendor lifetime listings.',
         ];
     }
 
     /**
-     * Category label distribution for approved bookings — no vendor PII.
-     *
-     * Uses a derived subquery so MySQL ONLY_FULL_GROUP_BY accepts the resolved alias.
-     * Fallback order: category_label_snapshot → vendor_categories.label → product_category → Uncategorised.
-     *
      * @return list<array{label: string, count: int}>
      */
     private function vendorCategoryDistribution(int $eventId): array
     {
         $hasSnapshot = Schema::hasColumn('bookings', 'category_label_snapshot');
-
         $resolvedExpression = $hasSnapshot
             ? "COALESCE(bookings.category_label_snapshot, vendor_categories.label, bookings.product_category, 'Uncategorised')"
             : "COALESCE(vendor_categories.label, bookings.product_category, 'Uncategorised')";
@@ -304,8 +505,6 @@ class PostEventSummaryAggregator
     }
 
     /**
-     * Feedback has no carboot_event_id — omit averages with an availability note.
-     *
      * @param  array<string, mixed>  $dataAvailability
      * @return array<string, mixed>
      */
@@ -313,12 +512,12 @@ class PostEventSummaryAggregator
     {
         if (! Schema::hasTable('feedbacks') || ! Schema::hasColumn('feedbacks', 'carboot_event_id')) {
             $dataAvailability['feedback'] = 'omitted';
-            $dataAvailability['feedback_note'] = 'Feedback rows are not linked to carboot events; averages cannot be scoped safely.';
 
             return [
                 'available' => false,
                 'average_rating' => null,
                 'response_count' => null,
+                'message' => 'Not available for this event',
             ];
         }
 
@@ -330,173 +529,347 @@ class PostEventSummaryAggregator
             ->selectRaw('count(*) as response_count, avg(rating) as average_rating')
             ->first();
 
+        $count = (int) ($stats->response_count ?? 0);
+
         return [
             'available' => true,
-            'response_count' => (int) ($stats->response_count ?? 0),
-            'average_rating' => $stats->average_rating !== null
+            'response_count' => $count,
+            'average_rating' => $count > 0 && $stats->average_rating !== null
                 ? round((float) $stats->average_rating, 2)
                 : null,
+            'message' => $count === 0 ? 'No community feedback submissions were recorded for this event.' : null,
         ];
     }
 
     /**
-     * Aggregate-only vendor survey snapshot (no respondent-level rows).
+     * Categorical survey aggregates only — no free-text.
      *
      * @param  array<string, mixed>  $dataAvailability
      * @return array<string, mixed>
      */
-    private function vendorSurveySummary(int $eventId, array &$dataAvailability): array
+    private function vendorSurveySummary(int $eventId, array &$dataAvailability, string $mode): array
     {
         if (! Schema::hasTable('survey_responses')) {
             $dataAvailability['vendor_survey'] = 'omitted';
-            $dataAvailability['vendor_survey_note'] = 'Survey response storage is not available in this environment.';
 
             return [
                 'available' => false,
                 'schema_name' => SurveySchema::NAME,
+                'analytics_source_mode' => $mode,
+                'message' => 'Not available for this event',
             ];
         }
 
         $responses = SurveyResponse::query()
-            ->forAnalytics($eventId)
+            ->forAnalytics($eventId, $mode)
             ->get([
                 'gross_sales_band',
                 'experience_rating',
                 'sales_purpose',
                 'product_categories',
-                'product_categories_other_text',
-                'difficulty_details',
-                'event_info_sources_other_text',
-                'improvement_areas_other_text',
-                'comments_and_suggestions',
-                'supporting_activity_impacts_other_text',
+                'item_conditions',
+                'has_difficulty',
+                'event_info_sources',
+                'items_sold_band',
+                'unsold_item_actions',
+                'improvement_areas',
+                'supporting_activity_attracted_visitors',
+                'supporting_activity_impacts',
             ]);
 
         if ($responses->isEmpty()) {
             $dataAvailability['vendor_survey'] = 'empty';
-            $dataAvailability['vendor_survey_note'] = 'No CSV data is connected to this event.';
 
             return [
                 'available' => false,
-                'respondent_count' => 0,
+                'respondent_count' => null,
                 'schema_name' => SurveySchema::NAME,
+                'analytics_source_mode' => $mode,
                 'state' => 'missing_source',
+                'message' => 'No survey responses were collected for this event.',
                 'note' => 'Survey respondents do not represent all vendors unless response rate is known.',
             ];
         }
 
         $n = $responses->count();
-        $bandCounts = $responses->groupBy('gross_sales_band')
-            ->map(fn ($group) => $group->count())
-            ->filter(fn ($count, $key) => $key !== null && $key !== '')
-            ->all();
-        $experienceCounts = $responses->groupBy('experience_rating')
-            ->map(fn ($group) => $group->count())
-            ->filter(fn ($count, $key) => $key !== null && $key !== '')
-            ->all();
-        $purposeCounts = $responses->groupBy('sales_purpose')
-            ->map(fn ($group) => $group->count())
-            ->filter(fn ($count, $key) => $key !== null && $key !== '')
-            ->all();
+        $usedEligible = $responses->filter(function (SurveyResponse $row) {
+            $conditions = $row->item_conditions ?? [];
 
-        $qualitative = $this->qualitativeCommentGroups($responses);
+            return is_array($conditions) && in_array('terpakai', $conditions, true);
+        });
+        $usedN = $usedEligible->count();
 
         return [
             'available' => true,
             'state' => 'available',
             'schema_name' => SurveySchema::NAME,
             'schema_version' => SurveySchema::VERSION,
+            'analytics_source_mode' => $mode,
             'respondent_count' => $n,
-            'gross_sales_band_counts' => $bandCounts,
-            'experience_rating_counts' => $experienceCounts,
-            'sales_purpose_counts' => $purposeCounts,
-            'qualitative_comments' => $qualitative,
-            'note' => 'Categorical survey aggregates only. Exact RM sales are not computed. Respondent-level rows are excluded.',
+            'base_display' => sprintf('n = %d responses', $n),
+            'distributions' => [
+                'gross_sales_band' => $this->singleSelectDistribution($responses, 'gross_sales_band', $n),
+                'experience_rating' => $this->singleSelectDistribution($responses, 'experience_rating', $n),
+                'sales_purpose' => $this->singleSelectDistribution($responses, 'sales_purpose', $n),
+                'product_categories' => $this->multiSelectDistribution($responses, 'product_categories', $n),
+                'item_conditions' => $this->multiSelectDistribution($responses, 'item_conditions', $n),
+                'event_info_sources' => $this->multiSelectDistribution($responses, 'event_info_sources', $n),
+                'improvement_areas' => $this->multiSelectDistribution($responses, 'improvement_areas', $n),
+                'supporting_activity_attracted_visitors' => $this->singleSelectDistribution($responses, 'supporting_activity_attracted_visitors', $n),
+                'supporting_activity_impacts' => $this->multiSelectDistribution($responses, 'supporting_activity_impacts', $n),
+                'registration_difficulty' => $this->difficultyDistribution($responses, $n),
+                'items_sold_band' => $this->singleSelectDistribution(
+                    $usedEligible->values(),
+                    'items_sold_band',
+                    $usedN > 0 ? $usedN : $n,
+                    $usedN > 0
+                        ? 'Denominator is respondents who reported reused/preloved goods.'
+                        : 'No reused-goods respondents; distribution uses overall respondent base only when eligible set is empty.',
+                ),
+                'unsold_item_actions' => $this->multiSelectDistribution(
+                    $usedEligible->values(),
+                    'unsold_item_actions',
+                    $usedN > 0 ? $usedN : $n,
+                    $usedN > 0
+                        ? 'Denominator is respondents who reported reused/preloved goods.'
+                        : null,
+                ),
+            ],
+            'used_goods_respondent_count' => $usedN,
+            'note' => 'Categorical survey aggregates only. Exact RM sales are not computed. Free-text answers are excluded. Multi-select percentages may exceed 100%.',
             'limitations' => [
                 'Describes responding vendors only.',
                 'Gross sales remain categorical bands.',
+                'Unanswered values are not treated as zero.',
             ],
         ];
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, SurveyResponse>  $responses
+     * @param  Collection<int, SurveyResponse>  $responses
      * @return array<string, mixed>
      */
-    private function qualitativeCommentGroups($responses): array
+    private function singleSelectDistribution(Collection $responses, string $field, int $denominator, ?string $denominatorNote = null): array
     {
-        $nonSubstantive = [
-            'tiada', 'tiada komen', 'tiada cadangan', 'tidak ada', 'n/a', 'na', 'none', '-', '—',
-        ];
-
-        $isSubstantive = static function (?string $text) use ($nonSubstantive): bool {
-            $trimmed = trim((string) $text);
-            if ($trimmed === '') {
-                return false;
-            }
-            if (preg_match('/^[\s\p{P}]+$/u', $trimmed)) {
-                return false;
-            }
-
-            return ! in_array(mb_strtolower($trimmed), $nonSubstantive, true);
-        };
-
-        $groups = [
-            'operational_difficulties' => [],
-            'improvement_suggestions' => [],
-            'general_comments' => [],
-            'supporting_activity_impacts' => [],
-            'other_responses' => [],
-        ];
-
+        $counts = [];
+        $answered = 0;
         foreach ($responses as $row) {
-            if ($isSubstantive($row->difficulty_details)) {
-                $groups['operational_difficulties'][] = [
-                    'text' => mb_substr(trim((string) $row->difficulty_details), 0, 500),
-                    'source_question' => 'Operational difficulties',
-                ];
+            $value = $row->{$field} ?? null;
+            if ($value === null || $value === '') {
+                continue;
             }
-            if ($isSubstantive($row->improvement_areas_other_text)) {
-                $groups['improvement_suggestions'][] = [
-                    'text' => mb_substr(trim((string) $row->improvement_areas_other_text), 0, 500),
-                    'source_question' => 'Improvement suggestions',
-                ];
+            $key = (string) $value;
+            $counts[$key] = ($counts[$key] ?? 0) + 1;
+            $answered++;
+        }
+
+        $rows = [];
+        foreach ($counts as $key => $count) {
+            $rows[] = [
+                'key' => $key,
+                'label' => $key,
+                'count' => $count,
+                'denominator' => $denominator,
+                'percent' => $denominator > 0 ? round(($count / $denominator) * 100, 1) : null,
+            ];
+        }
+
+        usort($rows, fn ($a, $b) => $b['count'] <=> $a['count']);
+
+        return [
+            'answered' => $answered,
+            'unanswered' => max(0, $denominator - $answered),
+            'denominator' => $denominator,
+            'base_display' => sprintf('n = %d responses', $denominator),
+            'denominator_note' => $denominatorNote,
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, SurveyResponse>  $responses
+     * @return array<string, mixed>
+     */
+    private function multiSelectDistribution(Collection $responses, string $field, int $denominator, ?string $denominatorNote = null): array
+    {
+        $counts = [];
+        $respondentsWithAny = 0;
+        foreach ($responses as $row) {
+            $values = $row->{$field} ?? [];
+            if (! is_array($values) || $values === []) {
+                continue;
             }
-            if ($isSubstantive($row->comments_and_suggestions)) {
-                $groups['general_comments'][] = [
-                    'text' => mb_substr(trim((string) $row->comments_and_suggestions), 0, 500),
-                    'source_question' => 'General comments',
-                ];
-            }
-            if ($isSubstantive($row->supporting_activity_impacts_other_text)) {
-                $groups['supporting_activity_impacts'][] = [
-                    'text' => mb_substr(trim((string) $row->supporting_activity_impacts_other_text), 0, 500),
-                    'source_question' => 'Supporting-activity impacts',
-                ];
-            }
-            foreach ([
-                'product_categories_other_text' => 'Other product category',
-                'event_info_sources_other_text' => 'Other information source',
-            ] as $field => $label) {
-                if ($isSubstantive($row->{$field} ?? null)) {
-                    $groups['other_responses'][] = [
-                        'text' => mb_substr(trim((string) $row->{$field}), 0, 500),
-                        'source_question' => $label,
-                    ];
+            $respondentsWithAny++;
+            foreach ($values as $value) {
+                if ($value === null || $value === '') {
+                    continue;
                 }
+                $key = (string) $value;
+                $counts[$key] = ($counts[$key] ?? 0) + 1;
             }
         }
 
-        $substantiveCount = array_sum(array_map('count', $groups));
-        $actionableCount = count($groups['improvement_suggestions'])
-            + count($groups['operational_difficulties'])
-            + count($groups['supporting_activity_impacts']);
+        $rows = [];
+        foreach ($counts as $key => $count) {
+            $rows[] = [
+                'key' => $key,
+                'label' => $key,
+                'count' => $count,
+                'denominator' => $denominator,
+                'percent' => $denominator > 0 ? round(($count / $denominator) * 100, 1) : null,
+            ];
+        }
+        usort($rows, fn ($a, $b) => $b['count'] <=> $a['count']);
 
         return [
-            'substantive_count' => $substantiveCount,
-            'actionable_suggestion_count' => $actionableCount,
-            'groups' => $groups,
-            'source' => 'Vendor Survey CSV',
+            'answered_respondents' => $respondentsWithAny,
+            'denominator' => $denominator,
+            'base_display' => sprintf('n = %d responses', $denominator),
+            'denominator_note' => $denominatorNote,
+            'multi_select' => true,
+            'multi_select_note' => 'Multi-select percentages may total more than 100%.',
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, SurveyResponse>  $responses
+     * @return array<string, mixed>
+     */
+    private function difficultyDistribution(Collection $responses, int $denominator): array
+    {
+        $yes = 0;
+        $no = 0;
+        foreach ($responses as $row) {
+            if ($row->has_difficulty === true) {
+                $yes++;
+            } elseif ($row->has_difficulty === false) {
+                $no++;
+            }
+        }
+        $answered = $yes + $no;
+
+        if ($answered === 0) {
+            return [
+                'answered' => 0,
+                'unanswered' => $denominator,
+                'denominator' => $denominator,
+                'base_display' => sprintf('n = %d responses', $denominator),
+                'rows' => [],
+                'message' => 'No registration difficulty answers were recorded.',
+            ];
+        }
+
+        return [
+            'answered' => $answered,
+            'unanswered' => max(0, $denominator - $answered),
+            'denominator' => $denominator,
+            'base_display' => sprintf('n = %d responses', $denominator),
+            'rows' => [
+                [
+                    'key' => 'yes',
+                    'label' => 'Reported difficulty',
+                    'count' => $yes,
+                    'denominator' => $denominator,
+                    'percent' => $denominator > 0 ? round(($yes / $denominator) * 100, 1) : null,
+                ],
+                [
+                    'key' => 'no',
+                    'label' => 'No difficulty reported',
+                    'count' => $no,
+                    'denominator' => $denominator,
+                    'percent' => $denominator > 0 ? round(($no / $denominator) * 100, 1) : null,
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $vendorSurveySummary
+     * @return array<string, mixed>
+     */
+    private function environmentalProxies(array $vendorSurveySummary): array
+    {
+        if (! ($vendorSurveySummary['available'] ?? false)) {
+            return [
+                'available' => false,
+                'message' => 'No survey insight is available for environmental and social indicators.',
+            ];
+        }
+
+        $n = (int) ($vendorSurveySummary['respondent_count'] ?? 0);
+        $used = (int) ($vendorSurveySummary['used_goods_respondent_count'] ?? 0);
+        $unsold = $vendorSurveySummary['distributions']['unsold_item_actions']['rows'] ?? [];
+        $itemsSold = $vendorSurveySummary['distributions']['items_sold_band'] ?? null;
+        $supporting = $vendorSurveySummary['distributions']['supporting_activity_attracted_visitors'] ?? null;
+
+        $actionCounts = [];
+        foreach ($unsold as $row) {
+            $actionCounts[$row['key']] = $row['count'];
+        }
+
+        return [
+            'available' => true,
+            'classification' => 'Vendor-reported survey-based proxy indicators',
+            'base_display' => sprintf('n = %d responses', $n),
+            'vendors_reporting_reused_goods' => $used,
+            'used_stock_sales_bands' => $itemsSold,
+            'plans_to_donate' => (int) ($actionCounts['sumbangkan'] ?? 0),
+            'plans_to_recycle' => (int) ($actionCounts['kitar_semula'] ?? 0),
+            'plans_to_relist_or_store' => (int) (($actionCounts['simpan_acara_lain'] ?? 0) + ($actionCounts['jual_dalam_talian'] ?? 0)),
+            'plans_to_dispose' => (int) ($actionCounts['buang'] ?? 0),
+            'supporting_activity_effect' => $supporting,
+            'forbidden_metrics_excluded' => [
+                'kilograms_diverted',
+                'co2_avoided',
+                'carbon_reduction',
+                'exact_reused_units_sold',
+                'monetary_loss_avoided',
+            ],
+            'note' => 'These are proxy indicators from self-reported survey answers. They are not verified diversion tonnes, CO₂ figures, or exact sales counts.',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $dataAvailability
+     * @param  array<string, mixed>  $attendance
+     * @param  array<string, mixed>  $siteDayUtilisation
+     * @param  array<string, mixed>  $vendorSurveySummary
+     * @param  array<string, mixed>  $invoiceSummary
+     * @param  list<string>  $warnings
+     * @return array<string, mixed>
+     */
+    private function methodologyNotes(
+        bool $provisional,
+        $generatedAt,
+        array $warnings,
+        array $dataAvailability,
+        array $attendance,
+        array $siteDayUtilisation,
+        array $vendorSurveySummary,
+        array $invoiceSummary,
+    ): array {
+        return [
+            'single_event_scope' => 'This report covers one carboot event only.',
+            'data_cut_off' => ReportDateTimeFormatter::datetime($generatedAt->toIso8601String()),
+            'timezone' => self::TIMEZONE,
+            'language' => 'English',
+            'provisional_or_final' => $provisional ? 'Provisional' : 'Final',
+            'booking_versus_unique_vendors' => 'Booking application counts and unique applicant/vendor counts are reported separately.',
+            'approved_not_attendance' => 'Approved bookings are not labelled as attendance.',
+            'attendance_source' => ($attendance['recorded'] ?? false)
+                ? 'Verified vendor check-ins use bookings.checked_in_at.'
+                : ($attendance['message'] ?? 'Attendance verification was not recorded for this event.'),
+            'site_day_utilisation_formula' => $siteDayUtilisation['formula'] ?? null,
+            'survey_respondent_base' => ($vendorSurveySummary['available'] ?? false)
+                ? ($vendorSurveySummary['base_display'] ?? null)
+                : ($vendorSurveySummary['message'] ?? 'No survey responses were collected for this event.'),
+            'multi_select_note' => 'Multi-select survey percentages may total more than 100%.',
+            'financial_inclusion_rules' => 'Collected booth fees include Paid invoices for approved bookings plus Paid invoices for withdrawn bookings under the non-refundable withdrawal policy. Pending Verification and Refunded statuses are reported separately. Approved bookings without invoices are not treated as RM0 due.',
+            'missing_data_rule' => 'Missing or unavailable metrics are omitted or shown as Not recorded / Not available — never invented as zero.',
+            'data_quality_warnings' => $warnings,
+            'data_availability' => $dataAvailability,
+            'potentially_incomplete_finances' => (bool) ($invoiceSummary['potentially_incomplete'] ?? false),
         ];
     }
 }

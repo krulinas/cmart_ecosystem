@@ -219,10 +219,10 @@ class OrganizerGeneratedReportController extends Controller
             $generated_report->version,
         );
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.post_event_summary', [
-            'report' => $generated_report,
-            'generatedAt' => now(),
-        ])->setPaper('a4');
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'reports.post_event_summary',
+            \App\Support\PostEventReportPdfViewData::forAudience($generated_report, 'organizer'),
+        )->setPaper('a4');
 
         return $pdf->stream($filename);
     }

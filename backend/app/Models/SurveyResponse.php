@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\EventAnalyticsDataSourceService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -77,10 +78,18 @@ class SurveyResponse extends Model
 
     /**
      * Active analytics set: valid survey rows only (never bookings/invoices/sites).
-     * Counts only the single active CSV batch (+ optional system submissions).
+     *
+     * Mode semantics:
+     * - combined: active CSV/imported responses + valid system submissions
+     * - csv_only: active CSV/imported responses only
+     * - system_only: valid system submissions only
+     *
+     * When $mode is null, defaults to combined (historical forAnalytics behaviour).
      */
-    public function scopeForAnalytics(Builder $query, int $eventId): Builder
+    public function scopeForAnalytics(Builder $query, int $eventId, ?string $mode = null): Builder
     {
+        $mode = self::normalizeAnalyticsMode($mode);
+
         $query->where('carboot_event_id', $eventId)
             ->where('validation_status', 'valid');
 
@@ -88,21 +97,36 @@ class SurveyResponse extends Model
             $query->where('is_active', true);
         }
 
-        if (! Schema::hasTable('raw_survey_uploads')) {
+        $includeSystem = in_array($mode, [
+            EventAnalyticsDataSourceService::MODE_COMBINED,
+            EventAnalyticsDataSourceService::MODE_SYSTEM_ONLY,
+        ], true);
+        $includeCsv = in_array($mode, [
+            EventAnalyticsDataSourceService::MODE_COMBINED,
+            EventAnalyticsDataSourceService::MODE_CSV_ONLY,
+        ], true);
+
+        $hasSource = Schema::hasColumn('survey_responses', 'submission_source');
+        $activeBatchId = $includeCsv && Schema::hasTable('raw_survey_uploads')
+            ? self::resolveActiveCsvBatchId($eventId)
+            : null;
+
+        // No survey source tables / columns can satisfy the mode.
+        if (! Schema::hasTable('raw_survey_uploads') && ! $hasSource) {
             return $query;
         }
 
-        $activeBatchId = self::resolveActiveCsvBatchId($eventId);
-        $hasSource = Schema::hasColumn('survey_responses', 'submission_source');
+        $query->where(function (Builder $inner) use ($includeSystem, $includeCsv, $activeBatchId, $hasSource) {
+            $added = false;
 
-        $query->where(function (Builder $inner) use ($activeBatchId, $hasSource) {
-            if ($hasSource) {
+            if ($includeSystem && $hasSource) {
                 $inner->where('submission_source', self::SOURCE_SYSTEM_SUBMISSION);
+                $added = true;
             }
 
-            if ($activeBatchId !== null) {
-                $method = $hasSource ? 'orWhere' : 'where';
-                $inner->{$method}(function (Builder $csv) use ($activeBatchId, $hasSource) {
+            if ($includeCsv && $activeBatchId !== null) {
+                $method = $added ? 'orWhere' : 'where';
+                $inner->{$method}(function (Builder $csv) use ($activeBatchId, $hasSource, $includeSystem) {
                     $csv->where('import_batch_id', $activeBatchId);
                     if ($hasSource) {
                         $csv->where(function (Builder $src) {
@@ -111,8 +135,9 @@ class SurveyResponse extends Model
                         });
                     }
 
-                    // Prefer system submission when the same vendor_user_id already submitted in-app.
-                    if ($hasSource && Schema::hasColumn('survey_responses', 'vendor_user_id')) {
+                    // Prefer system submission when the same vendor already submitted in-app.
+                    // Only apply when system responses are also in the analytics set.
+                    if ($includeSystem && $hasSource && Schema::hasColumn('survey_responses', 'vendor_user_id')) {
                         $csv->where(function (Builder $unlinked) {
                             $unlinked->whereNull('vendor_user_id')
                                 ->orWhereNotExists(function ($sub) {
@@ -129,12 +154,24 @@ class SurveyResponse extends Model
                         });
                     }
                 });
-            } elseif (! $hasSource) {
+                $added = true;
+            }
+
+            if (! $added) {
                 $inner->whereRaw('0 = 1');
             }
         });
 
         return $query;
+    }
+
+    public static function normalizeAnalyticsMode(?string $mode): string
+    {
+        $mode = strtolower(trim((string) $mode));
+
+        return in_array($mode, EventAnalyticsDataSourceService::MODES, true)
+            ? $mode
+            : EventAnalyticsDataSourceService::MODE_COMBINED;
     }
 
     public static function resolveActiveCsvBatchId(int $eventId): ?int

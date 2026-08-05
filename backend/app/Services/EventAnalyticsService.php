@@ -29,18 +29,13 @@ class EventAnalyticsService
             EventAnalyticsDataSourceService::MODE_COMBINED,
             EventAnalyticsDataSourceService::MODE_SYSTEM_ONLY,
         ], true);
-        $includeSurvey = in_array($mode, [
-            EventAnalyticsDataSourceService::MODE_COMBINED,
-            EventAnalyticsDataSourceService::MODE_CSV_ONLY,
-        ], true);
 
         $operational = $includeSystem
             ? $this->safeOperationalSnapshot($event)
             : $this->excludedOperationalSnapshot();
 
-        $survey = $includeSurvey
-            ? $this->surveyBundle($event, $recompute)
-            : $this->excludedSurveyBundle();
+        // Survey membership is mode-filtered (combined / csv_only / system_only).
+        $survey = $this->surveyBundle($event, $recompute, $mode);
 
         $readiness = $this->dataReadiness($event, $operational, $survey);
         $dataSources = $this->buildDataSources($event, $operational, $survey, $mode);
@@ -245,8 +240,10 @@ class EventAnalyticsService
     /**
      * @return array<string, mixed>
      */
-    private function surveyBundle(CarbootEvent $event, bool $recompute = false): array
+    private function surveyBundle(CarbootEvent $event, bool $recompute = false, ?string $mode = null): array
     {
+        $mode = SurveyResponse::normalizeAnalyticsMode($mode ?? $this->sourceMode($event));
+
         if (! Schema::hasTable('survey_responses') || ! Schema::hasTable('raw_survey_uploads')) {
             return [
                 'status' => 'unavailable',
@@ -262,7 +259,7 @@ class EventAnalyticsService
         $latestBatch = $this->activeImportBatch($event);
 
         $responseCount = SurveyResponse::query()
-            ->forAnalytics($event->id)
+            ->forAnalytics($event->id, $mode)
             ->count();
 
         if ($responseCount === 0) {
@@ -271,15 +268,18 @@ class EventAnalyticsService
                 'state' => 'missing_source',
                 'degraded' => false,
                 'available' => false,
-                'message' => 'No CSV data is connected to this event.',
+                'message' => 'No survey responses are available for the selected analytics source mode.',
                 'respondent_count' => 0,
-                'import_batch_id' => $latestBatch?->id,
+                'import_batch_id' => $mode === EventAnalyticsDataSourceService::MODE_SYSTEM_ONLY
+                    ? null
+                    : $latestBatch?->id,
+                'analytics_source_mode' => $mode,
                 'sections' => [],
                 'unavailable_metrics' => ['vendor_survey'],
             ];
         }
 
-        $fingerprint = $this->surveyFingerprint($event, $latestBatch);
+        $fingerprint = $this->surveyFingerprint($event, $latestBatch, $mode);
         $cached = AnalyticsResult::query()
             ->where('carboot_event_id', $event->id)
             ->where('metric_key', SurveySchema::SURVEY_METRIC_KEY)
@@ -293,12 +293,13 @@ class EventAnalyticsService
                 'available' => true,
                 'included_in_analytics' => true,
                 'cached' => true,
+                'analytics_source_mode' => $mode,
             ]);
         }
 
         try {
             $records = SurveyResponse::query()
-                ->forAnalytics($event->id)
+                ->forAnalytics($event->id, $mode)
                 ->get()
                 ->map(fn (SurveyResponse $row) => $row->only([
                     'respondent_id',
@@ -353,6 +354,7 @@ class EventAnalyticsService
                 'available' => true,
                 'included_in_analytics' => true,
                 'cached' => false,
+                'analytics_source_mode' => $mode,
             ]);
         } catch (Throwable $e) {
             AnalyticsResult::query()->updateOrCreate(
@@ -378,6 +380,7 @@ class EventAnalyticsService
                 'message' => $e->getMessage(),
                 'respondent_count' => $responseCount,
                 'import_batch_id' => $latestBatch?->id,
+                'analytics_source_mode' => $mode,
                 'sections' => [],
                 'unavailable_metrics' => ['vendor_survey_analytics'],
             ];
@@ -456,10 +459,8 @@ class EventAnalyticsService
             EventAnalyticsDataSourceService::MODE_COMBINED,
             EventAnalyticsDataSourceService::MODE_SYSTEM_ONLY,
         ], true);
-        $includeSurvey = in_array($mode, [
-            EventAnalyticsDataSourceService::MODE_COMBINED,
-            EventAnalyticsDataSourceService::MODE_CSV_ONLY,
-        ], true);
+        // Survey KPIs always evaluate for the selected mode (including system_only).
+        $includeSurvey = true;
 
         return [
             [
@@ -511,7 +512,7 @@ class EventAnalyticsService
                     ? 'Survey excluded by source mode'
                     : match ($survey['status'] ?? '') {
                         'ready' => (string) ($survey['respondent_count'] ?? 0),
-                        'missing_source', 'empty' => 'No survey CSV connected',
+                        'missing_source', 'empty' => 'No survey responses for selected mode',
                         'degraded' => 'Survey analytics unavailable',
                         default => 'Survey data unavailable',
                     },
@@ -526,11 +527,11 @@ class EventAnalyticsService
         ];
     }
 
-    private function surveyFingerprint(CarbootEvent $event, ?RawSurveyUpload $batch): string
+    private function surveyFingerprint(CarbootEvent $event, ?RawSurveyUpload $batch, ?string $mode = null): string
     {
-        $count = SurveyResponse::query()->forAnalytics($event->id)->count();
-        $maxId = SurveyResponse::query()->forAnalytics($event->id)->max('id') ?? 0;
-        $mode = $this->sourceMode($event);
+        $mode = SurveyResponse::normalizeAnalyticsMode($mode ?? $this->sourceMode($event));
+        $count = SurveyResponse::query()->forAnalytics($event->id, $mode)->count();
+        $maxId = SurveyResponse::query()->forAnalytics($event->id, $mode)->max('id') ?? 0;
 
         return sha1(implode(':', [
             $event->id,
