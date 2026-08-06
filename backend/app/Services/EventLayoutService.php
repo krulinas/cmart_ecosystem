@@ -10,6 +10,7 @@ use App\Models\EventSite;
 use App\Models\Space;
 use App\Models\User;
 use App\Models\VendorCategory;
+use App\Support\CmartCarbootPhysicalLayout;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -31,6 +32,9 @@ class EventLayoutService
     public function normalizeRowLabel(string $label): string
     {
         $normalized = preg_replace('/\s+/u', ' ', trim($label)) ?? '';
+        if (CmartCarbootPhysicalLayout::isAllowedRowLabel($normalized)) {
+            return CmartCarbootPhysicalLayout::normalizeRowLabel($normalized);
+        }
 
         return $normalized;
     }
@@ -51,17 +55,65 @@ class EventLayoutService
                 ->where('slug', $slug)
                 ->exists()
         ) {
-            $slug = $base . '-' . $suffix;
+            $slug = $base.'-'.$suffix;
             $suffix++;
         }
 
         return $slug;
     }
 
+    public function assertVendorSiteOpenLimitConfigured(CarbootEvent $event): void
+    {
+        if ($event->vendor_site_open_limit === null) {
+            throw new DomainConflictException(
+                'Configure Vendor sites to open before generating or confirming the layout.',
+                'VENDOR_SITE_OPEN_LIMIT_NOT_SET',
+            );
+        }
+
+        $this->assertVendorSiteOpenLimitAssignable($event, (int) $event->vendor_site_open_limit);
+    }
+
+    public function assertVendorSiteOpenLimitAssignable(CarbootEvent $event, ?int $limit): void
+    {
+        if ($limit === null) {
+            return;
+        }
+
+        $capacity = CmartCarbootPhysicalLayout::physicalSiteCapacity();
+        if ($limit < 1 || $limit > $capacity) {
+            throw new InvalidArgumentException(
+                "Vendor sites to open must be between 1 and {$capacity}."
+            );
+        }
+
+        $protected = $this->countProtectedOccupiedSites((int) $event->id);
+        if ($limit < $protected) {
+            throw new DomainConflictException(
+                "Cannot set Vendor sites to open below {$protected} because reserved or booked sites are already protected.",
+                'VENDOR_SITE_OPEN_LIMIT_BELOW_PROTECTED',
+            );
+        }
+    }
+
+    /**
+     * Sites with active reserved/confirmed occupancy that must remain open.
+     */
+    public function countProtectedOccupiedSites(int $eventId): int
+    {
+        return EventSite::query()
+            ->forEvent($eventId)
+            ->whereHas('bookingDayAllocations', function ($query) {
+                $query->activeOccupancy();
+            })
+            ->count();
+    }
+
     /**
      * @param  array{
      *   label: string,
      *   vendor_category_id: int,
+     *   space_id: int,
      *   description?: string|null,
      *   display_order?: int|null,
      *   is_active?: bool,
@@ -78,18 +130,38 @@ class EventLayoutService
                 throw new InvalidArgumentException('Row label cannot be empty.');
             }
 
-            $category = $this->requireAssignableCategory((int) $data['vendor_category_id']);
+            if (! CmartCarbootPhysicalLayout::isAllowedRowLabel($label)) {
+                throw new DomainConflictException(
+                    'Physical row identity must be one of A, B, C, or D for this venue.',
+                    'ROW_OUTSIDE_VENUE_TEMPLATE',
+                );
+            }
 
-            if (
-                EventLayoutRow::query()
-                    ->forEvent($lockedEvent->id)
-                    ->where('label', $label)
-                    ->exists()
-            ) {
+            $existingLabels = EventLayoutRow::query()
+                ->forEvent($lockedEvent->id)
+                ->pluck('label')
+                ->all();
+
+            if (CmartCarbootPhysicalLayout::allTemplateRowsPresent($existingLabels)) {
+                throw new DomainConflictException(
+                    'All physical rows for this venue are already in use.',
+                    'VENUE_TEMPLATE_ROWS_EXHAUSTED',
+                );
+            }
+
+            if (! in_array($label, CmartCarbootPhysicalLayout::unusedRowLabels($existingLabels), true)) {
                 throw new DomainConflictException(
                     "Layout row label [{$label}] already exists for this event.",
                     'ROW_LABEL_CONFLICT',
                 );
+            }
+
+            $category = $this->requireAssignableCategory((int) $data['vendor_category_id']);
+
+            $spaceId = (int) ($data['space_id'] ?? 0);
+            $space = Space::query()->find($spaceId);
+            if (! $space) {
+                throw new InvalidArgumentException('A valid space_id is required to create a physical row with sites.');
             }
 
             $displayOrder = $data['display_order'] ?? null;
@@ -97,6 +169,8 @@ class EventLayoutService
                 $max = (int) EventLayoutRow::query()->forEvent($lockedEvent->id)->max('display_order');
                 $displayOrder = $max + 1;
             }
+
+            $isActive = (bool) ($data['is_active'] ?? true);
 
             try {
                 $row = EventLayoutRow::create([
@@ -106,7 +180,7 @@ class EventLayoutService
                     'slug' => $this->makeUniqueSlug($lockedEvent, $label),
                     'description' => $data['description'] ?? null,
                     'display_order' => (int) $displayOrder,
-                    'is_active' => (bool) ($data['is_active'] ?? true),
+                    'is_active' => $isActive,
                     'is_public' => (bool) ($data['is_public'] ?? true),
                     'created_by' => $actor->id,
                     'updated_by' => $actor->id,
@@ -117,16 +191,171 @@ class EventLayoutService
                 throw $exception;
             }
 
+            $gridRow = CmartCarbootPhysicalLayout::gridRowForLabel($label);
+            for ($position = 1; $position <= CmartCarbootPhysicalLayout::SITES_PER_ROW; $position++) {
+                $siteLabel = $label.str_pad((string) $position, 2, '0', STR_PAD_LEFT);
+                try {
+                    EventSite::create([
+                        'carboot_event_id' => $lockedEvent->id,
+                        'event_layout_row_id' => $row->id,
+                        'space_id' => $space->id,
+                        'label' => $siteLabel,
+                        'row_label' => $label,
+                        'position_number' => $position,
+                        'grid_row' => $gridRow,
+                        'grid_column' => $position,
+                        'display_order' => $position,
+                        'operational_status' => EventSite::STATUS_DISABLED,
+                        'metadata' => [
+                            'template' => CmartCarbootPhysicalLayout::TEMPLATE_KEY,
+                            'created_via' => 'add_row',
+                        ],
+                    ]);
+                } catch (QueryException $exception) {
+                    $this->translateSiteUnique($exception);
+                    throw $exception;
+                }
+            }
+
+            if ($isActive && $row->eventSites()->count() === 0) {
+                throw new DomainConflictException(
+                    'An active row cannot be saved without physical sites.',
+                    'ACTIVE_ROW_HAS_NO_ACTIVE_SITES',
+                );
+            }
+
             $this->audit->record(
                 $lockedEvent->id,
                 $actor,
                 EventLayoutAuditLog::ACTION_ROW_CREATED,
                 null,
-                $this->rowSnapshot($row),
+                array_merge($this->rowSnapshot($row), [
+                    'sites_created' => CmartCarbootPhysicalLayout::SITES_PER_ROW,
+                    'initial_site_status' => EventSite::STATUS_DISABLED,
+                ]),
                 $row->id,
             );
 
-            return $row->fresh(['vendorCategory']);
+            return $row->fresh(['vendorCategory', 'eventSites']);
+        });
+    }
+
+    /**
+     * Confirm exactly vendor_site_open_limit open sites for the event.
+     *
+     * @param  list<int>  $siteIds
+     * @return array{opened: int, closed: int, readiness: array<string, mixed>}
+     */
+    public function setOpenSites(CarbootEvent $event, User $actor, array $siteIds): array
+    {
+        return DB::transaction(function () use ($event, $actor, $siteIds) {
+            $lockedEvent = CarbootEvent::query()->whereKey($event->id)->lockForUpdate()->firstOrFail();
+            $this->assertVendorSiteOpenLimitConfigured($lockedEvent);
+            $limit = (int) $lockedEvent->vendor_site_open_limit;
+
+            $uniqueIds = array_values(array_unique(array_map('intval', $siteIds)));
+            if (count($uniqueIds) !== $limit) {
+                throw new DomainConflictException(
+                    "Select exactly {$limit} sites to open. Received ".count($uniqueIds).'.',
+                    'OPEN_SITE_SELECTION_COUNT_MISMATCH',
+                );
+            }
+
+            $sites = EventSite::query()
+                ->forEvent($lockedEvent->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            if ($sites->isEmpty()) {
+                throw new DomainConflictException(
+                    'No physical sites exist for this event.',
+                    'NO_PHYSICAL_SITES',
+                );
+            }
+
+            foreach ($uniqueIds as $siteId) {
+                if (! $sites->has($siteId)) {
+                    throw new DomainConflictException(
+                        'One or more selected sites do not belong to this event.',
+                        'INVALID_SITE',
+                    );
+                }
+            }
+
+            $selected = array_fill_keys($uniqueIds, true);
+            $opened = 0;
+            $closed = 0;
+
+            foreach ($sites as $site) {
+                $shouldOpen = isset($selected[$site->id]);
+                $locks = $this->locks->siteLocks($site);
+
+                if ($shouldOpen) {
+                    if ($site->operational_status !== EventSite::STATUS_ACTIVE) {
+                        $site->operational_status = EventSite::STATUS_ACTIVE;
+                        $site->save();
+                        $opened++;
+                    }
+                    continue;
+                }
+
+                if ($site->operational_status === EventSite::STATUS_ACTIVE) {
+                    if ($locks['disable_locked'] || $locks['has_active_allocations']) {
+                        throw new DomainConflictException(
+                            "Site {$site->label} cannot be closed because it has an active reservation or booking.",
+                            'ACTIVE_ALLOCATIONS_PRESENT',
+                        );
+                    }
+                    $site->operational_status = EventSite::STATUS_DISABLED;
+                    $site->save();
+                    $closed++;
+                } elseif ($site->operational_status !== EventSite::STATUS_DISABLED) {
+                    // Keep unavailable as-is unless it was meant to stay closed — normalize unused to disabled.
+                    if (! $locks['disable_locked']) {
+                        $site->operational_status = EventSite::STATUS_DISABLED;
+                        $site->save();
+                        $closed++;
+                    }
+                }
+            }
+
+            $activeCount = EventSite::query()
+                ->forEvent($lockedEvent->id)
+                ->active()
+                ->count();
+            if ($activeCount !== $limit) {
+                throw new DomainConflictException(
+                    "Open site confirmation must result in exactly {$limit} active sites (got {$activeCount}).",
+                    'OPEN_SITE_SELECTION_COUNT_MISMATCH',
+                );
+            }
+
+            $this->audit->record(
+                (int) $lockedEvent->id,
+                $actor,
+                EventLayoutAuditLog::ACTION_OPEN_SITES_SET,
+                null,
+                [
+                    'opened_site_ids' => $uniqueIds,
+                    'opened' => $opened,
+                    'closed' => $closed,
+                    'vendor_site_open_limit' => $limit,
+                ],
+            );
+
+            $readiness = $this->readiness->assess($lockedEvent->fresh());
+
+            return [
+                'opened' => $opened,
+                'closed' => $closed,
+                'readiness' => [
+                    'operational_ready' => $readiness['operational_ready'],
+                    'public_ready' => $readiness['public_ready'],
+                    'blocking_reasons' => $readiness['blocking_reasons'],
+                ],
+            ];
         });
     }
 
@@ -153,6 +382,12 @@ class EventLayoutService
                             'ROW_LABEL_LOCKED',
                         );
                     }
+                    if (! CmartCarbootPhysicalLayout::isAllowedRowLabel($label)) {
+                        throw new DomainConflictException(
+                            'Physical row identity must be one of A, B, C, or D for this venue.',
+                            'ROW_OUTSIDE_VENUE_TEMPLATE',
+                        );
+                    }
                     if (
                         EventLayoutRow::query()
                             ->forEvent($locked->carboot_event_id)
@@ -166,6 +401,11 @@ class EventLayoutService
                         );
                     }
                     $locked->label = $label;
+                    $locked->slug = $this->makeUniqueSlug(
+                        CarbootEvent::query()->findOrFail($locked->carboot_event_id),
+                        $label,
+                        $locked->id,
+                    );
                     EventSite::query()
                         ->where('event_layout_row_id', $locked->id)
                         ->orderBy('id')
@@ -208,7 +448,19 @@ class EventLayoutService
                         'Archived rows must be unarchived before changing is_active.'
                     );
                 }
-                $locked->is_active = (bool) $data['is_active'];
+                $nextActive = (bool) $data['is_active'];
+                if ($nextActive) {
+                    $siteCount = EventSite::query()
+                        ->where('event_layout_row_id', $locked->id)
+                        ->count();
+                    if ($siteCount === 0) {
+                        throw new DomainConflictException(
+                            'An active row cannot be saved without physical sites.',
+                            'ACTIVE_ROW_HAS_NO_ACTIVE_SITES',
+                        );
+                    }
+                }
+                $locked->is_active = $nextActive;
             }
 
             $locked->updated_by = $actor->id;
@@ -430,9 +682,25 @@ class EventLayoutService
             }
 
             $label = strtoupper(trim((string) $data['label']));
-            $status = (string) ($data['operational_status'] ?? $data['status'] ?? EventSite::STATUS_ACTIVE);
+            $status = (string) ($data['operational_status'] ?? $data['status'] ?? EventSite::STATUS_DISABLED);
             if (! in_array($status, EventSite::OPERATIONAL_STATUSES, true)) {
                 throw new InvalidArgumentException('Invalid site status.');
+            }
+
+            if ($status === EventSite::STATUS_ACTIVE) {
+                $event = CarbootEvent::query()->findOrFail($lockedRow->carboot_event_id);
+                if ($event->vendor_site_open_limit !== null) {
+                    $activeCount = EventSite::query()
+                        ->forEvent((int) $lockedRow->carboot_event_id)
+                        ->active()
+                        ->count();
+                    if ($activeCount + 1 > (int) $event->vendor_site_open_limit) {
+                        throw new DomainConflictException(
+                            'Creating this site as active would exceed Vendor sites to open for the event.',
+                            'ACTIVE_SITE_COUNT_EXCEEDS_VENDOR_LIMIT',
+                        );
+                    }
+                }
             }
 
             try {
@@ -604,6 +872,25 @@ class EventLayoutService
                         'Site cannot be disabled while active reserved or confirmed allocations exist.',
                         'ACTIVE_ALLOCATIONS_PRESENT',
                     );
+                }
+                if (
+                    $status === EventSite::STATUS_ACTIVE
+                    && $locked->operational_status !== EventSite::STATUS_ACTIVE
+                ) {
+                    $event = CarbootEvent::query()->findOrFail($locked->carboot_event_id);
+                    if ($event->vendor_site_open_limit !== null) {
+                        $activeCount = EventSite::query()
+                            ->forEvent((int) $locked->carboot_event_id)
+                            ->active()
+                            ->where('id', '!=', $locked->id)
+                            ->count();
+                        if ($activeCount + 1 > (int) $event->vendor_site_open_limit) {
+                            throw new DomainConflictException(
+                                'Opening this site would exceed Vendor sites to open for the event.',
+                                'ACTIVE_SITE_COUNT_EXCEEDS_VENDOR_LIMIT',
+                            );
+                        }
+                    }
                 }
                 $locked->operational_status = $status;
             }

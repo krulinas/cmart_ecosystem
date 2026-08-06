@@ -30,6 +30,19 @@
             {{ copy.generateStandardConfirm }}
           </p>
 
+          <p
+            class="rounded-xl border px-3 py-2 text-sm"
+            :class="vendorSiteOpenLimit
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
+              : 'border-amber-200 bg-amber-50 text-amber-950'"
+            data-testid="standard-layout-open-limit"
+          >
+            {{ copy.generateStandardOpenCount(vendorSiteOpenLimit) }}
+          </p>
+          <p v-if="!vendorSiteOpenLimit" class="text-xs text-amber-800">
+            {{ copy.generateStandardLimitRequired }}
+          </p>
+
           <div>
             <label class="ml-label" for="standard-layout-space">{{ copy.selectSpaceType }}</label>
             <select
@@ -75,7 +88,7 @@
           <div class="rounded-xl border border-ink-200 bg-ink-50 px-3 py-3">
             <div class="text-xs font-bold uppercase tracking-wider text-ink-500">Preview</div>
             <p class="mt-2 text-sm font-semibold text-ink-900" data-testid="standard-layout-preview">
-              4 rows × 16 sites = 64 sites
+              4 rows × 16 sites = 64 physical sites (initially NOT OPEN)
             </p>
             <p class="mt-1 break-words text-xs text-ink-600">
               {{ previewLabels.slice(0, 8).join(', ') }} … {{ previewLabels.slice(-4).join(', ') }}
@@ -115,12 +128,14 @@
 <script setup>
 import { computed, reactive, watch } from 'vue';
 import { LAYOUT_COPY } from '../../../utils/organizerEventLayoutMessages';
+import { CMART_CARBOOT_ROW_LABELS } from '../../../config/cmartCarbootPhysicalLayout';
 import { previewStandardParkingLabels } from '../../../utils/visualParkingLayout';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   categories: { type: Array, default: () => [] },
   spaces: { type: Array, default: () => [] },
+  vendorSiteOpenLimit: { type: Number, default: null },
   submitting: { type: Boolean, default: false },
   formError: { type: String, default: '' },
 });
@@ -128,7 +143,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'submit']);
 
 const copy = LAYOUT_COPY;
-const rowLabels = ['A', 'B', 'C', 'D'];
+const rowLabels = CMART_CARBOOT_ROW_LABELS;
 const previewLabels = previewStandardParkingLabels();
 
 const form = reactive({
@@ -142,6 +157,7 @@ const form = reactive({
 });
 
 const canSubmit = computed(() => {
+  if (!props.vendorSiteOpenLimit) return false;
   if (!form.space_id) return false;
   return rowLabels.every((label) => Number(form.row_categories[label]) > 0);
 });

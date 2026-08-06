@@ -9,6 +9,13 @@
         <div class="flex flex-wrap items-center gap-2">
           <h3 class="text-lg font-extrabold text-ink-900">{{ row.label }}</h3>
           <span
+            v-if="row.outside_venue_template"
+            class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-900"
+            :title="copy.outsideVenueTemplateHelp"
+          >
+            {{ copy.outsideVenueTemplateBadge }}
+          </span>
+          <span
             v-if="row.locks?.rename_locked || row.locks?.category_change_locked || row.locks?.delete_locked || row.locks?.archive_locked"
             class="inline-flex items-center gap-1 rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-bold text-ink-700"
             :title="lockSummary"

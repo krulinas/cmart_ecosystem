@@ -118,65 +118,67 @@
         class="bg-white shadow-sm border border-gray-100"
       />
 
-      <section
+      <div
         v-if="!auth.isVendorUser"
         id="become-vendor"
         data-testid="become-vendor-section"
-        class="bg-brand-600 rounded-3xl p-10 text-center text-white"
+        class="scroll-mt-24 sm:scroll-mt-28"
       >
-        <h2 class="text-2xl font-black mb-3">Ready to become a vendor?</h2>
-        <p class="text-brand-100 mb-6 max-w-lg mx-auto">
-          {{
-            auth.isAuthenticated
-              ? 'Apply for a vendor booth at our next carboot event and unlock your vendor dashboard.'
-              : 'Create your free community account, then apply for a vendor booth at our next carboot event.'
-          }}
-        </p>
-        <div class="flex flex-col sm:flex-row justify-center gap-4">
-          <template v-if="auth.isAuthenticated">
-            <router-link
-              :to="auth.startVendorBookingPath()"
-              data-testid="start-vendor-booking-cta"
-              class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
-            >
-              Start Vendor Booking
-            </router-link>
-            <router-link
-              to="/calendar"
-              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
-            >
-              Explore Events
-            </router-link>
-            <router-link
-              to="/community#share-feedback"
-              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
-            >
-              Read Reviews
-            </router-link>
-          </template>
-          <template v-else>
-            <router-link
-              :to="registerPathWithRedirect('/vendor-booking')"
-              data-testid="start-vendor-booking-cta"
-              class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
-            >
-              Start Vendor Booking
-            </router-link>
-            <router-link
-              to="/calendar"
-              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
-            >
-              Explore Events
-            </router-link>
-            <router-link
-              :to="loginPathWithRedirect('/community#share-feedback')"
-              class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
-            >
-              Sign in to Leave a Review
-            </router-link>
-          </template>
-        </div>
-      </section>
+        <section class="bg-brand-600 rounded-3xl p-10 text-center text-white">
+          <h2 class="text-2xl font-black mb-3">Ready to become a vendor?</h2>
+          <p class="text-brand-100 mb-6 max-w-lg mx-auto">
+            {{
+              auth.isAuthenticated
+                ? 'Apply for a vendor booth at our next carboot event and unlock your vendor dashboard.'
+                : 'Create your free community account, then apply for a vendor booth at our next carboot event.'
+            }}
+          </p>
+          <div class="flex flex-col sm:flex-row justify-center gap-4">
+            <template v-if="auth.isAuthenticated">
+              <router-link
+                :to="auth.startVendorBookingPath()"
+                data-testid="start-vendor-booking-cta"
+                class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
+              >
+                Start Vendor Booking
+              </router-link>
+              <router-link
+                to="/calendar"
+                class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
+              >
+                Explore Events
+              </router-link>
+              <router-link
+                to="/community#share-feedback"
+                class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
+              >
+                Read Reviews
+              </router-link>
+            </template>
+            <template v-else>
+              <router-link
+                :to="registerPathWithRedirect('/vendor-booking')"
+                data-testid="start-vendor-booking-cta"
+                class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
+              >
+                Start Vendor Booking
+              </router-link>
+              <router-link
+                to="/calendar"
+                class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
+              >
+                Explore Events
+              </router-link>
+              <router-link
+                :to="loginPathWithRedirect('/community#share-feedback')"
+                class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
+              >
+                Sign in to Leave a Review
+              </router-link>
+            </template>
+          </div>
+        </section>
+      </div>
 
       <section class="max-w-6xl mx-auto">
         <div class="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">

@@ -24,8 +24,20 @@
           </select>
         </div>
         <div>
-          <label class="ml-label">Max slots (optional)</label>
+          <label class="ml-label">Max slots (optional — community RSVP)</label>
           <input v-model.number="form.max_slots" type="number" min="1" class="ml-input" />
+        </div>
+        <div>
+          <label class="ml-label">Vendor sites to open</label>
+          <input
+            v-model.number="form.vendor_site_open_limit"
+            type="number"
+            min="1"
+            max="64"
+            class="ml-input"
+            data-testid="event-vendor-site-open-limit"
+          />
+          <p class="mt-1 text-[11px] text-ink-500">How many vendor parking sites may be booked (1–64). Separate from Max slots.</p>
         </div>
         <div>
           <label class="ml-label">Price Per Site (RM)</label>
@@ -205,6 +217,7 @@ const emptyForm = () => ({
   status: 'Available',
   description: '',
   max_slots: null,
+  vendor_site_open_limit: null,
   site_price: organizerDefaultSitePrice.value,
   save_as_default_site_price: false,
   item_reservation_service_fee: '',
@@ -264,6 +277,9 @@ const buildFormData = () => {
   if (form.max_slots) {
     fd.append('max_slots', String(form.max_slots));
   }
+  if (form.vendor_site_open_limit) {
+    fd.append('vendor_site_open_limit', String(form.vendor_site_open_limit));
+  }
   fd.append('site_price', String(form.site_price));
   fd.append('save_as_default_site_price', form.save_as_default_site_price ? '1' : '0');
   fd.append('item_reservation_service_fee', form.item_reservation_service_fee);
@@ -319,6 +335,7 @@ const edit = (ev) => {
   form.status = normalized.status;
   form.description = normalized.description || '';
   form.max_slots = normalized.max_slots;
+  form.vendor_site_open_limit = normalized.vendor_site_open_limit;
   form.site_price = normalized.site_price != null
     ? Number(normalized.site_price).toFixed(2)
     : PRODUCT_DEFAULT_SITE_PRICE;
@@ -356,6 +373,7 @@ const save = async () => {
     status: form.status,
     description: form.description || null,
     max_slots: form.max_slots || null,
+    vendor_site_open_limit: form.vendor_site_open_limit || null,
     site_price: sitePrice.toFixed(2),
     save_as_default_site_price: Boolean(form.save_as_default_site_price),
     item_reservation_service_fee: form.item_reservation_service_fee === ''

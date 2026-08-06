@@ -19,18 +19,61 @@
 
         <form class="space-y-4 p-5" @submit.prevent="submit">
           <div>
-            <label class="ml-label" for="layout-row-label">Row name</label>
-            <input
-              id="layout-row-label"
-              v-model="form.label"
+            <label class="ml-label" for="layout-row-label">{{ copy.physicalRowLabel }}</label>
+            <template v-if="isEdit">
+              <input
+                id="layout-row-label"
+                v-model="form.label"
+                class="ml-input"
+                required
+                maxlength="32"
+                :disabled="submitting || renameLocked || !canEditLabelFreely"
+                data-testid="layout-row-label-input"
+              />
+              <p v-if="renameLocked" class="mt-1 text-xs text-amber-800">{{ copy.renameLockedHint }}</p>
+              <p v-else-if="!canEditLabelFreely" class="mt-1 text-xs text-amber-800">
+                {{ copy.outsideVenueTemplateHelp }}
+              </p>
+            </template>
+            <template v-else>
+              <select
+                id="layout-row-label"
+                v-model="form.label"
+                class="ml-input"
+                required
+                :disabled="submitting || unusedRowLabels.length === 0"
+                data-testid="layout-row-label-select"
+              >
+                <option disabled value="">{{ copy.selectPhysicalRow }}</option>
+                <option v-for="label in unusedRowLabels" :key="label" :value="label">
+                  Row {{ label }}
+                </option>
+              </select>
+              <p v-if="unusedRowLabels.length === 0" class="mt-1 text-xs text-amber-800">
+                {{ copy.allPhysicalRowsInUse }}
+              </p>
+            </template>
+            <p v-if="fieldErrors.label" class="mt-1 text-xs text-rose-700">{{ fieldErrors.label }}</p>
+          </div>
+
+          <div v-if="!isEdit">
+            <label class="ml-label" for="layout-row-space">{{ copy.selectSpaceType }}</label>
+            <select
+              id="layout-row-space"
+              v-model.number="form.space_id"
               class="ml-input"
               required
-              maxlength="32"
-              :disabled="submitting || renameLocked"
-              data-testid="layout-row-label-input"
-            />
-            <p v-if="renameLocked" class="mt-1 text-xs text-amber-800">{{ copy.renameLockedHint }}</p>
-            <p v-if="fieldErrors.label" class="mt-1 text-xs text-rose-700">{{ fieldErrors.label }}</p>
+              :disabled="submitting"
+              data-testid="layout-row-space-select"
+            >
+              <option disabled value="">{{ copy.selectSpaceType }}</option>
+              <option v-for="space in spaces" :key="space.id" :value="space.id">
+                {{ space.space_size }} — RM {{ Number(space.price || 0).toFixed(2) }}
+              </option>
+            </select>
+            <p class="mt-1 text-xs text-ink-500">
+              Creates 16 physical sites as NOT OPEN for the selected row.
+            </p>
           </div>
 
           <div>
@@ -78,8 +121,13 @@
 
           <div class="flex justify-end gap-2">
             <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="close">{{ copy.cancel }}</button>
-            <button type="submit" class="ml-btn-primary" :disabled="submitting" data-testid="layout-row-form-submit">
-              {{ submitting ? 'Menyimpan…' : copy.save }}
+            <button
+              type="submit"
+              class="ml-btn-primary"
+              :disabled="submitting || (!isEdit && unusedRowLabels.length === 0)"
+              data-testid="layout-row-form-submit"
+            >
+              {{ submitting ? 'Saving…' : copy.save }}
             </button>
           </div>
         </form>
@@ -91,11 +139,14 @@
 <script setup>
 import { reactive, watch, computed } from 'vue';
 import { LAYOUT_COPY } from '../../../utils/organizerEventLayoutMessages';
+import { isAllowedPhysicalRowLabel } from '../../../config/cmartCarbootPhysicalLayout';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   row: { type: Object, default: null },
   categories: { type: Array, default: () => [] },
+  spaces: { type: Array, default: () => [] },
+  unusedRowLabels: { type: Array, default: () => [] },
   submitting: { type: Boolean, default: false },
   formError: { type: String, default: '' },
 });
@@ -106,9 +157,14 @@ const copy = LAYOUT_COPY;
 const isEdit = computed(() => Boolean(props.row?.id));
 const renameLocked = computed(() => Boolean(props.row?.locks?.rename_locked));
 const categoryLocked = computed(() => Boolean(props.row?.locks?.category_change_locked));
+const canEditLabelFreely = computed(() => {
+  if (!isEdit.value) return true;
+  return isAllowedPhysicalRowLabel(props.row?.label);
+});
 
 const form = reactive({
   label: '',
+  space_id: '',
   vendor_category_id: '',
   description: '',
   is_active: true,
@@ -120,10 +176,11 @@ const fieldErrors = reactive({
 });
 
 watch(
-  () => [props.modelValue, props.row],
+  () => [props.modelValue, props.row, props.unusedRowLabels, props.spaces],
   () => {
     if (!props.modelValue) return;
-    form.label = props.row?.label || '';
+    form.label = props.row?.label || props.unusedRowLabels[0] || '';
+    form.space_id = props.spaces[0]?.id || '';
     form.vendor_category_id = props.row?.category?.id || props.row?.vendor_category_id || '';
     form.description = props.row?.description || '';
     form.is_active = props.row ? Boolean(props.row.is_active) : true;
@@ -149,7 +206,7 @@ function submit() {
   fieldErrors.label = '';
   const label = String(form.label || '').trim();
   if (!label) {
-    fieldErrors.label = 'Row name is required.';
+    fieldErrors.label = 'Physical row is required.';
     return;
   }
 
@@ -158,8 +215,12 @@ function submit() {
     is_public: Boolean(form.is_public),
   };
 
-  if (!renameLocked.value) {
+  if (!renameLocked.value && (canEditLabelFreely.value || !isEdit.value)) {
     payload.label = label;
+  }
+  if (!isEdit.value) {
+    payload.label = label;
+    payload.space_id = Number(form.space_id);
   }
   if (!categoryLocked.value) {
     payload.vendor_category_id = Number(form.vendor_category_id);

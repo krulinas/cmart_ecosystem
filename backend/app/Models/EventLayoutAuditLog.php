@@ -38,6 +38,8 @@ class EventLayoutAuditLog extends Model
 
     public const ACTION_STANDARD_TEMPLATE_GENERATED = 'standard_parking_layout_generated';
 
+    public const ACTION_OPEN_SITES_SET = 'layout_open_sites_set';
+
     protected $fillable = [
         'carboot_event_id',
         'actor_user_id',

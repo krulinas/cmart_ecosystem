@@ -2,10 +2,14 @@
  * Shared visual parking layout adapters and geometry helpers.
  * Presentation only — backend availability and booking rules remain authoritative.
  */
+import {
+  CMART_CARBOOT_ROW_LABELS,
+  CMART_CARBOOT_SITES_PER_ROW,
+} from '../config/cmartCarbootPhysicalLayout.js';
 import { visualParkingCopy } from './visualParkingLayoutCopy.js';
 
-export const STANDARD_ROW_LABELS = Object.freeze(['A', 'B', 'C', 'D']);
-export const STANDARD_SITES_PER_ROW = 16;
+export const STANDARD_ROW_LABELS = CMART_CARBOOT_ROW_LABELS;
+export const STANDARD_SITES_PER_ROW = CMART_CARBOOT_SITES_PER_ROW;
 
 export const VISUAL_STATUS = Object.freeze({
   available: 'available',

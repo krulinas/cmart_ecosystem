@@ -226,7 +226,19 @@ const router = createRouter({
   routes,
   scrollBehavior(to, _from, savedPosition) {
     if (savedPosition) return savedPosition;
-    if (to.hash) return { el: to.hash, behavior: 'smooth' };
+    if (to.hash) {
+      // Match CommunityPortal #become-vendor scroll-mt-28 (7rem) and sticky AppNavbar height.
+      const HASH_SCROLL_OFFSET_PX = 112;
+      const prefersReducedMotion =
+        typeof window !== 'undefined'
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      return {
+        el: to.hash,
+        top: HASH_SCROLL_OFFSET_PX,
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      };
+    }
     return { top: 0 };
   },
 });

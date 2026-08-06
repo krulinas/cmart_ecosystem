@@ -11,7 +11,9 @@ use App\Models\EventSite;
 use App\Services\EventLayoutAuditLogger;
 use App\Services\EventLayoutLockService;
 use App\Services\EventLayoutReadinessService;
+use App\Services\EventLayoutService;
 use App\Services\StandardEventLayoutGenerator;
+use App\Support\CmartCarbootPhysicalLayout;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +29,7 @@ class OrganizerEventLayoutController extends Controller
         private readonly EventLayoutLockService $locks,
         private readonly EventLayoutAuditLogger $audit,
         private readonly StandardEventLayoutGenerator $standardLayoutGenerator,
+        private readonly EventLayoutService $layout,
     ) {}
 
     public function show(CarbootEvent $carboot_event): JsonResponse
@@ -44,6 +47,9 @@ class OrganizerEventLayoutController extends Controller
             ->flatMap(fn (EventLayoutRow $row) => $row->eventSites->pluck('id'))
             ->all();
         $occupancy = $this->locks->occupancyBySiteIds($allSiteIds);
+
+        $existingLabels = $rows->pluck('label')->all();
+        $unusedRows = CmartCarbootPhysicalLayout::unusedRowLabels($existingLabels);
 
         $rowPayload = $rows->map(function (EventLayoutRow $row) use ($occupancy) {
             $sites = $row->eventSites
@@ -64,6 +70,7 @@ class OrganizerEventLayoutController extends Controller
                 'is_active' => $row->is_active,
                 'is_public' => $row->is_public,
                 'archived_at' => optional($row->archived_at)?->toIso8601String(),
+                'outside_venue_template' => ! CmartCarbootPhysicalLayout::isAllowedRowLabel((string) $row->label),
                 'category' => $this->presentCategory($row),
                 'locks' => $this->locks->rowLocks($row),
                 'sites' => $sites,
@@ -78,14 +85,36 @@ class OrganizerEventLayoutController extends Controller
             ->get();
         $unresolvedOccupancy = $this->locks->occupancyBySiteIds($unresolved->pluck('id')->all());
 
+        $activeSiteCount = EventSite::query()
+            ->forEvent($carboot_event->id)
+            ->active()
+            ->count();
+        $physicalSiteCount = EventSite::query()
+            ->forEvent($carboot_event->id)
+            ->count();
+
         return response()->json([
             'event' => [
                 'id' => $carboot_event->id,
                 'name' => $carboot_event->title,
                 'status' => $carboot_event->status,
+                'vendor_site_open_limit' => $carboot_event->vendor_site_open_limit,
                 'public_layout_published' => $carboot_event->public_layout_published_at !== null,
                 'public_layout_published_at' => $carboot_event->public_layout_published_at?->toIso8601String(),
                 'public_layout_entrance_note' => $carboot_event->public_layout_entrance_note,
+            ],
+            'venue_template' => [
+                'key' => CmartCarbootPhysicalLayout::TEMPLATE_KEY,
+                'row_labels' => CmartCarbootPhysicalLayout::ROW_LABELS,
+                'sites_per_row' => CmartCarbootPhysicalLayout::SITES_PER_ROW,
+                'physical_capacity' => CmartCarbootPhysicalLayout::physicalSiteCapacity(),
+                'unused_row_labels' => $unusedRows,
+                'all_rows_in_use' => $unusedRows === [],
+            ],
+            'counts' => [
+                'physical_sites' => $physicalSiteCount,
+                'active_sites' => $activeSiteCount,
+                'rows' => $rows->count(),
             ],
             'readiness' => [
                 'operational_ready' => $readiness['operational_ready'],
@@ -151,13 +180,51 @@ class OrganizerEventLayoutController extends Controller
 
         return response()->json([
             'message' => '201 Created: Standard parking layout generated successfully.',
-            'template' => 'standard_parking_4x16',
+            'template' => CmartCarbootPhysicalLayout::TEMPLATE_KEY,
             'rows_created' => $result['rows_created'],
             'sites_created' => $result['sites_created'],
             'row_labels' => $result['row_labels'],
             'site_labels' => $result['site_labels'],
+            'vendor_site_open_limit' => $result['vendor_site_open_limit'],
+            'needs_open_site_selection' => $result['needs_open_site_selection'],
             'readiness' => $result['readiness'],
         ], 201);
+    }
+
+    /**
+     * Confirm exactly vendor_site_open_limit sites as open/active.
+     */
+    public function setOpenSites(Request $request, CarbootEvent $carboot_event): JsonResponse
+    {
+        $validated = $request->validate([
+            'site_ids' => 'required|array|min:1',
+            'site_ids.*' => 'required|integer|distinct|exists:event_sites,id',
+        ]);
+
+        try {
+            $result = $this->layout->setOpenSites(
+                $carboot_event,
+                $request->user(),
+                $validated['site_ids'],
+            );
+        } catch (DomainConflictException $exception) {
+            return response()->json([
+                'message' => '409 Conflict: '.$exception->getMessage(),
+                'error' => $exception->error,
+            ], 409);
+        } catch (InvalidArgumentException $exception) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: '.$exception->getMessage(),
+                'error' => 'INVALID_OPEN_SITE_SELECTION',
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => '200 OK: Open sites confirmed successfully.',
+            'opened' => $result['opened'],
+            'closed' => $result['closed'],
+            'readiness' => $result['readiness'],
+        ]);
     }
 
     public function publish(Request $request, CarbootEvent $carboot_event): JsonResponse

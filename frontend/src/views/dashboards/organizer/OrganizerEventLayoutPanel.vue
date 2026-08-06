@@ -5,17 +5,20 @@
         <div>
           <p class="text-xs font-bold uppercase tracking-wider text-blue-800">{{ copy.pageTitle }}</p>
           <h2 class="text-xl font-extrabold text-ink-900">
-            {{ layout?.event?.name || copy.selectEventPrompt }}
+            {{ displayEventName || copy.selectEventPrompt }}
           </h2>
-          <p v-if="layout?.event" class="mt-1 text-sm text-ink-500">
+          <p v-if="layout?.event && !switchingEvents" class="mt-1 text-sm text-ink-500">
             Status: {{ layout.event.status }}
             · {{ rows.length }} rows
             · {{ activeSiteCount }} active sites
+            <span v-if="physicalSiteCount != null">
+              · {{ copy.physicalSitesSummary(physicalSiteCount, activeSiteCount, vendorSiteOpenLimit) }}
+            </span>
             <span v-if="unresolvedSites.length" class="font-semibold text-amber-700">
               · {{ unresolvedSites.length }} unassigned
             </span>
           </p>
-          <p v-if="lastLoadedAt" class="mt-1 text-[11px] text-ink-400">
+          <p v-if="lastLoadedAt && !switchingEvents" class="mt-1 text-[11px] text-ink-400">
             Last refreshed: {{ formatLoadedAt(lastLoadedAt) }}
           </p>
         </div>
@@ -31,10 +34,10 @@
             {{ copy.refresh }}
           </button>
           <button
-            v-if="rows.length > 0"
             type="button"
             class="ml-btn-ghost text-sm"
-            :disabled="!selectedEventId || loading"
+            :disabled="!selectedEventId || loading || addRowDisabled"
+            :title="addRowDisabled ? copy.allPhysicalRowsInUse : copy.addRow"
             data-testid="layout-add-row-button"
             @click="openCreateRow"
           >
@@ -43,6 +46,14 @@
         </div>
       </div>
 
+      <p
+        v-if="addRowDisabled && selectedEventId"
+        class="text-xs text-ink-500"
+        data-testid="layout-add-row-disabled-hint"
+      >
+        {{ copy.allPhysicalRowsInUse }}
+      </p>
+
       <div>
         <label class="ml-label" for="layout-event-select">{{ copy.selectEvent }}</label>
         <select
@@ -50,7 +61,7 @@
           v-model="selectedEventId"
           class="ml-input"
           data-testid="layout-event-select"
-          :disabled="loadingEvents"
+          :disabled="loadingEvents || loading || switchingEvents"
           @change="onEventSelected"
         >
           <option value="">{{ copy.selectEventOption }}</option>
@@ -59,181 +70,279 @@
           </option>
         </select>
       </div>
+
+      <div
+        class="sr-only"
+        aria-live="polite"
+        data-testid="layout-live-status"
+      >
+        {{ liveStatusMessage }}
+      </div>
     </section>
 
-    <div v-if="loading && !layout" class="ml-card animate-pulse space-y-3 py-10 text-center" data-testid="layout-loading-state">
+    <div
+      v-if="loading && !layout"
+      class="ml-card animate-pulse space-y-3 py-10 text-center motion-reduce:animate-none"
+      data-testid="layout-loading-state"
+    >
       <div class="mx-auto h-10 w-10 rounded-full bg-ink-200" />
-      <p class="text-sm font-medium text-ink-500">{{ copy.loadingLayout }}</p>
+      <p class="text-sm font-medium text-ink-500">{{ loadingMessage }}</p>
     </div>
 
-    <div v-else-if="loadError" class="ml-card space-y-3 border-rose-200 bg-rose-50" data-testid="layout-error-state">
+    <div
+      v-else-if="loadError && !layout"
+      class="ml-card space-y-3 border-rose-200 bg-rose-50"
+      data-testid="layout-error-state"
+    >
       <p class="font-semibold text-rose-900">{{ copy.loadError }}</p>
       <p class="text-sm text-rose-800">{{ loadError }}</p>
-      <button type="button" class="ml-btn-primary text-sm" @click="refreshLayout({ force: true })">{{ copy.tryAgain }}</button>
+      <button type="button" class="ml-btn-primary text-sm" @click="refreshLayout({ force: true })">
+        {{ copy.tryAgain }}
+      </button>
     </div>
 
     <template v-else-if="selectedEventId && layout">
-      <EventLayoutReadinessPanel :readiness="layout.readiness || {}" />
-
-      <section
-        v-if="!rows.length"
-        class="ml-card space-y-3 text-center"
-        data-testid="layout-empty-state"
-      >
-        <p class="text-lg font-extrabold text-ink-900">{{ copy.emptyTitle }}</p>
-        <p class="text-sm text-ink-500">{{ copy.emptyBody }}</p>
-        <p class="text-xs text-ink-500">{{ copy.generateStandardLayoutHelp }}</p>
-        <div class="flex flex-wrap justify-center gap-2">
-          <button
-            type="button"
-            class="ml-btn-primary"
-            data-testid="layout-empty-generate-standard"
-            @click="openStandardGenerator"
-          >
-            {{ copy.generateStandardLayout }}
-          </button>
-          <button type="button" class="ml-btn-ghost" @click="openCreateRow">{{ copy.addRow }}</button>
+      <div class="relative" data-testid="layout-content-shell">
+        <div
+          v-if="switchingEvents"
+          class="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-white/80 backdrop-blur-[2px] motion-safe:transition-opacity"
+          data-testid="layout-switch-overlay"
+        >
+          <div class="space-y-2 px-4 text-center">
+            <div class="mx-auto h-8 w-8 animate-pulse rounded-full bg-ink-200 motion-reduce:animate-none" />
+            <p class="text-sm font-semibold text-ink-700">{{ loadingMessage }}</p>
+          </div>
         </div>
-      </section>
 
-      <section
-        v-else
-        class="ml-card space-y-4"
-        data-testid="layout-visual-workspace"
-      >
-        <VisualParkingLayout
-          mode="organizer"
-          :rows="visualRows"
-          :show-legend="true"
-          :show-counts="true"
-          :show-title="true"
-          @activate-site="onVisualSiteActivate"
-        />
-      </section>
+        <div
+          v-if="loadError"
+          class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+          data-testid="layout-inline-error"
+        >
+          {{ loadError }}
+        </div>
 
-      <OrganizerFocusedSiteControls
-        v-if="rows.length"
-        :site="focusedSite"
-        :row="focusedRow"
-        :mutating="mutating"
-        @edit-site="openEditSite"
-        @set-status="setFocusedSiteStatus"
-        @delete-site="confirmDeleteSite"
-        @edit-row="openEditRow"
-        @add-site="openCreateSite"
-        @generate="openGenerateSites"
-      />
+        <div :class="switchingEvents ? 'pointer-events-none opacity-40 motion-safe:transition-opacity' : ''">
+          <EventLayoutReadinessPanel
+            v-if="!switchingEvents"
+            :readiness="layout.readiness || {}"
+          />
 
-      <section
-        v-if="unresolvedSites.length"
-        class="ml-card border-amber-200 bg-amber-50/60 space-y-3"
-        data-testid="unresolved-sites-panel"
-      >
-        <h3 class="text-base font-extrabold text-amber-950">{{ copy.unresolvedTitle }}</h3>
-        <p class="text-sm text-amber-900">
-          {{ copy.unresolvedHelp }}
-        </p>
-        <ul class="space-y-2">
-          <li
-            v-for="site in unresolvedSites"
-            :key="site.id"
-            class="rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"
+          <section
+            v-if="selectOpenMode"
+            class="ml-card mb-4 space-y-3 border-sky-200 bg-sky-50/70"
+            data-testid="select-open-sites-panel"
           >
-            <div class="font-bold text-ink-900">{{ site.label }}</div>
-            <div class="text-xs text-ink-500">
-              Legacy row label: {{ site.row_label || '—' }}
-              · {{ site.space?.space_size || copy.noSpace }}
-              · {{ site.operational_status }}
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 class="text-base font-extrabold text-ink-900">{{ copy.selectOpenSitesTitle }}</h3>
+                <p class="mt-1 text-sm text-ink-600">{{ copy.selectOpenSitesHelp }}</p>
+                <p class="mt-2 text-sm font-bold text-sky-950" data-testid="select-open-sites-count">
+                  {{ copy.selectOpenSitesCount(selectedOpenSiteIds.length, vendorSiteOpenLimit || 0) }}
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="ml-btn-ghost text-sm" :disabled="mutating" @click="cancelSelectOpenMode">
+                  {{ copy.cancel }}
+                </button>
+                <button
+                  type="button"
+                  class="ml-btn-primary text-sm"
+                  :disabled="mutating || !canConfirmOpenSites"
+                  data-testid="confirm-open-sites-button"
+                  @click="confirmOpenSites"
+                >
+                  {{ copy.confirmOpenSites }}
+                </button>
+              </div>
             </div>
-          </li>
-        </ul>
-      </section>
+          </section>
 
-      <details
-        v-if="rows.length"
-        class="ml-card"
-        data-testid="layout-advanced-rows"
-      >
-        <summary class="cursor-pointer text-sm font-extrabold text-ink-900">
-          {{ copy.advancedRowsTitle }}
-        </summary>
-        <div class="mt-4 space-y-4" data-testid="layout-rows-workspace">
-          <EventLayoutRowCard
-            v-for="(row, index) in rows"
-            :key="row.id"
-            :row="row"
-            :can-move-up="index > 0"
-            :can-move-down="index < rows.length - 1"
-            @edit="openEditRow"
-            @delete="confirmDeleteRow"
-            @archive="confirmArchiveRow"
-            @unarchive="confirmUnarchiveRow"
-            @move-up="(target) => moveRow(target, -1)"
-            @move-down="(target) => moveRow(target, 1)"
+          <section
+            v-if="!rows.length"
+            class="ml-card space-y-3 text-center"
+            data-testid="layout-empty-state"
+          >
+            <p class="text-lg font-extrabold text-ink-900">{{ copy.emptyTitle }}</p>
+            <p class="text-sm text-ink-500">{{ copy.emptyBody }}</p>
+            <p class="text-xs text-ink-500">
+              {{ copy.generateStandardOpenCount(vendorSiteOpenLimit) }}
+            </p>
+            <div class="flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                class="ml-btn-primary"
+                data-testid="layout-empty-generate-standard"
+                @click="openStandardGenerator"
+              >
+                {{ copy.generateStandardLayout }}
+              </button>
+              <button
+                type="button"
+                class="ml-btn-ghost"
+                :disabled="addRowDisabled"
+                :title="addRowDisabled ? copy.allPhysicalRowsInUse : copy.addRow"
+                @click="openCreateRow"
+              >
+                {{ copy.addRow }}
+              </button>
+            </div>
+          </section>
+
+          <section
+            v-else
+            class="ml-card space-y-4"
+            data-testid="layout-visual-workspace"
+          >
+            <div v-if="needsOpenSiteSelection && !selectOpenMode" class="flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="ml-btn-primary text-sm"
+                data-testid="start-select-open-sites"
+                @click="enterSelectOpenMode"
+              >
+                {{ copy.startSelectOpenSites }}
+              </button>
+            </div>
+            <VisualParkingLayout
+              mode="organizer"
+              :rows="visualRows"
+              :show-legend="true"
+              :show-counts="true"
+              :show-title="true"
+              @activate-site="onVisualSiteActivate"
+            />
+          </section>
+
+          <OrganizerFocusedSiteControls
+            v-if="rows.length && !selectOpenMode"
+            :site="focusedSite"
+            :row="focusedRow"
+            :mutating="mutating"
+            @edit-site="openEditSite"
+            @set-status="setFocusedSiteStatus"
+            @delete-site="confirmDeleteSite"
+            @edit-row="openEditRow"
+            @archive-row="confirmArchiveRow"
+            @delete-row="confirmDeleteRow"
             @add-site="openCreateSite"
             @generate="openGenerateSites"
-            @reorder-sites="openReorderSites"
-            @edit-site="openEditSite"
-            @move-site="openMoveSite"
-            @toggle-site-status="toggleSiteStatus"
-            @delete-site="confirmDeleteSite"
           />
-        </div>
-      </details>
 
-      <section class="ml-card space-y-3" data-testid="layout-publication-panel">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h3 class="text-base font-extrabold text-ink-900">{{ copy.publicationTitle }}</h3>
-            <p class="mt-1 text-sm text-ink-600">
-              {{ copy.publicationHelp }}
+          <section
+            v-if="unresolvedSites.length"
+            class="ml-card border-amber-200 bg-amber-50/60 space-y-3"
+            data-testid="unresolved-sites-panel"
+          >
+            <h3 class="text-base font-extrabold text-amber-950">{{ copy.unresolvedTitle }}</h3>
+            <p class="text-sm text-amber-900">
+              {{ copy.unresolvedHelp }}
             </p>
-            <p class="mt-2 text-sm font-semibold" :class="layout.event.public_layout_published ? 'text-emerald-700' : 'text-amber-700'">
-              {{ layout.event.public_layout_published ? copy.published : copy.notPublished }}
-            </p>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-if="!layout.event.public_layout_published"
-              type="button"
-              class="ml-btn-primary text-sm"
-              :disabled="mutating || !layout.readiness?.public_ready"
-              data-testid="layout-publish-button"
-              @click="publishPublicLayout"
-            >
-              {{ copy.publishPublicMap }}
-            </button>
-            <button
-              v-else
-              type="button"
-              class="ml-btn-ghost text-sm"
-              :disabled="mutating"
-              data-testid="layout-unpublish-button"
-              @click="unpublishPublicLayout"
-            >
-              {{ copy.unpublishPublicMap }}
-            </button>
-          </div>
+            <ul class="space-y-2">
+              <li
+                v-for="site in unresolvedSites"
+                :key="site.id"
+                class="rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm"
+              >
+                <div class="font-bold text-ink-900">{{ site.label }}</div>
+                <div class="text-xs text-ink-500">
+                  Legacy row label: {{ site.row_label || '—' }}
+                  · {{ site.space?.space_size || copy.noSpace }}
+                  · {{ site.operational_status }}
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <details
+            v-if="rows.length"
+            class="ml-card"
+            data-testid="layout-advanced-rows"
+          >
+            <summary class="cursor-pointer text-sm font-extrabold text-ink-900">
+              {{ copy.advancedRowsTitle }}
+            </summary>
+            <div class="mt-4 space-y-4" data-testid="layout-rows-workspace">
+              <EventLayoutRowCard
+                v-for="(row, index) in rows"
+                :key="row.id"
+                :row="row"
+                :can-move-up="index > 0"
+                :can-move-down="index < rows.length - 1"
+                @edit="openEditRow"
+                @delete="confirmDeleteRow"
+                @archive="confirmArchiveRow"
+                @unarchive="confirmUnarchiveRow"
+                @move-up="(target) => moveRow(target, -1)"
+                @move-down="(target) => moveRow(target, 1)"
+                @add-site="openCreateSite"
+                @generate="openGenerateSites"
+                @reorder-sites="openReorderSites"
+                @edit-site="openEditSite"
+                @move-site="openMoveSite"
+                @toggle-site-status="toggleSiteStatus"
+                @delete-site="confirmDeleteSite"
+              />
+            </div>
+          </details>
+
+          <section class="ml-card space-y-3" data-testid="layout-publication-panel">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 class="text-base font-extrabold text-ink-900">{{ copy.publicationTitle }}</h3>
+                <p class="mt-1 text-sm text-ink-600">
+                  {{ copy.publicationHelp }}
+                </p>
+                <p class="mt-2 text-sm font-semibold" :class="layout.event.public_layout_published ? 'text-emerald-700' : 'text-amber-700'">
+                  {{ layout.event.public_layout_published ? copy.published : copy.notPublished }}
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-if="!layout.event.public_layout_published"
+                  type="button"
+                  class="ml-btn-primary text-sm"
+                  :disabled="mutating || !layout.readiness?.public_ready"
+                  data-testid="layout-publish-button"
+                  @click="publishPublicLayout"
+                >
+                  {{ copy.publishPublicMap }}
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="ml-btn-ghost text-sm"
+                  :disabled="mutating"
+                  data-testid="layout-unpublish-button"
+                  @click="unpublishPublicLayout"
+                >
+                  {{ copy.unpublishPublicMap }}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label for="layout-entrance-note" class="ml-label">{{ copy.entranceNoteLabel }}</label>
+              <textarea
+                id="layout-entrance-note"
+                v-model="entranceNote"
+                rows="2"
+                maxlength="1000"
+                class="ml-input"
+                :disabled="mutating || layout.event.public_layout_published"
+                placeholder="Example: Enter through the main door beside the food court."
+              />
+            </div>
+          </section>
         </div>
-        <div>
-          <label for="layout-entrance-note" class="ml-label">{{ copy.entranceNoteLabel }}</label>
-          <textarea
-            id="layout-entrance-note"
-            v-model="entranceNote"
-            rows="2"
-            maxlength="1000"
-            class="ml-input"
-            :disabled="mutating || layout.event.public_layout_published"
-            placeholder="Example: Enter through the main door beside the food court."
-          />
-        </div>
-      </section>
+      </div>
     </template>
 
     <LayoutRowFormModal
       v-model="rowModalOpen"
       :row="activeRow"
       :categories="categories"
+      :spaces="spaces"
+      :unused-row-labels="unusedRowLabels"
       :submitting="mutating"
       :form-error="formError"
       @submit="submitRowForm"
@@ -263,6 +372,7 @@
       v-model="standardModalOpen"
       :categories="categories"
       :spaces="spaces"
+      :vendor-site-open-limit="vendorSiteOpenLimit"
       :submitting="mutating"
       :form-error="formError"
       @submit="submitStandardGenerate"
@@ -307,8 +417,10 @@ const events = ref([]);
 const categories = ref([]);
 const spaces = ref([]);
 const selectedEventId = ref('');
+const previousSuccessfulEventId = ref('');
 const layout = ref(null);
 const loading = ref(false);
+const switchingEvents = ref(false);
 const loadingEvents = ref(false);
 const mutating = ref(false);
 const loadError = ref('');
@@ -317,6 +429,9 @@ const lastLoadedAt = ref(null);
 const loadToken = ref(0);
 const entranceNote = ref('');
 const focusedSiteId = ref(null);
+const selectOpenMode = ref(false);
+const selectedOpenSiteIds = ref([]);
+const liveStatusMessage = ref('');
 
 const rowModalOpen = ref(false);
 const siteModalOpen = ref(false);
@@ -328,9 +443,38 @@ const activeSite = ref(null);
 const rows = computed(() => sortRowsByDisplayOrder(layout.value?.rows || []));
 const unresolvedSites = computed(() => layout.value?.unresolved_sites || []);
 const activeSiteCount = computed(() => countActiveSites(rows.value));
-const visualRows = computed(() =>
-  adaptOrganizerRows(rows.value, { focusedSiteId: focusedSiteId.value }),
+const physicalSiteCount = computed(() => layout.value?.counts?.physical_sites ?? null);
+const vendorSiteOpenLimit = computed(() => {
+  const value = layout.value?.event?.vendor_site_open_limit;
+  return value == null ? null : Number(value);
+});
+const unusedRowLabels = computed(() => layout.value?.venue_template?.unused_row_labels || []);
+const addRowDisabled = computed(() => Boolean(layout.value?.venue_template?.all_rows_in_use));
+const needsOpenSiteSelection = computed(() => {
+  if (vendorSiteOpenLimit.value == null) return false;
+  return activeSiteCount.value !== vendorSiteOpenLimit.value;
+});
+const canConfirmOpenSites = computed(
+  () =>
+    vendorSiteOpenLimit.value != null
+    && selectedOpenSiteIds.value.length === Number(vendorSiteOpenLimit.value),
 );
+
+const visualRows = computed(() => {
+  const adapted = adaptOrganizerRows(rows.value, { focusedSiteId: focusedSiteId.value });
+  if (!selectOpenMode.value) return adapted;
+  const selected = new Set(selectedOpenSiteIds.value.map(Number));
+  return adapted.map((row) => ({
+    ...row,
+    sites: (row.sites || []).map((site) => ({
+      ...site,
+      selected: selected.has(Number(site.id)),
+      focused: selected.has(Number(site.id)),
+      status: selected.has(Number(site.id)) ? 'selected' : site.status,
+    })),
+  }));
+});
+
 const focusedSite = computed(() => {
   if (focusedSiteId.value == null) return null;
   for (const row of rows.value) {
@@ -342,6 +486,20 @@ const focusedSite = computed(() => {
 const focusedRow = computed(() => {
   if (!focusedSite.value) return null;
   return rows.value.find((row) => Number(row.id) === Number(focusedSite.value.event_layout_row_id)) || null;
+});
+
+const displayEventName = computed(() => {
+  if (switchingEvents.value) {
+    const pending = events.value.find((event) => String(event.id) === String(selectedEventId.value));
+    return pending?.title || copy.selectEventPrompt;
+  }
+  return layout.value?.event?.name || copy.selectEventPrompt;
+});
+
+const loadingMessage = computed(() => {
+  const pending = events.value.find((event) => String(event.id) === String(selectedEventId.value));
+  if (pending?.title) return copy.loadingLayoutFor(pending.title);
+  return copy.loadingLayout;
 });
 
 function formatLoadedAt(value) {
@@ -357,6 +515,7 @@ function goToEvents() {
 }
 
 function openCreateRow() {
+  if (addRowDisabled.value && !activeRow.value) return;
   activeRow.value = null;
   formError.value = '';
   rowModalOpen.value = true;
@@ -398,11 +557,40 @@ function openStandardGenerator() {
     toast.error(copy.layoutExistsHint);
     return;
   }
+  if (!vendorSiteOpenLimit.value) {
+    toast.error(copy.generateStandardLimitRequired);
+    return;
+  }
   formError.value = '';
   standardModalOpen.value = true;
 }
 
+function enterSelectOpenMode() {
+  selectOpenMode.value = true;
+  selectedOpenSiteIds.value = [];
+  focusedSiteId.value = null;
+}
+
+function cancelSelectOpenMode() {
+  selectOpenMode.value = false;
+  selectedOpenSiteIds.value = [];
+}
+
 function onVisualSiteActivate({ site }) {
+  if (selectOpenMode.value) {
+    const id = Number(site.id);
+    const next = new Set(selectedOpenSiteIds.value.map(Number));
+    if (next.has(id)) {
+      next.delete(id);
+    } else if (vendorSiteOpenLimit.value == null || next.size < Number(vendorSiteOpenLimit.value)) {
+      next.add(id);
+    } else {
+      toast.error(copy.selectOpenSitesCount(next.size, vendorSiteOpenLimit.value));
+      return;
+    }
+    selectedOpenSiteIds.value = [...next];
+    return;
+  }
   focusedSiteId.value = site.id;
 }
 
@@ -426,16 +614,25 @@ async function loadCatalogue() {
   }
 }
 
-async function refreshLayout({ force = false } = {}) {
+async function refreshLayout({ force = false, isSwitch = false } = {}) {
   if (!selectedEventId.value) {
     layout.value = null;
     focusedSiteId.value = null;
+    selectOpenMode.value = false;
+    switchingEvents.value = false;
     return;
   }
   if (loading.value && !force) return;
 
   const token = ++loadToken.value;
   loading.value = true;
+  if (isSwitch) {
+    switchingEvents.value = true;
+    focusedSiteId.value = null;
+    selectOpenMode.value = false;
+    selectedOpenSiteIds.value = [];
+    liveStatusMessage.value = loadingMessage.value;
+  }
   loadError.value = '';
 
   try {
@@ -444,6 +641,8 @@ async function refreshLayout({ force = false } = {}) {
     layout.value = data;
     entranceNote.value = data.event?.public_layout_entrance_note || '';
     lastLoadedAt.value = Date.now();
+    previousSuccessfulEventId.value = String(selectedEventId.value);
+    liveStatusMessage.value = `Loaded layout for ${data.event?.name || 'event'}.`;
     if (focusedSiteId.value != null) {
       const stillPresent = (data.rows || []).some((row) =>
         (row.sites || []).some((site) => Number(site.id) === Number(focusedSiteId.value)),
@@ -452,25 +651,41 @@ async function refreshLayout({ force = false } = {}) {
     }
   } catch (error) {
     if (token !== loadToken.value) return;
-    layout.value = null;
     loadError.value = layoutErrorMessage(error);
+    liveStatusMessage.value = copy.loadError;
+    if (isSwitch && previousSuccessfulEventId.value) {
+      selectedEventId.value = previousSuccessfulEventId.value;
+      const query = { ...route.query, eventId: previousSuccessfulEventId.value };
+      router.replace({ path: '/admin', hash: '#layout', query });
+      toast.error(loadError.value);
+    } else if (!layout.value) {
+      // keep empty error state
+    } else {
+      toast.error(loadError.value);
+    }
   } finally {
     if (token === loadToken.value) {
       loading.value = false;
+      switchingEvents.value = false;
     }
   }
 }
 
 function onEventSelected() {
   focusedSiteId.value = null;
+  selectOpenMode.value = false;
+  selectedOpenSiteIds.value = [];
   const query = { ...route.query };
   if (selectedEventId.value) {
     query.eventId = selectedEventId.value;
   } else {
     delete query.eventId;
+    layout.value = null;
   }
   router.replace({ path: '/admin', hash: '#layout', query });
-  refreshLayout({ force: true });
+  if (selectedEventId.value) {
+    refreshLayout({ force: true, isSwitch: Boolean(layout.value) || Boolean(previousSuccessfulEventId.value) });
+  }
 }
 
 async function withMutation(action) {
@@ -542,6 +757,18 @@ async function submitStandardGenerate(payload) {
   await withMutation(async () => {
     await layoutApi.generateStandardParkingLayout(selectedEventId.value, payload);
     toast.success(copy.standardLayoutGenerated);
+    selectOpenMode.value = true;
+    selectedOpenSiteIds.value = [];
+  });
+}
+
+async function confirmOpenSites() {
+  if (!canConfirmOpenSites.value) return;
+  await withMutation(async () => {
+    await layoutApi.setOpenLayoutSites(selectedEventId.value, selectedOpenSiteIds.value);
+    toast.success(copy.openSitesConfirmed);
+    selectOpenMode.value = false;
+    selectedOpenSiteIds.value = [];
   });
 }
 
@@ -636,7 +863,7 @@ watch(
     if (String(eventId) !== selectedEventId.value) {
       selectedEventId.value = String(eventId);
       focusedSiteId.value = null;
-      refreshLayout({ force: true });
+      refreshLayout({ force: true, isSwitch: Boolean(layout.value) });
     }
   },
 );

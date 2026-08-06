@@ -175,6 +175,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/events/{carboot_event}/layout', [OrganizerEventLayoutController::class, 'show']);
             Route::get('/events/{carboot_event}/layout/readiness', [OrganizerEventLayoutController::class, 'readiness']);
             Route::post('/events/{carboot_event}/layout/standard-template', [OrganizerEventLayoutController::class, 'generateStandardTemplate']);
+            Route::post('/events/{carboot_event}/layout/open-sites', [OrganizerEventLayoutController::class, 'setOpenSites']);
             Route::post('/events/{carboot_event}/layout/publish', [OrganizerEventLayoutController::class, 'publish']);
             Route::post('/events/{carboot_event}/layout/unpublish', [OrganizerEventLayoutController::class, 'unpublish']);
 

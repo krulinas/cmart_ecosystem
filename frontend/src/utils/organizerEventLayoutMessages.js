@@ -32,35 +32,57 @@ export const LAYOUT_COPY = {
   advanced: 'Advanced Settings',
   unresolvedTitle: 'Unassigned Sites',
   emptyTitle: 'No parking layout has been created yet.',
-  emptyBody: 'Generate the standard 4×16 parking layout, or add the first row manually.',
+  emptyBody:
+    'Set Vendor sites to open, then generate the standard 4×16 parking layout, or add an unused physical row.',
   generateStandardLayout: 'Generate Standard Parking Layout',
   generateStandardLayoutHelp:
-    'Creates rows A–D with 16 sites each (64 total), with a vehicle aisle between B and C.',
-  generateStandardPreview: 'Preview: A01–A16, B01–B16, C01–C16, D16',
+    'Creates physical rows A–D with 64 sites. Sites start as NOT OPEN until you select which ones vendors may book.',
+  generateStandardPreview: 'Preview: A01–A16, B01–B16, C01–C16, D01–D16',
   generateStandardConfirm:
-    'Generate the standard parking layout for this empty event? Existing layouts cannot be replaced by this action.',
-  standardLayoutGenerated: 'Standard parking layout generated successfully.',
+    'This venue has 64 physical parking sites. After generation you will manually choose exactly which sites open for this event.',
+  generateStandardOpenCount: (n) =>
+    `Vendor sites to open for this event: ${n == null ? 'not set' : n}`,
+  generateStandardLimitRequired:
+    'Set Vendor sites to open on the event before generating the standard layout.',
+  standardLayoutGenerated: 'Standard parking layout generated. Select which sites to open.',
+  selectOpenSitesTitle: 'Select Open Sites',
+  selectOpenSitesHelp:
+    'Choose exactly the number of vendor sites configured for this event. Unselected sites stay NOT OPEN.',
+  selectOpenSitesCount: (selected, limit) => `Selected ${selected} of ${limit} sites`,
+  confirmOpenSites: 'Confirm Open Sites',
+  openSitesConfirmed: 'Open sites confirmed successfully.',
+  startSelectOpenSites: 'Select Open Sites',
   layoutExistsHint:
     'A layout already exists. Use site controls to update individual sites. The standard template can only run on an empty layout.',
   missingEventDaysWarning:
     'The physical layout is ready, but event days must be configured before vendors can book.',
-  setupNoticeTitle: 'Setup notice',
+  setupNoticeTitle: 'Layout Readiness',
   technicalDetails: 'Technical details',
   focusedSiteTitle: 'Selected site',
   focusedRowTitle: 'Row settings',
+  rowActionsTitle: 'Row actions',
   noSiteSelected: 'Select a site on the map to manage its status.',
-  setActive: 'Set Active',
+  setActive: 'Set Active / Open',
   setUnavailable: 'Set Unavailable',
-  setDisabled: 'Set Disabled',
+  setDisabled: 'Set NOT OPEN',
   siteCountsTitle: 'Site counts',
   advancedRowsTitle: 'Advanced row tools',
   loadError: 'Unable to load the layout.',
+  loadingLayoutFor: (name) => `Loading layout for ${name}…`,
+  allPhysicalRowsInUse: 'All physical rows for this venue are already in use.',
+  outsideVenueTemplateBadge: 'Outside venue definition',
+  outsideVenueTemplateHelp:
+    'This row is outside the current venue physical definition (A–D). It was not deleted automatically.',
+  vendorSitesToOpen: 'Vendor sites to open',
+  vendorSitesToOpenHelp: 'How many vendor parking sites may be booked for this event (1–64).',
+  physicalSitesSummary: (physical, active, limit) =>
+    `${physical} physical · ${active} open${limit != null ? ` / ${limit} allowed` : ''}`,
   conflictRefreshHint: 'Refresh Layout',
   operationalReady: 'Ready for Booking',
   operationalNotReady: 'Not Ready for Booking',
   publicReady: 'Ready for Public Display',
   publicNotReady: 'Not Ready for Public Display',
-  rowCreated: 'Row added successfully.',
+  rowCreated: 'Row added with 16 NOT OPEN sites.',
   rowUpdated: 'Row updated successfully.',
   rowDeleted: 'Row deleted successfully.',
   rowArchived: 'Row archived successfully.',
@@ -77,13 +99,13 @@ export const LAYOUT_COPY = {
   categoryLockedHint:
     'This row category cannot be changed because sites in the row have booking history.',
   structureLockedHint: 'This site structure is locked because it has booking history.',
-  disableLockedHint: 'This site cannot be disabled while it has an active booking.',
+  disableLockedHint: 'This site cannot be closed while it has an active booking.',
   archiveBlockedHint: 'This row cannot be archived while it still has active bookings.',
   unarchiveHint:
     'The row will be reactivated, but sites inside it will not be enabled automatically.',
   generateAtomicHint:
     'All requested sites are created in one step, or none are created. Existing sites are not deleted or replaced.',
-  availabilityStatus: 'Setup Status',
+  availabilityStatus: 'Layout Readiness',
   availabilityStatusHelp: 'Booking readiness and public visibility are evaluated separately.',
   publicationTitle: 'Public Map Publication',
   publicationHelp: 'The visitor map can only be published when public readiness is complete.',
@@ -97,6 +119,8 @@ export const LAYOUT_COPY = {
   loadingLayout: 'Loading layout…',
   noSpace: 'No space type',
   noCategory: 'No category',
+  physicalRowLabel: 'Physical row',
+  selectPhysicalRow: 'Select unused physical row',
   siteGrid: 'Site Grid',
   reorderSites: 'Reorder Sites',
   noSitesInRow: 'No sites in this row yet.',
@@ -141,11 +165,19 @@ export const LAYOUT_COPY = {
 };
 
 export const READINESS_BLOCKER_MESSAGES = {
+  VENDOR_SITE_OPEN_LIMIT_NOT_SET:
+    'Set Vendor sites to open for this event before the layout can be ready for booking.',
+  ACTIVE_SITE_COUNT_BELOW_VENDOR_LIMIT:
+    'Open exactly the configured number of vendor sites. Select the remaining sites to open.',
+  ACTIVE_SITE_COUNT_EXCEEDS_VENDOR_LIMIT:
+    'Too many sites are open. Close extra sites or raise Vendor sites to open.',
+  ROW_OUTSIDE_VENUE_TEMPLATE:
+    'One or more rows are outside this venue’s physical definition (A–D). Resolve or archive them.',
   NO_ACTIVE_EVENT_DAYS: 'No active event days are configured.',
   NO_ACTIVE_LAYOUT_ROWS: 'No active layout rows are configured.',
   ACTIVE_ROW_MISSING_CATEGORY: 'One or more rows do not have a category.',
   ROW_CATEGORY_INACTIVE: 'One or more rows use a category that is no longer active.',
-  ACTIVE_ROW_HAS_NO_ACTIVE_SITES: 'One or more rows do not have active sites.',
+  ACTIVE_ROW_HAS_NO_ACTIVE_SITES: 'One or more active rows have no physical sites.',
   ACTIVE_SITE_MISSING_ROW: 'An active site is not linked to a row.',
   SITE_EVENT_ROW_MISMATCH: 'A site does not match its row event.',
   ACTIVE_SITE_MISSING_SPACE: 'An active site is missing a valid space type.',
@@ -168,6 +200,13 @@ export const LAYOUT_ERROR_MESSAGES = {
     'This event has booking allocation history and cannot receive a destructive layout template.',
   INVALID_STANDARD_TEMPLATE: 'The standard parking template request is invalid.',
   INVALID_SPACE: 'The selected space type is invalid.',
+  VENDOR_SITE_OPEN_LIMIT_NOT_SET: 'Set Vendor sites to open before continuing.',
+  VENDOR_SITE_OPEN_LIMIT_BELOW_PROTECTED:
+    'Cannot lower Vendor sites to open below protected reserved or booked sites.',
+  OPEN_SITE_SELECTION_COUNT_MISMATCH: 'Select exactly the configured number of sites to open.',
+  VENUE_TEMPLATE_ROWS_EXHAUSTED: 'All physical rows for this venue are already in use.',
+  ROW_OUTSIDE_VENUE_TEMPLATE: 'Physical row identity must be A, B, C, or D for this venue.',
+  ACTIVE_SITE_COUNT_EXCEEDS_VENDOR_LIMIT: 'Opening this site would exceed Vendor sites to open.',
   ROW_LABEL_LOCKED: 'This row name cannot be changed because it has booking history.',
   ROW_CATEGORY_LOCKED: 'This row category cannot be changed because it has booking history.',
   ROW_NOT_EMPTY: 'This row still has sites and cannot be deleted.',
@@ -185,6 +224,7 @@ export const LAYOUT_ERROR_MESSAGES = {
   INVALID_SITE_LABEL: 'The site label is invalid.',
   INVALID_DISPLAY_ORDER: 'The display order is invalid.',
   INVALID_SITE_STATUS: 'The site status is invalid.',
+  ACTIVE_ROW_HAS_NO_ACTIVE_SITES: 'An active row cannot be saved without physical sites.',
 };
 
 export function readinessMessage(code) {
@@ -211,7 +251,7 @@ export const OCCUPANCY_LABELS = {
 };
 
 export const SITE_STATUS_LABELS = {
-  active: 'Active',
+  active: 'Open',
   unavailable: 'Unavailable',
-  disabled: 'Disabled',
+  disabled: 'NOT OPEN',
 };

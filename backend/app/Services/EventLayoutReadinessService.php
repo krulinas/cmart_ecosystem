@@ -6,6 +6,7 @@ use App\Models\CarbootEvent;
 use App\Models\EventDay;
 use App\Models\EventLayoutRow;
 use App\Models\EventSite;
+use App\Support\CmartCarbootPhysicalLayout;
 use Illuminate\Support\Collection;
 
 /**
@@ -41,6 +42,13 @@ class EventLayoutReadinessService
     {
         $blockers = [];
 
+        if ($event->vendor_site_open_limit === null) {
+            $blockers[] = [
+                'code' => 'VENDOR_SITE_OPEN_LIMIT_NOT_SET',
+                'message' => 'Set Vendor sites to open for this event before the layout can be ready for booking.',
+            ];
+        }
+
         $hasActiveDays = EventDay::query()
             ->where('carboot_event_id', $event->id)
             ->where('operational_status', EventDay::STATUS_ACTIVE)
@@ -65,6 +73,21 @@ class EventLayoutReadinessService
             $blockers[] = [
                 'code' => 'NO_ACTIVE_LAYOUT_ROWS',
                 'message' => 'The event has no active layout rows.',
+            ];
+        }
+
+        $outsideTemplate = EventLayoutRow::query()
+            ->forEvent($event->id)
+            ->get()
+            ->filter(fn (EventLayoutRow $row) => ! CmartCarbootPhysicalLayout::isAllowedRowLabel((string) $row->label))
+            ->pluck('id')
+            ->values()
+            ->all();
+        if ($outsideTemplate !== []) {
+            $blockers[] = [
+                'code' => 'ROW_OUTSIDE_VENUE_TEMPLATE',
+                'message' => 'One or more rows are outside this venue’s physical row definition (A–D). Resolve or archive them before booking readiness.',
+                'row_ids' => $outsideTemplate,
             ];
         }
 
@@ -105,9 +128,7 @@ class EventLayoutReadinessService
 
         $rowsWithoutSites = $activeRows
             ->filter(function (EventLayoutRow $row) {
-                return $row->eventSites
-                    ->where('operational_status', EventSite::STATUS_ACTIVE)
-                    ->isEmpty();
+                return $row->eventSites->isEmpty();
             })
             ->pluck('id')
             ->values()
@@ -115,7 +136,7 @@ class EventLayoutReadinessService
         if ($rowsWithoutSites !== []) {
             $blockers[] = [
                 'code' => 'ACTIVE_ROW_HAS_NO_ACTIVE_SITES',
-                'message' => 'One or more active rows have no active sites.',
+                'message' => 'One or more active rows have no physical sites. Delete the empty row or add sites before booking.',
                 'row_ids' => $rowsWithoutSites,
             ];
         }
@@ -126,6 +147,22 @@ class EventLayoutReadinessService
             ->active()
             ->with('eventLayoutRow')
             ->get();
+
+        if ($event->vendor_site_open_limit !== null) {
+            $limit = (int) $event->vendor_site_open_limit;
+            $activeCount = $activeSites->count();
+            if ($activeCount < $limit) {
+                $blockers[] = [
+                    'code' => 'ACTIVE_SITE_COUNT_BELOW_VENDOR_LIMIT',
+                    'message' => "Open exactly {$limit} vendor sites. Currently {$activeCount} site(s) are open. Select the remaining sites to open.",
+                ];
+            } elseif ($activeCount > $limit) {
+                $blockers[] = [
+                    'code' => 'ACTIVE_SITE_COUNT_EXCEEDS_VENDOR_LIMIT',
+                    'message' => "Only {$limit} vendor sites may be open. Currently {$activeCount} are open. Close the extra sites or raise the limit.",
+                ];
+            }
+        }
 
         $missingRow = $activeSites
             ->filter(fn (EventSite $site) => $site->event_layout_row_id === null)
@@ -199,7 +236,7 @@ class EventLayoutReadinessService
             ->values()
             ->all();
         $duplicatePositions = $activeSites
-            ->groupBy(fn (EventSite $site) => strtoupper(trim((string) $site->row_label)) . ':' . $site->position_number)
+            ->groupBy(fn (EventSite $site) => strtoupper(trim((string) $site->row_label)).':'.$site->position_number)
             ->filter(fn (Collection $group) => $group->count() > 1)
             ->flatten(1)
             ->pluck('id')

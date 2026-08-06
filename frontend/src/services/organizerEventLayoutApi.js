@@ -62,6 +62,12 @@ export function generateStandardParkingLayout(eventId, payload) {
   return api.post(`/organizer/events/${eventId}/layout/standard-template`, payload);
 }
 
+export function setOpenLayoutSites(eventId, siteIds) {
+  return api.post(`/organizer/events/${eventId}/layout/open-sites`, {
+    site_ids: siteIds,
+  });
+}
+
 export function updateLayoutSite(eventId, siteId, payload) {
   return api.patch(`/organizer/events/${eventId}/layout/sites/${siteId}`, payload);
 }

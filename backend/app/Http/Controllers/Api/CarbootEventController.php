@@ -6,7 +6,9 @@ use App\Exceptions\DomainConflictException;
 use App\Http\Controllers\Controller;
 use App\Models\CarbootEvent;
 use App\Services\EventDayGenerator;
+use App\Services\EventLayoutService;
 use App\Services\EventPresenter;
+use App\Support\CmartCarbootPhysicalLayout;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -28,6 +30,7 @@ class CarbootEventController extends Controller
 
     public function __construct(
         private readonly EventDayGenerator $eventDayGenerator,
+        private readonly EventLayoutService $eventLayout,
     ) {
     }
 
@@ -124,6 +127,19 @@ class CarbootEventController extends Controller
                 'This event already has vendor booking allocations. Its operating dates cannot be changed because existing bookings depend on those dates.',
                 EventDayGenerator::ERROR_OPERATING_DATES_LOCKED,
             ));
+        }
+
+        if (array_key_exists('vendor_site_open_limit', $validated)) {
+            $nextLimit = $validated['vendor_site_open_limit'] === null
+                ? null
+                : (int) $validated['vendor_site_open_limit'];
+            try {
+                $this->eventLayout->assertVendorSiteOpenLimitAssignable($carboot_event, $nextLimit);
+            } catch (DomainConflictException $exception) {
+                return $this->conflictResponse($exception);
+            } catch (InvalidArgumentException $exception) {
+                return $this->unprocessableResponse($exception);
+            }
         }
 
         if ($request->boolean('remove_poster')) {
@@ -347,6 +363,7 @@ class CarbootEventController extends Controller
             'status' => ['sometimes', 'required', Rule::in(self::STATUSES)],
             'description' => 'nullable|string|max:5000',
             'max_slots' => 'nullable|integer|min:1',
+            'vendor_site_open_limit' => 'nullable|integer|min:1|max:'.CmartCarbootPhysicalLayout::physicalSiteCapacity(),
             'item_reservation_service_fee' => [
                 'nullable',
                 'numeric',
@@ -392,6 +409,10 @@ class CarbootEventController extends Controller
 
         if (array_key_exists('max_slots', $validated) && $validated['max_slots'] === '') {
             $validated['max_slots'] = null;
+        }
+
+        if (array_key_exists('vendor_site_open_limit', $validated) && $validated['vendor_site_open_limit'] === '') {
+            $validated['vendor_site_open_limit'] = null;
         }
 
         if (isset($validated['site_price'])) {

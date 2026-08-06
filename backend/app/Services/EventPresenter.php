@@ -33,6 +33,7 @@ class EventPresenter
         ]);
 
         if ($includeOrganizerConfiguration) {
+            $payload['vendor_site_open_limit'] = $event->vendor_site_open_limit;
             $payload['item_reservation_service_fee'] = $event->item_reservation_service_fee;
             $payload['site_price'] = $event->site_price !== null
                 ? number_format((float) $event->site_price, 2, '.', '')

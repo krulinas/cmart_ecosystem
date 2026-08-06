@@ -9,20 +9,18 @@ use App\Models\EventLayoutRow;
 use App\Models\EventSite;
 use App\Models\Space;
 use App\Models\User;
+use App\Support\CmartCarbootPhysicalLayout;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
  * Atomic standard Carboot parking layout: rows A–D × 16 sites (64 total).
  *
- * Empty-layout only. Does not delete or reconcile existing rows/sites.
+ * Empty-layout only. Creates all physical sites as disabled/not open.
+ * Organizer must then confirm exactly vendor_site_open_limit open sites.
  */
 class StandardEventLayoutGenerator
 {
-    public const ROW_LABELS = ['A', 'B', 'C', 'D'];
-
-    public const SITES_PER_ROW = 16;
-
     public function __construct(
         private readonly EventLayoutService $layout,
         private readonly EventLayoutLockService $locks,
@@ -40,6 +38,8 @@ class StandardEventLayoutGenerator
      *   sites_created: int,
      *   row_labels: list<string>,
      *   site_labels: list<string>,
+     *   vendor_site_open_limit: int,
+     *   needs_open_site_selection: bool,
      *   readiness: array<string, mixed>
      * }
      */
@@ -52,7 +52,7 @@ class StandardEventLayoutGenerator
             throw new InvalidArgumentException('A valid space_id is required.');
         }
 
-        foreach (self::ROW_LABELS as $label) {
+        foreach (CmartCarbootPhysicalLayout::ROW_LABELS as $label) {
             if (! isset($rowCategories[$label]) || (int) $rowCategories[$label] < 1) {
                 throw new InvalidArgumentException(
                     "A vendor category is required for row {$label}."
@@ -65,6 +65,8 @@ class StandardEventLayoutGenerator
                 ->whereKey($event->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            $this->layout->assertVendorSiteOpenLimitConfigured($lockedEvent);
 
             if ($lockedEvent->public_layout_published_at !== null) {
                 throw new DomainConflictException(
@@ -101,7 +103,7 @@ class StandardEventLayoutGenerator
             }
 
             $categoriesByLabel = [];
-            foreach (self::ROW_LABELS as $label) {
+            foreach (CmartCarbootPhysicalLayout::ROW_LABELS as $label) {
                 $categoriesByLabel[$label] = $this->layout->requireAssignableCategory(
                     (int) $rowCategories[$label],
                 );
@@ -111,7 +113,7 @@ class StandardEventLayoutGenerator
             $createdSites = [];
             $siteLabels = [];
 
-            foreach (self::ROW_LABELS as $index => $label) {
+            foreach (CmartCarbootPhysicalLayout::ROW_LABELS as $index => $label) {
                 $gridRow = $index + 1;
                 $displayOrder = $index + 1;
                 $category = $categoriesByLabel[$label];
@@ -131,7 +133,7 @@ class StandardEventLayoutGenerator
                 ]);
                 $createdRows[] = $row;
 
-                for ($position = 1; $position <= self::SITES_PER_ROW; $position++) {
+                for ($position = 1; $position <= CmartCarbootPhysicalLayout::SITES_PER_ROW; $position++) {
                     $siteLabel = $label.str_pad((string) $position, 2, '0', STR_PAD_LEFT);
                     $site = EventSite::create([
                         'carboot_event_id' => $lockedEvent->id,
@@ -143,9 +145,9 @@ class StandardEventLayoutGenerator
                         'grid_row' => $gridRow,
                         'grid_column' => $position,
                         'display_order' => $position,
-                        'operational_status' => EventSite::STATUS_ACTIVE,
+                        'operational_status' => EventSite::STATUS_DISABLED,
                         'metadata' => [
-                            'template' => 'standard_parking_4x16',
+                            'template' => CmartCarbootPhysicalLayout::TEMPLATE_KEY,
                             'aisle_after_row' => $label === 'B' ? 'vehicle_aisle' : null,
                             'orientation' => [
                                 'exit' => 'above_row_a',
@@ -166,8 +168,10 @@ class StandardEventLayoutGenerator
                 [
                     'rows_created' => count($createdRows),
                     'sites_created' => count($createdSites),
-                    'row_labels' => self::ROW_LABELS,
+                    'row_labels' => CmartCarbootPhysicalLayout::ROW_LABELS,
                     'site_labels' => $siteLabels,
+                    'initial_status' => EventSite::STATUS_DISABLED,
+                    'vendor_site_open_limit' => (int) $lockedEvent->vendor_site_open_limit,
                 ],
                 null,
                 null,
@@ -177,7 +181,8 @@ class StandardEventLayoutGenerator
                         fn ($category) => $category->id,
                         $categoriesByLabel,
                     ),
-                    'template' => 'standard_parking_4x16',
+                    'template' => CmartCarbootPhysicalLayout::TEMPLATE_KEY,
+                    'needs_open_site_selection' => true,
                 ],
             );
 
@@ -186,8 +191,10 @@ class StandardEventLayoutGenerator
             return [
                 'rows_created' => count($createdRows),
                 'sites_created' => count($createdSites),
-                'row_labels' => self::ROW_LABELS,
+                'row_labels' => CmartCarbootPhysicalLayout::ROW_LABELS,
                 'site_labels' => $siteLabels,
+                'vendor_site_open_limit' => (int) $lockedEvent->vendor_site_open_limit,
+                'needs_open_site_selection' => true,
                 'readiness' => [
                     'operational_ready' => $readiness['operational_ready'],
                     'public_ready' => $readiness['public_ready'],

@@ -78,10 +78,32 @@
     </template>
 
     <div v-if="row" class="border-t border-ink-100 pt-4 space-y-3">
-      <h4 class="text-sm font-extrabold text-ink-900">{{ copy.focusedRowTitle }}</h4>
+      <h4 class="text-sm font-extrabold text-ink-900">{{ copy.rowActionsTitle }}</h4>
+      <p v-if="row.outside_venue_template" class="text-xs text-amber-800">
+        {{ copy.outsideVenueTemplateHelp }}
+      </p>
       <div class="flex flex-wrap gap-2">
-        <button type="button" class="ml-btn-ghost text-sm" @click="$emit('edit-row', row)">
+        <button type="button" class="ml-btn-ghost text-sm" data-testid="focused-row-edit" @click="$emit('edit-row', row)">
           {{ copy.editRow }}
+        </button>
+        <button
+          v-if="!row.archived_at"
+          type="button"
+          class="ml-btn-ghost text-sm"
+          :disabled="row.locks?.archive_locked"
+          data-testid="focused-row-archive"
+          @click="$emit('archive-row', row)"
+        >
+          {{ copy.archiveRow }}
+        </button>
+        <button
+          type="button"
+          class="ml-btn-ghost text-sm text-rose-700"
+          :disabled="row.locks?.delete_locked || (row.sites || []).length > 0"
+          data-testid="focused-row-delete"
+          @click="$emit('delete-row', row)"
+        >
+          {{ copy.deleteRow }}
         </button>
         <button type="button" class="ml-btn-ghost text-sm" @click="$emit('add-site', row)">
           {{ copy.addSite }}
@@ -108,7 +130,16 @@ const props = defineProps({
   mutating: { type: Boolean, default: false },
 });
 
-defineEmits(['edit-site', 'set-status', 'delete-site', 'edit-row', 'add-site', 'generate']);
+defineEmits([
+  'edit-site',
+  'set-status',
+  'delete-site',
+  'edit-row',
+  'archive-row',
+  'delete-row',
+  'add-site',
+  'generate',
+]);
 
 const copy = LAYOUT_COPY;
 const disableLocked = computed(() => Boolean(props.site?.locks?.disable_locked));
