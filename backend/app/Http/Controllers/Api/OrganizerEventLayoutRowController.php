@@ -28,7 +28,7 @@ class OrganizerEventLayoutRowController extends Controller
         $validated = $request->validate([
             'label' => 'required|string|max:32',
             'vendor_category_id' => 'required|integer|exists:vendor_categories,id',
-            'space_id' => 'required|integer|exists:spaces,id',
+            'space_id' => 'sometimes|nullable|integer|exists:spaces,id',
             'description' => 'nullable|string|max:1000',
             'display_order' => 'sometimes|integer|min:0',
             'is_active' => 'sometimes|boolean',

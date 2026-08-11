@@ -99,6 +99,35 @@ class StandardParkingLayoutGeneratorTest extends TestCase
         ]);
     }
 
+    public function test_standard_template_works_without_client_space_id(): void
+    {
+        $organizer = $this->createUser('organizer');
+        $event = $this->createEvent();
+        Sanctum::actingAs($organizer);
+
+        $payload = $this->standardPayload();
+        unset($payload['space_id']);
+
+        $response = $this->postJson(
+            "/api/organizer/events/{$event->id}/layout/standard-template",
+            $payload,
+        );
+
+        $response->assertCreated()
+            ->assertJsonPath('rows_created', 4)
+            ->assertJsonPath('sites_created', 64);
+
+        $siteIds = EventSite::query()->forEvent($event->id)->pluck('id')->all();
+        $this->createdSiteIds = array_merge($this->createdSiteIds, $siteIds);
+
+        $layout = $this->getJson("/api/organizer/events/{$event->id}/layout")->assertOk()->json();
+        $firstSite = $layout['rows'][0]['sites'][0] ?? null;
+        $this->assertIsArray($firstSite);
+        $this->assertArrayHasKey('space', $firstSite);
+        $this->assertArrayNotHasKey('price', $firstSite['space'] ?? []);
+        $this->assertSame(\App\Models\Space::PHYSICAL_PARKING_SITE, $firstSite['space']['space_size'] ?? null);
+    }
+
     public function test_standard_template_is_blocked_when_layout_already_exists(): void
     {
         $organizer = $this->createUser('organizer');
@@ -214,13 +243,10 @@ class StandardParkingLayoutGeneratorTest extends TestCase
         Sanctum::actingAs($organizer);
 
         $row = $this->createLayoutRowViaApi($event, ['label' => 'A']);
-        $siteId = $this->createLayoutSiteViaApi($event, $row['id'], [
-            'label' => 'A01',
-            'position_number' => 1,
-            'grid_row' => 1,
-            'grid_column' => 1,
-        ]);
-        $site = EventSite::query()->findOrFail($siteId);
+        $sites = EventSite::query()->forEvent($event->id)->get();
+        $this->createdSiteIds = array_merge($this->createdSiteIds, $sites->pluck('id')->all());
+        $site = $sites->firstWhere('label', 'A01');
+        $this->assertNotNull($site);
         $this->seedReleasedAllocation($event, $site, $day);
 
         $this->postJson(
@@ -231,6 +257,6 @@ class StandardParkingLayoutGeneratorTest extends TestCase
             ->assertJsonPath('error', 'LAYOUT_ALREADY_EXISTS');
 
         $this->assertSame(1, EventLayoutRow::query()->forEvent($event->id)->count());
-        $this->assertSame(1, EventSite::query()->forEvent($event->id)->count());
+        $this->assertSame(16, EventSite::query()->forEvent($event->id)->count());
     }
 }

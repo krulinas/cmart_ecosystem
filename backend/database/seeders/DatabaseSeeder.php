@@ -157,17 +157,13 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        Space::updateOrCreate(['space_size' => 'Standard (1 Parking Lot)'], [
-            'space_size' => 'Standard (1 Parking Lot)',
-            'price' => 30.00,
-            'status' => 'Available',
-        ]);
-
-        Space::updateOrCreate(['space_size' => 'Large (2 Parking Lots)'], [
-            'space_size' => 'Large (2 Parking Lots)',
-            'price' => 50.00,
-            'status' => 'Available',
-        ]);
+        Space::updateOrCreate(
+            ['space_size' => Space::PHYSICAL_PARKING_SITE],
+            [
+                'space_size' => Space::PHYSICAL_PARKING_SITE,
+                'status' => 'Available',
+            ]
+        );
 
         $this->call(VendorCategorySeeder::class);
 

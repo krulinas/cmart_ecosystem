@@ -47,10 +47,7 @@ class OrganizerBookingWorkflowTest extends TestCase
     {
         $vendor = $this->createUser('community', ['vendor_status' => 'approved']);
 
-        $space = Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 20.00, 'status' => 'Available'],
-        );
+        $space = Space::defaultPhysical();
 
         $event = CarbootEvent::query()->create([
             'title' => 'Organizer Workflow Test Event ' . uniqid(),
@@ -119,10 +116,7 @@ class OrganizerBookingWorkflowTest extends TestCase
     public function test_new_community_booking_defaults_to_pending_organizer(): void
     {
         $vendor = $this->createUser('community', ['vendor_status' => 'none']);
-        $space = Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 20.00, 'status' => 'Available'],
-        );
+        $space = Space::defaultPhysical();
 
         $event = CarbootEvent::query()->create([
             'title' => 'Store Test Event ' . uniqid(),

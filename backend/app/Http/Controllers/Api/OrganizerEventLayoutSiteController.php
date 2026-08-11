@@ -33,7 +33,7 @@ class OrganizerEventLayoutSiteController extends Controller
 
         $validated = $request->validate([
             'label' => ['required', 'string', 'max:32', 'regex:/^[A-Za-z0-9][A-Za-z0-9\-]*$/'],
-            'space_id' => 'required|integer|exists:spaces,id',
+            'space_id' => 'sometimes|nullable|integer|exists:spaces,id',
             'position_number' => 'required|integer|min:1',
             'grid_row' => 'required|integer|min:0',
             'grid_column' => 'required|integer|min:0',
@@ -64,7 +64,7 @@ class OrganizerEventLayoutSiteController extends Controller
         }
 
         $validated = $request->validate([
-            'space_id' => 'required|integer|exists:spaces,id',
+            'space_id' => 'sometimes|nullable|integer|exists:spaces,id',
             'count' => 'required|integer|min:1|max:100',
             'label_prefix' => ['required', 'string', 'max:16', 'regex:/^[A-Za-z0-9][A-Za-z0-9\-]*$/'],
             'start_number' => 'sometimes|integer|min:1',
@@ -186,7 +186,6 @@ class OrganizerEventLayoutSiteController extends Controller
             'space' => $site->space ? [
                 'id' => $site->space->id,
                 'space_size' => $site->space->space_size,
-                'price' => (float) $site->space->price,
                 'status' => $site->space->status,
             ] : null,
             'locks' => $this->locks->siteLocks($site),

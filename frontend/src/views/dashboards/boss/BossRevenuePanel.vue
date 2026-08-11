@@ -169,8 +169,8 @@
 
           <div class="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label class="ml-label">Space ID <span class="text-ink-400 font-normal">(manual)</span></label>
-              <input type="number" v-model.number="calcData.space_id" class="ml-input" />
+              <label class="ml-label">Event price per site (RM) <span class="text-ink-400 font-normal">(manual)</span></label>
+              <input type="number" step="0.01" min="0" v-model.number="calcData.site_price" class="ml-input" />
             </div>
             <div>
               <label class="ml-label">Parking lots used <span class="text-ink-400 font-normal">(manual)</span></label>
@@ -219,7 +219,7 @@ let categoryChart = null;
 let paymentChart = null;
 
 const calcData = reactive({
-  space_id: 1,
+  site_price: 20,
   parking_lots_used: 10,
   regular_parking_rate: 1,
   hours_occupied: 8,

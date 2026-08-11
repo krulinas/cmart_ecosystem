@@ -2,7 +2,18 @@
  * Phase 3.6 — pure helpers for Organizer layout UI (preview, ordering, presentation).
  */
 
+import { CMART_CARBOOT_SITES_PER_ROW } from '../config/cmartCarbootPhysicalLayout.js';
+
 export const MAX_GENERATED_SITES = 100;
+
+/**
+ * Generate Sites is inactive once a row already holds its complete physical site set.
+ * Standard CMart rows are A–D × 16; avoid offering duplicate generation.
+ */
+export function canGenerateSitesForRow(row = {}) {
+  const siteCount = (row.sites || []).length;
+  return siteCount < CMART_CARBOOT_SITES_PER_ROW;
+}
 
 /**
  * Deterministic label preview matching EventLayoutRowSiteGenerator.

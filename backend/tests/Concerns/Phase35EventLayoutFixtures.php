@@ -32,6 +32,7 @@ trait Phase35EventLayoutFixtures
             'max_slots' => 50,
             'day_generation_mode' => CarbootEvent::DAY_MODE_CALENDAR,
             'site_price' => CarbootEvent::DEFAULT_SITE_PRICE,
+            'vendor_site_open_limit' => 64,
         ], $overrides)));
     }
 
@@ -52,10 +53,7 @@ trait Phase35EventLayoutFixtures
 
     private function standardSpace(): Space
     {
-        return Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 30.00, 'status' => 'Available'],
-        );
+        return Space::defaultPhysical();
     }
 
     private function foodCategory(): VendorCategory
@@ -111,6 +109,7 @@ trait Phase35EventLayoutFixtures
                 'position_number' => 1,
                 'grid_row' => 1,
                 'grid_column' => 1,
+                'operational_status' => EventSite::STATUS_DISABLED,
             ], $payload),
         );
 

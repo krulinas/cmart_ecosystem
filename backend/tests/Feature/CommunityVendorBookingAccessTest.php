@@ -93,14 +93,7 @@ class CommunityVendorBookingAccessTest extends TestCase
 
     public function test_community_visitor_can_submit_booking_without_vendor_approval(): void
     {
-        $space = Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            [
-                'location' => 'CMart Kompleks Changlun',
-                'price' => 20,
-                'status' => 'Available',
-            ],
-        );
+        $space = Space::defaultPhysical();
 
         $event = CarbootEvent::query()->create([
             'title' => 'Test Bookable Event',

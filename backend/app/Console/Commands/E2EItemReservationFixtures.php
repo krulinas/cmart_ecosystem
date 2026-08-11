@@ -54,7 +54,7 @@ class E2EItemReservationFixtures extends Command
 
     public const PASSWORD = 'P45-E2E-password';
 
-    private const SPACE_NAME = 'E2E P45 Item Reservation';
+    private const SPACE_NAME = Space::PHYSICAL_PARKING_SITE;
 
     private const SERVICE_FEE = '15.00';
 
@@ -108,12 +108,7 @@ class E2EItemReservationFixtures extends Command
         try {
             $payload = DB::transaction(function () {
                 $thrift = VendorCategory::query()->where('slug', 'pre-loved-thrift')->firstOrFail();
-                $space = Space::query()->create([
-                    'space_size' => self::SPACE_NAME,
-                    'location' => 'CMart E2E Phase 4.5 isolated fixture',
-                    'price' => 30.00,
-                    'status' => 'Available',
-                ]);
+                $space = Space::defaultPhysical();
 
                 $vendor = $this->createUser(self::VENDOR_EMAIL, 'Phase 4.5 E2E Vendor', 'community', 'approved');
                 $unrelatedVendor = $this->createUser(
@@ -453,7 +448,7 @@ class E2EItemReservationFixtures extends Command
                 ->delete();
 
             $deleted['users'] = User::query()->whereIn('id', $userIds)->delete();
-            $deleted['spaces'] = Space::query()->where('space_size', self::SPACE_NAME)->delete();
+            $deleted['spaces'] = 0;
             $deleted['residue'] = $this->residueCounters();
 
             return $deleted;

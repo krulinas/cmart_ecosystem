@@ -52,8 +52,6 @@ class E2ESiteFixtures extends Command
 
     private const ORGANIZER_EMAIL = 'e2e-site-fix-organizer@example.com';
 
-    private const SPACE_SIZE = 'Standard (1 Parking Lot)';
-
     public function handle(): int
     {
         $env = config('app.env');
@@ -444,14 +442,7 @@ class E2ESiteFixtures extends Command
     private function buildBaseFixtures(int $dayCount = 2): array
     {
         return DB::transaction(function () use ($dayCount) {
-            $space = Space::query()->firstOrCreate(
-                ['space_size' => self::SPACE_SIZE],
-                [
-                    'location' => 'CMart Kompleks Changlun',
-                    'price' => 30.00,
-                    'status' => 'Available',
-                ],
-            );
+            $space = Space::defaultPhysical();
 
             $vendor = User::create([
                 'name' => 'E2E Site Fixture Vendor',

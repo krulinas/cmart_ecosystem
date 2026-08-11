@@ -541,7 +541,9 @@ const vendorLabel = (booking) =>
 const physicalSiteSummary = (booking) => {
   const labels = siteLabelsForBooking(booking);
   if (labels) return labels;
-  return booking.space?.space_size || booking.space_id || '—';
+  return booking.site_quantity != null
+    ? `${booking.site_quantity} parking site${Number(booking.site_quantity) === 1 ? '' : 's'}`
+    : (booking.booth_type_label || 'Parking site');
 };
 
 const withdrawalSummaryLine = (booking) => {

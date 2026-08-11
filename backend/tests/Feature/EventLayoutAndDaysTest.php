@@ -67,10 +67,7 @@ class EventLayoutAndDaysTest extends TestCase
 
     private function standardSpace(): Space
     {
-        return Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 20.00, 'status' => 'Available'],
-        );
+        return Space::defaultPhysical();
     }
 
     public function test_organizer_can_bulk_generate_parking_layout(): void

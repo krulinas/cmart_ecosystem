@@ -459,10 +459,7 @@ class EventDayAutomationTest extends TestCase
 
     private function attachAllocationHistory(CarbootEvent $event): void
     {
-        $space = Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 20.00, 'status' => 'Available'],
-        );
+        $space = Space::defaultPhysical();
 
         $site = EventSite::create([
             'carboot_event_id' => $event->id,

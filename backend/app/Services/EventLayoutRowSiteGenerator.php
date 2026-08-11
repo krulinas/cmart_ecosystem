@@ -39,10 +39,9 @@ class EventLayoutRowSiteGenerator
             throw new InvalidArgumentException('Sites can only be generated for an active, non-archived layout row.');
         }
 
-        $space = Space::query()->find((int) $payload['space_id']);
-        if (! $space) {
-            throw new InvalidArgumentException('Invalid space_id: space type not found.');
-        }
+        $space = Space::query()->findOrFail(
+            Space::resolveId(isset($payload['space_id']) ? (int) $payload['space_id'] : null)
+        );
 
         $count = (int) $payload['count'];
         if ($count < 1 || $count > self::MAX_SITES_PER_REQUEST) {

@@ -143,7 +143,7 @@ class OrganizerEventLayoutController extends Controller
     public function generateStandardTemplate(Request $request, CarbootEvent $carboot_event): JsonResponse
     {
         $validated = $request->validate([
-            'space_id' => 'required|integer|exists:spaces,id',
+            'space_id' => 'sometimes|nullable|integer|exists:spaces,id',
             'row_categories' => 'required|array',
             'row_categories.A' => 'required|integer|exists:vendor_categories,id',
             'row_categories.B' => 'required|integer|exists:vendor_categories,id',
@@ -340,7 +340,6 @@ class OrganizerEventLayoutController extends Controller
                 ? [
                     'id' => $site->space->id,
                     'space_size' => $site->space->space_size,
-                    'price' => (float) $site->space->price,
                     'status' => $site->space->status,
                 ]
                 : null,

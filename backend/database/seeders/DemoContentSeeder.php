@@ -115,7 +115,7 @@ class DemoContentSeeder extends Seeder
         );
 
         $vendor = User::where('email', 'vendor@cmart.com')->first();
-        $standardSpace = Space::where('space_size', 'Standard (1 Parking Lot)')->first();
+        $standardSpace = Space::defaultPhysical();
 
         if ($vendor && $standardSpace && $weeklyEvent) {
             $demoBooking = Booking::updateOrCreate(

@@ -81,6 +81,8 @@ export function deleteLayoutSite(eventId, siteId) {
 }
 
 export function getSpaceCatalogue() {
+  // Legacy catalogue endpoint retained for boss tools only.
+  // Carboot layout/booking no longer loads space-type pricing.
   return api.get('/spaces');
 }
 

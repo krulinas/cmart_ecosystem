@@ -45,12 +45,10 @@ class StandardEventLayoutGenerator
      */
     public function generate(CarbootEvent $event, User $actor, array $payload): array
     {
-        $spaceId = (int) ($payload['space_id'] ?? 0);
+        $spaceId = Space::resolveId(
+            isset($payload['space_id']) ? (int) $payload['space_id'] : null
+        );
         $rowCategories = $payload['row_categories'] ?? [];
-
-        if ($spaceId < 1) {
-            throw new InvalidArgumentException('A valid space_id is required.');
-        }
 
         foreach (CmartCarbootPhysicalLayout::ROW_LABELS as $label) {
             if (! isset($rowCategories[$label]) || (int) $rowCategories[$label] < 1) {
@@ -97,10 +95,7 @@ class StandardEventLayoutGenerator
                 );
             }
 
-            $space = Space::query()->find($spaceId);
-            if (! $space) {
-                throw new InvalidArgumentException('Invalid space_id: space type not found.');
-            }
+            $space = Space::query()->findOrFail($spaceId);
 
             $categoriesByLabel = [];
             foreach (CmartCarbootPhysicalLayout::ROW_LABELS as $label) {

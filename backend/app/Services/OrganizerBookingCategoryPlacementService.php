@@ -109,10 +109,6 @@ class OrganizerBookingCategoryPlacementService
                 if ((int) $site->space_id !== $requirements['space_id']) {
                     continue;
                 }
-                $price = number_format((float) ($site->space?->price ?? 0), 2, '.', '');
-                if ($price !== $requirements['unit_price']) {
-                    continue;
-                }
 
                 $owned = in_array((int) $site->id, $currentSiteIds, true);
                 $occupiedElsewhere = in_array((int) $site->id, $occupied, true);
@@ -203,7 +199,6 @@ class OrganizerBookingCategoryPlacementService
             'space' => $space ? [
                 'id' => (int) $space->id,
                 'name' => $space->space_size,
-                'price' => number_format((float) $space->price, 2, '.', ''),
             ] : null,
             'rows' => $rowPayload,
             'sites' => $sites->map(fn (EventSite $site) => [

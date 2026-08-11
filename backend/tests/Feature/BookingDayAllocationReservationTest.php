@@ -113,18 +113,12 @@ class BookingDayAllocationReservationTest extends TestCase
 
     private function standardSpace(): Space
     {
-        return Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 20.00, 'status' => 'Available'],
-        );
+        return Space::defaultPhysical();
     }
 
     private function largeSpace(): Space
     {
-        return Space::query()->firstOrCreate(
-            ['space_size' => 'Large (2 Parking Lots)'],
-            ['price' => 40.00, 'status' => 'Available'],
-        );
+        return Space::defaultPhysical();
     }
 
     private function createSite(
@@ -266,7 +260,7 @@ class BookingDayAllocationReservationTest extends TestCase
 
         $this->assertCount(1, $result->allocations);
         $this->assertSame(1, $result->tapakQuantity);
-        $this->assertSame(number_format((float) $space->price, 2, '.', ''), $result->amount);
+        $this->assertSame(number_format((float) $event->site_price, 2, '.', ''), $result->amount);
         $allocation = $result->allocations->first();
         $this->assertSame(BookingDayAllocation::STATUS_RESERVED, $allocation->allocation_status);
         $this->assertSame(1, $allocation->active_lock);
@@ -288,7 +282,7 @@ class BookingDayAllocationReservationTest extends TestCase
 
         $this->assertCount(4, $result->allocations);
         $this->assertSame(2, $result->tapakQuantity);
-        $this->assertSame(number_format((float) $space->price * 2, 2, '.', ''), $result->amount);
+        $this->assertSame(number_format((float) $event->site_price * 2, 2, '.', ''), $result->amount);
 
         $pairs = $result->allocations->map(fn ($a) => $a->event_day_id . ':' . $a->event_site_id)->sort()->values();
         $expected = collect([
@@ -328,7 +322,7 @@ class BookingDayAllocationReservationTest extends TestCase
 
         $this->assertCount(12, $result->allocations);
         $this->assertSame(3, $result->tapakQuantity);
-        $this->assertSame(number_format((float) $space->price * 3, 2, '.', ''), $result->amount);
+        $this->assertSame(number_format((float) $event->site_price * 3, 2, '.', ''), $result->amount);
     }
 
     public function test_cancelled_and_disabled_days_are_excluded(): void

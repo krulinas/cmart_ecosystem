@@ -87,10 +87,7 @@ class EventReportV1DataFoundationTest extends TestCase
 
     private function space(): Space
     {
-        return Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 30.00, 'status' => 'Available'],
-        );
+        return Space::defaultPhysical();
     }
 
     private function closedEvent(string $titlePrefix = 'Report Event', int $days = 2): CarbootEvent

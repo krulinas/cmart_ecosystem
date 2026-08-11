@@ -56,10 +56,7 @@ class EventSitePricingTest extends TestCase
 
     private function space(): Space
     {
-        return Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 99.00, 'status' => 'Available'],
-        );
+        return Space::defaultPhysical();
     }
 
     private function foodCategory(): VendorCategory
@@ -80,6 +77,7 @@ class EventSitePricingTest extends TestCase
             'max_slots' => 50,
             'day_generation_mode' => CarbootEvent::DAY_MODE_CALENDAR,
             'site_price' => '20.00',
+            'vendor_site_open_limit' => 3,
         ], $overrides));
 
         return $this->trackEvent($event);
@@ -103,6 +101,9 @@ class EventSitePricingTest extends TestCase
 
     private function createSites(CarbootEvent $event, int $count = 3): array
     {
+        if ($event->vendor_site_open_limit === null || (int) $event->vendor_site_open_limit !== $count) {
+            $event->forceFill(['vendor_site_open_limit' => $count])->save();
+        }
         $category = $this->foodCategory();
         $space = $this->space();
         $row = EventLayoutRow::query()->firstOrCreate(
@@ -394,7 +395,6 @@ class EventSitePricingTest extends TestCase
         $event = $this->createEvent($this->createOrganizer(), ['site_price' => '20.00']);
         $this->createSites($event, 2);
         $this->ensureDays($event, 1);
-        $this->space()->forceFill(['price' => 99.00])->save();
 
         Sanctum::actingAs($vendor);
 
@@ -406,26 +406,72 @@ class EventSitePricingTest extends TestCase
             ->assertJsonPath('sites.0.space_name', null);
     }
 
-    public function test_reservation_service_ignores_space_catalogue_price(): void
+    public function test_reservation_service_ignores_client_price_fields_and_uses_event_site_price(): void
     {
         $vendor = $this->createVendor();
         $event = $this->createEvent($this->createOrganizer(), ['site_price' => '20.00']);
         $sites = $this->createSites($event, 1);
         $this->ensureDays($event, 1);
-        $this->space()->forceFill(['price' => 50.00])->save();
 
         Sanctum::actingAs($vendor);
-        $response = $this->postJson('/api/bookings', $this->bookingPayload($event, [$sites[0]->id]))
+        $response = $this->postJson('/api/bookings', $this->bookingPayload($event, [$sites[0]->id], [
+            'amount' => 50,
+            'total' => 50,
+            'invoice_amount' => 50,
+            'unit_site_price' => 50,
+            'site_quantity' => 9,
+        ]))
+            ->assertStatus(422);
+
+        $ok = $this->postJson('/api/bookings', $this->bookingPayload($event, [$sites[0]->id]))
             ->assertCreated()
             ->assertJsonPath('invoice.amount', '20.00')
             ->json();
 
-        $this->createdBookingIds[] = (int) $response['booking']['id'];
-        $booking = Booking::findOrFail((int) $response['booking']['id']);
+        $this->createdBookingIds[] = (int) $ok['booking']['id'];
+        $booking = Booking::findOrFail((int) $ok['booking']['id']);
         $this->assertSame('20.00', number_format((float) $booking->unit_site_price, 2, '.', ''));
-        $this->assertNotSame(
-            '50.00',
-            number_format((float) $booking->unit_site_price, 2, '.', ''),
-        );
+    }
+
+    public function test_spaces_catalogue_api_does_not_expose_price(): void
+    {
+        Space::defaultPhysical();
+
+        $this->getJson('/api/spaces')
+            ->assertOk()
+            ->assertJsonMissingPath('0.price');
+
+        $payload = $this->getJson('/api/spaces')->json();
+        $this->assertIsArray($payload);
+        foreach ($payload as $row) {
+            $this->assertArrayNotHasKey('price', $row);
+            $this->assertSame(Space::PHYSICAL_PARKING_SITE, $row['space_size']);
+        }
+    }
+
+    public function test_duplicate_site_ids_do_not_inflate_booking_quantity(): void
+    {
+        $vendor = $this->createVendor();
+        $event = $this->createEvent($this->createOrganizer(), ['site_price' => '20.00']);
+        $sites = $this->createSites($event, 2);
+        $this->ensureDays($event, 1);
+        Sanctum::actingAs($vendor);
+
+        // Intentionally repeat the same site id — backend must count distinct sites only.
+        $response = $this->postJson('/api/bookings', $this->bookingPayload($event, [
+            $sites[0]->id,
+            $sites[0]->id,
+            $sites[0]->id,
+        ]));
+
+        // Either rejected as invalid selection or accepted as a single-site booking.
+        if ($response->status() === 201) {
+            $this->createdBookingIds[] = (int) $response->json('booking.id');
+            $booking = Booking::findOrFail((int) $response->json('booking.id'));
+            $this->assertSame(1, (int) $booking->site_quantity);
+            $this->assertSame('20.00', number_format((float) $response->json('invoice.amount'), 2, '.', ''));
+        } else {
+            $response->assertStatus(422);
+        }
     }
 }

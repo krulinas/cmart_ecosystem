@@ -13,7 +13,6 @@ use App\Models\CarbootEvent;
 use App\Models\EventDay;
 use App\Models\EventSite;
 use App\Models\Invoice;
-use App\Models\Space;
 use App\Models\User;
 use App\Support\ManagementRole;
 use App\Services\BookingAllocationLifecycleService;
@@ -545,15 +544,14 @@ class BookingController extends Controller
     public function checkProfitability(Request $request)
     {
         $validated = $request->validate([
-            'space_id' => 'required|exists:spaces,id',
+            'site_price' => 'required|numeric',
+            'space_id' => 'sometimes|nullable|exists:spaces,id',
             'parking_lots_used' => 'required|numeric',
             'regular_parking_rate' => 'required|numeric',
             'hours_occupied' => 'required|numeric',
         ]);
 
-        $space = Space::findOrFail($validated['space_id']);
-
-        $eventRevenue = $space->price;
+        $eventRevenue = (float) $validated['site_price'];
         $parkingRevenue = $validated['parking_lots_used'] * $validated['regular_parking_rate'] * $validated['hours_occupied'];
 
         $isProfitable = $eventRevenue > $parkingRevenue;

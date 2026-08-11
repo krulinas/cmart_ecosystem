@@ -99,10 +99,7 @@ class AllocationHistoryProtectionTest extends TestCase
 
     private function standardSpace(): Space
     {
-        return Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 20.00, 'status' => 'Available'],
-        );
+        return Space::defaultPhysical();
     }
 
     private function createSite(CarbootEvent $event, Space $space, array $overrides = []): EventSite

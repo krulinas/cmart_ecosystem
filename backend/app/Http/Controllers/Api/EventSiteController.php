@@ -23,7 +23,7 @@ class EventSiteController extends Controller
     {
         $sites = EventSite::query()
             ->forEvent($carboot_event->id)
-            ->with('space:id,space_size,price,status')
+            ->with('space:id,space_size,status')
             ->orderedForLayout()
             ->get()
             ->map(fn (EventSite $site) => $this->present($site))
@@ -43,6 +43,9 @@ class EventSiteController extends Controller
     public function store(Request $request, CarbootEvent $carboot_event): JsonResponse
     {
         $validated = $this->validateSite($request);
+        $validated['space_id'] = Space::resolveId(
+            isset($validated['space_id']) ? (int) $validated['space_id'] : null
+        );
 
         try {
             $site = EventSite::create([
@@ -53,7 +56,7 @@ class EventSiteController extends Controller
             return $this->uniqueConstraintResponse($exception);
         }
 
-        $site->load('space:id,space_size,price,status');
+        $site->load('space:id,space_size,status');
 
         return response()->json([
             'message' => '201 Created: Event site created successfully.',
@@ -63,7 +66,7 @@ class EventSiteController extends Controller
 
     public function show(EventSite $event_site): JsonResponse
     {
-        $event_site->load(['space:id,space_size,price,status', 'carbootEvent:id,title']);
+        $event_site->load(['space:id,space_size,status', 'carbootEvent:id,title']);
 
         return response()->json([
             'site' => $this->present($event_site),
@@ -91,7 +94,7 @@ class EventSiteController extends Controller
             return $this->uniqueConstraintResponse($exception);
         }
 
-        $event_site->load('space:id,space_size,price,status');
+        $event_site->load('space:id,space_size,status');
 
         return response()->json([
             'message' => '200 OK: Event site updated successfully.',
@@ -102,7 +105,7 @@ class EventSiteController extends Controller
     public function generate(Request $request, CarbootEvent $carboot_event, EventSiteLayoutGenerator $generator): JsonResponse
     {
         $validated = $request->validate([
-            'space_id' => 'required|integer|exists:spaces,id',
+            'space_id' => 'sometimes|nullable|integer|exists:spaces,id',
             'rows' => 'required|array|min:1|max:50',
             'rows.*.row_label' => 'required|string|max:16',
             'rows.*.count' => 'required|integer|min:1|max:100',
@@ -116,7 +119,7 @@ class EventSiteController extends Controller
         try {
             $result = $generator->generate(
                 $carboot_event,
-                (int) $validated['space_id'],
+                isset($validated['space_id']) ? (int) $validated['space_id'] : null,
                 $validated['rows'],
                 (bool) ($validated['replace_existing'] ?? false),
             );
@@ -132,7 +135,7 @@ class EventSiteController extends Controller
         }
 
         $sites = collect($result['created'])
-            ->each(fn (EventSite $site) => $site->load('space:id,space_size,price,status'))
+            ->each(fn (EventSite $site) => $site->load('space:id,space_size,status'))
             ->map(fn (EventSite $site) => $this->present($site))
             ->values();
 
@@ -202,7 +205,8 @@ class EventSiteController extends Controller
 
         $validated = $request->validate([
             'space_id' => [
-                $partial ? 'sometimes' : 'required',
+                'sometimes',
+                'nullable',
                 'integer',
                 'exists:spaces,id',
             ],
@@ -284,7 +288,6 @@ class EventSiteController extends Controller
                 ? [
                     'id' => $site->space->id,
                     'space_size' => $site->space->space_size,
-                    'price' => (float) $site->space->price,
                     'status' => $site->space->status,
                 ]
                 : null,

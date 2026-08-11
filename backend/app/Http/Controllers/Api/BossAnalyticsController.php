@@ -65,8 +65,13 @@ class BossAnalyticsController extends Controller
 
         $spaceBreakdown = Booking::query()
             ->join('spaces', 'bookings.space_id', '=', 'spaces.id')
+            ->leftJoin('invoices', 'invoices.booking_id', '=', 'bookings.id')
             ->where('bookings.approval_status', 'Approved')
-            ->select('spaces.space_size', DB::raw('count(*) as count'), DB::raw('sum(spaces.price) as revenue'))
+            ->select(
+                'spaces.space_size',
+                DB::raw('count(*) as count'),
+                DB::raw('sum(coalesce(invoices.amount, bookings.unit_site_price * bookings.site_quantity, 0)) as revenue')
+            )
             ->groupBy('spaces.id', 'spaces.space_size')
             ->get();
 

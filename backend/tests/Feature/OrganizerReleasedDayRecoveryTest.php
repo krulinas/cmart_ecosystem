@@ -60,10 +60,7 @@ class OrganizerReleasedDayRecoveryTest extends TestCase
     {
         $vendor = $this->user('community');
         $organizer = $this->user('organizer');
-        $space = Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 30.00, 'status' => 'Available'],
-        );
+        $space = Space::defaultPhysical();
         $starts = now()->addDays(20)->setTime(8, 0);
         $event = $this->trackEvent(CarbootEvent::create([
             'title' => 'Recovery Event ' . uniqid(),

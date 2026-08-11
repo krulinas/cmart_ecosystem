@@ -351,10 +351,7 @@ class Phase44CompletionAndPublicationGuardTest extends TestCase
         ]);
         $this->eventIds[] = $event->id;
 
-        $space = Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 20.00, 'status' => 'Available'],
-        );
+        $space = Space::defaultPhysical();
         $booking = Booking::query()->create([
             'user_id' => $vendor->id,
             'space_id' => $space->id,

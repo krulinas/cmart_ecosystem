@@ -29,14 +29,11 @@ class EventSiteLayoutGenerator
      */
     public function generate(
         CarbootEvent $event,
-        int $spaceId,
+        ?int $spaceId,
         array $rows,
         bool $replaceExisting = false,
     ): array {
-        $space = Space::query()->find($spaceId);
-        if (! $space) {
-            throw new InvalidArgumentException('Invalid space_id: space type not found.');
-        }
+        $space = Space::query()->findOrFail(Space::resolveId($spaceId));
 
         if ($rows === []) {
             throw new InvalidArgumentException('At least one row definition is required.');

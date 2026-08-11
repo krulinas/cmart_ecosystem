@@ -76,10 +76,7 @@ class MarketplacePublicAccessTest extends TestCase
 
     private function createBooking(User $vendor, CarbootEvent $event, string $approvalStatus): Booking
     {
-        $space = Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 20.00, 'status' => 'Available'],
-        );
+        $space = Space::defaultPhysical();
 
         $booking = Booking::create([
             'user_id' => $vendor->id,

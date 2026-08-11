@@ -158,11 +158,9 @@ class EventLayoutService
 
             $category = $this->requireAssignableCategory((int) $data['vendor_category_id']);
 
-            $spaceId = (int) ($data['space_id'] ?? 0);
-            $space = Space::query()->find($spaceId);
-            if (! $space) {
-                throw new InvalidArgumentException('A valid space_id is required to create a physical row with sites.');
-            }
+            $space = Space::query()->findOrFail(
+                Space::resolveId(isset($data['space_id']) ? (int) $data['space_id'] : null)
+            );
 
             $displayOrder = $data['display_order'] ?? null;
             if ($displayOrder === null) {
@@ -676,10 +674,9 @@ class EventLayoutService
             }
             $this->requireAssignableCategory((int) $lockedRow->vendor_category_id);
 
-            $space = Space::query()->find((int) $data['space_id']);
-            if (! $space) {
-                throw new InvalidArgumentException('Invalid space_id.');
-            }
+            $space = Space::query()->findOrFail(
+                Space::resolveId(isset($data['space_id']) ? (int) $data['space_id'] : null)
+            );
 
             $label = strtoupper(trim((string) $data['label']));
             $status = (string) ($data['operational_status'] ?? $data['status'] ?? EventSite::STATUS_DISABLED);
@@ -764,7 +761,9 @@ class EventLayoutService
             $row->id,
             null,
             [
-                'space_id' => (int) $payload['space_id'],
+                'space_id' => Space::resolveId(
+                    isset($payload['space_id']) ? (int) $payload['space_id'] : null
+                ),
                 'count' => (int) $payload['count'],
                 'label_prefix' => $payload['label_prefix'],
             ],

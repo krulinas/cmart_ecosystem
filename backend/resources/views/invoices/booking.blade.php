@@ -131,19 +131,24 @@
                 </tr>
             </thead>
             <tbody>
+                @php
+                    $siteQuantity = (int) ($booking->site_quantity ?? 1);
+                    $unitSitePrice = (float) ($booking->unit_site_price ?? $booking->carbootEvent?->site_price ?? 0);
+                    $lineAmount = (float) ($booking->invoice?->amount ?? ($unitSitePrice * max($siteQuantity, 1)));
+                @endphp
                 <tr>
                     <td>
-                        Carboot Space — {{ $booking->space?->space_size ?? '—' }}<br>
+                        Carboot parking sites ({{ $siteQuantity }} × RM {{ number_format($unitSitePrice, 2) }})<br>
                         <span style="color: #64748b; font-size: 10px;">
                             Reserved for {{ \Carbon\Carbon::parse($booking->booking_date)->format('d M Y') }}
                         </span>
                     </td>
-                    <td class="text-right">{{ number_format($booking->space?->price ?? 0, 2) }}</td>
+                    <td class="text-right">{{ number_format($lineAmount, 2) }}</td>
                 </tr>
                 <tr class="total-row">
                     <td>Total Due</td>
                     <td class="text-right">
-                        RM {{ number_format($booking->invoice?->amount ?? $booking->space?->price ?? 0, 2) }}
+                        RM {{ number_format($booking->invoice?->amount ?? $lineAmount, 2) }}
                     </td>
                 </tr>
             </tbody>

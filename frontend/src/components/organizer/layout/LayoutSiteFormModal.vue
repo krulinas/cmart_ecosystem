@@ -30,16 +30,6 @@
             <input id="layout-site-label" v-model="form.label" class="ml-input" required maxlength="32" :disabled="submitting || structureLocked" data-testid="layout-site-label-input" />
           </div>
 
-          <div>
-            <label class="ml-label" for="layout-site-space">Space type</label>
-            <select id="layout-site-space" v-model.number="form.space_id" class="ml-input" required :disabled="submitting || structureLocked" data-testid="layout-site-space-select">
-              <option disabled value="">{{ copy.selectSpaceType }}</option>
-              <option v-for="space in spaces" :key="space.id" :value="space.id">
-                {{ space.space_size }} (RM {{ Number(space.price).toFixed(2) }})
-              </option>
-            </select>
-          </div>
-
           <div v-if="isEdit && rows.length" class="space-y-1">
             <label class="ml-label" for="layout-site-row">{{ copy.targetRow }}</label>
             <select id="layout-site-row" v-model.number="form.event_layout_row_id" class="ml-input" :disabled="submitting || structureLocked" data-testid="layout-site-row-select">
@@ -103,7 +93,6 @@ const props = defineProps({
   site: { type: Object, default: null },
   row: { type: Object, default: null },
   rows: { type: Array, default: () => [] },
-  spaces: { type: Array, default: () => [] },
   submitting: { type: Boolean, default: false },
   formError: { type: String, default: '' },
 });
@@ -118,7 +107,6 @@ const movableRows = computed(() => props.rows.filter((row) => row.is_active && !
 
 const form = reactive({
   label: '',
-  space_id: '',
   event_layout_row_id: '',
   position_number: 1,
   grid_row: 1,
@@ -132,7 +120,6 @@ watch(
   () => {
     if (!props.modelValue) return;
     form.label = props.site?.label || '';
-    form.space_id = props.site?.space?.id || props.spaces[0]?.id || '';
     form.event_layout_row_id = props.site?.event_layout_row_id || props.row?.id || '';
     form.position_number = props.site?.position_number || ((props.row?.sites?.length || 0) + 1);
     form.grid_row = props.site?.grid_row ?? 1;
@@ -156,7 +143,6 @@ function submit() {
 
   if (!structureLocked.value) {
     payload.label = String(form.label || '').trim().toUpperCase();
-    payload.space_id = Number(form.space_id);
     payload.position_number = Number(form.position_number);
     payload.grid_row = Number(form.grid_row);
     payload.grid_column = Number(form.grid_column);

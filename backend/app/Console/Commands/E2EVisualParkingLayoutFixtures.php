@@ -43,8 +43,6 @@ class E2EVisualParkingLayoutFixtures extends Command
 
     public const PASSWORD = 'VPL-E2E-password';
 
-    private const SPACE_NAME = 'E2E VPL Standard';
-
     public function handle(): int
     {
         if ($denied = $this->refuseUnsafeEnvironment()) {
@@ -78,11 +76,7 @@ class E2EVisualParkingLayoutFixtures extends Command
         return $this->emit(DB::transaction(function () {
             $food = VendorCategory::query()->where('slug', 'food-beverages')->firstOrFail();
             $thrift = VendorCategory::query()->where('slug', 'pre-loved-thrift')->firstOrFail();
-            $space = Space::create([
-                'space_size' => self::SPACE_NAME,
-                'price' => 30,
-                'status' => 'Available',
-            ]);
+            $space = Space::defaultPhysical();
 
             $organizer = $this->createUser(
                 self::ORGANIZER_EMAIL,
@@ -209,8 +203,6 @@ class E2EVisualParkingLayoutFixtures extends Command
             EventLayoutRow::query()->whereIn('carboot_event_id', $eventIds)->delete();
             CarbootEvent::query()->whereIn('id', $eventIds)->delete();
         }
-
-        Space::query()->where('space_size', self::SPACE_NAME)->delete();
 
         $userIds = User::query()
             ->whereIn('email', [self::ORGANIZER_EMAIL, self::VENDOR_EMAIL])

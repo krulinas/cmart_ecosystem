@@ -1,13 +1,29 @@
 <template>
   <section
     class="vpl"
-    :class="`vpl--${mode}`"
+    :class="[
+      `vpl--${mode}`,
+      { 'vpl--manage': manageMode },
+    ]"
     data-testid="visual-parking-layout"
     :data-mode="mode"
+    :data-manage-mode="manageMode ? 'true' : 'false'"
     :aria-labelledby="headingId"
   >
-    <div v-if="showTitle" class="vpl__header">
-      <h3 :id="headingId" class="vpl__title">{{ copy.title }}</h3>
+    <div v-if="showTitle || $slots.headerActions" class="vpl__header">
+      <div class="vpl__header-main">
+        <h3 v-if="showTitle" :id="headingId" class="vpl__title">{{ copy.title }}</h3>
+        <p
+          v-if="manageMode"
+          class="vpl__manage-badge"
+          data-testid="visual-parking-manage-badge"
+        >
+          {{ manageBadgeLabel }}
+        </p>
+      </div>
+      <div v-if="$slots.headerActions" class="vpl__header-actions">
+        <slot name="headerActions" />
+      </div>
     </div>
 
     <div
@@ -81,9 +97,18 @@
                 {{ segment.row.description }}
               </p>
             </div>
-            <p class="vpl__row-count">
-              {{ copy.sitesCount(segment.row.siteCount) }}
-            </p>
+            <div class="vpl__row-meta-aside">
+              <p class="vpl__row-count">
+                {{ copy.sitesCount(segment.row.siteCount) }}
+              </p>
+              <slot
+                v-if="manageMode"
+                name="rowActions"
+                :row="segment.row"
+                :row-index="rowIndexForSegment(index)"
+                :source-row="segment.row.raw || segment.row"
+              />
+            </div>
           </div>
 
           <div
@@ -102,18 +127,21 @@
                 {
                   'vpl__tile--focused': site.focused,
                   'vpl__tile--interactive': isClickable(site),
+                  'vpl__tile--manage': manageMode && mode === 'organizer',
                 },
               ]"
               role="listitem"
               :type="tileTag() === 'button' ? 'button' : undefined"
               :disabled="tileTag() === 'button' && !isClickable(site) ? true : undefined"
               :aria-pressed="mode === 'vendor' ? site.selected : undefined"
+              :aria-expanded="manageMode && mode === 'organizer' ? (site.focused ? 'true' : 'false') : undefined"
+              :aria-haspopup="manageMode && mode === 'organizer' ? 'dialog' : undefined"
               :aria-disabled="!isClickable(site) ? 'true' : undefined"
               :aria-label="siteAriaLabel(mode, site, segment.row)"
               :data-testid="tileTestId(site)"
               :data-site-id="site.id"
               :data-status="site.status"
-              @click="onTileActivate(site, segment.row)"
+              @click="onTileActivate(site, segment.row, $event)"
             >
               <span class="vpl__tile-label">{{ site.label }}</span>
               <span class="vpl__tile-status" :class="statusTextClass(site.status)">
@@ -185,6 +213,18 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  manageMode: {
+    type: Boolean,
+    default: false,
+  },
+  manageBadgeLabel: {
+    type: String,
+    default: 'Management mode',
+  },
+  siteActivationEnabled: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const emit = defineEmits(['activate-site']);
@@ -222,15 +262,29 @@ function tileTestId(site) {
   return `visual-parking-tile-${site.label}`;
 }
 
+function rowIndexForSegment(segmentIndex) {
+  let count = 0;
+  for (let i = 0; i < segmentIndex; i += 1) {
+    if (segments.value[i]?.type === 'row') count += 1;
+  }
+  return count;
+}
+
 function isClickable(site) {
   if (props.mode === 'public') return false;
-  if (props.mode === 'organizer') return true;
+  if (props.mode === 'organizer') return Boolean(props.siteActivationEnabled);
   return Boolean(site.interactive);
 }
 
-function onTileActivate(site, row) {
+function onTileActivate(site, row, event) {
   if (!isClickable(site)) return;
-  emit('activate-site', { site, row, mode: props.mode });
+  const anchorEl = event?.currentTarget instanceof Element ? event.currentTarget : null;
+  emit('activate-site', {
+    site,
+    row,
+    mode: props.mode,
+    anchorEl,
+  });
 }
 </script>
 
@@ -241,10 +295,52 @@ function onTileActivate(site, row) {
   gap: 0.75rem;
 }
 
+.vpl--manage {
+  border-radius: 1rem;
+  box-shadow: inset 0 0 0 2px rgba(14, 165, 233, 0.28);
+  padding: 0.75rem;
+  background: linear-gradient(180deg, rgba(240, 249, 255, 0.65), rgba(248, 250, 252, 0.2));
+}
+
+.vpl__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.vpl__header-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .vpl__title {
   font-size: 1rem;
   font-weight: 800;
   color: #0f172a;
+}
+
+.vpl__manage-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid #7dd3fc;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+}
+
+.vpl__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .vpl__legend,
@@ -320,6 +416,13 @@ function onTileActivate(site, row) {
   margin-bottom: 0.75rem;
 }
 
+.vpl__row-meta-aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .vpl__row-label {
   font-size: 0.95rem;
   font-weight: 800;
@@ -385,6 +488,10 @@ function onTileActivate(site, row) {
 
 .vpl__tile--focused {
   box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.55);
+}
+
+.vpl__tile--manage:hover {
+  transform: translateY(-1px);
 }
 
 .vpl__tile-label {

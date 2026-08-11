@@ -189,15 +189,7 @@ class OrganizerBookingReassignmentEligibilityService
 
             if ((int) $site->space_id !== $requiredSpaceId) {
                 throw new AllocationValidationException(
-                    'The new site type or price must match the original booking.',
-                    'SITE_PRICE_CHANGE_NOT_SUPPORTED',
-                );
-            }
-
-            $price = number_format((float) ($site->space?->price ?? 0), 2, '.', '');
-            if ($price !== $requiredUnitPrice) {
-                throw new AllocationValidationException(
-                    'The new site type or price must match the original booking.',
+                    'The new site type must match the original booking.',
                     'SITE_PRICE_CHANGE_NOT_SUPPORTED',
                 );
             }
@@ -357,10 +349,16 @@ class OrganizerBookingReassignmentEligibilityService
             );
         }
 
+        $booking->loadMissing('carbootEvent');
+        $unitPrice = $booking->unit_site_price;
+        if ($unitPrice === null || (float) $unitPrice <= 0) {
+            $unitPrice = $booking->carbootEvent?->site_price ?? 0;
+        }
+
         return [
             'space_id' => (int) $first->space_id,
             'space_label' => $first->space->space_size,
-            'unit_price' => number_format((float) $first->space->price, 2, '.', ''),
+            'unit_price' => number_format((float) $unitPrice, 2, '.', ''),
             'site_count' => $sites->count(),
         ];
     }

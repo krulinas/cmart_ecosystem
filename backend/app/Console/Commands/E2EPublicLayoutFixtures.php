@@ -40,8 +40,6 @@ class E2EPublicLayoutFixtures extends Command
     public const ORGANIZER_EMAIL = 'e2e-p310-organizer@example.test';
     public const PASSWORD = 'P310-E2E-password';
     public const PRIVATE_OVERRIDE_REASON = 'Private P310 category override reason';
-    private const SPACE_NAME = 'E2E P310 Standard';
-
     public function handle(): int
     {
         if ($denied = $this->refuseUnsafeEnvironment()) {
@@ -75,12 +73,7 @@ class E2EPublicLayoutFixtures extends Command
         return $this->emit(DB::transaction(function () {
             $food = VendorCategory::query()->where('slug', 'food-beverages')->firstOrFail();
             $thrift = VendorCategory::query()->where('slug', 'pre-loved-thrift')->firstOrFail();
-            $space = Space::create([
-                'space_size' => self::SPACE_NAME,
-                'location' => 'Isolated E2E fixture only',
-                'price' => 30,
-                'status' => 'Available',
-            ]);
+            $space = Space::defaultPhysical();
             $vendor = $this->createUser(
                 self::VENDOR_EMAIL,
                 'Private P310 Vendor Identity',
@@ -420,7 +413,7 @@ class E2EPublicLayoutFixtures extends Command
                 ->whereIn('tokenable_id', $userIds)
                 ->delete();
             $deleted['users'] = User::query()->whereIn('id', $userIds)->delete();
-            $deleted['spaces'] = Space::query()->where('space_size', self::SPACE_NAME)->delete();
+            $deleted['spaces'] = 0;
 
             return $deleted;
         });

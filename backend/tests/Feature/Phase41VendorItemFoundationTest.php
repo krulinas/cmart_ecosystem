@@ -261,10 +261,7 @@ class Phase41VendorItemFoundationTest extends TestCase
         ]);
         $this->createdEventIds[] = $event->id;
 
-        $space = Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 20, 'status' => 'Available'],
-        );
+        $space = Space::defaultPhysical();
 
         $booking = Booking::query()->create([
             'user_id' => $vendor->id,

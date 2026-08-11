@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Booking;
 use App\Models\CarbootEvent;
+use App\Models\Space;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -109,7 +110,7 @@ class VendorEventPassService
             'event_ends_at' => $endsAt->toIso8601String(),
             'event_time_label' => $this->formatTimeRange($startsAt, $endsAt),
             'booth_label' => $boothLabel,
-            'booth_type_label' => $booking->space?->space_size ?? 'Standard (1 Parking Lot)',
+            'booth_type_label' => $booking->space?->space_size ?? Space::PHYSICAL_PARKING_SITE,
             'product_category' => $booking->product_category ?? 'Others',
             'product_details' => $booking->product_details,
             'product_label' => $this->productLabel($booking),

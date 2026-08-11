@@ -210,23 +210,63 @@
               :show-legend="true"
               :show-counts="true"
               :show-title="true"
+              :manage-mode="manageLayoutMode && !selectOpenMode"
+              :manage-badge-label="copy.manageLayoutActive"
+              :site-activation-enabled="manageLayoutMode || selectOpenMode"
               @activate-site="onVisualSiteActivate"
-            />
+            >
+              <template #headerActions>
+                <button
+                  v-if="!selectOpenMode"
+                  type="button"
+                  class="ml-btn-ghost text-sm"
+                  :class="manageLayoutMode ? 'ring-2 ring-sky-300' : ''"
+                  data-testid="layout-manage-toggle"
+                  :aria-pressed="manageLayoutMode ? 'true' : 'false'"
+                  @click="toggleManageLayoutMode"
+                >
+                  {{ manageLayoutMode ? copy.manageLayoutExit : copy.manageLayout }}
+                </button>
+              </template>
+              <template #rowActions="{ sourceRow, rowIndex }">
+                <OrganizerLayoutRowActionsMenu
+                  :row="sourceRow"
+                  :can-move-up="rowIndex > 0"
+                  :can-move-down="rowIndex < rows.length - 1"
+                  :mutating="mutating"
+                  @edit="openEditRow"
+                  @delete="confirmDeleteRow"
+                  @archive="confirmArchiveRow"
+                  @unarchive="confirmUnarchiveRow"
+                  @move-up="(target) => moveRow(target, -1)"
+                  @move-down="(target) => moveRow(target, 1)"
+                  @add-site="openCreateSite"
+                  @generate="openGenerateSites"
+                  @reorder-sites="openReorderSites"
+                />
+              </template>
+            </VisualParkingLayout>
+            <p
+              v-if="manageLayoutMode && !selectOpenMode"
+              class="text-xs text-sky-800"
+              data-testid="layout-manage-hint"
+            >
+              {{ copy.manageLayoutHint }}
+            </p>
           </section>
 
-          <OrganizerFocusedSiteControls
-            v-if="rows.length && !selectOpenMode"
+          <OrganizerSiteActionsPopover
+            :open="sitePopoverOpen"
             :site="focusedSite"
             :row="focusedRow"
             :mutating="mutating"
-            @edit-site="openEditSite"
+            :pending-status="pendingSiteStatus"
+            :anchor-rect="sitePopoverAnchorRect"
+            @edit-site="openEditSiteFromPopover"
+            @move-site="openMoveSiteFromPopover"
             @set-status="setFocusedSiteStatus"
             @delete-site="confirmDeleteSite"
-            @edit-row="openEditRow"
-            @archive-row="confirmArchiveRow"
-            @delete-row="confirmDeleteRow"
-            @add-site="openCreateSite"
-            @generate="openGenerateSites"
+            @close="closeSitePopover"
           />
 
           <section
@@ -247,44 +287,11 @@
                 <div class="font-bold text-ink-900">{{ site.label }}</div>
                 <div class="text-xs text-ink-500">
                   Legacy row label: {{ site.row_label || '—' }}
-                  · {{ site.space?.space_size || copy.noSpace }}
                   · {{ site.operational_status }}
                 </div>
               </li>
             </ul>
           </section>
-
-          <details
-            v-if="rows.length"
-            class="ml-card"
-            data-testid="layout-advanced-rows"
-          >
-            <summary class="cursor-pointer text-sm font-extrabold text-ink-900">
-              {{ copy.advancedRowsTitle }}
-            </summary>
-            <div class="mt-4 space-y-4" data-testid="layout-rows-workspace">
-              <EventLayoutRowCard
-                v-for="(row, index) in rows"
-                :key="row.id"
-                :row="row"
-                :can-move-up="index > 0"
-                :can-move-down="index < rows.length - 1"
-                @edit="openEditRow"
-                @delete="confirmDeleteRow"
-                @archive="confirmArchiveRow"
-                @unarchive="confirmUnarchiveRow"
-                @move-up="(target) => moveRow(target, -1)"
-                @move-down="(target) => moveRow(target, 1)"
-                @add-site="openCreateSite"
-                @generate="openGenerateSites"
-                @reorder-sites="openReorderSites"
-                @edit-site="openEditSite"
-                @move-site="openMoveSite"
-                @toggle-site-status="toggleSiteStatus"
-                @delete-site="confirmDeleteSite"
-              />
-            </div>
-          </details>
 
           <section class="ml-card space-y-3" data-testid="layout-publication-panel">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -341,7 +348,6 @@
       v-model="rowModalOpen"
       :row="activeRow"
       :categories="categories"
-      :spaces="spaces"
       :unused-row-labels="unusedRowLabels"
       :submitting="mutating"
       :form-error="formError"
@@ -353,7 +359,6 @@
       :site="activeSite"
       :row="activeRow"
       :rows="rows"
-      :spaces="spaces"
       :submitting="mutating"
       :form-error="formError"
       @submit="submitSiteForm"
@@ -362,7 +367,6 @@
     <LayoutSiteGenerationModal
       v-model="generateModalOpen"
       :row="activeRow"
-      :spaces="spaces"
       :submitting="mutating"
       :form-error="formError"
       @submit="submitGenerate"
@@ -371,7 +375,6 @@
     <StandardParkingLayoutModal
       v-model="standardModalOpen"
       :categories="categories"
-      :spaces="spaces"
       :vendor-site-open-limit="vendorSiteOpenLimit"
       :submitting="mutating"
       :form-error="formError"
@@ -381,16 +384,16 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import VisualParkingLayout from '../../../components/layout/VisualParkingLayout.vue';
 import EventLayoutReadinessPanel from '../../../components/organizer/layout/EventLayoutReadinessPanel.vue';
-import EventLayoutRowCard from '../../../components/organizer/layout/EventLayoutRowCard.vue';
 import LayoutRowFormModal from '../../../components/organizer/layout/LayoutRowFormModal.vue';
 import LayoutSiteFormModal from '../../../components/organizer/layout/LayoutSiteFormModal.vue';
 import LayoutSiteGenerationModal from '../../../components/organizer/layout/LayoutSiteGenerationModal.vue';
-import OrganizerFocusedSiteControls from '../../../components/organizer/layout/OrganizerFocusedSiteControls.vue';
+import OrganizerSiteActionsPopover from '../../../components/organizer/layout/OrganizerSiteActionsPopover.vue';
+import OrganizerLayoutRowActionsMenu from '../../../components/organizer/layout/OrganizerLayoutRowActionsMenu.vue';
 import StandardParkingLayoutModal from '../../../components/organizer/layout/StandardParkingLayoutModal.vue';
 import * as layoutApi from '../../../services/organizerEventLayoutApi';
 import {
@@ -399,6 +402,7 @@ import {
 } from '../../../utils/organizerEventLayoutMessages';
 import {
   buildRowReorderPayload,
+  canGenerateSitesForRow,
   countActiveSites,
   sortRowsByDisplayOrder,
   sortSitesByDisplayOrder,
@@ -415,7 +419,6 @@ const copy = LAYOUT_COPY;
 
 const events = ref([]);
 const categories = ref([]);
-const spaces = ref([]);
 const selectedEventId = ref('');
 const previousSuccessfulEventId = ref('');
 const layout = ref(null);
@@ -429,6 +432,9 @@ const lastLoadedAt = ref(null);
 const loadToken = ref(0);
 const entranceNote = ref('');
 const focusedSiteId = ref(null);
+const sitePopoverAnchorRect = ref(null);
+const pendingSiteStatus = ref('');
+const manageLayoutMode = ref(false);
 const selectOpenMode = ref(false);
 const selectedOpenSiteIds = ref([]);
 const liveStatusMessage = ref('');
@@ -487,6 +493,14 @@ const focusedRow = computed(() => {
   if (!focusedSite.value) return null;
   return rows.value.find((row) => Number(row.id) === Number(focusedSite.value.event_layout_row_id)) || null;
 });
+const sitePopoverOpen = computed(
+  () => Boolean(
+    manageLayoutMode.value
+    && !selectOpenMode.value
+    && focusedSite.value
+    && sitePopoverAnchorRect.value,
+  ),
+);
 
 const displayEventName = computed(() => {
   if (switchingEvents.value) {
@@ -537,7 +551,6 @@ function openCreateSite(row) {
 function openEditSite(site) {
   activeSite.value = site;
   activeRow.value = rows.value.find((row) => row.id === site.event_layout_row_id) || null;
-  focusedSiteId.value = site.id;
   formError.value = '';
   siteModalOpen.value = true;
 }
@@ -546,7 +559,21 @@ function openMoveSite(site) {
   openEditSite(site);
 }
 
+function openEditSiteFromPopover(site) {
+  closeSitePopover({ restoreFocus: false });
+  openEditSite(site);
+}
+
+function openMoveSiteFromPopover(site) {
+  closeSitePopover({ restoreFocus: false });
+  openMoveSite(site);
+}
+
 function openGenerateSites(row) {
+  if (!canGenerateSitesForRow(row)) {
+    toast.error(copy.generateSitesComplete);
+    return;
+  }
   activeRow.value = row;
   formError.value = '';
   generateModalOpen.value = true;
@@ -568,7 +595,8 @@ function openStandardGenerator() {
 function enterSelectOpenMode() {
   selectOpenMode.value = true;
   selectedOpenSiteIds.value = [];
-  focusedSiteId.value = null;
+  closeSitePopover({ restoreFocus: false });
+  manageLayoutMode.value = false;
 }
 
 function cancelSelectOpenMode() {
@@ -576,7 +604,57 @@ function cancelSelectOpenMode() {
   selectedOpenSiteIds.value = [];
 }
 
-function onVisualSiteActivate({ site }) {
+function toggleManageLayoutMode() {
+  manageLayoutMode.value = !manageLayoutMode.value;
+  if (!manageLayoutMode.value) {
+    closeSitePopover({ restoreFocus: false });
+  }
+}
+
+function rectFromElement(el) {
+  if (!el || typeof el.getBoundingClientRect !== 'function') return null;
+  const rect = el.getBoundingClientRect();
+  return {
+    top: rect.top,
+    left: rect.left,
+    bottom: rect.bottom,
+    right: rect.right,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function findSiteTileElement(siteId) {
+  if (siteId == null) return null;
+  return document.querySelector(
+    `[data-testid="visual-parking-layout"] [data-site-id="${siteId}"]`,
+  );
+}
+
+function syncSitePopoverAnchor(siteId = focusedSiteId.value) {
+  const el = findSiteTileElement(siteId);
+  sitePopoverAnchorRect.value = rectFromElement(el);
+  return Boolean(sitePopoverAnchorRect.value);
+}
+
+function focusSiteTile(siteId) {
+  const el = findSiteTileElement(siteId);
+  if (el instanceof HTMLElement) {
+    el.focus();
+  }
+}
+
+function closeSitePopover({ restoreFocus = true } = {}) {
+  const previousId = focusedSiteId.value;
+  focusedSiteId.value = null;
+  sitePopoverAnchorRect.value = null;
+  pendingSiteStatus.value = '';
+  if (restoreFocus && previousId != null) {
+    nextTick(() => focusSiteTile(previousId));
+  }
+}
+
+function onVisualSiteActivate({ site, anchorEl }) {
   if (selectOpenMode.value) {
     const id = Number(site.id);
     const next = new Set(selectedOpenSiteIds.value.map(Number));
@@ -591,20 +669,27 @@ function onVisualSiteActivate({ site }) {
     selectedOpenSiteIds.value = [...next];
     return;
   }
+  if (!manageLayoutMode.value) {
+    return;
+  }
+  if (Number(focusedSiteId.value) === Number(site.id)) {
+    closeSitePopover({ restoreFocus: true });
+    return;
+  }
   focusedSiteId.value = site.id;
+  sitePopoverAnchorRect.value = rectFromElement(anchorEl) || rectFromElement(findSiteTileElement(site.id));
+  document.dispatchEvent(new CustomEvent('cmart:layout-close-row-menus'));
 }
 
 async function loadCatalogue() {
   loadingEvents.value = true;
   try {
-    const [eventsRes, categoriesRes, spacesRes] = await Promise.all([
+    const [eventsRes, categoriesRes] = await Promise.all([
       layoutApi.getCarbootEvents(),
       layoutApi.getOrganizerVendorCategories(),
-      layoutApi.getSpaceCatalogue(),
     ]);
     events.value = Array.isArray(eventsRes.data) ? eventsRes.data : (eventsRes.data?.data || []);
     categories.value = categoriesRes.data?.categories || [];
-    spaces.value = Array.isArray(spacesRes.data) ? spacesRes.data : (spacesRes.data?.data || []);
   } catch (error) {
     if (!error.forbiddenMessage) {
       toast.error(layoutErrorMessage(error));
@@ -617,7 +702,7 @@ async function loadCatalogue() {
 async function refreshLayout({ force = false, isSwitch = false } = {}) {
   if (!selectedEventId.value) {
     layout.value = null;
-    focusedSiteId.value = null;
+    closeSitePopover({ restoreFocus: false });
     selectOpenMode.value = false;
     switchingEvents.value = false;
     return;
@@ -628,7 +713,8 @@ async function refreshLayout({ force = false, isSwitch = false } = {}) {
   loading.value = true;
   if (isSwitch) {
     switchingEvents.value = true;
-    focusedSiteId.value = null;
+    closeSitePopover({ restoreFocus: false });
+    manageLayoutMode.value = false;
     selectOpenMode.value = false;
     selectedOpenSiteIds.value = [];
     liveStatusMessage.value = loadingMessage.value;
@@ -647,7 +733,12 @@ async function refreshLayout({ force = false, isSwitch = false } = {}) {
       const stillPresent = (data.rows || []).some((row) =>
         (row.sites || []).some((site) => Number(site.id) === Number(focusedSiteId.value)),
       );
-      if (!stillPresent) focusedSiteId.value = null;
+      if (!stillPresent) {
+        closeSitePopover({ restoreFocus: false });
+      } else {
+        await nextTick();
+        syncSitePopoverAnchor(focusedSiteId.value);
+      }
     }
   } catch (error) {
     if (token !== loadToken.value) return;
@@ -672,7 +763,8 @@ async function refreshLayout({ force = false, isSwitch = false } = {}) {
 }
 
 function onEventSelected() {
-  focusedSiteId.value = null;
+  closeSitePopover({ restoreFocus: false });
+  manageLayoutMode.value = false;
   selectOpenMode.value = false;
   selectedOpenSiteIds.value = [];
   const query = { ...route.query };
@@ -830,17 +922,17 @@ async function setFocusedSiteStatus(site, nextStatus) {
     toast.error(copy.disableLockedHint);
     return;
   }
-  await withMutation(async () => {
-    await layoutApi.updateLayoutSite(selectedEventId.value, site.id, {
-      operational_status: nextStatus,
+  pendingSiteStatus.value = nextStatus;
+  try {
+    await withMutation(async () => {
+      await layoutApi.updateLayoutSite(selectedEventId.value, site.id, {
+        operational_status: nextStatus,
+      });
+      toast.success(copy.siteUpdated);
     });
-    toast.success(copy.siteUpdated);
-  });
-}
-
-async function toggleSiteStatus(site) {
-  const next = site.operational_status === 'active' ? 'disabled' : 'active';
-  await setFocusedSiteStatus(site, next);
+  } finally {
+    pendingSiteStatus.value = '';
+  }
 }
 
 async function confirmDeleteSite(site) {
@@ -850,7 +942,7 @@ async function confirmDeleteSite(site) {
   await withMutation(async () => {
     await layoutApi.deleteLayoutSite(selectedEventId.value, site.id);
     if (Number(focusedSiteId.value) === Number(site.id)) {
-      focusedSiteId.value = null;
+      closeSitePopover({ restoreFocus: false });
     }
     toast.success(copy.siteDeleted);
   });
@@ -862,19 +954,28 @@ watch(
     if (!eventId) return;
     if (String(eventId) !== selectedEventId.value) {
       selectedEventId.value = String(eventId);
-      focusedSiteId.value = null;
+      closeSitePopover({ restoreFocus: false });
       refreshLayout({ force: true, isSwitch: Boolean(layout.value) });
     }
   },
 );
 
 onMounted(async () => {
+  document.addEventListener('cmart:layout-close-site-popover', onCloseSitePopoverEvent);
   await loadCatalogue();
   const fromQuery = route.query.eventId ? String(route.query.eventId) : '';
   if (fromQuery) {
     selectedEventId.value = fromQuery;
     await refreshLayout({ force: true });
   }
+});
+
+function onCloseSitePopoverEvent() {
+  closeSitePopover({ restoreFocus: false });
+}
+
+onBeforeUnmount(() => {
+  document.removeEventListener('cmart:layout-close-site-popover', onCloseSitePopoverEvent);
 });
 
 defineExpose({

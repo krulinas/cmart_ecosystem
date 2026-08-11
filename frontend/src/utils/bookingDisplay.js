@@ -294,11 +294,9 @@ export const canVendorRequestChange = (booking) => booking?.approval_status === 
 export const boothTypeLabel = (booking) =>
   booking?.booth_type_label ||
   booking?.booth_type ||
-  booking?.space_type ||
-  booking?.boothType ||
-  booking?.space?.space_size ||
-  (booking?.site_quantity != null ? `${booking.site_quantity} site${booking.site_quantity === 1 ? '' : 's'}` : null) ||
-  (booking?.space_id ? `Space #${booking.space_id}` : null) ||
+  (booking?.site_quantity != null
+    ? `${booking.site_quantity} parking site${Number(booking.site_quantity) === 1 ? '' : 's'}`
+    : null) ||
   'Parking site';
 
 export const productSummary = (booking) => {

@@ -41,16 +41,7 @@ class VendorEventSiteAvailabilityTest extends TestCase
 
     private function standardSpace(): Space
     {
-        $space = Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 30.00, 'status' => 'Available'],
-        );
-
-        if ((float) $space->price !== 30.0) {
-            $space->forceFill(['price' => 30.00, 'status' => 'Available'])->save();
-        }
-
-        return $space->fresh();
+        return Space::defaultPhysical();
     }
 
     private function foodCategory(): VendorCategory

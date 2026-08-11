@@ -60,10 +60,7 @@ class VendorPrivateItemsAccessTest extends TestCase
 
     private function createBookingFor(User $user, string $approvalStatus, string $paymentStatus = 'Unpaid'): Booking
     {
-        $space = Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 30.00, 'status' => 'Available'],
-        );
+        $space = Space::defaultPhysical();
 
         $event = CarbootEvent::query()->create([
             'title' => 'Private Items Test Event ' . uniqid(),

@@ -23,16 +23,6 @@
             {{ copy.generateAtomicHint }}
           </p>
 
-          <div>
-            <label class="ml-label">Space type</label>
-            <select v-model.number="form.space_id" class="ml-input" required :disabled="submitting" data-testid="layout-generate-space-select">
-              <option disabled value="">{{ copy.selectSpaceType }}</option>
-              <option v-for="space in spaces" :key="space.id" :value="space.id">
-                {{ space.space_size }}
-              </option>
-            </select>
-          </div>
-
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="ml-label">Label prefix</label>
@@ -81,7 +71,6 @@ import { MAX_GENERATED_SITES, previewGeneratedLabels } from '../../../utils/orga
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   row: { type: Object, default: null },
-  spaces: { type: Array, default: () => [] },
   submitting: { type: Boolean, default: false },
   formError: { type: String, default: '' },
 });
@@ -91,7 +80,6 @@ const copy = LAYOUT_COPY;
 const maxCount = MAX_GENERATED_SITES;
 
 const form = reactive({
-  space_id: '',
   label_prefix: 'A',
   count: 5,
   start_number: 1,
@@ -106,7 +94,6 @@ watch(
     if (!props.modelValue) return;
     const label = String(props.row?.label || 'A').trim();
     form.label_prefix = (label.match(/^[A-Za-z0-9]+/) || ['A'])[0].slice(0, 8).toUpperCase();
-    form.space_id = props.spaces[0]?.id || '';
     form.count = 5;
     form.start_number = 1;
     form.number_padding = 2;
@@ -130,7 +117,6 @@ function submit() {
     return;
   }
   emit('submit', {
-    space_id: Number(form.space_id),
     count,
     label_prefix: String(form.label_prefix || '').trim().toUpperCase(),
     start_number: Number(form.start_number) || 1,

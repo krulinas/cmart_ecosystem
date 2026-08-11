@@ -57,22 +57,9 @@
           </div>
 
           <div v-if="!isEdit">
-            <label class="ml-label" for="layout-row-space">{{ copy.selectSpaceType }}</label>
-            <select
-              id="layout-row-space"
-              v-model.number="form.space_id"
-              class="ml-input"
-              required
-              :disabled="submitting"
-              data-testid="layout-row-space-select"
-            >
-              <option disabled value="">{{ copy.selectSpaceType }}</option>
-              <option v-for="space in spaces" :key="space.id" :value="space.id">
-                {{ space.space_size }} — RM {{ Number(space.price || 0).toFixed(2) }}
-              </option>
-            </select>
-            <p class="mt-1 text-xs text-ink-500">
-              Creates 16 physical sites as NOT OPEN for the selected row.
+            <p class="rounded-xl border border-ink-200 bg-ink-50 px-3 py-2 text-xs text-ink-600">
+              Creates 16 physical parking sites as NOT OPEN for the selected row.
+              Booking price comes from the event Price Per Site, not from a site type.
             </p>
           </div>
 
@@ -145,7 +132,6 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   row: { type: Object, default: null },
   categories: { type: Array, default: () => [] },
-  spaces: { type: Array, default: () => [] },
   unusedRowLabels: { type: Array, default: () => [] },
   submitting: { type: Boolean, default: false },
   formError: { type: String, default: '' },
@@ -164,7 +150,6 @@ const canEditLabelFreely = computed(() => {
 
 const form = reactive({
   label: '',
-  space_id: '',
   vendor_category_id: '',
   description: '',
   is_active: true,
@@ -176,11 +161,10 @@ const fieldErrors = reactive({
 });
 
 watch(
-  () => [props.modelValue, props.row, props.unusedRowLabels, props.spaces],
+  () => [props.modelValue, props.row, props.unusedRowLabels],
   () => {
     if (!props.modelValue) return;
     form.label = props.row?.label || props.unusedRowLabels[0] || '';
-    form.space_id = props.spaces[0]?.id || '';
     form.vendor_category_id = props.row?.category?.id || props.row?.vendor_category_id || '';
     form.description = props.row?.description || '';
     form.is_active = props.row ? Boolean(props.row.is_active) : true;
@@ -220,7 +204,6 @@ function submit() {
   }
   if (!isEdit.value) {
     payload.label = label;
-    payload.space_id = Number(form.space_id);
   }
   if (!categoryLocked.value) {
     payload.vendor_category_id = Number(form.vendor_category_id);

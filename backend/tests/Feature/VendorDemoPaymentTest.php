@@ -53,10 +53,7 @@ class VendorDemoPaymentTest extends TestCase
 
     private function createBooking(User $vendor, string $approvalStatus, string $paymentStatus = 'Unpaid'): Booking
     {
-        $space = Space::query()->firstOrCreate(
-            ['space_size' => 'Standard (1 Parking Lot)'],
-            ['price' => 20.00, 'status' => 'Available'],
-        );
+        $space = Space::defaultPhysical();
 
         $event = CarbootEvent::query()->create([
             'title' => 'Demo Payment Test Event ' . uniqid(),

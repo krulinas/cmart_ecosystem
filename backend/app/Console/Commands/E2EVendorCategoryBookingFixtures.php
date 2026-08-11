@@ -39,8 +39,6 @@ class E2EVendorCategoryBookingFixtures extends Command
     public const MANAGEMENT_EMAIL = 'e2e-p39-management@example.test';
     public const COMPETITOR_EMAIL = 'e2e-p39-competitor@example.test';
     public const PASSWORD = 'P39-E2E-password';
-    private const SPACE_NAME = 'E2E P39 Standard';
-
     public function handle(): int
     {
         if ($denied = $this->refuseUnsafeEnvironment()) {
@@ -75,12 +73,7 @@ class E2EVendorCategoryBookingFixtures extends Command
         $payload = DB::transaction(function () {
             $food = VendorCategory::query()->where('slug', 'food-beverages')->firstOrFail();
             $thrift = VendorCategory::query()->where('slug', 'pre-loved-thrift')->firstOrFail();
-            $space = Space::create([
-                'space_size' => self::SPACE_NAME,
-                'location' => 'CMart E2E isolated fixture',
-                'price' => 30.00,
-                'status' => 'Available',
-            ]);
+            $space = Space::defaultPhysical();
 
             $vendor = $this->createUser(
                 self::VENDOR_EMAIL,
@@ -324,7 +317,7 @@ class E2EVendorCategoryBookingFixtures extends Command
         ]);
         Invoice::create([
             'booking_id' => $booking->id,
-            'amount' => $space->price,
+            'amount' => $event->site_price ?? CarbootEvent::DEFAULT_SITE_PRICE,
             'payment_status' => 'Unpaid',
         ]);
         foreach ($dayIds as $dayId) {
@@ -374,7 +367,7 @@ class E2EVendorCategoryBookingFixtures extends Command
                 ->whereIn('tokenable_id', $userIds)
                 ->delete();
             $deleted['users'] = User::query()->whereIn('id', $userIds)->delete();
-            $deleted['spaces'] = Space::query()->where('space_size', self::SPACE_NAME)->delete();
+            $deleted['spaces'] = 0;
 
             return $deleted;
         });

@@ -43,23 +43,6 @@
             {{ copy.generateStandardLimitRequired }}
           </p>
 
-          <div>
-            <label class="ml-label" for="standard-layout-space">{{ copy.selectSpaceType }}</label>
-            <select
-              id="standard-layout-space"
-              v-model.number="form.space_id"
-              class="ml-input"
-              required
-              :disabled="submitting"
-              data-testid="standard-layout-space-select"
-            >
-              <option disabled value="">{{ copy.selectSpaceType }}</option>
-              <option v-for="space in spaces" :key="space.id" :value="space.id">
-                {{ space.space_size }} — RM {{ Number(space.price || 0).toFixed(2) }}
-              </option>
-            </select>
-          </div>
-
           <div class="grid gap-3 sm:grid-cols-2">
             <div v-for="rowLabel in rowLabels" :key="rowLabel">
               <label class="ml-label" :for="`standard-layout-category-${rowLabel}`">
@@ -134,7 +117,6 @@ import { previewStandardParkingLabels } from '../../../utils/visualParkingLayout
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   categories: { type: Array, default: () => [] },
-  spaces: { type: Array, default: () => [] },
   vendorSiteOpenLimit: { type: Number, default: null },
   submitting: { type: Boolean, default: false },
   formError: { type: String, default: '' },
@@ -147,7 +129,6 @@ const rowLabels = CMART_CARBOOT_ROW_LABELS;
 const previewLabels = previewStandardParkingLabels();
 
 const form = reactive({
-  space_id: '',
   row_categories: {
     A: '',
     B: '',
@@ -158,7 +139,6 @@ const form = reactive({
 
 const canSubmit = computed(() => {
   if (!props.vendorSiteOpenLimit) return false;
-  if (!form.space_id) return false;
   return rowLabels.every((label) => Number(form.row_categories[label]) > 0);
 });
 
@@ -166,7 +146,6 @@ watch(
   () => props.modelValue,
   (open) => {
     if (!open) return;
-    form.space_id = props.spaces[0]?.id || '';
     const firstCategory = props.categories[0]?.id || '';
     for (const label of rowLabels) {
       form.row_categories[label] = firstCategory;
@@ -191,7 +170,6 @@ function close() {
 function submit() {
   if (!canSubmit.value || props.submitting) return;
   emit('submit', {
-    space_id: Number(form.space_id),
     row_categories: {
       A: Number(form.row_categories.A),
       B: Number(form.row_categories.B),
