@@ -17,7 +17,7 @@ use InvalidArgumentException;
  * Atomic standard Carboot parking layout: rows A–D × 16 sites (64 total).
  *
  * Empty-layout only. Creates all physical sites as disabled/not open.
- * Organizer must then confirm exactly vendor_site_open_limit open sites.
+ * Organizer then chooses booking sites; confirmation derives vendor_site_open_limit.
  */
 class StandardEventLayoutGenerator
 {
@@ -38,7 +38,7 @@ class StandardEventLayoutGenerator
      *   sites_created: int,
      *   row_labels: list<string>,
      *   site_labels: list<string>,
-     *   vendor_site_open_limit: int,
+     *   vendor_site_open_limit: int|null,
      *   needs_open_site_selection: bool,
      *   readiness: array<string, mixed>
      * }
@@ -63,8 +63,6 @@ class StandardEventLayoutGenerator
                 ->whereKey($event->id)
                 ->lockForUpdate()
                 ->firstOrFail();
-
-            $this->layout->assertVendorSiteOpenLimitConfigured($lockedEvent);
 
             if ($lockedEvent->public_layout_published_at !== null) {
                 throw new DomainConflictException(
@@ -166,7 +164,7 @@ class StandardEventLayoutGenerator
                     'row_labels' => CmartCarbootPhysicalLayout::ROW_LABELS,
                     'site_labels' => $siteLabels,
                     'initial_status' => EventSite::STATUS_DISABLED,
-                    'vendor_site_open_limit' => (int) $lockedEvent->vendor_site_open_limit,
+                    'vendor_site_open_limit' => $lockedEvent->vendor_site_open_limit,
                 ],
                 null,
                 null,
@@ -188,7 +186,7 @@ class StandardEventLayoutGenerator
                 'sites_created' => count($createdSites),
                 'row_labels' => CmartCarbootPhysicalLayout::ROW_LABELS,
                 'site_labels' => $siteLabels,
-                'vendor_site_open_limit' => (int) $lockedEvent->vendor_site_open_limit,
+                'vendor_site_open_limit' => $lockedEvent->vendor_site_open_limit,
                 'needs_open_site_selection' => true,
                 'readiness' => [
                     'operational_ready' => $readiness['operational_ready'],

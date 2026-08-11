@@ -27,17 +27,25 @@
           <label class="ml-label">Max slots (optional — community RSVP)</label>
           <input v-model.number="form.max_slots" type="number" min="1" class="ml-input" />
         </div>
-        <div>
-          <label class="ml-label">Vendor sites to open</label>
-          <input
-            v-model.number="form.vendor_site_open_limit"
-            type="number"
-            min="1"
-            max="64"
-            class="ml-input"
-            data-testid="event-vendor-site-open-limit"
-          />
-          <p class="mt-1 text-[11px] text-ink-500">How many vendor parking sites may be booked (1–64). Separate from Max slots.</p>
+        <div
+          class="rounded-xl border border-ink-100 bg-ink-50/70 px-3 py-3 space-y-2"
+          data-testid="event-vendor-booking-sites"
+        >
+          <p class="text-sm font-semibold text-ink-800">
+            {{ vendorBookingSitesLabel }}
+          </p>
+          <p class="text-xs text-ink-500">
+            Choose physical booking sites on the parking layout. This is separate from Max slots.
+          </p>
+          <button
+            v-if="editingId"
+            type="button"
+            class="ml-btn-ghost text-sm"
+            data-testid="event-manage-booking-sites"
+            @click="openLayout({ id: editingId })"
+          >
+            Manage booking sites
+          </button>
         </div>
         <div>
           <label class="ml-label">Price Per Site (RM)</label>
@@ -225,6 +233,14 @@ const emptyForm = () => ({
 
 const form = reactive(emptyForm());
 
+const vendorBookingSitesLabel = computed(() => {
+  const limit = form.vendor_site_open_limit;
+  if (limit == null || limit === '') return 'Vendor booking sites: Not configured';
+  const count = Number(limit);
+  if (!Number.isFinite(count) || count < 1) return 'Vendor booking sites: Not configured';
+  return `Vendor booking sites: ${count} selected`;
+});
+
 const extractApiError = (error) => {
   const data = error.response?.data;
   if (data?.code === 'event_has_dependencies' || data?.error === 'event_has_dependencies') {
@@ -276,9 +292,6 @@ const buildFormData = () => {
   fd.append('description', form.description || '');
   if (form.max_slots) {
     fd.append('max_slots', String(form.max_slots));
-  }
-  if (form.vendor_site_open_limit) {
-    fd.append('vendor_site_open_limit', String(form.vendor_site_open_limit));
   }
   fd.append('site_price', String(form.site_price));
   fd.append('save_as_default_site_price', form.save_as_default_site_price ? '1' : '0');
@@ -373,7 +386,6 @@ const save = async () => {
     status: form.status,
     description: form.description || null,
     max_slots: form.max_slots || null,
-    vendor_site_open_limit: form.vendor_site_open_limit || null,
     site_price: sitePrice.toFixed(2),
     save_as_default_site_price: Boolean(form.save_as_default_site_price),
     item_reservation_service_fee: form.item_reservation_service_fee === ''

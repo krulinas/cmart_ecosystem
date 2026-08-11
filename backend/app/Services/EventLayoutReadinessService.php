@@ -45,7 +45,7 @@ class EventLayoutReadinessService
         if ($event->vendor_site_open_limit === null) {
             $blockers[] = [
                 'code' => 'VENDOR_SITE_OPEN_LIMIT_NOT_SET',
-                'message' => 'Set Vendor sites to open for this event before the layout can be ready for booking.',
+                'message' => 'Choose the physical sites that vendors can book.',
             ];
         }
 
@@ -154,12 +154,12 @@ class EventLayoutReadinessService
             if ($activeCount < $limit) {
                 $blockers[] = [
                     'code' => 'ACTIVE_SITE_COUNT_BELOW_VENDOR_LIMIT',
-                    'message' => "Open exactly {$limit} vendor sites. Currently {$activeCount} site(s) are open. Select the remaining sites to open.",
+                    'message' => "Choose booking sites again. {$limit} sites were configured but only {$activeCount} are currently open.",
                 ];
             } elseif ($activeCount > $limit) {
                 $blockers[] = [
                     'code' => 'ACTIVE_SITE_COUNT_EXCEEDS_VENDOR_LIMIT',
-                    'message' => "Only {$limit} vendor sites may be open. Currently {$activeCount} are open. Close the extra sites or raise the limit.",
+                    'message' => "Choose booking sites again. {$limit} sites were configured but {$activeCount} are currently open.",
                 ];
             }
         }

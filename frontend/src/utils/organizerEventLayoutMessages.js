@@ -48,19 +48,39 @@ export const LAYOUT_COPY = {
     'Creates physical rows A–D with 64 sites. Sites start as NOT OPEN until you select which ones vendors may book.',
   generateStandardPreview: 'Preview: A01–A16, B01–B16, C01–C16, D01–D16',
   generateStandardConfirm:
-    'This venue has 64 physical parking sites. After generation you will manually choose exactly which sites open for this event.',
+    'This venue has 64 physical parking sites. After generation you will choose which sites open for vendor booking.',
   generateStandardOpenCount: (n) =>
-    `Vendor sites to open for this event: ${n == null ? 'not set' : n}`,
+    n == null
+      ? 'Vendor booking sites: Not configured yet. You will choose them after generation.'
+      : `Vendor booking sites currently configured: ${n}`,
   generateStandardLimitRequired:
-    'Set Vendor sites to open on the event before generating the standard layout.',
-  standardLayoutGenerated: 'Standard parking layout generated. Select which sites to open.',
-  selectOpenSitesTitle: 'Select Open Sites',
+    'You will choose booking sites on the layout after generation.',
+  standardLayoutGenerated: 'Standard parking layout generated. Choose the sites vendors can book.',
+  selectOpenSitesTitle: 'Choose Booking Sites',
   selectOpenSitesHelp:
-    'Choose exactly the number of vendor sites configured for this event. Unselected sites stay NOT OPEN.',
-  selectOpenSitesCount: (selected, limit) => `Selected ${selected} of ${limit} sites`,
-  confirmOpenSites: 'Confirm Open Sites',
-  openSitesConfirmed: 'Open sites confirmed successfully.',
-  startSelectOpenSites: 'Select Open Sites',
+    'Select the physical sites vendors can book. The system counts your selection and opens booking when layout readiness passes.',
+  selectOpenSitesCount: (selected) =>
+    `${selected} site${selected === 1 ? '' : 's'} selected`,
+  selectOpenSitesMinimum: 'Select at least one site for vendor booking.',
+  confirmOpenSites: (count) =>
+    `Confirm ${count} Site${count === 1 ? '' : 's'} & Open Booking`,
+  openSitesConfirmed: 'Booking sites confirmed successfully.',
+  startSelectOpenSites: 'Choose Booking Sites',
+  selectionModeBadge: 'SELECTION MODE',
+  selectAllSites: 'Select All',
+  clearAllSites: 'Clear All',
+  selectRowSites: 'Select Row',
+  clearRowSites: 'Clear Row',
+  protectedSiteHint: 'This site is protected by an existing booking or reservation.',
+  manageBookingSites: 'Manage booking sites',
+  vendorBookingSitesConfigured: (n) => `Vendor booking sites: ${n} selected`,
+  vendorBookingSitesNotConfigured: 'Vendor booking sites: Not configured',
+  vendorBookingSetupRequired: 'Vendor booking setup required',
+  vendorBookingSetupMessage: 'Choose the physical sites that vendors can book.',
+  vendorBookingSelectingMessage: 'Select the sites you want to offer to vendors.',
+  vendorBookingOpen: 'Vendor Booking Open',
+  vendorBookingOpenMessage: (n) =>
+    `Vendors can now book from ${n} selected site${n === 1 ? '' : 's'}.`,
   layoutExistsHint:
     'A layout already exists. Use site controls to update individual sites. The standard template can only run on an empty layout.',
   missingEventDaysWarning:
@@ -84,13 +104,13 @@ export const LAYOUT_COPY = {
   outsideVenueTemplateBadge: 'Outside venue definition',
   outsideVenueTemplateHelp:
     'This row is outside the current venue physical definition (A–D). It was not deleted automatically.',
-  vendorSitesToOpen: 'Vendor sites to open',
-  vendorSitesToOpenHelp: 'How many vendor parking sites may be booked for this event (1–64).',
+  vendorSitesToOpen: 'Vendor booking sites',
+  vendorSitesToOpenHelp: 'Configured by choosing booking sites on the parking layout.',
   physicalSitesSummary: (physical, active, limit) =>
     `${physical} physical · ${active} open${limit != null ? ` / ${limit} allowed` : ''}`,
   conflictRefreshHint: 'Refresh Layout',
-  operationalReady: 'Ready for Booking',
-  operationalNotReady: 'Not Ready for Booking',
+  operationalReady: 'Vendor Booking Open',
+  operationalNotReady: 'Vendor booking setup required',
   publicReady: 'Ready for Public Display',
   publicNotReady: 'Not Ready for Public Display',
   rowCreated: 'Row added with 16 NOT OPEN sites.',
@@ -177,11 +197,11 @@ export const LAYOUT_COPY = {
 
 export const READINESS_BLOCKER_MESSAGES = {
   VENDOR_SITE_OPEN_LIMIT_NOT_SET:
-    'Set Vendor sites to open for this event before the layout can be ready for booking.',
+    'Choose the physical sites that vendors can book.',
   ACTIVE_SITE_COUNT_BELOW_VENDOR_LIMIT:
-    'Open exactly the configured number of vendor sites. Select the remaining sites to open.',
+    'Choose booking sites again. The open-site count no longer matches the configured selection.',
   ACTIVE_SITE_COUNT_EXCEEDS_VENDOR_LIMIT:
-    'Too many sites are open. Close extra sites or raise Vendor sites to open.',
+    'Choose booking sites again. The open-site count no longer matches the configured selection.',
   ROW_OUTSIDE_VENUE_TEMPLATE:
     'One or more rows are outside this venue’s physical definition (A–D). Resolve or archive them.',
   NO_ACTIVE_EVENT_DAYS: 'No active event days are configured.',
@@ -211,10 +231,15 @@ export const LAYOUT_ERROR_MESSAGES = {
     'This event has booking allocation history and cannot receive a destructive layout template.',
   INVALID_STANDARD_TEMPLATE: 'The standard parking template request is invalid.',
   INVALID_SPACE: 'The selected space type is invalid.',
-  VENDOR_SITE_OPEN_LIMIT_NOT_SET: 'Set Vendor sites to open before continuing.',
+  VENDOR_SITE_OPEN_LIMIT_NOT_SET: 'Choose booking sites before continuing.',
   VENDOR_SITE_OPEN_LIMIT_BELOW_PROTECTED:
-    'Cannot lower Vendor sites to open below protected reserved or booked sites.',
-  OPEN_SITE_SELECTION_COUNT_MISMATCH: 'Select exactly the configured number of sites to open.',
+    'Cannot reduce booking sites below protected reserved or booked sites.',
+  OPEN_SITE_SELECTION_COUNT_MISMATCH:
+    'The layout changed while confirming booking sites. Refresh and try again.',
+  ACTIVE_ALLOCATIONS_PRESENT:
+    'One or more selected sites are protected by an existing booking or reservation.',
+  INVALID_SITE: 'One or more selected sites are invalid for this event.',
+  NO_PHYSICAL_SITES: 'No physical sites exist for this event.',
   VENUE_TEMPLATE_ROWS_EXHAUSTED: 'All physical rows for this venue are already in use.',
   ROW_OUTSIDE_VENUE_TEMPLATE: 'Physical row identity must be A, B, C, or D for this venue.',
   ACTIVE_SITE_COUNT_EXCEEDS_VENDOR_LIMIT: 'Opening this site would exceed Vendor sites to open.',

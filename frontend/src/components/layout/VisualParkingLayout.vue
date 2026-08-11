@@ -4,10 +4,12 @@
     :class="[
       `vpl--${mode}`,
       { 'vpl--manage': manageMode },
+      { 'vpl--selection': selectionMode },
     ]"
     data-testid="visual-parking-layout"
     :data-mode="mode"
     :data-manage-mode="manageMode ? 'true' : 'false'"
+    :data-selection-mode="selectionMode ? 'true' : 'false'"
     :aria-labelledby="headingId"
   >
     <div v-if="showTitle || $slots.headerActions" class="vpl__header">
@@ -19,6 +21,13 @@
           data-testid="visual-parking-manage-badge"
         >
           {{ manageBadgeLabel }}
+        </p>
+        <p
+          v-if="selectionMode"
+          class="vpl__selection-badge"
+          data-testid="visual-parking-selection-badge"
+        >
+          {{ selectionBadgeLabel }}
         </p>
       </div>
       <div v-if="$slots.headerActions" class="vpl__header-actions">
@@ -108,6 +117,13 @@
                 :row-index="rowIndexForSegment(index)"
                 :source-row="segment.row.raw || segment.row"
               />
+              <slot
+                v-if="selectionMode"
+                name="selectionRowActions"
+                :row="segment.row"
+                :row-index="rowIndexForSegment(index)"
+                :source-row="segment.row.raw || segment.row"
+              />
             </div>
           </div>
 
@@ -125,27 +141,39 @@
               :class="[
                 statusTileClass(site.status),
                 {
-                  'vpl__tile--focused': site.focused,
+                  'vpl__tile--focused': site.focused && !selectionMode,
                   'vpl__tile--interactive': isClickable(site),
                   'vpl__tile--manage': manageMode && mode === 'organizer',
+                  'vpl__tile--selection-selected': selectionMode && site.selected,
+                  'vpl__tile--selection-muted': selectionMode && !site.selected,
+                  'vpl__tile--selection-locked': selectionMode && site.selectionLocked,
                 },
               ]"
               role="listitem"
               :type="tileTag() === 'button' ? 'button' : undefined"
               :disabled="tileTag() === 'button' && !isClickable(site) ? true : undefined"
-              :aria-pressed="mode === 'vendor' ? site.selected : undefined"
+              :aria-pressed="selectionMode || mode === 'vendor' ? Boolean(site.selected) : undefined"
               :aria-expanded="manageMode && mode === 'organizer' ? (site.focused ? 'true' : 'false') : undefined"
               :aria-haspopup="manageMode && mode === 'organizer' ? 'dialog' : undefined"
               :aria-disabled="!isClickable(site) ? 'true' : undefined"
-              :aria-label="siteAriaLabel(mode, site, segment.row)"
+              :aria-label="selectionAriaLabel(site, segment.row)"
+              :title="selectionMode && site.selectionLocked ? selectionLockedHint : undefined"
               :data-testid="tileTestId(site)"
               :data-site-id="site.id"
               :data-status="site.status"
+              :data-selection-locked="selectionMode && site.selectionLocked ? 'true' : undefined"
               @click="onTileActivate(site, segment.row, $event)"
             >
+              <span
+                v-if="selectionMode && site.selected"
+                class="vpl__tile-check"
+                aria-hidden="true"
+              >✓</span>
               <span class="vpl__tile-label">{{ site.label }}</span>
               <span class="vpl__tile-status" :class="statusTextClass(site.status)">
-                {{ statusLabel(mode, site.status) }}
+                {{ selectionMode && site.selected
+                  ? (site.selectionLocked ? 'Selected · Locked' : 'Selected')
+                  : statusLabel(mode, site.status) }}
               </span>
               <span v-if="site.price != null && mode === 'vendor'" class="vpl__tile-price">
                 RM {{ site.price }}
@@ -221,6 +249,18 @@ const props = defineProps({
     type: String,
     default: 'Management mode',
   },
+  selectionMode: {
+    type: Boolean,
+    default: false,
+  },
+  selectionBadgeLabel: {
+    type: String,
+    default: 'SELECTION MODE',
+  },
+  selectionLockedHint: {
+    type: String,
+    default: 'This site is protected by an existing booking or reservation.',
+  },
   siteActivationEnabled: {
     type: Boolean,
     default: true,
@@ -272,8 +312,21 @@ function rowIndexForSegment(segmentIndex) {
 
 function isClickable(site) {
   if (props.mode === 'public') return false;
-  if (props.mode === 'organizer') return Boolean(props.siteActivationEnabled);
+  if (props.mode === 'organizer') {
+    if (!props.siteActivationEnabled) return false;
+    if (props.selectionMode && site.selectionLocked) return false;
+    return true;
+  }
   return Boolean(site.interactive);
+}
+
+function selectionAriaLabel(site, row) {
+  const base = siteAriaLabel(props.mode, site, row);
+  if (!props.selectionMode) return base;
+  if (site.selectionLocked) {
+    return `${base}. Selected and locked. ${props.selectionLockedHint}`;
+  }
+  return `${base}. ${site.selected ? 'Selected' : 'Not selected'}. Toggle booking site selection.`;
 }
 
 function onTileActivate(site, row, event) {
@@ -300,6 +353,13 @@ function onTileActivate(site, row, event) {
   box-shadow: inset 0 0 0 2px rgba(14, 165, 233, 0.28);
   padding: 0.75rem;
   background: linear-gradient(180deg, rgba(240, 249, 255, 0.65), rgba(248, 250, 252, 0.2));
+}
+
+.vpl--selection {
+  border-radius: 1rem;
+  box-shadow: inset 0 0 0 2px rgba(2, 132, 199, 0.35);
+  padding: 0.75rem;
+  background: linear-gradient(180deg, rgba(224, 242, 254, 0.7), rgba(248, 250, 252, 0.25));
 }
 
 .vpl__header {
@@ -330,6 +390,20 @@ function onTileActivate(site, row, event) {
   border: 1px solid #7dd3fc;
   background: #e0f2fe;
   color: #0369a1;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+}
+
+.vpl__selection-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid #38bdf8;
+  background: #bae6fd;
+  color: #0c4a6e;
   font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -530,6 +604,39 @@ function onTileActivate(site, row, event) {
   top: 0.15rem;
   right: 0.2rem;
   font-size: 0.65rem;
+}
+
+.vpl__tile-check {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 9999px;
+  background: #0284c7;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.vpl__tile--selection-selected {
+  border-color: #0284c7 !important;
+  background: #bae6fd !important;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.35);
+  opacity: 1 !important;
+}
+
+.vpl__tile--selection-muted {
+  opacity: 0.55;
+  filter: saturate(0.65);
+}
+
+.vpl__tile--selection-locked {
+  cursor: not-allowed;
 }
 
 .vpl-tile--available {

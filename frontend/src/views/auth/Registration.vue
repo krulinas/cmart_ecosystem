@@ -180,6 +180,7 @@
               :loading="availabilityLoading"
               :load-error="availabilityError"
               :readiness-message="availabilityReadiness"
+              :layout-not-ready="layoutNotReadyForBooking"
               :selection-error="siteSelectionError"
               :removed-stale-site-labels="removedStaleSiteLabels"
               @retry="loadSiteAvailability(selectedEvent.id)"
@@ -334,6 +335,7 @@ const clearingPreference = ref(false);
 const availabilityLoading = ref(false);
 const availabilityError = ref('');
 const availabilityReadiness = ref('');
+const layoutNotReadyForBooking = ref(false);
 const availabilityDays = ref([]);
 const availabilityRows = ref([]);
 const availabilitySites = ref([]);
@@ -383,6 +385,7 @@ const canSubmit = computed(() => {
   if (!selectedEvent.value || eventLoadError.value) return false;
   if (!bookingForm.vendor_category_id) return false;
   if (availabilityLoading.value || availabilityError.value) return false;
+  if (layoutNotReadyForBooking.value) return false;
   if (availabilityReadiness.value) return false;
   if (!selectedSiteIds.value.length) return false;
   return !selectionValidationMessage(selectedSites.value);
@@ -435,6 +438,7 @@ const resetSiteSelection = () => {
   availabilitySitePrice.value = null;
   availabilityError.value = '';
   availabilityReadiness.value = '';
+  layoutNotReadyForBooking.value = false;
   siteSelectionError.value = '';
 };
 
@@ -500,6 +504,7 @@ const loadSiteAvailability = async (eventId, { preserveSelection = false } = {})
   availabilityLoading.value = true;
   availabilityError.value = '';
   availabilityReadiness.value = '';
+  layoutNotReadyForBooking.value = false;
   siteSelectionError.value = '';
   if (!preserveSelection) {
     selectedSiteIds.value = [];
@@ -510,6 +515,19 @@ const loadSiteAvailability = async (eventId, { preserveSelection = false } = {})
       params: { vendor_category_id: bookingForm.vendor_category_id },
     });
     if (requestToken !== availabilityRequestToken) return;
+
+    if (data.readiness?.status === 'layout_not_ready' || data.readiness?.operational_ready === false) {
+      availabilityRows.value = [];
+      availabilitySites.value = [];
+      availabilityDays.value = Array.isArray(data.operational_days) ? data.operational_days : [];
+      availabilitySitePrice.value = data.site_price ?? data.event?.site_price ?? null;
+      layoutNotReadyForBooking.value = true;
+      selectedSiteIds.value = [];
+      availabilityReadiness.value = data.readiness?.message
+        || 'Vendor booking is not open yet. The organizer is still preparing the site layout.';
+      liveAnnouncement.value = availabilityReadiness.value;
+      return;
+    }
 
     if (data.category_required) {
       availabilityRows.value = [];
@@ -539,6 +557,12 @@ const loadSiteAvailability = async (eventId, { preserveSelection = false } = {})
       availabilityReadiness.value =
         categoryConflictMessage(error.response?.data?.error, error.response?.data?.message)
         || 'This event is not ready for site selection yet.';
+      if (error.response?.data?.error === 'EVENT_LAYOUT_NOT_READY') {
+        layoutNotReadyForBooking.value = true;
+        selectedSiteIds.value = [];
+        availabilityReadiness.value =
+          'Vendor booking is not open yet. The organizer is still preparing the site layout.';
+      }
       return;
     }
 

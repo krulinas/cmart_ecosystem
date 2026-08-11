@@ -6,7 +6,6 @@ use App\Exceptions\DomainConflictException;
 use App\Http\Controllers\Controller;
 use App\Models\CarbootEvent;
 use App\Services\EventDayGenerator;
-use App\Services\EventLayoutService;
 use App\Services\EventPresenter;
 use App\Support\CmartCarbootPhysicalLayout;
 use Carbon\Carbon;
@@ -30,7 +29,6 @@ class CarbootEventController extends Controller
 
     public function __construct(
         private readonly EventDayGenerator $eventDayGenerator,
-        private readonly EventLayoutService $eventLayout,
     ) {
     }
 
@@ -82,6 +80,8 @@ class CarbootEventController extends Controller
         $validated = $this->validateEvent($request);
         $saveAsDefault = $request->boolean('save_as_default_site_price');
         unset($validated['save_as_default_site_price']);
+        // Vendor booking capacity is derived from Choose Booking Sites confirmation, not the event form.
+        unset($validated['vendor_site_open_limit']);
 
         try {
             $event = DB::transaction(function () use ($request, $validated, $saveAsDefault) {
@@ -120,6 +120,8 @@ class CarbootEventController extends Controller
         $validated = $this->validateEvent($request, true);
         $saveAsDefault = $request->boolean('save_as_default_site_price');
         unset($validated['save_as_default_site_price']);
+        // Capacity is maintained only by layout open-sites confirmation.
+        unset($validated['vendor_site_open_limit']);
         $scheduleChanging = $this->scheduleFieldsChanging($carboot_event, $validated);
 
         if ($scheduleChanging && $this->eventDayGenerator->eventHasAllocationHistory($carboot_event)) {
@@ -127,19 +129,6 @@ class CarbootEventController extends Controller
                 'This event already has vendor booking allocations. Its operating dates cannot be changed because existing bookings depend on those dates.',
                 EventDayGenerator::ERROR_OPERATING_DATES_LOCKED,
             ));
-        }
-
-        if (array_key_exists('vendor_site_open_limit', $validated)) {
-            $nextLimit = $validated['vendor_site_open_limit'] === null
-                ? null
-                : (int) $validated['vendor_site_open_limit'];
-            try {
-                $this->eventLayout->assertVendorSiteOpenLimitAssignable($carboot_event, $nextLimit);
-            } catch (DomainConflictException $exception) {
-                return $this->conflictResponse($exception);
-            } catch (InvalidArgumentException $exception) {
-                return $this->unprocessableResponse($exception);
-            }
         }
 
         if ($request->boolean('remove_poster')) {

@@ -25,10 +25,15 @@
       role="alert"
     >
       <p>{{ readinessMessage }}</p>
-      <div v-if="selectedCategory" class="mt-3 flex flex-wrap gap-2">
+      <div v-if="selectedCategory && !layoutNotReady" class="mt-3 flex flex-wrap gap-2">
         <button type="button" class="ml-btn-ghost text-sm" @click="$emit('choose-category')">
           Choose another category
         </button>
+        <button type="button" class="ml-btn-ghost text-sm" @click="$emit('retry')">
+          Refresh
+        </button>
+      </div>
+      <div v-else-if="layoutNotReady" class="mt-3">
         <button type="button" class="ml-btn-ghost text-sm" @click="$emit('retry')">
           Refresh
         </button>
@@ -62,7 +67,12 @@
       {{ blockedMessage }}
     </div>
 
-    <div class="flex flex-wrap gap-2 text-xs" data-testid="event-site-legend" aria-label="Site status legend">
+    <div
+      v-if="!readinessMessage && !layoutNotReady"
+      class="flex flex-wrap gap-2 text-xs"
+      data-testid="event-site-legend"
+      aria-label="Site status legend"
+    >
       <span
         v-for="item in legendItems"
         :key="item.key"
@@ -88,7 +98,7 @@
     </div>
 
     <div
-      v-else-if="!selectedCategory"
+      v-else-if="!selectedCategory && !layoutNotReady"
       class="rounded-lg border border-ink-200 bg-ink-50 px-4 py-4 text-sm text-ink-700"
       data-testid="event-site-category-required"
       role="status"
@@ -113,7 +123,7 @@
     </div>
 
     <div
-      v-else-if="!readinessMessage"
+      v-else-if="!readinessMessage && !layoutNotReady"
       class="space-y-4 pb-1"
       data-testid="event-site-map"
     >
@@ -128,7 +138,7 @@
     </div>
 
     <div
-      v-if="selectedSites.length"
+      v-if="selectedSites.length && !layoutNotReady"
       class="rounded-xl border border-brand-200 bg-brand-50/60 p-4 space-y-3"
       data-testid="event-site-selection-summary"
       aria-live="polite"
@@ -189,6 +199,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   loadError: { type: String, default: '' },
   readinessMessage: { type: String, default: '' },
+  layoutNotReady: { type: Boolean, default: false },
   selectionError: { type: String, default: '' },
   removedStaleSiteLabels: { type: Array, default: () => [] },
 });

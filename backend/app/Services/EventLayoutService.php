@@ -239,24 +239,28 @@ class EventLayoutService
     }
 
     /**
-     * Confirm exactly vendor_site_open_limit open sites for the event.
+     * Confirm the organizer's vendor-booking site selection.
+     *
+     * Derives and stores vendor_site_open_limit from the confirmed unique site IDs.
+     * Protected open sites (active allocations / disable_locked) cannot be deselected.
      *
      * @param  list<int>  $siteIds
-     * @return array{opened: int, closed: int, readiness: array<string, mixed>}
+     * @return array{
+     *   opened: int,
+     *   closed: int,
+     *   open_site_count: int,
+     *   vendor_site_open_limit: int,
+     *   readiness: array<string, mixed>
+     * }
      */
     public function setOpenSites(CarbootEvent $event, User $actor, array $siteIds): array
     {
         return DB::transaction(function () use ($event, $actor, $siteIds) {
             $lockedEvent = CarbootEvent::query()->whereKey($event->id)->lockForUpdate()->firstOrFail();
-            $this->assertVendorSiteOpenLimitConfigured($lockedEvent);
-            $limit = (int) $lockedEvent->vendor_site_open_limit;
 
             $uniqueIds = array_values(array_unique(array_map('intval', $siteIds)));
-            if (count($uniqueIds) !== $limit) {
-                throw new DomainConflictException(
-                    "Select exactly {$limit} sites to open. Received ".count($uniqueIds).'.',
-                    'OPEN_SITE_SELECTION_COUNT_MISMATCH',
-                );
+            if ($uniqueIds === []) {
+                throw new InvalidArgumentException('Select at least one site for vendor booking.');
             }
 
             $sites = EventSite::query()
@@ -274,9 +278,16 @@ class EventLayoutService
             }
 
             foreach ($uniqueIds as $siteId) {
-                if (! $sites->has($siteId)) {
+                $site = $sites->get($siteId);
+                if (! $site) {
                     throw new DomainConflictException(
                         'One or more selected sites do not belong to this event.',
+                        'INVALID_SITE',
+                    );
+                }
+                if ($site->event_layout_row_id === null) {
+                    throw new DomainConflictException(
+                        'One or more selected sites are invalid legacy sites outside a layout row.',
                         'INVALID_SITE',
                     );
                 }
@@ -289,6 +300,15 @@ class EventLayoutService
             foreach ($sites as $site) {
                 $shouldOpen = isset($selected[$site->id]);
                 $locks = $this->locks->siteLocks($site);
+                $protected = $locks['disable_locked'] || $locks['has_active_allocations'];
+                $protectedOpen = $site->operational_status === EventSite::STATUS_ACTIVE && $protected;
+
+                if (! $shouldOpen && $protectedOpen) {
+                    throw new DomainConflictException(
+                        "Site {$site->label} cannot be closed because it has an active reservation or booking.",
+                        'ACTIVE_ALLOCATIONS_PRESENT',
+                    );
+                }
 
                 if ($shouldOpen) {
                     if ($site->operational_status !== EventSite::STATUS_ACTIVE) {
@@ -299,33 +319,34 @@ class EventLayoutService
                     continue;
                 }
 
-                if ($site->operational_status === EventSite::STATUS_ACTIVE) {
-                    if ($locks['disable_locked'] || $locks['has_active_allocations']) {
-                        throw new DomainConflictException(
-                            "Site {$site->label} cannot be closed because it has an active reservation or booking.",
-                            'ACTIVE_ALLOCATIONS_PRESENT',
-                        );
-                    }
+                // Never overwrite protected occupancy statuses; only close unprotected sites.
+                if ($protected) {
+                    continue;
+                }
+
+                if ($site->operational_status === EventSite::STATUS_ACTIVE
+                    || $site->operational_status === EventSite::STATUS_UNAVAILABLE
+                ) {
                     $site->operational_status = EventSite::STATUS_DISABLED;
                     $site->save();
                     $closed++;
-                } elseif ($site->operational_status !== EventSite::STATUS_DISABLED) {
-                    // Keep unavailable as-is unless it was meant to stay closed — normalize unused to disabled.
-                    if (! $locks['disable_locked']) {
-                        $site->operational_status = EventSite::STATUS_DISABLED;
-                        $site->save();
-                        $closed++;
-                    }
                 }
             }
+
+            $limit = count($uniqueIds);
+            $this->assertVendorSiteOpenLimitAssignable($lockedEvent, $limit);
+
+            $lockedEvent->vendor_site_open_limit = $limit;
+            $lockedEvent->save();
 
             $activeCount = EventSite::query()
                 ->forEvent($lockedEvent->id)
                 ->active()
                 ->count();
+
             if ($activeCount !== $limit) {
                 throw new DomainConflictException(
-                    "Open site confirmation must result in exactly {$limit} active sites (got {$activeCount}).",
+                    'The layout changed while confirming open sites. Refresh and try again.',
                     'OPEN_SITE_SELECTION_COUNT_MISMATCH',
                 );
             }
@@ -340,14 +361,18 @@ class EventLayoutService
                     'opened' => $opened,
                     'closed' => $closed,
                     'vendor_site_open_limit' => $limit,
+                    'open_site_count' => $activeCount,
                 ],
             );
 
-            $readiness = $this->readiness->assess($lockedEvent->fresh());
+            $fresh = $lockedEvent->fresh();
+            $readiness = $this->readiness->assess($fresh);
 
             return [
                 'opened' => $opened,
                 'closed' => $closed,
+                'open_site_count' => $activeCount,
+                'vendor_site_open_limit' => (int) $fresh->vendor_site_open_limit,
                 'readiness' => [
                     'operational_ready' => $readiness['operational_ready'],
                     'public_ready' => $readiness['public_ready'],

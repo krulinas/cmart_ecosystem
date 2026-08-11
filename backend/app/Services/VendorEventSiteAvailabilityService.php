@@ -24,6 +24,7 @@ class VendorEventSiteAvailabilityService
 
     public function __construct(
         private readonly VendorCategoryResolver $categoryResolver,
+        private readonly EventLayoutReadinessService $readinessService,
     ) {
     }
 
@@ -62,6 +63,22 @@ class VendorEventSiteAvailabilityService
                 'This event does not have a valid parking site price configured.',
                 'missing_event_site_price',
             );
+        }
+
+        $layoutAssessment = $this->readinessService->assess($event);
+        if (! $layoutAssessment['operational_ready']) {
+            $category = null;
+            try {
+                $category = $this->resolveCategoryContext(
+                    $vendorCategoryId,
+                    $legacyCategory,
+                    $bookingContext,
+                );
+            } catch (AllocationValidationException) {
+                $category = null;
+            }
+
+            return $this->layoutNotReadyPayload($event, $activeDays, $category);
         }
 
         $category = $this->resolveCategoryContext(
@@ -210,6 +227,53 @@ class VendorEventSiteAvailabilityService
             'rows' => $rowPayload,
             'sites' => $flatSites,
             'readiness' => $readiness,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, EventDay>  $activeDays
+     */
+    private function layoutNotReadyPayload(
+        CarbootEvent $event,
+        Collection $activeDays,
+        ?VendorCategory $category,
+    ): array {
+        return [
+            'event' => [
+                'id' => $event->id,
+                'title' => $event->title,
+                'status' => $event->status,
+                'day_generation_mode' => $event->day_generation_mode,
+                'starts_at' => $event->starts_at?->toIso8601String(),
+                'ends_at' => $event->ends_at?->toIso8601String(),
+                'site_price' => $this->formatEventSitePrice($event),
+            ],
+            'category' => $category ? $this->categoryResolver->presentCompact($category) : null,
+            'category_required' => false,
+            'suggested_category' => null,
+            'excluded_incompatible_site_count' => 0,
+            'site_price' => $this->formatEventSitePrice($event),
+            'operational_days' => $activeDays->map(fn (EventDay $day) => [
+                'id' => $day->id,
+                'operational_date' => $day->operational_date->format('Y-m-d'),
+                'starts_at' => $day->starts_at?->toIso8601String(),
+                'ends_at' => $day->ends_at?->toIso8601String(),
+                'operational_status' => $day->operational_status,
+                'display_order' => $day->display_order,
+            ])->values()->all(),
+            'selection_rules' => [
+                'same_row_required' => true,
+                'consecutive_positions_required' => true,
+                'same_space_type_required' => true,
+                'full_event_duration' => true,
+            ],
+            'rows' => [],
+            'sites' => [],
+            'readiness' => [
+                'status' => 'layout_not_ready',
+                'message' => 'Vendor booking is not open yet. The organizer is still preparing the site layout.',
+                'operational_ready' => false,
+            ],
         ];
     }
 

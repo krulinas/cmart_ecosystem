@@ -36,7 +36,7 @@
           <button
             type="button"
             class="ml-btn-ghost text-sm"
-            :disabled="!selectedEventId || loading || addRowDisabled"
+            :disabled="!selectedEventId || loading || addRowDisabled || selectOpenMode"
             :title="addRowDisabled ? copy.allPhysicalRowsInUse : copy.addRow"
             data-testid="layout-add-row-button"
             @click="openCreateRow"
@@ -126,22 +126,60 @@
           <EventLayoutReadinessPanel
             v-if="!switchingEvents"
             :readiness="layout.readiness || {}"
+            :select-mode="selectOpenMode"
+            :selected-count="selectedOpenSiteIds.length"
+            :open-site-count="activeSiteCount"
+            :choose-disabled="mutating || !rows.length"
+            @choose-booking-sites="enterSelectOpenMode"
           />
 
           <section
             v-if="selectOpenMode"
             class="ml-card mb-4 space-y-3 border-sky-200 bg-sky-50/70"
             data-testid="select-open-sites-panel"
+            @keydown.esc.prevent="cancelSelectOpenMode"
           >
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h3 class="text-base font-extrabold text-ink-900">{{ copy.selectOpenSitesTitle }}</h3>
+                <div class="flex flex-wrap items-center gap-2">
+                  <h3 class="text-base font-extrabold text-ink-900">{{ copy.selectOpenSitesTitle }}</h3>
+                  <span
+                    class="inline-flex rounded-full border border-sky-300 bg-sky-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-sky-900"
+                  >
+                    {{ copy.selectionModeBadge }}
+                  </span>
+                </div>
                 <p class="mt-1 text-sm text-ink-600">{{ copy.selectOpenSitesHelp }}</p>
                 <p class="mt-2 text-sm font-bold text-sky-950" data-testid="select-open-sites-count">
-                  {{ copy.selectOpenSitesCount(selectedOpenSiteIds.length, vendorSiteOpenLimit || 0) }}
+                  {{ copy.selectOpenSitesCount(selectedOpenSiteIds.length) }}
+                </p>
+                <p
+                  v-if="!selectedOpenSiteIds.length"
+                  class="mt-1 text-xs font-semibold text-amber-800"
+                  data-testid="select-open-sites-minimum"
+                >
+                  {{ copy.selectOpenSitesMinimum }}
                 </p>
               </div>
               <div class="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  class="ml-btn-ghost text-sm"
+                  :disabled="mutating"
+                  data-testid="select-open-sites-select-all"
+                  @click="selectAllEligibleSites"
+                >
+                  {{ copy.selectAllSites }}
+                </button>
+                <button
+                  type="button"
+                  class="ml-btn-ghost text-sm"
+                  :disabled="mutating"
+                  data-testid="select-open-sites-clear-all"
+                  @click="clearAllEligibleSites"
+                >
+                  {{ copy.clearAllSites }}
+                </button>
                 <button type="button" class="ml-btn-ghost text-sm" :disabled="mutating" @click="cancelSelectOpenMode">
                   {{ copy.cancel }}
                 </button>
@@ -152,7 +190,7 @@
                   data-testid="confirm-open-sites-button"
                   @click="confirmOpenSites"
                 >
-                  {{ copy.confirmOpenSites }}
+                  {{ copy.confirmOpenSites(selectedOpenSiteIds.length) }}
                 </button>
               </div>
             </div>
@@ -180,7 +218,7 @@
               <button
                 type="button"
                 class="ml-btn-ghost"
-                :disabled="addRowDisabled"
+                :disabled="addRowDisabled || selectOpenMode"
                 :title="addRowDisabled ? copy.allPhysicalRowsInUse : copy.addRow"
                 @click="openCreateRow"
               >
@@ -194,11 +232,12 @@
             class="ml-card space-y-4"
             data-testid="layout-visual-workspace"
           >
-            <div v-if="needsOpenSiteSelection && !selectOpenMode" class="flex flex-wrap gap-2">
+            <div v-if="!selectOpenMode" class="flex flex-wrap gap-2">
               <button
                 type="button"
                 class="ml-btn-primary text-sm"
                 data-testid="start-select-open-sites"
+                :disabled="mutating"
                 @click="enterSelectOpenMode"
               >
                 {{ copy.startSelectOpenSites }}
@@ -212,6 +251,9 @@
               :show-title="true"
               :manage-mode="manageLayoutMode && !selectOpenMode"
               :manage-badge-label="copy.manageLayoutActive"
+              :selection-mode="selectOpenMode"
+              :selection-badge-label="copy.selectionModeBadge"
+              :selection-locked-hint="copy.protectedSiteHint"
               :site-activation-enabled="manageLayoutMode || selectOpenMode"
               @activate-site="onVisualSiteActivate"
             >
@@ -244,6 +286,28 @@
                   @generate="openGenerateSites"
                   @reorder-sites="openReorderSites"
                 />
+              </template>
+              <template #selectionRowActions="{ sourceRow }">
+                <div class="flex flex-wrap gap-1">
+                  <button
+                    type="button"
+                    class="ml-btn-ghost text-xs px-2 py-1"
+                    :disabled="mutating"
+                    :data-testid="`select-row-sites-${sourceRow.label}`"
+                    @click="selectRowEligibleSites(sourceRow)"
+                  >
+                    {{ copy.selectRowSites }}
+                  </button>
+                  <button
+                    type="button"
+                    class="ml-btn-ghost text-xs px-2 py-1"
+                    :disabled="mutating"
+                    :data-testid="`clear-row-sites-${sourceRow.label}`"
+                    @click="clearRowEligibleSites(sourceRow)"
+                  >
+                    {{ copy.clearRowSites }}
+                  </button>
+                </div>
               </template>
             </VisualParkingLayout>
             <p
@@ -375,7 +439,6 @@
     <StandardParkingLayoutModal
       v-model="standardModalOpen"
       :categories="categories"
-      :vendor-site-open-limit="vendorSiteOpenLimit"
       :submitting="mutating"
       :form-error="formError"
       @submit="submitStandardGenerate"
@@ -437,6 +500,7 @@ const pendingSiteStatus = ref('');
 const manageLayoutMode = ref(false);
 const selectOpenMode = ref(false);
 const selectedOpenSiteIds = ref([]);
+const baselineOpenSiteIds = ref([]);
 const liveStatusMessage = ref('');
 
 const rowModalOpen = ref(false);
@@ -456,15 +520,38 @@ const vendorSiteOpenLimit = computed(() => {
 });
 const unusedRowLabels = computed(() => layout.value?.venue_template?.unused_row_labels || []);
 const addRowDisabled = computed(() => Boolean(layout.value?.venue_template?.all_rows_in_use));
-const needsOpenSiteSelection = computed(() => {
-  if (vendorSiteOpenLimit.value == null) return false;
-  return activeSiteCount.value !== vendorSiteOpenLimit.value;
-});
-const canConfirmOpenSites = computed(
-  () =>
-    vendorSiteOpenLimit.value != null
-    && selectedOpenSiteIds.value.length === Number(vendorSiteOpenLimit.value),
-);
+const canConfirmOpenSites = computed(() => selectedOpenSiteIds.value.length > 0);
+
+function isEligibleBookingSite(site) {
+  return site?.event_layout_row_id != null && site?.id != null;
+}
+
+function isProtectedBookingSite(site) {
+  return Boolean(site?.locks?.disable_locked || site?.locks?.has_active_allocations);
+}
+
+function collectEligibleSites(sourceRows = rows.value) {
+  const sites = [];
+  for (const row of sourceRows) {
+    for (const site of row.sites || []) {
+      if (isEligibleBookingSite(site)) sites.push(site);
+    }
+  }
+  return sites;
+}
+
+function currentActiveEligibleSiteIds() {
+  return collectEligibleSites()
+    .filter((site) => site.operational_status === 'active')
+    .map((site) => Number(site.id));
+}
+
+function protectedSelectedSiteIds(selection = selectedOpenSiteIds.value) {
+  const selected = new Set(selection.map(Number));
+  return collectEligibleSites()
+    .filter((site) => selected.has(Number(site.id)) && isProtectedBookingSite(site))
+    .map((site) => Number(site.id));
+}
 
 const visualRows = computed(() => {
   const adapted = adaptOrganizerRows(rows.value, { focusedSiteId: focusedSiteId.value });
@@ -472,12 +559,17 @@ const visualRows = computed(() => {
   const selected = new Set(selectedOpenSiteIds.value.map(Number));
   return adapted.map((row) => ({
     ...row,
-    sites: (row.sites || []).map((site) => ({
-      ...site,
-      selected: selected.has(Number(site.id)),
-      focused: selected.has(Number(site.id)),
-      status: selected.has(Number(site.id)) ? 'selected' : site.status,
-    })),
+    sites: (row.sites || []).map((site) => {
+      const isSelected = selected.has(Number(site.id));
+      const locked = isSelected && isProtectedBookingSite(site.raw || site);
+      return {
+        ...site,
+        selected: isSelected,
+        focused: isSelected,
+        selectionLocked: locked,
+        status: isSelected ? 'selected' : site.status,
+      };
+    }),
   }));
 });
 
@@ -584,24 +676,56 @@ function openStandardGenerator() {
     toast.error(copy.layoutExistsHint);
     return;
   }
-  if (!vendorSiteOpenLimit.value) {
-    toast.error(copy.generateStandardLimitRequired);
-    return;
-  }
   formError.value = '';
   standardModalOpen.value = true;
 }
 
 function enterSelectOpenMode() {
+  if (!rows.value.length) return;
+  const preselected = currentActiveEligibleSiteIds();
   selectOpenMode.value = true;
-  selectedOpenSiteIds.value = [];
+  selectedOpenSiteIds.value = [...preselected];
+  baselineOpenSiteIds.value = [...preselected];
   closeSitePopover({ restoreFocus: false });
   manageLayoutMode.value = false;
+  liveStatusMessage.value = copy.selectOpenSitesCount(preselected.length);
 }
 
 function cancelSelectOpenMode() {
   selectOpenMode.value = false;
-  selectedOpenSiteIds.value = [];
+  selectedOpenSiteIds.value = [...baselineOpenSiteIds.value];
+  baselineOpenSiteIds.value = [];
+}
+
+function selectAllEligibleSites() {
+  selectedOpenSiteIds.value = collectEligibleSites().map((site) => Number(site.id));
+  liveStatusMessage.value = copy.selectOpenSitesCount(selectedOpenSiteIds.value.length);
+}
+
+function clearAllEligibleSites() {
+  selectedOpenSiteIds.value = protectedSelectedSiteIds();
+  liveStatusMessage.value = copy.selectOpenSitesCount(selectedOpenSiteIds.value.length);
+}
+
+function selectRowEligibleSites(row) {
+  const next = new Set(selectedOpenSiteIds.value.map(Number));
+  for (const site of row.sites || []) {
+    if (isEligibleBookingSite(site)) next.add(Number(site.id));
+  }
+  selectedOpenSiteIds.value = [...next];
+  liveStatusMessage.value = copy.selectOpenSitesCount(selectedOpenSiteIds.value.length);
+}
+
+function clearRowEligibleSites(row) {
+  const removable = new Set(
+    (row.sites || [])
+      .filter((site) => isEligibleBookingSite(site) && !isProtectedBookingSite(site))
+      .map((site) => Number(site.id)),
+  );
+  selectedOpenSiteIds.value = selectedOpenSiteIds.value
+    .map(Number)
+    .filter((id) => !removable.has(id));
+  liveStatusMessage.value = copy.selectOpenSitesCount(selectedOpenSiteIds.value.length);
 }
 
 function toggleManageLayoutMode() {
@@ -656,17 +780,24 @@ function closeSitePopover({ restoreFocus = true } = {}) {
 
 function onVisualSiteActivate({ site, anchorEl }) {
   if (selectOpenMode.value) {
-    const id = Number(site.id);
-    const next = new Set(selectedOpenSiteIds.value.map(Number));
-    if (next.has(id)) {
-      next.delete(id);
-    } else if (vendorSiteOpenLimit.value == null || next.size < Number(vendorSiteOpenLimit.value)) {
-      next.add(id);
-    } else {
-      toast.error(copy.selectOpenSitesCount(next.size, vendorSiteOpenLimit.value));
+    const raw = site.raw || site;
+    if (!isEligibleBookingSite(raw)) {
+      toast.error(copy.fallbackError);
       return;
     }
+    const id = Number(raw.id);
+    const next = new Set(selectedOpenSiteIds.value.map(Number));
+    if (next.has(id)) {
+      if (isProtectedBookingSite(raw)) {
+        toast.error(copy.protectedSiteHint);
+        return;
+      }
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
     selectedOpenSiteIds.value = [...next];
+    liveStatusMessage.value = copy.selectOpenSitesCount(next.size);
     return;
   }
   if (!manageLayoutMode.value) {
@@ -717,6 +848,7 @@ async function refreshLayout({ force = false, isSwitch = false } = {}) {
     manageLayoutMode.value = false;
     selectOpenMode.value = false;
     selectedOpenSiteIds.value = [];
+    baselineOpenSiteIds.value = [];
     liveStatusMessage.value = loadingMessage.value;
   }
   loadError.value = '';
@@ -849,9 +981,10 @@ async function submitStandardGenerate(payload) {
   await withMutation(async () => {
     await layoutApi.generateStandardParkingLayout(selectedEventId.value, payload);
     toast.success(copy.standardLayoutGenerated);
-    selectOpenMode.value = true;
-    selectedOpenSiteIds.value = [];
   });
+  if (rows.value.length) {
+    enterSelectOpenMode();
+  }
 }
 
 async function confirmOpenSites() {
@@ -860,6 +993,7 @@ async function confirmOpenSites() {
     await layoutApi.setOpenLayoutSites(selectedEventId.value, selectedOpenSiteIds.value);
     toast.success(copy.openSitesConfirmed);
     selectOpenMode.value = false;
+    baselineOpenSiteIds.value = [...selectedOpenSiteIds.value];
     selectedOpenSiteIds.value = [];
   });
 }
@@ -962,6 +1096,7 @@ watch(
 
 onMounted(async () => {
   document.addEventListener('cmart:layout-close-site-popover', onCloseSitePopoverEvent);
+  document.addEventListener('keydown', onSelectionEscapeKey);
   await loadCatalogue();
   const fromQuery = route.query.eventId ? String(route.query.eventId) : '';
   if (fromQuery) {
@@ -974,8 +1109,15 @@ function onCloseSitePopoverEvent() {
   closeSitePopover({ restoreFocus: false });
 }
 
+function onSelectionEscapeKey(event) {
+  if (event.key !== 'Escape' || !selectOpenMode.value) return;
+  event.preventDefault();
+  cancelSelectOpenMode();
+}
+
 onBeforeUnmount(() => {
   document.removeEventListener('cmart:layout-close-site-popover', onCloseSitePopoverEvent);
+  document.removeEventListener('keydown', onSelectionEscapeKey);
 });
 
 defineExpose({

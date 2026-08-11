@@ -31,16 +31,10 @@
           </p>
 
           <p
-            class="rounded-xl border px-3 py-2 text-sm"
-            :class="vendorSiteOpenLimit
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-950'
-              : 'border-amber-200 bg-amber-50 text-amber-950'"
+            class="rounded-xl border border-ink-200 bg-ink-50 px-3 py-2 text-sm text-ink-800"
             data-testid="standard-layout-open-limit"
           >
-            {{ copy.generateStandardOpenCount(vendorSiteOpenLimit) }}
-          </p>
-          <p v-if="!vendorSiteOpenLimit" class="text-xs text-amber-800">
-            {{ copy.generateStandardLimitRequired }}
+            {{ copy.generateStandardOpenCount(null) }}
           </p>
 
           <div class="grid gap-3 sm:grid-cols-2">
@@ -117,7 +111,6 @@ import { previewStandardParkingLabels } from '../../../utils/visualParkingLayout
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   categories: { type: Array, default: () => [] },
-  vendorSiteOpenLimit: { type: Number, default: null },
   submitting: { type: Boolean, default: false },
   formError: { type: String, default: '' },
 });
@@ -137,10 +130,7 @@ const form = reactive({
   },
 });
 
-const canSubmit = computed(() => {
-  if (!props.vendorSiteOpenLimit) return false;
-  return rowLabels.every((label) => Number(form.row_categories[label]) > 0);
-});
+const canSubmit = computed(() => rowLabels.every((label) => Number(form.row_categories[label]) > 0));
 
 watch(
   () => props.modelValue,

@@ -220,9 +220,11 @@ class OrganizerEventLayoutController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Open sites confirmed successfully.',
+            'message' => '200 OK: Booking sites confirmed successfully.',
             'opened' => $result['opened'],
             'closed' => $result['closed'],
+            'open_site_count' => $result['open_site_count'],
+            'vendor_site_open_limit' => $result['vendor_site_open_limit'],
             'readiness' => $result['readiness'],
         ]);
     }
