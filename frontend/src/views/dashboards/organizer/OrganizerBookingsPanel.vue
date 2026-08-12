@@ -349,15 +349,6 @@
                     >
                       Details
                     </button>
-                    <button
-                      v-if="canDeleteBookings"
-                      class="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
-                      data-testid="organizer-booking-action-delete"
-                      :data-booking-id="b.id"
-                      @click="deleteBooking(b.id)"
-                    >
-                      Delete
-                    </button>
                   </div>
                 </td>
               </tr>
@@ -485,7 +476,6 @@ const toast = useToast();
 const {
   canApproveBookings,
   canVerifyPayments,
-  canDeleteBookings,
   bookingsListEndpoint,
   workspaceTheme,
 } = useManagementAccess();
@@ -883,20 +873,6 @@ const requestRevision = async (id) => {
     return;
   }
   await updateStatus(id, 'Needs_Revision', comment.trim());
-};
-
-const deleteBooking = async (id) => {
-  if (!canDeleteBookings.value) return;
-  if (!window.confirm(`Delete booking #${id}? This cannot be undone.`)) return;
-  try {
-    await api.delete(`/bookings/${id}`);
-    toast.success(`Booking #${id} deleted.`);
-    await fetchBookings();
-  } catch (e) {
-    if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to delete booking.');
-    }
-  }
 };
 
 const viewPdf = async (bookingId) => {
