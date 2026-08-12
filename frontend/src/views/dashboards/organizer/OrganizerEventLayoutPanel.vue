@@ -36,7 +36,7 @@
           <button
             type="button"
             class="ml-btn-ghost text-sm"
-            :disabled="!selectedEventId || loading || addRowDisabled || selectOpenMode"
+            :disabled="!selectedEventId || loading || addRowDisabled || isBookingSelectionMode"
             :title="addRowDisabled ? copy.allPhysicalRowsInUse : copy.addRow"
             data-testid="layout-add-row-button"
             @click="openCreateRow"
@@ -126,15 +126,13 @@
           <EventLayoutReadinessPanel
             v-if="!switchingEvents"
             :readiness="layout.readiness || {}"
-            :select-mode="selectOpenMode"
+            :select-mode="isBookingSelectionMode"
             :selected-count="selectedOpenSiteIds.length"
             :open-site-count="activeSiteCount"
-            :choose-disabled="mutating || !rows.length"
-            @choose-booking-sites="enterSelectOpenMode"
           />
 
           <section
-            v-if="selectOpenMode"
+            v-if="isBookingSelectionMode"
             class="ml-card mb-4 space-y-3 border-sky-200 bg-sky-50/70"
             data-testid="select-open-sites-panel"
             @keydown.esc.prevent="cancelSelectOpenMode"
@@ -218,7 +216,7 @@
               <button
                 type="button"
                 class="ml-btn-ghost"
-                :disabled="addRowDisabled || selectOpenMode"
+                :disabled="addRowDisabled || isBookingSelectionMode"
                 :title="addRowDisabled ? copy.allPhysicalRowsInUse : copy.addRow"
                 @click="openCreateRow"
               >
@@ -232,42 +230,36 @@
             class="ml-card space-y-4"
             data-testid="layout-visual-workspace"
           >
-            <div v-if="!selectOpenMode" class="flex flex-wrap gap-2">
-              <button
-                type="button"
-                class="ml-btn-primary text-sm"
-                data-testid="start-select-open-sites"
-                :disabled="mutating"
-                @click="enterSelectOpenMode"
-              >
-                {{ copy.startSelectOpenSites }}
-              </button>
-            </div>
             <VisualParkingLayout
               mode="organizer"
               :rows="visualRows"
               :show-legend="true"
               :show-counts="true"
               :show-title="true"
-              :manage-mode="manageLayoutMode && !selectOpenMode"
+              :manage-mode="isLayoutManagementMode"
               :manage-badge-label="copy.manageLayoutActive"
-              :selection-mode="selectOpenMode"
+              :selection-mode="isBookingSelectionMode"
               :selection-badge-label="copy.selectionModeBadge"
               :selection-locked-hint="copy.protectedSiteHint"
-              :site-activation-enabled="manageLayoutMode || selectOpenMode"
+              :site-activation-enabled="!isViewMode"
               @activate-site="onVisualSiteActivate"
             >
               <template #headerActions>
+                <OrganizerManageParkingLayoutMenu
+                  v-if="isViewMode"
+                  :disabled="mutating"
+                  :recommend-booking-sites="needsBookingSiteSetup"
+                  @choose-booking-sites="enterSelectOpenMode"
+                  @edit-layout-structure="enterLayoutManagementMode"
+                />
                 <button
-                  v-if="!selectOpenMode"
+                  v-else-if="isLayoutManagementMode"
                   type="button"
                   class="ml-btn-ghost text-sm"
-                  :class="manageLayoutMode ? 'ring-2 ring-sky-300' : ''"
                   data-testid="layout-manage-toggle"
-                  :aria-pressed="manageLayoutMode ? 'true' : 'false'"
-                  @click="toggleManageLayoutMode"
+                  @click="exitLayoutManagementMode"
                 >
-                  {{ manageLayoutMode ? copy.manageLayoutExit : copy.manageLayout }}
+                  {{ copy.manageLayoutExit }}
                 </button>
               </template>
               <template #rowActions="{ sourceRow, rowIndex }">
@@ -311,7 +303,7 @@
               </template>
             </VisualParkingLayout>
             <p
-              v-if="manageLayoutMode && !selectOpenMode"
+              v-if="isLayoutManagementMode"
               class="text-xs text-sky-800"
               data-testid="layout-manage-hint"
             >
@@ -457,6 +449,7 @@ import LayoutSiteFormModal from '../../../components/organizer/layout/LayoutSite
 import LayoutSiteGenerationModal from '../../../components/organizer/layout/LayoutSiteGenerationModal.vue';
 import OrganizerSiteActionsPopover from '../../../components/organizer/layout/OrganizerSiteActionsPopover.vue';
 import OrganizerLayoutRowActionsMenu from '../../../components/organizer/layout/OrganizerLayoutRowActionsMenu.vue';
+import OrganizerManageParkingLayoutMenu from '../../../components/organizer/layout/OrganizerManageParkingLayoutMenu.vue';
 import StandardParkingLayoutModal from '../../../components/organizer/layout/StandardParkingLayoutModal.vue';
 import * as layoutApi from '../../../services/organizerEventLayoutApi';
 import {
@@ -497,8 +490,12 @@ const entranceNote = ref('');
 const focusedSiteId = ref(null);
 const sitePopoverAnchorRect = ref(null);
 const pendingSiteStatus = ref('');
-const manageLayoutMode = ref(false);
-const selectOpenMode = ref(false);
+const LAYOUT_WORKSPACE_MODE = Object.freeze({
+  VIEW: 'view',
+  BOOKING_SELECTION: 'booking_selection',
+  LAYOUT_MANAGEMENT: 'layout_management',
+});
+const layoutWorkspaceMode = ref(LAYOUT_WORKSPACE_MODE.VIEW);
 const selectedOpenSiteIds = ref([]);
 const baselineOpenSiteIds = ref([]);
 const liveStatusMessage = ref('');
@@ -521,6 +518,26 @@ const vendorSiteOpenLimit = computed(() => {
 const unusedRowLabels = computed(() => layout.value?.venue_template?.unused_row_labels || []);
 const addRowDisabled = computed(() => Boolean(layout.value?.venue_template?.all_rows_in_use));
 const canConfirmOpenSites = computed(() => selectedOpenSiteIds.value.length > 0);
+const isViewMode = computed(() => layoutWorkspaceMode.value === LAYOUT_WORKSPACE_MODE.VIEW);
+const isBookingSelectionMode = computed(
+  () => layoutWorkspaceMode.value === LAYOUT_WORKSPACE_MODE.BOOKING_SELECTION,
+);
+const isLayoutManagementMode = computed(
+  () => layoutWorkspaceMode.value === LAYOUT_WORKSPACE_MODE.LAYOUT_MANAGEMENT,
+);
+const BOOKING_SETUP_CODES = new Set([
+  'VENDOR_SITE_OPEN_LIMIT_NOT_SET',
+  'ACTIVE_SITE_COUNT_BELOW_VENDOR_LIMIT',
+  'ACTIVE_SITE_COUNT_EXCEEDS_VENDOR_LIMIT',
+]);
+const needsBookingSiteSetup = computed(() => {
+  const blockers = layout.value?.readiness?.blocking_reasons || [];
+  return blockers.some((blocker) => BOOKING_SETUP_CODES.has(blocker.code));
+});
+
+function setLayoutWorkspaceMode(mode) {
+  layoutWorkspaceMode.value = mode;
+}
 
 function isEligibleBookingSite(site) {
   return site?.event_layout_row_id != null && site?.id != null;
@@ -555,7 +572,7 @@ function protectedSelectedSiteIds(selection = selectedOpenSiteIds.value) {
 
 const visualRows = computed(() => {
   const adapted = adaptOrganizerRows(rows.value, { focusedSiteId: focusedSiteId.value });
-  if (!selectOpenMode.value) return adapted;
+  if (!isBookingSelectionMode.value) return adapted;
   const selected = new Set(selectedOpenSiteIds.value.map(Number));
   return adapted.map((row) => ({
     ...row,
@@ -587,8 +604,7 @@ const focusedRow = computed(() => {
 });
 const sitePopoverOpen = computed(
   () => Boolean(
-    manageLayoutMode.value
-    && !selectOpenMode.value
+    isLayoutManagementMode.value
     && focusedSite.value
     && sitePopoverAnchorRect.value,
   ),
@@ -683,16 +699,15 @@ function openStandardGenerator() {
 function enterSelectOpenMode() {
   if (!rows.value.length) return;
   const preselected = currentActiveEligibleSiteIds();
-  selectOpenMode.value = true;
+  setLayoutWorkspaceMode(LAYOUT_WORKSPACE_MODE.BOOKING_SELECTION);
   selectedOpenSiteIds.value = [...preselected];
   baselineOpenSiteIds.value = [...preselected];
   closeSitePopover({ restoreFocus: false });
-  manageLayoutMode.value = false;
   liveStatusMessage.value = copy.selectOpenSitesCount(preselected.length);
 }
 
 function cancelSelectOpenMode() {
-  selectOpenMode.value = false;
+  setLayoutWorkspaceMode(LAYOUT_WORKSPACE_MODE.VIEW);
   selectedOpenSiteIds.value = [...baselineOpenSiteIds.value];
   baselineOpenSiteIds.value = [];
 }
@@ -728,11 +743,13 @@ function clearRowEligibleSites(row) {
   liveStatusMessage.value = copy.selectOpenSitesCount(selectedOpenSiteIds.value.length);
 }
 
-function toggleManageLayoutMode() {
-  manageLayoutMode.value = !manageLayoutMode.value;
-  if (!manageLayoutMode.value) {
-    closeSitePopover({ restoreFocus: false });
-  }
+function enterLayoutManagementMode() {
+  setLayoutWorkspaceMode(LAYOUT_WORKSPACE_MODE.LAYOUT_MANAGEMENT);
+}
+
+function exitLayoutManagementMode() {
+  setLayoutWorkspaceMode(LAYOUT_WORKSPACE_MODE.VIEW);
+  closeSitePopover({ restoreFocus: false });
 }
 
 function rectFromElement(el) {
@@ -779,7 +796,7 @@ function closeSitePopover({ restoreFocus = true } = {}) {
 }
 
 function onVisualSiteActivate({ site, anchorEl }) {
-  if (selectOpenMode.value) {
+  if (isBookingSelectionMode.value) {
     const raw = site.raw || site;
     if (!isEligibleBookingSite(raw)) {
       toast.error(copy.fallbackError);
@@ -800,7 +817,7 @@ function onVisualSiteActivate({ site, anchorEl }) {
     liveStatusMessage.value = copy.selectOpenSitesCount(next.size);
     return;
   }
-  if (!manageLayoutMode.value) {
+  if (!isLayoutManagementMode.value) {
     return;
   }
   if (Number(focusedSiteId.value) === Number(site.id)) {
@@ -834,7 +851,7 @@ async function refreshLayout({ force = false, isSwitch = false } = {}) {
   if (!selectedEventId.value) {
     layout.value = null;
     closeSitePopover({ restoreFocus: false });
-    selectOpenMode.value = false;
+    setLayoutWorkspaceMode(LAYOUT_WORKSPACE_MODE.VIEW);
     switchingEvents.value = false;
     return;
   }
@@ -845,8 +862,7 @@ async function refreshLayout({ force = false, isSwitch = false } = {}) {
   if (isSwitch) {
     switchingEvents.value = true;
     closeSitePopover({ restoreFocus: false });
-    manageLayoutMode.value = false;
-    selectOpenMode.value = false;
+    setLayoutWorkspaceMode(LAYOUT_WORKSPACE_MODE.VIEW);
     selectedOpenSiteIds.value = [];
     baselineOpenSiteIds.value = [];
     liveStatusMessage.value = loadingMessage.value;
@@ -896,9 +912,9 @@ async function refreshLayout({ force = false, isSwitch = false } = {}) {
 
 function onEventSelected() {
   closeSitePopover({ restoreFocus: false });
-  manageLayoutMode.value = false;
-  selectOpenMode.value = false;
+  setLayoutWorkspaceMode(LAYOUT_WORKSPACE_MODE.VIEW);
   selectedOpenSiteIds.value = [];
+  baselineOpenSiteIds.value = [];
   const query = { ...route.query };
   if (selectedEventId.value) {
     query.eventId = selectedEventId.value;
@@ -992,7 +1008,7 @@ async function confirmOpenSites() {
   await withMutation(async () => {
     await layoutApi.setOpenLayoutSites(selectedEventId.value, selectedOpenSiteIds.value);
     toast.success(copy.openSitesConfirmed);
-    selectOpenMode.value = false;
+    setLayoutWorkspaceMode(LAYOUT_WORKSPACE_MODE.VIEW);
     baselineOpenSiteIds.value = [...selectedOpenSiteIds.value];
     selectedOpenSiteIds.value = [];
   });
@@ -1110,7 +1126,7 @@ function onCloseSitePopoverEvent() {
 }
 
 function onSelectionEscapeKey(event) {
-  if (event.key !== 'Escape' || !selectOpenMode.value) return;
+  if (event.key !== 'Escape' || !isBookingSelectionMode.value) return;
   event.preventDefault();
   cancelSelectOpenMode();
 }

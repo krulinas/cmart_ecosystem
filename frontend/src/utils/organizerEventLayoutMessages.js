@@ -7,10 +7,16 @@ export const LAYOUT_COPY = {
   pageTitle: 'Site Layout',
   navLabel: 'Layout Management',
   manageLayoutAction: 'Layout Management',
+  manageParkingLayout: 'Manage Parking Layout',
   manageLayout: 'Manage Layout',
   manageLayoutExit: 'Done managing',
   manageLayoutActive: 'Management mode',
   manageLayoutHint: 'Select a site tile to open its actions. Use each row menu for row actions.',
+  editLayoutStructure: 'Edit Layout Structure',
+  editLayoutStructureHelp: 'Edit rows, move sites and manage the physical layout.',
+  chooseBookingSitesMenuHelp: 'Select the physical sites that vendors can book.',
+  recommendedBadge: 'Recommended',
+  advancedBadge: 'Advanced',
   rowMenuLabel: 'Row actions',
   moveUpDisabled: 'Already the first row.',
   moveDownDisabled: 'Already the last row.',
@@ -42,7 +48,7 @@ export const LAYOUT_COPY = {
   unresolvedTitle: 'Unassigned Sites',
   emptyTitle: 'No parking layout has been created yet.',
   emptyBody:
-    'Set Vendor sites to open, then generate the standard 4×16 parking layout, or add an unused physical row.',
+    'Generate the standard 4×16 parking layout, or add an unused physical row. Then choose booking sites from Manage Parking Layout.',
   generateStandardLayout: 'Generate Standard Parking Layout',
   generateStandardLayoutHelp:
     'Creates physical rows A–D with 64 sites. Sites start as NOT OPEN until you select which ones vendors may book.',
@@ -76,7 +82,8 @@ export const LAYOUT_COPY = {
   vendorBookingSitesConfigured: (n) => `Vendor booking sites: ${n} selected`,
   vendorBookingSitesNotConfigured: 'Vendor booking sites: Not configured',
   vendorBookingSetupRequired: 'Vendor booking setup required',
-  vendorBookingSetupMessage: 'Choose the physical sites that vendors can book.',
+  vendorBookingSetupMessage:
+    'Choose the physical sites that vendors can book from Manage Parking Layout below.',
   vendorBookingSelectingMessage: 'Select the sites you want to offer to vendors.',
   vendorBookingOpen: 'Vendor Booking Open',
   vendorBookingOpenMessage: (n) =>

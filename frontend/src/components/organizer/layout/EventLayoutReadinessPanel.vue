@@ -68,18 +68,6 @@
       </li>
     </ul>
 
-    <div v-if="!selectMode && showChooseAction" class="mt-3">
-      <button
-        type="button"
-        class="ml-btn-primary text-sm"
-        data-testid="readiness-choose-booking-sites"
-        :disabled="chooseDisabled"
-        @click="$emit('choose-booking-sites')"
-      >
-        {{ copy.startSelectOpenSites }}
-      </button>
-    </div>
-
     <details
       v-if="blockers.length && !selectMode"
       class="mt-3 rounded-lg border border-ink-100 bg-ink-50/70 px-3 py-2"
@@ -128,13 +116,7 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
-  chooseDisabled: {
-    type: Boolean,
-    default: false,
-  },
 });
-
-defineEmits(['choose-booking-sites']);
 
 const copy = LAYOUT_COPY;
 const operationalReady = computed(() => Boolean(props.readiness?.operational_ready));
@@ -153,7 +135,6 @@ const remainingBlockers = computed(() =>
       && !(needsSiteSetup.value && SETUP_CODES.has(blocker.code)),
   ),
 );
-const showChooseAction = computed(() => needsSiteSetup.value || !operationalReady.value);
 
 const statusBadgeLabel = computed(() => {
   if (props.selectMode) return copy.selectionModeBadge;
