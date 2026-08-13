@@ -166,52 +166,6 @@ class AllocationHistoryProtectionTest extends TestCase
         return $booking;
     }
 
-    public function test_event_site_with_history_cannot_be_deleted(): void
-    {
-        $organizer = $this->createUser('organizer');
-        $event = $this->createEvent();
-        $space = $this->standardSpace();
-        $site = $this->createSite($event, $space);
-        $day = $this->createDay($event, $event->starts_at->toDateString());
-        $this->createBookingWithAllocation($event, $site, $day);
-
-        Sanctum::actingAs($organizer);
-        $this->deleteJson("/api/organizer/event-sites/{$site->id}")
-            ->assertStatus(409)
-            ->assertJsonPath('error', 'event_site_has_allocation_history');
-
-        $this->assertDatabaseHas('event_sites', ['id' => $site->id]);
-    }
-
-    public function test_event_site_structural_fields_locked_but_status_allowed(): void
-    {
-        $organizer = $this->createUser('organizer');
-        $event = $this->createEvent();
-        $space = $this->standardSpace();
-        $site = $this->createSite($event, $space, ['label' => 'A05', 'position_number' => 5, 'grid_column' => 5]);
-        $day = $this->createDay($event, $event->starts_at->toDateString());
-        $this->createBookingWithAllocation($event, $site, $day);
-
-        Sanctum::actingAs($organizer);
-
-        $this->patchJson("/api/organizer/event-sites/{$site->id}", [
-            'label' => 'Z99',
-            'row_label' => 'A',
-            'position_number' => 5,
-            'grid_row' => 1,
-            'grid_column' => 5,
-            'space_id' => $space->id,
-        ])->assertStatus(409)
-            ->assertJsonPath('error', 'event_site_history_structural_lock');
-
-        $this->patchJson("/api/organizer/event-sites/{$site->id}", [
-            'operational_status' => EventSite::STATUS_UNAVAILABLE,
-        ])->assertOk()
-            ->assertJsonPath('site.operational_status', 'unavailable');
-
-        $this->assertSame('A05', $site->fresh()->label);
-    }
-
     public function test_event_day_with_history_cannot_be_deleted_or_rewritten(): void
     {
         $organizer = $this->createUser('organizer');
@@ -241,7 +195,7 @@ class AllocationHistoryProtectionTest extends TestCase
             ->assertJsonPath('day.operational_status', 'disabled');
     }
 
-    public function test_site_and_day_replace_existing_blocked_when_history_exists(): void
+    public function test_day_replace_existing_blocked_when_history_exists(): void
     {
         $organizer = $this->createUser('organizer');
         $event = $this->createEvent();
@@ -254,13 +208,6 @@ class AllocationHistoryProtectionTest extends TestCase
         $dayCountBefore = EventDay::query()->forEvent($event->id)->count();
 
         Sanctum::actingAs($organizer);
-
-        $this->postJson("/api/organizer/events/{$event->id}/sites/generate", [
-            'space_id' => $space->id,
-            'replace_existing' => true,
-            'rows' => [['row_label' => 'Z', 'count' => 2]],
-        ])->assertStatus(409)
-            ->assertJsonPath('error', 'event_site_replace_blocked_by_history');
 
         $this->postJson("/api/organizer/events/{$event->id}/days/generate", [
             'replace_existing' => true,
@@ -338,24 +285,24 @@ class AllocationHistoryProtectionTest extends TestCase
         $site = $this->createSite($event, $space);
         $day = $this->createDay($event, $event->starts_at->toDateString());
 
-        $this->getJson("/api/organizer/events/{$event->id}/sites")->assertUnauthorized();
+        $this->getJson("/api/organizer/events/{$event->id}/layout")->assertUnauthorized();
         $this->getJson("/api/organizer/events/{$event->id}/days")->assertUnauthorized();
 
         Sanctum::actingAs($this->createUser('community'));
-        $this->getJson("/api/organizer/events/{$event->id}/sites")->assertForbidden();
+        $this->getJson("/api/organizer/events/{$event->id}/layout")->assertForbidden();
         $this->getJson("/api/organizer/events/{$event->id}/days")->assertForbidden();
 
         Sanctum::actingAs($this->createUser('cmart_management'));
-        $this->getJson("/api/organizer/events/{$event->id}/sites")->assertForbidden();
-        $this->deleteJson("/api/organizer/event-sites/{$site->id}")->assertForbidden();
+        $this->getJson("/api/organizer/events/{$event->id}/layout")->assertForbidden();
+        $this->deleteJson("/api/organizer/events/{$event->id}/layout/sites/{$site->id}")->assertForbidden();
         $this->deleteJson("/api/organizer/event-days/{$day->id}")->assertForbidden();
 
         Sanctum::actingAs($this->createUser('organizer'));
-        $this->getJson("/api/organizer/events/{$event->id}/sites")->assertOk();
+        $this->getJson("/api/organizer/events/{$event->id}/layout")->assertOk();
         $this->getJson("/api/organizer/events/{$event->id}/days")->assertOk();
 
         Sanctum::actingAs($this->createUser('super_admin'));
-        $this->getJson("/api/organizer/events/{$event->id}/sites")->assertOk();
+        $this->getJson("/api/organizer/events/{$event->id}/layout")->assertOk();
         $this->getJson("/api/organizer/events/{$event->id}/days")->assertOk();
     }
 

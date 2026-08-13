@@ -194,14 +194,14 @@ This repair task created **no new migration**.
 | `backend/app/Http/Controllers/Api/OrganizerReportRequestController.php` | Organizer request actions | B/Repair | Yes |
 | `backend/app/Http/Controllers/Api/OrganizerGeneratedReportController.php` | Draft/publish/revise + SQL error handling | C/D/Repair A | Yes |
 | `backend/app/Http/Controllers/Api/ManagementNotificationController.php` | Filtered unread counts | E/Repair F | Yes |
-| `backend/app/Http/Controllers/Api/ManagementReportsController.php` | Operational overview doc | A | No |
+| `backend/app/Http/Controllers/Api/ManagementReportsController.php` | Operational overview doc | A | Retired/deleted during repository cleanup Phase 2 |
 | `backend/app/Http/Resources/CmartReportRequestResource.php` | CMart request + timeline | B/Repair D | Yes |
 | `backend/app/Http/Resources/OrganizerReportRequestResource.php` | Organizer request + timeline | B/Repair D | Yes |
 | `backend/app/Http/Resources/CmartGeneratedReportResource.php` | CMart published payload | D | Yes |
 | `backend/app/Http/Resources/OrganizerGeneratedReportResource.php` | Organizer draft/published payload | C | Yes |
 | `backend/resources/views/reports/post_event_summary.blade.php` | PDF from snapshot venue | E/Repair G | Yes |
 | `backend/routes/api.php` | Report + notification routes | B–E | Yes |
-| `backend/tests/Feature/GovernanceAccessBoundaryTest.php` | operational-overview Forbidden for CMart | A | Later (not run) |
+| `backend/tests/Feature/GovernanceAccessBoundaryTest.php` | CMart analytics/audit Forbidden; operational-overview route retired in cleanup Phase 2 | A | Yes |
 | `frontend/src/views/dashboards/AdminDashboard.vue` | Panel gating + Report Centres + shell department | A/Repair E | Yes |
 | `frontend/src/layouts/WorkspaceShell.vue` | Report badge slot | E/Repair F | Yes |
 | `frontend/src/config/workspaceNav.js` | Reports + Report Centre nav | A/E | Yes |

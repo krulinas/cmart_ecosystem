@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\CarbootEvent;
 use App\Models\EventDay;
 use App\Models\EventSite;
-use App\Models\Space;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -63,95 +62,6 @@ class EventLayoutAndDaysTest extends TestCase
         $this->createdEventIds[] = $event->id;
 
         return $event;
-    }
-
-    private function standardSpace(): Space
-    {
-        return Space::defaultPhysical();
-    }
-
-    public function test_organizer_can_bulk_generate_parking_layout(): void
-    {
-        $organizer = $this->createUser('organizer');
-        $event = $this->createEvent();
-        $space = $this->standardSpace();
-
-        Sanctum::actingAs($organizer);
-
-        $response = $this->postJson("/api/organizer/events/{$event->id}/sites/generate", [
-            'space_id' => $space->id,
-            'rows' => [
-                ['row_label' => 'A', 'count' => 3, 'start_position' => 1, 'grid_row' => 1],
-                ['row_label' => 'B', 'count' => 2, 'start_position' => 1, 'grid_row' => 2],
-            ],
-        ]);
-
-        $response->assertCreated()
-            ->assertJsonPath('created_count', 5)
-            ->assertJsonPath('sites.0.label', 'A01')
-            ->assertJsonPath('sites.3.label', 'B01');
-
-        $this->assertSame(5, EventSite::query()->forEvent($event->id)->count());
-        $this->assertDatabaseHas('event_sites', [
-            'carboot_event_id' => $event->id,
-            'label' => 'A03',
-            'row_label' => 'A',
-            'position_number' => 3,
-        ]);
-    }
-
-    public function test_bulk_generate_without_replace_rejects_collisions(): void
-    {
-        $organizer = $this->createUser('organizer');
-        $event = $this->createEvent();
-        $space = $this->standardSpace();
-
-        Sanctum::actingAs($organizer);
-
-        $this->postJson("/api/organizer/events/{$event->id}/sites/generate", [
-            'space_id' => $space->id,
-            'rows' => [
-                ['row_label' => 'A', 'count' => 2],
-            ],
-        ])->assertCreated();
-
-        $this->postJson("/api/organizer/events/{$event->id}/sites/generate", [
-            'space_id' => $space->id,
-            'rows' => [
-                ['row_label' => 'A', 'count' => 2],
-            ],
-        ])->assertStatus(422);
-    }
-
-    public function test_bulk_generate_replace_existing_replaces_layout(): void
-    {
-        $organizer = $this->createUser('organizer');
-        $event = $this->createEvent();
-        $space = $this->standardSpace();
-
-        Sanctum::actingAs($organizer);
-
-        $this->postJson("/api/organizer/events/{$event->id}/sites/generate", [
-            'space_id' => $space->id,
-            'rows' => [
-                ['row_label' => 'A', 'count' => 2],
-            ],
-        ])->assertCreated();
-
-        $response = $this->postJson("/api/organizer/events/{$event->id}/sites/generate", [
-            'space_id' => $space->id,
-            'replace_existing' => true,
-            'rows' => [
-                ['row_label' => 'VIP', 'label_prefix' => 'VIP-', 'count' => 1, 'start_position' => 1],
-            ],
-        ]);
-
-        $response->assertCreated()
-            ->assertJsonPath('created_count', 1)
-            ->assertJsonPath('replaced', 2)
-            ->assertJsonPath('sites.0.label', 'VIP-01');
-
-        $this->assertSame(1, EventSite::query()->forEvent($event->id)->count());
     }
 
     public function test_calendar_days_generation_creates_two_days_for_weekend_event(): void
@@ -227,7 +137,7 @@ class EventLayoutAndDaysTest extends TestCase
     {
         $organizer = $this->createUser('organizer');
         $event = $this->createEvent();
-        $date = now()->addDays(10)->toDateString();
+        $date = $event->starts_at->toDateString();
 
         Sanctum::actingAs($organizer);
 
@@ -254,18 +164,12 @@ class EventLayoutAndDaysTest extends TestCase
             ->assertJsonPath('meta.total', 1);
     }
 
-    public function test_cmart_management_cannot_generate_layout_or_days(): void
+    public function test_cmart_management_cannot_generate_or_list_days(): void
     {
         $venue = $this->createUser('cmart_management');
         $event = $this->createEvent();
-        $space = $this->standardSpace();
 
         Sanctum::actingAs($venue);
-
-        $this->postJson("/api/organizer/events/{$event->id}/sites/generate", [
-            'space_id' => $space->id,
-            'rows' => [['row_label' => 'A', 'count' => 1]],
-        ])->assertForbidden();
 
         $this->postJson("/api/organizer/events/{$event->id}/days/generate")
             ->assertForbidden();

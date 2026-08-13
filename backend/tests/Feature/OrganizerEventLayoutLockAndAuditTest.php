@@ -40,7 +40,7 @@ class OrganizerEventLayoutLockAndAuditTest extends TestCase
         Sanctum::actingAs($organizer);
 
         $response = $this->postJson("/api/organizer/events/{$event->id}/layout/rows", [
-            'label' => 'Audit Row',
+            'label' => 'A',
             'vendor_category_id' => $this->foodCategory()->id,
         ]);
 
@@ -62,15 +62,14 @@ class OrganizerEventLayoutLockAndAuditTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $row = $this->createLayoutRowViaApi($event, ['label' => 'Audit Site Row']);
+        $row = $this->createLayoutRowViaApi($event, ['label' => 'A']);
 
-        $response = $this->postJson("/api/organizer/events/{$event->id}/layout/rows/{$row['id']}/sites", [
-            'label' => 'AUD01',
-            'space_id' => $this->standardSpace()->id,
-            'position_number' => 1,
-            'grid_row' => 1,
-            'grid_column' => 1,
-        ]);
+        $response = $this->postJson(
+            "/api/organizer/events/{$event->id}/layout/rows/{$row['id']}/sites",
+            array_merge($this->extraSitePayload($row['id']), [
+                'space_id' => $this->standardSpace()->id,
+            ]),
+        );
 
         $response->assertCreated();
         $siteId = (int) $response->json('site.id');
@@ -93,21 +92,14 @@ class OrganizerEventLayoutLockAndAuditTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $row = $this->createLayoutRowViaApi($event, ['label' => 'Lock Row']);
-        $siteId = $this->createLayoutSiteViaApi($event, $row['id'], [
-            'label' => 'L01',
-            'position_number' => 1,
-        ]);
+        $this->createLayoutRowViaApi($event, ['label' => 'A']);
+        $site = $this->canonicalSite($event, 'A01');
 
         $this->getJson("/api/organizer/events/{$event->id}/layout")
             ->assertOk()
             ->assertJsonPath('rows.0.locks.rename_locked', false);
 
-        $this->seedReleasedAllocation(
-            $event,
-            EventSite::query()->findOrFail($siteId),
-            $day,
-        );
+        $this->seedReleasedAllocation($event, $site, $day);
 
         $this->getJson("/api/organizer/events/{$event->id}/layout")
             ->assertOk()

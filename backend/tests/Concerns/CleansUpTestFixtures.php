@@ -106,6 +106,7 @@ trait CleansUpTestFixtures
             }
 
             if ($this->createdEventIds !== []) {
+                EventSite::whereIn('carboot_event_id', $this->createdEventIds)->delete();
                 EventLayoutAuditLog::whereIn('carboot_event_id', $this->createdEventIds)->delete();
                 EventLayoutRow::whereIn('carboot_event_id', $this->createdEventIds)->delete();
                 CarbootEvent::whereIn('id', $this->createdEventIds)->delete();

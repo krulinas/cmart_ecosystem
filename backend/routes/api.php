@@ -11,12 +11,9 @@ use App\Http\Controllers\Api\CmartReportEventOptionsController;
 use App\Http\Controllers\Api\CmartReportRequestController;
 use App\Http\Controllers\Api\EventDayController;
 use App\Http\Controllers\Api\EventRegistrationController;
-use App\Http\Controllers\Api\EventSiteController;
 use App\Http\Controllers\Api\FeedbackController;
-use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\ItemReservationController;
 use App\Http\Controllers\Api\ManagementNotificationController;
-use App\Http\Controllers\Api\ManagementReportsController;
 use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\NewsPostController;
 use App\Http\Controllers\Api\OrganizerBookingSiteAssignmentController;
@@ -152,15 +149,6 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/bookings/{booking}/verify', [BookingPassVerificationController::class, 'verify']);
             Route::post('/bookings/{booking}/check-in', [BookingPassVerificationController::class, 'checkIn']);
 
-            // Phase 2A.4 — physical event-site foundation (Organizer only).
-            Route::get('/events/{carboot_event}/sites', [EventSiteController::class, 'index']);
-            Route::post('/events/{carboot_event}/sites', [EventSiteController::class, 'store']);
-            Route::post('/events/{carboot_event}/sites/generate', [EventSiteController::class, 'generate']);
-            Route::get('/event-sites/{event_site}', [EventSiteController::class, 'show']);
-            Route::put('/event-sites/{event_site}', [EventSiteController::class, 'update']);
-            Route::patch('/event-sites/{event_site}', [EventSiteController::class, 'update']);
-            Route::delete('/event-sites/{event_site}', [EventSiteController::class, 'destroy']);
-
             // Phase 2A.5 — Organizer-defined operational event days.
             Route::get('/events/{carboot_event}/days', [EventDayController::class, 'index']);
             Route::post('/events/{carboot_event}/days', [EventDayController::class, 'store']);
@@ -218,8 +206,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/bookings/{booking}', [BookingController::class, 'update']);
         Route::patch('/bookings/{booking}/verify-payment', [BookingController::class, 'verifyBookingPayment']);
 
-        Route::apiResource('invoices', InvoiceController::class)->only(['index', 'show', 'update']);
-
         Route::get('/feedbacks/{feedback}', [FeedbackController::class, 'show']);
         Route::put('/feedbacks/{feedback}', [FeedbackController::class, 'update']);
         Route::patch('/feedbacks/{feedback}', [FeedbackController::class, 'update']);
@@ -246,8 +232,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('role:'.ManagementRole::routeRoleList(ManagementRole::carbootOperationalRoles()))->group(function () {
-        // Operational overview (live queue counts) — Organizer-only; not a published report.
-        Route::get('/management/reports/operational-overview', [ManagementReportsController::class, 'operationalOverview']);
         Route::get('/organizer/generated-reports/{generated_report}/pdf', [OrganizerGeneratedReportController::class, 'downloadPdf']);
     });
 

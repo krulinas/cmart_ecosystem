@@ -18,7 +18,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        // Default local API. `npm run dev:e2e` sets VITE_API_BASE_URL to :8011 directly.
+        // Default local API. Override with VITE_DEV_PROXY_TARGET when needed.
         target: process.env.VITE_DEV_PROXY_TARGET || 'http://127.0.0.1:8000',
         changeOrigin: true,
       },

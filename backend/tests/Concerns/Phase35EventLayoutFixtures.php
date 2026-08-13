@@ -11,6 +11,8 @@ use App\Models\EventSite;
 use App\Models\Space;
 use App\Models\User;
 use App\Models\VendorCategory;
+use App\Support\CmartCarbootPhysicalLayout;
+use RuntimeException;
 
 /**
  * Shared Phase 3.5 layout fixture builders for feature tests.
@@ -71,17 +73,68 @@ trait Phase35EventLayoutFixtures
         return $prefix . substr(uniqid(), -6);
     }
 
+    private function nextCanonicalRowLabel(CarbootEvent $event): string
+    {
+        $used = EventLayoutRow::query()
+            ->forEvent($event->id)
+            ->pluck('label')
+            ->map(fn ($label) => CmartCarbootPhysicalLayout::normalizeRowLabel((string) $label))
+            ->all();
+
+        foreach (CmartCarbootPhysicalLayout::ROW_LABELS as $label) {
+            if (! in_array($label, $used, true)) {
+                return $label;
+            }
+        }
+
+        throw new RuntimeException('No unused canonical A–D row labels remain for this event.');
+    }
+
+    /**
+     * Payload for one extra non-canonical site on a row that already has A01–A16.
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function extraSitePayload(int $rowId, array $overrides = []): array
+    {
+        $row = EventLayoutRow::query()->findOrFail($rowId);
+        $used = EventSite::query()
+            ->where('event_layout_row_id', $rowId)
+            ->pluck('position_number')
+            ->all();
+        $position = 17;
+        while (in_array($position, $used, true)) {
+            $position++;
+        }
+        $rowLabel = CmartCarbootPhysicalLayout::normalizeRowLabel((string) $row->label);
+
+        return array_merge([
+            'label' => $rowLabel.$position,
+            'position_number' => $position,
+            'grid_row' => CmartCarbootPhysicalLayout::gridRowForLabel($rowLabel),
+            'grid_column' => $position,
+        ], $overrides);
+    }
+
+    private function canonicalSite(CarbootEvent $event, string $label): EventSite
+    {
+        return EventSite::query()->forEvent($event->id)->where('label', $label)->firstOrFail();
+    }
+
     /**
      * Caller must Sanctum::actingAs() before invoking.
      *
-     * @return array{id: int, slug: string}
+     * Creating a canonical row also materializes A01–A16 (disabled). Those site IDs are tracked.
+     *
+     * @return array{id: int, slug: string, label: string}
      */
-    private function createLayoutRowViaApi(CarbootEvent $event, array $payload): array
+    private function createLayoutRowViaApi(CarbootEvent $event, array $payload = []): array
     {
         $response = $this->postJson(
             "/api/organizer/events/{$event->id}/layout/rows",
             array_merge([
-                'label' => $this->shortLabel('Row'),
+                'label' => $this->nextCanonicalRowLabel($event),
                 'vendor_category_id' => $this->foodCategory()->id,
                 'is_active' => true,
                 'is_public' => true,
@@ -90,9 +143,18 @@ trait Phase35EventLayoutFixtures
 
         $response->assertCreated();
 
+        $rowId = (int) $response->json('row.id');
+        $siteIds = EventSite::query()
+            ->forEvent($event->id)
+            ->where('event_layout_row_id', $rowId)
+            ->pluck('id')
+            ->all();
+        $this->createdSiteIds = array_merge($this->createdSiteIds, $siteIds);
+
         return [
-            'id' => (int) $response->json('row.id'),
+            'id' => $rowId,
             'slug' => (string) $response->json('row.slug'),
+            'label' => (string) $response->json('row.label'),
         ];
     }
 

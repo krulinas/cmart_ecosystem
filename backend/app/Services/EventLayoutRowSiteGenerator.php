@@ -11,10 +11,10 @@ use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
- * Phase 3.5 — row-aware site generation (does not replace EventSiteLayoutGenerator).
+ * Phase 3.5 — row-aware site generation.
  *
- * Boundary: Phase 2 generator remains full-event bulk generation without EventLayoutRow.
- * This service only creates sites under one existing active layout row.
+ * Creates sites under one existing active layout row. Full-event bulk generation
+ * via EventSiteLayoutGenerator was retired during repository cleanup Phase 2.
  */
 class EventLayoutRowSiteGenerator
 {

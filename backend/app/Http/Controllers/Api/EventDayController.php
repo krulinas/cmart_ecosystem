@@ -224,22 +224,10 @@ class EventDayController extends Controller
         ?CarbootEvent $event = null,
         ?EventDay $existingDay = null,
     ): array {
-        $required = $partial ? 'sometimes|' : '';
-
         $validated = $request->validate([
-            'operational_date' => [
-                $required . 'required',
-                'date',
-            ],
-            'starts_at' => [
-                $required . 'required',
-                'date',
-            ],
-            'ends_at' => [
-                $required . 'required',
-                'date',
-                'after:starts_at',
-            ],
+            'operational_date' => array_merge($partial ? ['sometimes'] : [], ['required', 'date']),
+            'starts_at' => array_merge($partial ? ['sometimes'] : [], ['required', 'date']),
+            'ends_at' => array_merge($partial ? ['sometimes'] : [], ['required', 'date', 'after:starts_at']),
             'operational_status' => [
                 $partial ? 'sometimes' : 'nullable',
                 'string',

@@ -464,9 +464,11 @@ class EventDayAutomationTest extends TestCase
         $site = EventSite::create([
             'carboot_event_id' => $event->id,
             'space_id' => $space->id,
-            'label' => 'ED1-'.uniqid(),
-            'row_label' => 'Z',
+            'label' => 'A01',
+            'row_label' => 'A',
             'position_number' => 1,
+            'grid_row' => 1,
+            'grid_column' => 1,
             'display_order' => 1,
             'operational_status' => EventSite::STATUS_ACTIVE,
         ]);

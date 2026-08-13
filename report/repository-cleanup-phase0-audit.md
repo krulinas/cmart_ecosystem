@@ -237,13 +237,13 @@ Canonical management roles: **community (vendor/visitor)**, **organizer**, **cma
 | Share Your Voice | `/community#share-feedback` | `CommunityFeedback.vue` | `POST /feedback/submit`, `GET /feedbacks` | `api.php` | `FeedbackController` | — | `feedbacks` | `FeedbackModerationTest` |
 | Reuse marketplace | `/marketplace` | `ReuseMarketplace.vue` | `GET /marketplace/items` | `api.php` | `MarketplaceController` | `MarketplaceItemPresenter` | `vendor_items`, `reuse_item_images` | `MarketplacePublicAccessTest` |
 
-Community RSVP (`EventRegistrationController`) has **backend + `max_slots` on events**, but **no public register button** in `EventDetailsModal`.
+Community RSVP (`EventRegistrationController` + `POST /api/events/{id}/register` + `max_slots`) is **KEEP — PRODUCT INTENT**. Backend capability retained; current public UI has no RSVP entry point. Organizer still configures `max_slots` in `StaffEventsPanel`.
 
 ## Authentication & roles
 
 | Function | UI | Vue / JS | API | Controller | Support | Tests |
 | --- | --- | --- | --- | --- | --- | --- |
-| Public login | `/login` | `PublicLogin.vue`, `auth.js` | `POST /auth/login` | `AuthController` | Sanctum | e2e scripts named; specs missing from git |
+| Public login | `/login` | `PublicLogin.vue`, `auth.js` | `POST /auth/login` | `AuthController` | Sanctum | PHPUnit auth tests; stale frontend Selenium e2e scripts **removed in Phase 2** |
 | Management login | `/management/login` | `ManagementLogin.vue` | same | same | `isCmartWorker` | `GovernanceAccessBoundaryTest` |
 | Registration | `/register` | `Register.vue` | `POST /auth/register` | `AuthController` | — | — |
 | Google OAuth | login/register buttons | `config/auth.js` | `/auth/google`, callback | `AuthController` | Socialite | env-gated |
@@ -259,7 +259,7 @@ Community RSVP (`EventRegistrationController`) has **backend + `max_slots` on ev
 | Bookings list | `/vendor/manage/bookings` | `VendorManageBookingsPage`, `VendorBookingDetailsModal`, `WithdrawBookingModal` | same | vendor booking routes | `BookingController` | lifecycle services | `bookings`, allocations | withdrawal tests |
 | Site selection | `/vendor-booking` | `Registration.vue`, `EventSiteSelector` | site-availability | `GET /vendor/events/{id}/site-availability` | `VendorEventSiteAvailabilityController` | `VendorEventSiteAvailabilityService` | `event_sites` | `VendorEventSiteAvailabilityTest` |
 | Checkout / demo pay | `/dashboard/checkout/:id` | `VendorCheckoutPage.vue` | `POST .../demo-payment` | same | `BookingController::vendorDemoPayment` | invoice create | `invoices` | `VendorDemoPaymentTest` |
-| Proof of payment | dashboard + payment history | `VendorPaymentModal.vue` | `POST .../submit-payment` | same | `BookingController::vendorSubmitPayment` | — | booking payment fields | named in eslint e2e list |
+| Proof of payment | dashboard + payment history | `VendorPaymentModal.vue` | `POST .../submit-payment` | same | `BookingController::vendorSubmitPayment` | — | booking payment fields | payment tests |
 | Receipts / history | `/vendor/payment-history` | `VendorHistoryReceipts.vue` | `GET /vendor/history-receipts`, PDF | `VendorHistoryController`, `BookingController::generatePdf` | — | `invoices` | — |
 | Event passes | `/vendor/manage/event-passes` | `VendorEventPassesPanel`, `VendorPassModal` | `/vendor/event-passes` | `VendorEventPassController` | `VendorEventPassService` | bookings | — |
 | Items | `/vendor/manage/items` | `VendorItemManager` + form/details modals | `/vendor/items` | `VendorItemController` | `VendorItemPresenter` | `vendor_items` | `Phase41VendorItemFoundationTest` |
@@ -278,7 +278,8 @@ All via `/admin#…` in `AdminDashboard.vue`.
 | Booking approval | `#bookings` | `OrganizerBookingsPanel`, withdrawal/reassignment/attendance modals | `/organizer/bookings/registry`, `/bookings/{id}`, verify-payment | `BookingController`, `OrganizerBookingSiteAssignmentController` | reassignment/fingerprint services | `bookings`, `booking_audit_logs` | `OrganizerBookingWorkflowTest` |
 | Payment verification | same panel | proof lightbox | `GET /bookings/{id}/payment-proof`, `PATCH .../verify-payment` | `BookingController` | — | booking + storage | — |
 | Event management | `#events` | `StaffEventsPanel` | `/carboot-events` | `CarbootEventController` | observer → email job | `carboot_events` | — |
-| Parking layout | `#layout` | `OrganizerEventLayoutPanel` + layout/* modals | `organizerEventLayoutApi` | `OrganizerEventLayout{Controller,Row,Site}` | `EventLayoutService`, `StandardEventLayoutGenerator` | rows/sites/audit | layout lifecycle tests |
+| Parking layout | `#layout` | `OrganizerEventLayoutPanel` + layout/* modals | `organizerEventLayoutApi` | `OrganizerEventLayout{Controller,Row,Site}` | `EventLayoutService`, `StandardEventLayoutGenerator`, `CmartCarbootPhysicalLayout` | rows/sites/audit | layout lifecycle tests. Canonical physical rows are A–D; adding a row materializes 16 sites. Phase 2 `EventSiteController` retired in cleanup Phase 2. |
+| Event days | event create/update + layout readiness | no dedicated Vue panel; auto-sync on event save | `/organizer/events/{id}/days*`, `/organizer/event-days/{id}` | `EventDayController` | `EventDayGenerator` | `event_days` | `EventLayoutAndDaysTest`, `EventDayAutomationTest` |
 | Site open / capacity | layout panel | `setOpenSites`, publish/unpublish | layout routes | `OrganizerEventLayoutController` | readiness/lock services | `event_sites` | readiness/lock tests |
 | Item reservations | `#item-reservations` | `OrganizerItemReservationsPanel` | organizer item-reservation routes | `OrganizerItemReservationController` | lifecycle/charge | `item_reservations` | Phase 43–45 |
 | Feedback moderation | `#feedback` | `StaffFeedbackPanel`, `FeedbackDetailModal` | `/organizer/feedbacks` | `FeedbackController` | — | `feedbacks` | `FeedbackModerationTest` |
@@ -322,9 +323,9 @@ Same `AdminDashboard.vue`, **without** carboot ops panels.
 
 **Duplicated / parallel implementations**
 
-- **Layout:** Phase 2 `EventSiteController` + `EventSiteLayoutGenerator` vs Phase 3.5 row-aware `OrganizerEventLayout*` + `StandardEventLayoutGenerator`. Vue uses only the latter.
-- **Analytics UI:** Blade `admin/analytics.blade.php` + `web.php` proxy vs Vue Analytics Hub. (Boss revenue/wordcloud Vue panels **deleted in Phase 1**.)
-- **Word cloud:** FastAPI live endpoints vs offline `generate_analytics.py` CSVs. Vue Boss word-cloud panel **deleted in Phase 1**.
+- **Layout:** Canonical site HTTP is Phase 3.5 row-aware `OrganizerEventLayout*` + `StandardEventLayoutGenerator`. Phase 2 `EventSiteController` + `EventSiteLayoutGenerator` **retired/deleted during repository cleanup Phase 2**. `EventDayController` remains.
+- **Analytics UI:** Vue Analytics Hub is canonical. Blade `admin/analytics.blade.php` + `web.php` proxy **retired/deleted during repository cleanup Phase 2**. (Boss revenue/wordcloud Vue panels **deleted in Phase 1**.)
+- **Word cloud:** FastAPI live endpoints only. Offline `generate_analytics.py` CSVs **deleted during repository cleanup Phase 2**. Vue Boss word-cloud panel **deleted in Phase 1**.
 - **Vendor profile:** live `/profile` + `VendorProfileEditModal`. Unused Manager/Modal Vue files **deleted in Phase 1**. Two backend profile APIs (`/vendor/profile` and `/vendor/business-profile`) are both still used.
 - **Survey charts:** live `SurveyResultsPanel` (duplicate `VendorsSalesPanel` **deleted in Phase 1**).
 - **Product categories:** live `bookingDisplay.js` (`constants/productCategories.js` **deleted in Phase 1**).
@@ -349,28 +350,28 @@ Same `AdminDashboard.vue`, **without** carboot ops panels.
 
 - Management workspace is one route (`/admin`) with hash sections rather than nested routes.
 - Vendor IA split into many pages; leftover dashboard-era Vue files listed in Phase 0 were removed in Phase 1.
-- Report workflow is well layered; operational overview was retired from UI but not from API.
+- Report workflow is well layered. Operational overview UI was retired in Phase 1; `ManagementReportsController` / `/management/reports/operational-overview` **deleted during repository cleanup Phase 2**. Organizer `/organizer/operations-summary` remains.
 
 **Cursor-ish / one-purpose leftovers**
 
 - `stores/counter.js` — **deleted in Phase 1**.
 - `ManagementReportsPanel.vue` — **deleted in Phase 1**.
-- `backend/scripts/count_*.php` one-off counters — still present (manual review).
-- `advanced_analytics.py` — **deleted in Phase 1**.
+- `backend/scripts/count_*.php` one-off counters — **deleted during repository cleanup Phase 2** (empty `backend/scripts/` removed).
+- `advanced_analytics.py` — **deleted in Phase 1**. Offline `generate_analytics.py` / seed CSVs — **deleted in Phase 2**.
 
 **Directories**
 
 - `frontend/src/views/dashboards/boss/` — live `BossAuditLogsPanel.vue` only (dead panels deleted Phase 1).
 - `frontend/src/views/dashboards/management/` — live `CMartReportCentrePanel.vue` only (retired stub deleted Phase 1).
 - `frontend/src/constants/` — **removed** after deleting its only file.
-- `backend/scripts/` — entirely ops/debug, not runtime.
-- `frontend/tests/e2e/` — **missing from the repo** while `package.json` still points at it.
+- `backend/scripts/` — **removed in Phase 2** after deleting its ops/debug scripts.
+- `frontend/tests/e2e/` — specs were already missing; stale npm/ESLint e2e config **removed in Phase 2**. PHP `E2E*Fixtures` Artisan commands remain.
 
 **Hard to follow**
 
 - “Who is Boss / Staff / Manager / UUM / Admin?” — all fold into organizer / cmart_management / super_admin, but folders and middleware names lag.
-- Site creation: two HTTP APIs for the same `event_sites` table.
-- Payment PDF uses `invoices.booking` view while invoice REST CRUD appears unused.
+- Site creation: one HTTP API (`OrganizerEventLayoutSiteController`) for `event_sites`. Legacy Phase 2 site routes **retired in cleanup Phase 2**.
+- Payment PDF uses `invoices.booking` view. Generic `InvoiceController` REST CRUD **retired in cleanup Phase 2**; Invoice model/PDF remain.
 
 **Generated directories accidentally tracked**
 
@@ -482,22 +483,193 @@ Historical docs that still described deleted files as present were updated in pl
 
 | Candidate | Why |
 | --- | --- |
-| `useManagementAccess.js` `operationsSummaryEndpoint` | After deleting `StaffOperationalSnapshot.vue`, this export has no frontend consumer. Backend `/organizer/operations-summary` and `StaffOperationsController` remain in use by tests and must stay. |
+| `useManagementAccess.js` `operationsSummaryEndpoint` | **Deleted in Phase 2** (export only). Backend `/organizer/operations-summary` kept. |
 | `frontend/src/views/dashboards/boss/` and `staff/` directory names | Legacy role naming; still contain live panels. Rename is architecture, not this phase. |
 
-## Remaining manual-review work
+Phase 0 remaining manual-review items were executed in Phase 2 (see below). RSVP, `/api/staff/*`, `EnsureVendorApproved`, and `EventDayController` were **kept**.
 
-Unchanged from Phase 0 section 2, except `getSpaceCatalogue()` and the `uum` post-auth branch which are done:
+---
 
-- Invoice REST controller vs required Invoice model/PDF
-- Event RSVP controller with no public UI
-- Blade analytics (`AnalyticsController`, `admin/analytics.blade.php`, `WebAnalyticsSecurityTest`)
-- Laravel welcome (`welcome.blade.php`, `GET /`, `Feature/ExampleTest.php`)
-- `ManagementReportsController` + operations-summary API (UI gone)
-- Phase 2 `EventSiteController` / `EventSiteLayoutGenerator` / `EventDayController`
-- Dormant `EnsureVendorApproved`, commented `BroadcastServiceProvider` / `TrustHosts`, `inspire` console route
-- Ops scripts (`backend/scripts/*`, `CleanupLocalDummyBookings`)
-- Python offline `generate_analytics.py`, `seed_wordcloud_data.py`, tracked CSVs
-- Kernel `'manager'` alias, `/api/staff/*` compatibility routes
-- Missing frontend e2e specs vs `package.json` scripts
+# Phase 2 Execution Result
+
+**Date:** 13 August 2026  
+**Scope:** Execute remaining Phase 0 manual-review candidates. Outcomes are DELETE / KEEP / KEEP — PRODUCT / COMPATIBILITY INTENT. No commit or push.
+
+| Candidate / Bundle | Outcome | Files/Code Removed | Why | Current Replacement / Reason Kept |
+| --- | --- | --- | --- | --- |
+| `useManagementAccess.js` `operationsSummaryEndpoint` | DELETE | export only | Zero frontend consumers after Phase 1 deleted `StaffOperationalSnapshot.vue` | Backend `GET /organizer/operations-summary` + `StaffOperationsController` + `StaffOperationsSummaryTest` kept |
+| Blade analytics | DELETE | `AnalyticsController.php`, `admin/analytics.blade.php`, `web.php` analytics/proxy routes, `WebAnalyticsSecurityTest.php` | Old parallel HTML UI; SPA uses Analytics Hub; no runtime link/embed | Vue Analytics Hub, `OrganizerEventAnalyticsController`, `BossAnalyticsController` wordcloud, FastAPI `main.py` |
+| Laravel welcome | DELETE | `welcome.blade.php`, `GET /` in `web.php`, `Feature/ExampleTest.php` | Framework splash; public landing is Vue | Vue `/` (`PublicLanding.vue`); `web.php` kept as empty Laravel entry |
+| Invoice REST CRUD | DELETE | `InvoiceController.php`, `apiResource('invoices')` (`index`/`show`/`update`) | Scaffold CRUD; zero frontend/tests/docs consumers | Invoice model/table, booking/demo payment, PDF `invoices/booking.blade.php`, analytics revenue |
+| Community RSVP | KEEP — PRODUCT INTENT | none | Domain still distinguishes `max_slots` (community) vs `vendor_site_open_limit` (vendor sites); API + locking exist; Organizer still edits `max_slots` | `EventRegistrationController`, `POST /api/events/{id}/register`. **Backend capability retained; current public UI has no RSVP entry point** |
+| `ManagementReportsController` | DELETE | controller + `GET /management/reports/operational-overview` | Thin wrap of operations-summary with zero current consumer after UI retirement | `GET /organizer/operations-summary` (and `/staff/operations-summary` compatibility). Post-Event Report Centre untouched |
+| Phase 2 EventSite HTTP | DELETE | `EventSiteController.php`, `EventSiteLayoutGenerator.php`, 7 site routes, `EventSiteFoundationTest.php`; adapted mixed tests | Fully superseded by row-aware layout HTTP; no Vue/external-compat docs | `OrganizerEventLayout*` + `EventLayoutService` + `StandardEventLayoutGenerator`. Site history coverage lives in `OrganizerEventLayoutSiteLifecycleTest` |
+| Event-day HTTP | KEEP | none | Unique Organizer day CRUD/generate; `CarbootEventController` + `EventDayGenerator` auto-sync; no layout replacement | `EventDayController`, `/organizer/events/{id}/days*`, `/organizer/event-days/{id}`, `EventDayAutomationTest` |
+| `EnsureVendorApproved` | KEEP | none | File documents intentional dormant onboarding gate; Kernel alias `vendor.approved` registered; no route uses it yet | Keep until vendor-approval policy is applied |
+| App `BroadcastServiceProvider` + `channels.php` | DELETE | both files; commented App provider line in `config/app.php` | Unregistered; broadcasting unused | Illuminate `BroadcastServiceProvider` remains in `config/app.php` (framework) |
+| `TrustHosts.php` | DELETE | middleware + commented Kernel line | Unregistered, unused, not required by this Kernel | `TrustProxies` remains |
+| `routes/console.php` | KEEP file | default `inspire` command + unused import | Laravel Console Kernel requires the file | Empty framework entry point |
+| Kernel `'manager'` alias | DELETE | alias only | Zero `middleware('manager')` / tests | Live `'boss'` alias kept (name is legacy but used) |
+| `/api/staff/*` | KEEP — COMPATIBILITY INTENT | none | `api.php` comment: “Deprecated PR2 compatibility — remove after external clients migrate” | Canonical `/organizer/*` remains. See per-route table below |
+| `backend/scripts/*` (7) | DELETE | all 7 files + empty directory | One-off counters/demo restore/test DB helpers; not in composer/CI/phpunit | `TestingDatabaseGuard` / `composer test:setup` remain |
+| `CleanupLocalDummyBookings` | DELETE | Artisan command | Completed local dummy cleanup; no workflow invokes it | E2E fixture commands kept |
+| Python offline analytics | DELETE | `generate_analytics.py`, `seed_wordcloud_data.py`, two CSVs, `pymysql` dep | FastAPI queries DB live; leftover export/seeder | `python_analytics/main.py` + current requirements |
+| Frontend e2e config | DELETE | npm e2e scripts, ESLint e2e/mocha blocks, `.env.e2e`, gitignore e2e paths, `dotenv`/`mocha`/`selenium-webdriver` | Specs absent from git; scripts could not run | PHP `E2E*Fixtures` Artisan commands + PHPUnit kept |
+| `boss/` / `staff/` folder rename | KEEP (deferred) | none | Live code; architecture normalization, not junk removal | After functional cleanup |
+
+## Deleted
+
+**Files (26) + 2 empty directories**
+
+Controllers/services: `AnalyticsController.php`, `InvoiceController.php`, `ManagementReportsController.php`, `EventSiteController.php`, `EventSiteLayoutGenerator.php`  
+Views: `admin/analytics.blade.php`, `welcome.blade.php` (empty `resources/views/admin/` removed)  
+Tests: `Feature/ExampleTest.php`, `Feature/WebAnalyticsSecurityTest.php`, `Feature/EventSiteFoundationTest.php`  
+Scaffold: `BroadcastServiceProvider.php`, `routes/channels.php`, `TrustHosts.php`  
+Ops: `CleanupLocalDummyBookings.php`, seven `backend/scripts/*.php` (empty `backend/scripts/` removed)  
+Python: `generate_analytics.py`, `seed_wordcloud_data.py`, `feedback_word_cloud.csv`, `vendor_word_cloud.csv`  
+Frontend: `.env.e2e`
+
+**HTTP routes (~16 definitions)**
+
+- Web: `GET /`, `GET /admin/analytics`, `GET /api/proxy/analytics/{summary,feedback,products}`
+- API: `GET/POST /organizer/events/{id}/sites`, `POST .../sites/generate`, `GET/PUT/PATCH/DELETE /organizer/event-sites/{id}`
+- API: `GET /invoices`, `GET /invoices/{invoice}`, `PUT/PATCH /invoices/{invoice}`
+- API: `GET /management/reports/operational-overview`
+
+**Other**
+
+- Kernel `'manager'` alias
+- Console `inspire` command
+- `operationsSummaryEndpoint` export
+- 7 npm e2e scripts + ESLint e2e globs
+- Dependencies: `pymysql` (Python); `dotenv`, `mocha`, `selenium-webdriver` (frontend; `npm install` removed 97 transitive packages)
+
+**Tests adapted (not deleted):** `EventLayoutAndDaysTest` (removed old `/sites/generate` cases; kept day tests); `AllocationHistoryProtectionTest` (removed EventSiteController HTTP cases already covered by layout lifecycle tests; retargeted governance GETs to `/layout`; kept day replace-blocked-by-history); `GovernanceAccessBoundaryTest` (dropped operational-overview assertion).
+
+## Kept
+
+- `StaffOperationsController` + `/organizer/operations-summary` — tested, intentional Organizer API
+- `EventDayController` + `EventDayGenerator` + auto-sync — unique day domain; used by event create/update
+- `EnsureVendorApproved` + `vendor.approved` alias — documented dormant onboarding gate
+- `routes/console.php` file, `web.php` file, Illuminate broadcasting provider, `'boss'` middleware
+- Invoice **model/PDF/payment**, `invoices/booking.blade.php`
+- All migrations; `/uum` redirect; `ManagementRole::LEGACY_UUM`; `normalizeRole('uum')`
+- Current layout/report/analytics Hub/FastAPI/`WorkspaceShell`/vendor Manage
+- PHP E2E fixture Artisan commands
+- `feedbackListEndpoint` export left in place (see newly orphaned)
+
+## Product/compatibility retained
+
+| Item | Classification | Evidence |
+| --- | --- | --- |
+| Community RSVP | PRODUCT INTENT | `EventRegistrationController` + pivot attach under `max_slots`; Organizer `StaffEventsPanel` still sets `max_slots`; **no public register button** |
+| `GET /api/staff/feedbacks` | COMPATIBILITY INTENT | Explicit PR2 comment; aliases `FeedbackController::staffIndex` |
+| `GET /api/staff/bookings` | COMPATIBILITY INTENT | Same; `BookingController::staffRegistry` |
+| `GET /api/staff/operations-summary` | COMPATIBILITY INTENT | Same; `StaffOperationsController`; CMart Forbidden in `GovernanceAccessBoundaryTest` |
+| `GET /api/staff/bookings/{booking}/verify` | COMPATIBILITY INTENT | Same; pass verification |
+| `POST /api/staff/bookings/{booking}/check-in` | COMPATIBILITY INTENT | Same; check-in |
+
+## Verification
+
+- `php artisan route:list`: no invoices, event-sites, operational-overview, or admin/analytics routes. Staff (5), operations-summary (2), RSVP `POST /api/events/{id}/register`, layout site routes, EventDay routes present. App boots without App `BroadcastServiceProvider`.
+- `npm run build` (`frontend/`): **pass** (vite v8.0.10, 256 modules).
+- PHPUnit targeted:
+  - `AllocationHistoryProtectionTest` — **pass** (adapted)
+  - `StaffOperationsSummaryTest` — **pass**
+  - `GovernanceAccessBoundaryTest` — **pass**
+  - `VendorDemoPaymentTest` — **pass** (invoice/payment/PDF path intact)
+  - `EventLayoutAndDaysTest` — 5 pass including new Forbidden-days test; 1 pre-existing fail (`test_organizer_can_manually_create_and_disable_event_day` 422 — day date outside event range; not caused by EventSite retirement)
+  - `OrganizerEventLayoutSiteLifecycleTest` / row-create auth — **fail 409 `ROW_OUTSIDE_VENUE_TEMPLATE`**: tests still send labels like “Mirror Row”; live `EventLayoutService` (already modified in this working tree before Phase 2) requires A–D. Not introduced by deleting `EventSiteController`.
+  - `EventDayAutomationTest` allocation-history fixtures — **fail** inserting `event_sites` without `grid_row` (pre-existing fixture vs current schema; not EventSite HTTP)
+- Repository-wide: no remaining live imports of deleted controllers/generator. Historical docs annotated “retired/deleted during repository cleanup Phase 2”.
+- No migrations deleted. `/uum` still in `router.js`. No commit/push.
+
+## Newly orphaned candidates
+
+| Candidate | Why | Action |
+| --- | --- | --- |
+| `useManagementAccess.js` `feedbackListEndpoint` | Export unused; `StaffFeedbackPanel.vue` hardcodes `/organizer/feedbacks` | Not deleted: backend endpoint is live. Same class of dead export as `operationsSummaryEndpoint` |
+| Layout PHPUnit labels vs A–D venue template | Tests still use free-form row labels | Out of Phase 2 scope (current layout work, not junk) |
+
+## Repository reduction
+
+| Kind | Count |
+| --- | --- |
+| Files deleted | 26 |
+| Empty directories removed | 2 (`backend/scripts/`, `backend/resources/views/admin/`) |
+| Test files deleted | 3 |
+| HTTP routes removed | 16 definitions |
+| Classes/controllers/services removed | 8 |
+| Scripts/commands removed | 8 (7 PHP scripts + 1 Artisan command) |
+| Dependencies removed | `pymysql`; `dotenv`, `mocha`, `selenium-webdriver` |
+| Config/scripts/aliases removed | Kernel `manager`; `inspire`; 7 npm e2e scripts; ESLint e2e blocks; `operationsSummaryEndpoint` |
+
+---
+
+# Phase 3 Final Cleanup Result
+
+**Date:** 13 August 2026  
+**Scope:** Final consistency repair, orphan cleanup, test alignment, verification. No architecture rename. No commit/push.
+
+## Final dead code removed
+
+| Item | Outcome |
+| --- | --- |
+| `useManagementAccess.js` `feedbackListEndpoint` | **Deleted** (export only). Zero Vue consumers; `StaffFeedbackPanel.vue` already calls `/organizer/feedbacks` directly. Backend `FeedbackController`, `/organizer/feedbacks`, `/api/staff/feedbacks`, and `FeedbackModerationTest` kept. |
+| `EventLayoutRowSiteGenerator` class comment | Updated: no longer claims Phase 2 `EventSiteLayoutGenerator` “remains”. |
+
+No additional high-confidence orphan source files were found.
+
+## Tests repaired
+
+Tests were aligned with **current canonical domain rules**. Production A–D validation, `grid_row` schema, and allocation-history locks were **not** weakened.
+
+| Test / fixture | Stale assumption | Repair |
+| --- | --- | --- |
+| Layout HTTP tests (`OrganizerEventLayoutSiteLifecycleTest`, `RowLifecycleTest`, `AuthorizationTest`, `LockAndAuditTest`) + `Phase35EventLayoutFixtures` | Free-form row labels (`Mirror Row`, `Guest Row`, …) | Use canonical **A–D**. Helper `createLayoutRowViaApi` defaults to the next unused A–D label and tracks the 16 auto-created sites. |
+| Site lifecycle create/generate/move/delete | Assumed empty rows and deletable A01 | Match current row-create (16 canonical sites, canonical delete forbidden). Extra non-canonical A17 used where create/delete of a non-template site is the behaviour under test. Added `CANONICAL_SITE_DELETE_FORBIDDEN` coverage. |
+| Disable-with-allocation | A01 starts **disabled** after row create, so disable was a no-op 200 | Activate the site first, then assert 409 / allowed disable. |
+| Row rename slug-stability | Production now regenerates slug from the new A–D label | Keep “rename updates `site.row_label`”; drop stale slug-equality. |
+| `EventLayoutAndDaysTest::test_organizer_can_manually_create_and_disable_event_day` | Day date was outside the event range | Use `$event->starts_at` (inside range). Backend range checks unchanged. |
+| `EventDayAutomationTest` allocation fixtures | Inserted `event_sites` without `grid_row` / with row `Z` | Set `grid_row`, `grid_column`, `row_label` **A**, label `A01`. Schema not relaxed. |
+| `EventDayController::validateDay` PATCH | Concatenated `'sometimes\|required'` crashed Laravel (`validateSometimes\|required does not exist`) so outside-range update never returned 422 | Split into separate `sometimes` + `required` rules. Date-range enforcement still runs. Not a loosening of business rules. |
+| `CleansUpTestFixtures` | Only deleted explicitly tracked site IDs; row-create now inserts 16 sites | Also delete `event_sites` for tracked events before deleting rows (FK-safe teardown). |
+
+No test files deleted.
+
+## Final orphan scan
+
+Scanned frontend views/composables/services, backend controllers/routes/middleware, Python `main.py` imports, package/ESLint/composer scripts.
+
+**Removed now:** `feedbackListEndpoint` only.
+
+**No additional high-confidence dead source files.** Remaining items are intentional legacy/product gaps, not junk:
+
+- Live `boss/` / `staff/` directories and `Boss*` / `Staff*` names
+- Five `/api/staff/*` PR2 compatibility routes
+- Dormant `EnsureVendorApproved`
+- Community RSVP API without public UI
+- Event-day HTTP without a dedicated Vue panel
+- Deprecated aliases `canSeeManagerSections` / `shouldLoadManagerPanels` / `canFinalApproveBookings` (still consumed by `useWorkspaceNav`)
+- Survey-import **410** compatibility routes in `api.php`
+- `restore-canonical` has no dedicated PHPUnit file (not a hole created by Phase 2; `OrganizerEventLayoutSiteLifecycleTest` covers create/update/delete/history/A–D)
+
+## Intentionally retained
+
+- Community RSVP (`EventRegistrationController`, `POST /api/events/{id}/register`, `max_slots`) — backend capability; public UI has no RSVP entry point
+- EventDay (`EventDayController`, `EventDayGenerator`, auto-sync, current routes)
+- Organizer operations summary (`StaffOperationsController`, `/organizer/operations-summary`)
+- All five `/api/staff/*` compatibility routes
+- `EnsureVendorApproved` + Kernel `vendor.approved`
+- `/uum`, `ManagementRole::LEGACY_UUM`, `normalizeRole('uum')`, role migrations
+- All historical migrations
+- Invoice model/PDF/payment; layout/report/analytics Hub/FastAPI
+
+## Final repository status
+
+No known high-confidence dead **source files**, dangling imports of deleted classes, dangling routes to deleted controllers, dead API wrappers, stale npm e2e scripts, or stale Python offline dependencies.
+
+Known retained legacy (names, compatibility routes, dormant middleware, incomplete RSVP UI) remains by design.
+
+Function Map updated: parking layout A–D × 16; Event days row added; RSVP still documented as backend-only.
 

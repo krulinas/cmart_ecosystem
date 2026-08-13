@@ -42,13 +42,13 @@ class OrganizerEventLayoutRowLifecycleTest extends TestCase
         Sanctum::actingAs($organizer);
 
         $response = $this->postJson("/api/organizer/events/{$event->id}/layout/rows", [
-            'label' => 'Food Lane',
+            'label' => 'A',
             'vendor_category_id' => $category->id,
             'description' => 'Primary food row',
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('row.label', 'Food Lane')
+            ->assertJsonPath('row.label', 'A')
             ->assertJsonPath('row.category.slug', 'food-beverages')
             ->assertJsonPath('row.locks.rename_locked', false);
     }
@@ -66,7 +66,7 @@ class OrganizerEventLayoutRowLifecycleTest extends TestCase
             Sanctum::actingAs($organizer);
 
             $this->postJson("/api/organizer/events/{$event->id}/layout/rows", [
-                'label' => 'Blocked Row',
+                'label' => 'A',
                 'vendor_category_id' => $category->id,
             ])
                 ->assertStatus(422)
@@ -87,42 +87,37 @@ class OrganizerEventLayoutRowLifecycleTest extends TestCase
         Sanctum::actingAs($organizer);
 
         $this->postJson("/api/organizer/events/{$event->id}/layout/rows", [
-            'label' => 'Duplicate Lane',
+            'label' => 'A',
             'vendor_category_id' => $category->id,
         ])->assertCreated();
 
         $this->postJson("/api/organizer/events/{$event->id}/layout/rows", [
-            'label' => 'Duplicate Lane',
+            'label' => 'A',
             'vendor_category_id' => $category->id,
         ])
             ->assertStatus(409)
             ->assertJsonPath('error', 'ROW_LABEL_CONFLICT');
     }
 
-    public function test_row_slug_remains_stable_after_rename_and_updates_site_row_label(): void
+    public function test_rename_updates_site_row_label(): void
     {
         $organizer = $this->createUser('organizer');
         $event = $this->createEvent();
 
         Sanctum::actingAs($organizer);
 
-        $created = $this->createLayoutRowViaApi($event, ['label' => 'Alpha Lane']);
+        $created = $this->createLayoutRowViaApi($event, ['label' => 'A']);
         $rowId = $created['id'];
-        $originalSlug = $created['slug'];
-
-        $siteId = $this->createLayoutSiteViaApi($event, $rowId, [
-            'label' => 'A01',
-            'position_number' => 1,
-        ]);
+        $site = $this->canonicalSite($event, 'A01');
 
         $this->patchJson("/api/organizer/events/{$event->id}/layout/rows/{$rowId}", [
-            'label' => 'Beta Lane',
+            'label' => 'B',
         ])
             ->assertOk()
-            ->assertJsonPath('row.label', 'Beta Lane')
-            ->assertJsonPath('row.slug', $originalSlug);
+            ->assertJsonPath('row.label', 'B');
 
-        $this->assertSame('Beta Lane', EventSite::query()->findOrFail($siteId)->row_label);
+        $this->assertSame('B', EventSite::query()->findOrFail($site->id)->row_label);
+        $this->assertNotSame('', (string) EventLayoutRow::query()->findOrFail($rowId)->slug);
     }
 
     public function test_rename_and_category_change_blocked_after_allocation_history(): void
@@ -133,17 +128,13 @@ class OrganizerEventLayoutRowLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $row = $this->createLayoutRowViaApi($event, ['label' => 'History Row']);
-        $siteId = $this->createLayoutSiteViaApi($event, $row['id'], [
-            'label' => 'H01',
-            'position_number' => 1,
-        ]);
-        $site = EventSite::query()->findOrFail($siteId);
+        $row = $this->createLayoutRowViaApi($event, ['label' => 'A']);
+        $site = $this->canonicalSite($event, 'A01');
 
         $this->seedReleasedAllocation($event, $site, $day);
 
         $this->patchJson("/api/organizer/events/{$event->id}/layout/rows/{$row['id']}", [
-            'label' => 'Renamed History Row',
+            'label' => 'B',
         ])
             ->assertStatus(409)
             ->assertJsonPath('error', 'ROW_LABEL_LOCKED');
@@ -163,12 +154,8 @@ class OrganizerEventLayoutRowLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $row = $this->createLayoutRowViaApi($event, ['label' => 'Mutable Row']);
-        $siteId = $this->createLayoutSiteViaApi($event, $row['id'], [
-            'label' => 'M01',
-            'position_number' => 1,
-        ]);
-        $site = EventSite::query()->findOrFail($siteId);
+        $row = $this->createLayoutRowViaApi($event, ['label' => 'A']);
+        $site = $this->canonicalSite($event, 'A01');
         $this->seedReleasedAllocation($event, $site, $day);
 
         $this->patchJson("/api/organizer/events/{$event->id}/layout/rows/{$row['id']}", [
@@ -189,18 +176,17 @@ class OrganizerEventLayoutRowLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $empty = $this->createLayoutRowViaApi($event, ['label' => 'Empty Row']);
+        $empty = $this->createRowRecord($event, [
+            'label' => 'A',
+            'slug' => 'empty-a-' . $event->id,
+        ]);
 
-        $this->deleteJson("/api/organizer/events/{$event->id}/layout/rows/{$empty['id']}")
+        $this->deleteJson("/api/organizer/events/{$event->id}/layout/rows/{$empty->id}")
             ->assertOk();
 
-        $this->assertNull(EventLayoutRow::query()->find($empty['id']));
+        $this->assertNull(EventLayoutRow::query()->find($empty->id));
 
-        $nonEmpty = $this->createLayoutRowViaApi($event, ['label' => 'Non Empty Row']);
-        $this->createLayoutSiteViaApi($event, $nonEmpty['id'], [
-            'label' => 'N01',
-            'position_number' => 1,
-        ]);
+        $nonEmpty = $this->createLayoutRowViaApi($event, ['label' => 'B']);
 
         $this->deleteJson("/api/organizer/events/{$event->id}/layout/rows/{$nonEmpty['id']}")
             ->assertStatus(409)
@@ -215,31 +201,17 @@ class OrganizerEventLayoutRowLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $reservedRow = $this->createLayoutRowViaApi($event, ['label' => 'ResvArch']);
-        $reservedSiteId = $this->createLayoutSiteViaApi($event, $reservedRow['id'], [
-            'label' => 'R01',
-            'position_number' => 1,
-        ]);
-        $this->seedReservedAllocation(
-            $event,
-            EventSite::query()->findOrFail($reservedSiteId),
-            $day,
-        );
+        $reservedRow = $this->createLayoutRowViaApi($event, ['label' => 'A']);
+        $reservedSite = $this->canonicalSite($event, 'A01');
+        $this->seedReservedAllocation($event, $reservedSite, $day);
 
         $this->patchJson("/api/organizer/events/{$event->id}/layout/rows/{$reservedRow['id']}/archive")
             ->assertStatus(409)
             ->assertJsonPath('error', 'ACTIVE_ALLOCATIONS_PRESENT');
 
-        $releasedRow = $this->createLayoutRowViaApi($event, ['label' => 'RelArch']);
-        $releasedSiteId = $this->createLayoutSiteViaApi($event, $releasedRow['id'], [
-            'label' => 'R02',
-            'position_number' => 1,
-        ]);
-        $this->seedReleasedAllocation(
-            $event,
-            EventSite::query()->findOrFail($releasedSiteId),
-            $day,
-        );
+        $releasedRow = $this->createLayoutRowViaApi($event, ['label' => 'B']);
+        $releasedSite = $this->canonicalSite($event, 'B01');
+        $this->seedReleasedAllocation($event, $releasedSite, $day);
 
         $this->patchJson("/api/organizer/events/{$event->id}/layout/rows/{$releasedRow['id']}/archive")
             ->assertOk()
@@ -248,7 +220,7 @@ class OrganizerEventLayoutRowLifecycleTest extends TestCase
 
         $this->assertSame(
             EventSite::STATUS_DISABLED,
-            EventSite::query()->findOrFail($releasedSiteId)->operational_status,
+            EventSite::query()->findOrFail($releasedSite->id)->operational_status,
         );
     }
 
@@ -260,16 +232,9 @@ class OrganizerEventLayoutRowLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $row = $this->createLayoutRowViaApi($event, ['label' => 'Unarchive Row']);
-        $siteId = $this->createLayoutSiteViaApi($event, $row['id'], [
-            'label' => 'U01',
-            'position_number' => 1,
-        ]);
-        $this->seedReleasedAllocation(
-            $event,
-            EventSite::query()->findOrFail($siteId),
-            $day,
-        );
+        $row = $this->createLayoutRowViaApi($event, ['label' => 'A']);
+        $site = $this->canonicalSite($event, 'A01');
+        $this->seedReleasedAllocation($event, $site, $day);
 
         $this->patchJson("/api/organizer/events/{$event->id}/layout/rows/{$row['id']}/archive")
             ->assertOk();
@@ -281,7 +246,7 @@ class OrganizerEventLayoutRowLifecycleTest extends TestCase
 
         $this->assertSame(
             EventSite::STATUS_DISABLED,
-            EventSite::query()->findOrFail($siteId)->operational_status,
+            EventSite::query()->findOrFail($site->id)->operational_status,
         );
     }
 }

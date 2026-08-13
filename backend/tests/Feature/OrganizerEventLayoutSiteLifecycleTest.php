@@ -38,19 +38,20 @@ class OrganizerEventLayoutSiteLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $row = $this->createLayoutRowViaApi($event, ['label' => 'Mirror Row']);
+        $row = $this->createLayoutRowViaApi($event, ['label' => 'A']);
 
-        $response = $this->postJson("/api/organizer/events/{$event->id}/layout/rows/{$row['id']}/sites", [
-            'label' => 'M01',
-            'space_id' => $this->standardSpace()->id,
-            'position_number' => 1,
-            'grid_row' => 1,
-            'grid_column' => 1,
-        ]);
+        $this->assertSame('A', $this->canonicalSite($event, 'A01')->row_label);
+
+        $response = $this->postJson(
+            "/api/organizer/events/{$event->id}/layout/rows/{$row['id']}/sites",
+            array_merge($this->extraSitePayload($row['id']), [
+                'space_id' => $this->standardSpace()->id,
+            ]),
+        );
 
         $response->assertCreated()
-            ->assertJsonPath('site.row_label', 'Mirror Row')
-            ->assertJsonPath('site.label', 'M01');
+            ->assertJsonPath('site.row_label', 'A')
+            ->assertJsonPath('site.label', 'A17');
 
         $siteId = (int) $response->json('site.id');
         $this->createdSiteIds[] = $siteId;
@@ -63,10 +64,13 @@ class OrganizerEventLayoutSiteLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $row = $this->createLayoutRowViaApi($event, ['label' => 'Generate Row']);
+        $row = $this->createRowRecord($event, [
+            'label' => 'A',
+            'slug' => 'row-a-' . $event->id,
+        ]);
 
         $response = $this->postJson(
-            "/api/organizer/events/{$event->id}/layout/rows/{$row['id']}/sites/generate",
+            "/api/organizer/events/{$event->id}/layout/rows/{$row->id}/sites/generate",
             [
                 'space_id' => $this->standardSpace()->id,
                 'count' => 5,
@@ -93,15 +97,9 @@ class OrganizerEventLayoutSiteLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $row = $this->createLayoutRowViaApi($event, ['label' => 'Conflict Row']);
-
-        $this->createLayoutSiteViaApi($event, $row['id'], [
-            'label' => 'A03',
-            'position_number' => 3,
-            'grid_column' => 3,
-        ]);
-
+        $row = $this->createLayoutRowViaApi($event, ['label' => 'A']);
         $beforeCount = EventSite::query()->forEvent($event->id)->count();
+        $this->assertSame(16, $beforeCount);
 
         $this->postJson(
             "/api/organizer/events/{$event->id}/layout/rows/{$row['id']}/sites/generate",
@@ -126,18 +124,15 @@ class OrganizerEventLayoutSiteLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $sourceRow = $this->createLayoutRowViaApi($event, ['label' => 'Source Row']);
-        $targetRow = $this->createLayoutRowViaApi($event, ['label' => 'Target Row']);
-        $siteId = $this->createLayoutSiteViaApi($event, $sourceRow['id'], [
-            'label' => 'T01',
-            'position_number' => 1,
-        ]);
+        $sourceRow = $this->createLayoutRowViaApi($event, ['label' => 'A']);
+        $targetRow = $this->createLayoutRowViaApi($event, ['label' => 'B']);
+        $siteId = $this->createLayoutSiteViaApi($event, $sourceRow['id'], $this->extraSitePayload($sourceRow['id']));
 
         $this->patchJson("/api/organizer/events/{$event->id}/layout/sites/{$siteId}", [
             'event_layout_row_id' => $targetRow['id'],
         ])
             ->assertOk()
-            ->assertJsonPath('site.row_label', 'Target Row')
+            ->assertJsonPath('site.row_label', 'B')
             ->assertJsonPath('site.event_layout_row_id', $targetRow['id']);
     }
 
@@ -149,16 +144,12 @@ class OrganizerEventLayoutSiteLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $row = $this->createLayoutRowViaApi($event, ['label' => 'Structure Row']);
-        $siteId = $this->createLayoutSiteViaApi($event, $row['id'], [
-            'label' => 'S01',
-            'position_number' => 1,
-        ]);
-        $site = EventSite::query()->findOrFail($siteId);
+        $this->createLayoutRowViaApi($event, ['label' => 'A']);
+        $site = $this->canonicalSite($event, 'A01');
         $this->seedReleasedAllocation($event, $site, $day);
 
-        $this->patchJson("/api/organizer/events/{$event->id}/layout/sites/{$siteId}", [
-            'label' => 'S99',
+        $this->patchJson("/api/organizer/events/{$event->id}/layout/sites/{$site->id}", [
+            'label' => 'A99',
         ])
             ->assertStatus(409)
             ->assertJsonPath('error', 'SITE_STRUCTURE_LOCKED');
@@ -172,35 +163,27 @@ class OrganizerEventLayoutSiteLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $activeRow = $this->createLayoutRowViaApi($event, ['label' => 'DisAct']);
-        $activeSiteId = $this->createLayoutSiteViaApi($event, $activeRow['id'], [
-            'label' => 'D01',
-            'position_number' => 1,
-        ]);
-        $this->seedReservedAllocation(
-            $event,
-            EventSite::query()->findOrFail($activeSiteId),
-            $day,
-        );
+        $this->createLayoutRowViaApi($event, ['label' => 'A']);
+        $this->createLayoutRowViaApi($event, ['label' => 'B']);
+        $activeSite = $this->canonicalSite($event, 'A01');
+        $this->patchJson("/api/organizer/events/{$event->id}/layout/sites/{$activeSite->id}", [
+            'operational_status' => EventSite::STATUS_ACTIVE,
+        ])->assertOk();
+        $this->seedReservedAllocation($event, $activeSite->fresh(), $day);
 
-        $this->patchJson("/api/organizer/events/{$event->id}/layout/sites/{$activeSiteId}", [
+        $this->patchJson("/api/organizer/events/{$event->id}/layout/sites/{$activeSite->id}", [
             'operational_status' => EventSite::STATUS_DISABLED,
         ])
             ->assertStatus(409)
             ->assertJsonPath('error', 'ACTIVE_ALLOCATIONS_PRESENT');
 
-        $releasedRow = $this->createLayoutRowViaApi($event, ['label' => 'DisRel']);
-        $releasedSiteId = $this->createLayoutSiteViaApi($event, $releasedRow['id'], [
-            'label' => 'D02',
-            'position_number' => 1,
-        ]);
-        $this->seedReleasedAllocation(
-            $event,
-            EventSite::query()->findOrFail($releasedSiteId),
-            $day,
-        );
+        $releasedSite = $this->canonicalSite($event, 'B01');
+        $this->patchJson("/api/organizer/events/{$event->id}/layout/sites/{$releasedSite->id}", [
+            'operational_status' => EventSite::STATUS_ACTIVE,
+        ])->assertOk();
+        $this->seedReleasedAllocation($event, $releasedSite->fresh(), $day);
 
-        $this->patchJson("/api/organizer/events/{$event->id}/layout/sites/{$releasedSiteId}", [
+        $this->patchJson("/api/organizer/events/{$event->id}/layout/sites/{$releasedSite->id}", [
             'operational_status' => EventSite::STATUS_DISABLED,
         ])
             ->assertOk()
@@ -215,11 +198,12 @@ class OrganizerEventLayoutSiteLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $historyRow = $this->createLayoutRowViaApi($event, ['label' => 'DelHist']);
-        $historySiteId = $this->createLayoutSiteViaApi($event, $historyRow['id'], [
-            'label' => 'X01',
-            'position_number' => 1,
-        ]);
+        $historyRow = $this->createLayoutRowViaApi($event, ['label' => 'A']);
+        $historySiteId = $this->createLayoutSiteViaApi(
+            $event,
+            $historyRow['id'],
+            $this->extraSitePayload($historyRow['id']),
+        );
         $this->seedReleasedAllocation(
             $event,
             EventSite::query()->findOrFail($historySiteId),
@@ -230,11 +214,17 @@ class OrganizerEventLayoutSiteLifecycleTest extends TestCase
             ->assertStatus(409)
             ->assertJsonPath('error', 'SITE_HAS_ALLOCATION_HISTORY');
 
-        $cleanRow = $this->createLayoutRowViaApi($event, ['label' => 'DelClean']);
-        $cleanSiteId = $this->createLayoutSiteViaApi($event, $cleanRow['id'], [
-            'label' => 'X02',
-            'position_number' => 1,
-        ]);
+        $canonical = $this->canonicalSite($event, 'A01');
+        $this->deleteJson("/api/organizer/events/{$event->id}/layout/sites/{$canonical->id}")
+            ->assertStatus(409)
+            ->assertJsonPath('error', 'CANONICAL_SITE_DELETE_FORBIDDEN');
+
+        $cleanRow = $this->createLayoutRowViaApi($event, ['label' => 'B']);
+        $cleanSiteId = $this->createLayoutSiteViaApi(
+            $event,
+            $cleanRow['id'],
+            $this->extraSitePayload($cleanRow['id']),
+        );
 
         $this->deleteJson("/api/organizer/events/{$event->id}/layout/sites/{$cleanSiteId}")
             ->assertOk();
@@ -250,33 +240,20 @@ class OrganizerEventLayoutSiteLifecycleTest extends TestCase
 
         Sanctum::actingAs($organizer);
 
-        $row = $this->createLayoutRowViaApi($event, ['label' => 'Reorder Row']);
-        $siteA = $this->createLayoutSiteViaApi($event, $row['id'], [
-            'label' => 'Q01',
-            'position_number' => 1,
-            'display_order' => 1,
-        ]);
-        $siteB = $this->createLayoutSiteViaApi($event, $row['id'], [
-            'label' => 'Q02',
-            'position_number' => 2,
-            'grid_column' => 2,
-            'display_order' => 2,
-        ]);
+        $row = $this->createLayoutRowViaApi($event, ['label' => 'A']);
+        $siteA = $this->canonicalSite($event, 'A01');
+        $siteB = $this->canonicalSite($event, 'A02');
 
-        $this->seedReleasedAllocation(
-            $event,
-            EventSite::query()->findOrFail($siteA),
-            $day,
-        );
+        $this->seedReleasedAllocation($event, $siteA, $day);
 
         $this->patchJson("/api/organizer/events/{$event->id}/layout/rows/{$row['id']}/sites/reorder", [
             'sites' => [
-                ['id' => $siteA, 'display_order' => 20],
-                ['id' => $siteB, 'display_order' => 10],
+                ['id' => $siteA->id, 'display_order' => 20],
+                ['id' => $siteB->id, 'display_order' => 10],
             ],
         ])->assertOk();
 
-        $this->assertSame(20, EventSite::query()->findOrFail($siteA)->display_order);
-        $this->assertSame(10, EventSite::query()->findOrFail($siteB)->display_order);
+        $this->assertSame(20, EventSite::query()->findOrFail($siteA->id)->display_order);
+        $this->assertSame(10, EventSite::query()->findOrFail($siteB->id)->display_order);
     }
 }

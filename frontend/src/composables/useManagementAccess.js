@@ -54,8 +54,6 @@ export function useManagementAccess() {
   const shouldLoadOrganizerAnalyticsPanels = computed(() => canAccessCarbootAnalytics.value);
 
   const bookingsListEndpoint = '/bookings';
-  const operationsSummaryEndpoint = '/organizer/operations-summary';
-  const feedbackListEndpoint = '/organizer/feedbacks';
 
   const queueStatusForView = computed(() => ORGANIZER_QUEUE_STATUS);
 
@@ -83,8 +81,6 @@ export function useManagementAccess() {
     /** @deprecated Use canApproveBookings */
     canFinalApproveBookings: canApproveBookings,
     bookingsListEndpoint,
-    operationsSummaryEndpoint,
-    feedbackListEndpoint,
     queueStatusForView,
     workspaceTheme,
     governanceCapabilities,

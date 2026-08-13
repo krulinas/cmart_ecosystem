@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\EventSite;
 use App\Models\User;
 use App\Models\VendorCategory;
 use Laravel\Sanctum\Sanctum;
@@ -65,20 +66,32 @@ class OrganizerEventLayoutAuthorizationTest extends TestCase
         $category = VendorCategory::query()->where('slug', 'food-beverages')->firstOrFail();
 
         $this->postJson("/api/organizer/events/{$event->id}/layout/rows", [
-            'label' => 'Guest Row',
+            'label' => 'A',
             'vendor_category_id' => $category->id,
         ])->assertUnauthorized();
+
+        $allowedLabels = [
+            'organizer' => 'A',
+            'super_admin' => 'B',
+        ];
 
         foreach ($this->roleExpectations() as $role => $expectedStatus) {
             Sanctum::actingAs($this->createUser($role));
 
             $response = $this->postJson("/api/organizer/events/{$event->id}/layout/rows", [
-                'label' => 'Auth-' . substr(uniqid(), -8),
+                'label' => $allowedLabels[$role] ?? 'C',
                 'vendor_category_id' => $category->id,
             ]);
 
             if (in_array($role, ['organizer', 'super_admin'], true)) {
                 $response->assertCreated();
+                $rowId = (int) $response->json('row.id');
+                $siteIds = EventSite::query()
+                    ->forEvent($event->id)
+                    ->where('event_layout_row_id', $rowId)
+                    ->pluck('id')
+                    ->all();
+                $this->createdSiteIds = array_merge($this->createdSiteIds, $siteIds);
             } else {
                 $response->assertStatus($expectedStatus);
             }

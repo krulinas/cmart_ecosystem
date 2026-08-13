@@ -62,7 +62,7 @@ All under `auth` + `role:` `ManagementRole::carbootOperationalRoles()` → `orga
 | PATCH | `.../sites/{site}` | update |
 | DELETE | `.../sites/{site}` | destroy |
 
-Legacy Phase 2A site/day routes still exist (`EventSiteController`, `EventDayController`) under the same organizer group.
+Legacy Phase 2A `EventSiteController` / `EventSiteLayoutGenerator` were retired/deleted during repository cleanup Phase 2. Event-day HTTP (`EventDayController`) remains. Current site HTTP is the row-aware `OrganizerEventLayout*` stack.
 
 Public: `GET /events/{event}/layout` → `PublicEventLayoutController@show`.
 
@@ -73,7 +73,7 @@ Public: `GET /events/{event}/layout` → `PublicEventLayoutController@show`.
 | `App\Services\EventLayoutService` | `createRow`, `updateRow`, `reorderRows`, `deleteEmptyRow`, `archiveRow`, `unarchiveRow`, `createSite`, `generateSites`, `updateSite`, `deleteSite`, … |
 | `App\Services\StandardEventLayoutGenerator` | Empty-layout-only A–D×16 generator |
 | `App\Services\EventLayoutRowSiteGenerator` | Per-row bulk site generation (`MAX_SITES_PER_REQUEST = 100`) |
-| `App\Services\EventSiteLayoutGenerator` | Legacy full-event bulk generation (Phase 2; no row binding) |
+| `App\Services\EventSiteLayoutGenerator` | Retired/deleted during repository cleanup Phase 2 (legacy full-event bulk generation) |
 | `App\Services\EventLayoutReadinessService` | Operational + public readiness blockers |
 | `App\Services\EventLayoutLockService` | Allocation-history locks; occupancy summaries |
 | `App\Services\EventLayoutAuditLogger` + `EventLayoutAuditLog` | Append-only audit actions (no undo replay) |
