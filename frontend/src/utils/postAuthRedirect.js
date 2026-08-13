@@ -61,10 +61,6 @@ export function isRedirectAllowedForUser(auth, redirectCandidate) {
     return isManagementPath(pathname);
   }
 
-  if (auth.role === 'uum') {
-    return pathname === '/uum';
-  }
-
   if (auth.role === 'community') {
     return isCommunityVendorPath(pathname);
   }

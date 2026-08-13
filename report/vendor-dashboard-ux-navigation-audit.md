@@ -323,7 +323,7 @@ No new backend permissions required for IA moves. Do **not** expose vendor item/
 - `frontend/src/components/VendorItemReservationsPanel.vue` — title “Customer Reservations”
 - `frontend/src/components/MyItemReservationsPanel.vue` — mount point on Explore destination
 - `frontend/src/views/public/CommunityPortal.vue` — only if shared reservation route strategy changes
-- `frontend/src/components/VendorBusinessProfileManager.vue` / `VendorProfile.vue` / `VendorProfileEditModal.vue` — profile consolidation
+- `frontend/src/components/VendorBusinessProfileManager.vue` / `VendorProfile.vue` / `VendorProfileEditModal.vue` — profile consolidation. **`VendorBusinessProfileManager.vue` was later deleted in Phase 1 cleanup.**
 - `frontend/src/components/vendor/VendorDashboardFocus.vue` — minor CTA/copy
 - `frontend/src/utils/vendorOnboarding.js` — copy if dashboard no longer hosts listings/receipts
 - `frontend/src/components/VendorAnalyticsDashboard.vue` — close/edit-profile navigation targets

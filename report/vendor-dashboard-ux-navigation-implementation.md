@@ -74,9 +74,9 @@ The eight-chip in-dashboard navigation row is **removed**, not restyled.
 - `frontend/src/components/VendorItemReservationsPanel.vue` (label → Customer Reservations)
 - `frontend/src/utils/vendorOnboarding.js` (active-state copy points to Manage/Account)
 
-### Intentionally not deleted
+### Intentionally not deleted (at implementation time)
 
-- `frontend/src/components/VendorBusinessProfileManager.vue` — unused after this change; retained pending confirmation
+- `frontend/src/components/VendorBusinessProfileManager.vue` — unused after this change; **deleted in Phase 1 cleanup** (`report/repository-cleanup-phase0-audit.md`).
 
 ### Not changed
 
@@ -196,7 +196,7 @@ Suggested manual checklist:
 ## 10. Remaining risks / unresolved questions
 
 1. **Community role vs `isVendorUser`:** New routes share the historical community-role gate; product may later want vendor-only enforcement.
-2. **`VendorBusinessProfileManager` orphaned** but not deleted — confirm unused, then remove in a follow-up.
+2. **`VendorBusinessProfileManager`** — deleted in Phase 1 cleanup. Live editor is `/profile` + `VendorProfileEditModal.vue`.
 3. **Focus payment without history:** Edge cases where unpaid/failed exists only on history rows (not booking invoice) may be less visible until Payment History is opened.
 4. **Insights “Close”** returns to `/dashboard` (component still emits close).
 5. **My Reservations for community visitors** remains on Community primary + portal embed; vendors use Explore → `/my-reservations` (intentional role split).

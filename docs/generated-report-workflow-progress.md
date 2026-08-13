@@ -213,7 +213,7 @@ This repair task created **no new migration**.
 | `frontend/src/components/reports/ReportNotificationActivity.vue` | Simulation disclosure UI | Repair C | Yes |
 | `frontend/src/views/dashboards/management/CMartReportCentrePanel.vue` | CMart Report Centre | B/D/Repair | Yes |
 | `frontend/src/views/dashboards/organizer/OrganizerReportCentrePanel.vue` | Organizer Report Centre | B–E/Repair | Yes |
-| `frontend/src/views/dashboards/management/ManagementReportsPanel.vue` | Retired stub | A | No |
+| `frontend/src/views/dashboards/management/ManagementReportsPanel.vue` | Retired stub — **deleted in Phase 1 cleanup** | A | No |
 | `frontend/src/views/dashboards/organizer/OrganizerEventLayoutPanel.vue` | 403 toast guard | A | Yes |
 | `frontend/src/views/dashboards/organizer/OrganizerItemReservationsPanel.vue` | 403 toast guard | A | Yes |
 | `frontend/src/assets/main.css` | Print styles | E | Yes |
