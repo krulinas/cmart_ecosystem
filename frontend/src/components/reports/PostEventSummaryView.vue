@@ -817,13 +817,4 @@ function formatEnglishDate(value) {
 .pes-dist + .pes-dist {
   margin-top: 0.85rem;
 }
-
-@media print {
-  .pes-cover {
-    break-after: page;
-  }
-  .pes-section {
-    break-inside: avoid;
-  }
-}
 </style>

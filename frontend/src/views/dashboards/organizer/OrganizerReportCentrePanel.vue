@@ -141,16 +141,20 @@
                 class="ml-btn-primary text-sm"
                 @click="createRevision(item.id)"
               >Create revision</button>
-              <button type="button" class="ml-btn-ghost text-sm" @click="downloadPdf(item.id)">PDF</button>
+              <button type="button" class="ml-btn-ghost text-sm" @click="downloadPdf(item.id)">Download PDF</button>
             </div>
           </div>
         </article>
       </section>
 
-      <div v-if="activeReport" class="report-print-root space-y-4 rounded-2xl border border-ink-200 bg-white p-5 shadow-sm">
-        <div class="flex flex-wrap gap-2 print:hidden">
+      <div v-if="activeReport" class="space-y-4 rounded-2xl border border-ink-200 bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap gap-2">
           <button type="button" class="ml-btn-ghost text-sm" @click="activeReport = null">Back</button>
-          <button type="button" class="ml-btn-ghost text-sm" @click="printCurrent">Print</button>
+          <button
+            type="button"
+            class="ml-btn-ghost text-sm"
+            @click="downloadPdf(activeReport.id)"
+          >Download PDF</button>
           <button
             v-if="activeReport.status === 'draft'"
             type="button"
@@ -165,7 +169,7 @@
           >Publish</button>
         </div>
 
-        <div v-if="activeReport.status === 'draft'" class="grid gap-3 print:hidden sm:grid-cols-2">
+        <div v-if="activeReport.status === 'draft'" class="grid gap-3 sm:grid-cols-2">
           <label class="block text-sm font-semibold text-ink-700">
             Organizer observations
             <textarea v-model="narrative.observations" rows="5" class="ml-input mt-1 w-full" />
@@ -428,8 +432,6 @@ const createRevision = async (id) => {
     toast.error(error.response?.data?.message || 'Unable to create revision.');
   }
 };
-
-const printCurrent = () => window.print();
 
 const downloadPdf = async (id) => {
   try {

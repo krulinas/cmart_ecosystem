@@ -262,6 +262,19 @@
                   {{ copy.manageLayoutExit }}
                 </button>
               </template>
+              <template #rowCount="{ sourceRow }">
+                <OrganizerCanonicalSiteRestoreControls
+                  v-if="isLayoutManagementMode"
+                  :row="sourceRow"
+                  :disabled="mutating"
+                  :restoring-label="restoringCanonicalLabel"
+                  @restore-label="(label) => restoreCanonicalSite(sourceRow, label)"
+                  @restore-all="() => restoreAllMissingCanonicalSites(sourceRow)"
+                />
+                <p v-else class="vpl__row-count">
+                  {{ rowPhysicalSiteCountLabel(sourceRow) }}
+                </p>
+              </template>
               <template #rowActions="{ sourceRow, rowIndex }">
                 <OrganizerLayoutRowActionsMenu
                   :row="sourceRow"
@@ -450,12 +463,18 @@ import LayoutSiteGenerationModal from '../../../components/organizer/layout/Layo
 import OrganizerSiteActionsPopover from '../../../components/organizer/layout/OrganizerSiteActionsPopover.vue';
 import OrganizerLayoutRowActionsMenu from '../../../components/organizer/layout/OrganizerLayoutRowActionsMenu.vue';
 import OrganizerManageParkingLayoutMenu from '../../../components/organizer/layout/OrganizerManageParkingLayoutMenu.vue';
+import OrganizerCanonicalSiteRestoreControls from '../../../components/organizer/layout/OrganizerCanonicalSiteRestoreControls.vue';
 import StandardParkingLayoutModal from '../../../components/organizer/layout/StandardParkingLayoutModal.vue';
 import * as layoutApi from '../../../services/organizerEventLayoutApi';
 import {
   LAYOUT_COPY,
   layoutErrorMessage,
 } from '../../../utils/organizerEventLayoutMessages';
+import {
+  CMART_CARBOOT_SITES_PER_ROW,
+  isAllowedPhysicalRowLabel,
+  isCanonicalSiteLabel,
+} from '../../../config/cmartCarbootPhysicalLayout';
 import {
   buildRowReorderPayload,
   canGenerateSitesForRow,
@@ -499,6 +518,7 @@ const layoutWorkspaceMode = ref(LAYOUT_WORKSPACE_MODE.VIEW);
 const selectedOpenSiteIds = ref([]);
 const baselineOpenSiteIds = ref([]);
 const liveStatusMessage = ref('');
+const restoringCanonicalLabel = ref(null);
 
 const rowModalOpen = ref(false);
 const siteModalOpen = ref(false);
@@ -630,6 +650,14 @@ function formatLoadedAt(value) {
   } catch {
     return String(value);
   }
+}
+
+function rowPhysicalSiteCountLabel(row) {
+  const count = (row?.sites || []).length;
+  if (isAllowedPhysicalRowLabel(row?.label)) {
+    return copy.physicalSitesOfTotal(count, CMART_CARBOOT_SITES_PER_ROW);
+  }
+  return copy.sitesCountFallback(count);
 }
 
 function goToEvents() {
@@ -1086,6 +1114,10 @@ async function setFocusedSiteStatus(site, nextStatus) {
 }
 
 async function confirmDeleteSite(site) {
+  if (isCanonicalSiteLabel(site?.label)) {
+    toast.error(copy.canonicalSiteDeleteForbidden);
+    return;
+  }
   if (!window.confirm(copy.confirmDeleteSite)) {
     return;
   }
@@ -1096,6 +1128,47 @@ async function confirmDeleteSite(site) {
     }
     toast.success(copy.siteDeleted);
   });
+}
+
+async function restoreCanonicalSite(row, label) {
+  if (!row?.id || !label || restoringCanonicalLabel.value || mutating.value) return;
+  restoringCanonicalLabel.value = label;
+  mutating.value = true;
+  formError.value = '';
+  try {
+    await layoutApi.restoreCanonicalLayoutSite(selectedEventId.value, row.id, { label });
+    toast.success(copy.siteRestoredNotOpen(label));
+    await refreshLayout({ force: true });
+  } catch (error) {
+    formError.value = layoutErrorMessage(error);
+    toast.error(formError.value);
+    await refreshLayout({ force: true });
+  } finally {
+    mutating.value = false;
+    restoringCanonicalLabel.value = null;
+  }
+}
+
+async function restoreAllMissingCanonicalSites(row) {
+  if (!row?.id || restoringCanonicalLabel.value || mutating.value) return;
+  restoringCanonicalLabel.value = '__all__';
+  mutating.value = true;
+  formError.value = '';
+  try {
+    const { data } = await layoutApi.restoreCanonicalLayoutSite(selectedEventId.value, row.id, {
+      restore_all_missing: true,
+    });
+    const count = Number(data?.restored_count || data?.restored_labels?.length || 0);
+    toast.success(copy.sitesRestoredNotOpen(count));
+    await refreshLayout({ force: true });
+  } catch (error) {
+    formError.value = layoutErrorMessage(error);
+    toast.error(formError.value);
+    await refreshLayout({ force: true });
+  } finally {
+    mutating.value = false;
+    restoringCanonicalLabel.value = null;
+  }
 }
 
 watch(

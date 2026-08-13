@@ -168,6 +168,59 @@ class OrganizerEventLayoutSiteController extends Controller
         ]);
     }
 
+    public function restoreCanonical(Request $request, CarbootEvent $carboot_event, EventLayoutRow $row): JsonResponse
+    {
+        if (! $this->rowBelongsToEvent($row, $carboot_event)) {
+            return $this->rowNotFound();
+        }
+
+        $validated = $request->validate([
+            'label' => ['required_without:restore_all_missing', 'nullable', 'string', 'max:8'],
+            'restore_all_missing' => ['sometimes', 'boolean'],
+        ]);
+
+        $restoreAll = (bool) ($validated['restore_all_missing'] ?? false);
+        if (! $restoreAll && empty($validated['label'])) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: Provide a canonical site label to restore.',
+                'error' => 'INVALID_SITE_LABEL',
+            ], 422);
+        }
+
+        try {
+            if ($restoreAll) {
+                $result = $this->layout->restoreAllMissingCanonicalSites($row, $request->user());
+                $sites = collect($result['sites'])->map(fn (EventSite $site) => $this->present($site))->values();
+
+                return response()->json([
+                    'message' => '200 OK: Missing physical sites restored as NOT OPEN.',
+                    'restored_labels' => $result['restored_labels'],
+                    'restored_count' => count($result['restored_labels']),
+                    'sites' => $sites,
+                    'readiness' => $result['readiness'],
+                ]);
+            }
+
+            $result = $this->layout->restoreCanonicalSite(
+                $row,
+                $request->user(),
+                (string) $validated['label'],
+            );
+
+            return response()->json([
+                'message' => '200 OK: Physical site restored as NOT OPEN.',
+                'restored_labels' => $result['restored_labels'],
+                'restored_count' => 1,
+                'site' => $this->present($result['site']),
+                'readiness' => $result['readiness'],
+            ]);
+        } catch (DomainConflictException $exception) {
+            return $this->conflict($exception);
+        } catch (InvalidArgumentException $exception) {
+            return $this->validationError($exception);
+        }
+    }
+
     private function present(EventSite $site): array
     {
         $site->loadMissing(['space', 'eventLayoutRow']);

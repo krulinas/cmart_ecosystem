@@ -198,6 +198,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
             Route::post('/events/{carboot_event}/layout/rows/{row}/sites', [OrganizerEventLayoutSiteController::class, 'store']);
             Route::post('/events/{carboot_event}/layout/rows/{row}/sites/generate', [OrganizerEventLayoutSiteController::class, 'generate']);
+            Route::post('/events/{carboot_event}/layout/rows/{row}/sites/restore-canonical', [OrganizerEventLayoutSiteController::class, 'restoreCanonical']);
             Route::patch('/events/{carboot_event}/layout/rows/{row}/sites/reorder', [OrganizerEventLayoutSiteController::class, 'reorder']);
             Route::patch('/events/{carboot_event}/layout/sites/{site}', [OrganizerEventLayoutSiteController::class, 'update']);
             Route::delete('/events/{carboot_event}/layout/sites/{site}', [OrganizerEventLayoutSiteController::class, 'destroy']);
@@ -212,6 +213,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/bookings', [BookingController::class, 'index']);
         Route::get('/bookings/{booking}', [BookingController::class, 'show']);
+        Route::get('/bookings/{booking}/payment-proof', [BookingController::class, 'paymentProof']);
         Route::put('/bookings/{booking}', [BookingController::class, 'update']);
         Route::patch('/bookings/{booking}', [BookingController::class, 'update']);
         Route::patch('/bookings/{booking}/verify-payment', [BookingController::class, 'verifyBookingPayment']);

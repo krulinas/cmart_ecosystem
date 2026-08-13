@@ -24,6 +24,7 @@ use App\Services\VendorCategoryResolver;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -1522,6 +1523,94 @@ class BookingController extends Controller
             'message' => 'Payment verified successfully. Vendor receipt and event pass are now available.',
             'booking' => VendorBookingPresenter::presentForOrganizer($booking),
             'invoice' => $invoice->fresh(),
+        ]);
+    }
+
+    /**
+     * Stream an uploaded payment-proof image for Organizer visual review.
+     *
+     * Authorization mirrors verifyBookingPayment (organizer-equivalent only).
+     * Paths are resolved only from the booking invoice — never from request input.
+     */
+    public function paymentProof(Request $request, Booking $booking)
+    {
+        if (! ManagementRole::isOrganizerEquivalent($request->user()->role)) {
+            return response()->json([
+                'message' => '403 Forbidden: Organizer access required to view payment proofs.',
+            ], 403);
+        }
+
+        $booking->loadMissing('invoice');
+        $invoice = $booking->invoice;
+        if (! $invoice) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: No invoice is available for this booking.',
+            ], 422);
+        }
+
+        $rawPath = $invoice->payment_proof_path;
+        if (! filled($rawPath)) {
+            return response()->json([
+                'message' => '404 Not Found: No payment proof has been submitted for this booking.',
+            ], 404);
+        }
+
+        $path = str_replace('\\', '/', ltrim((string) $rawPath, '/'));
+
+        if (str_starts_with($path, 'demo-gateway/')) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: This booking uses a demo payment marker and has no uploaded proof image.',
+            ], 422);
+        }
+
+        if (! str_starts_with($path, 'payment-proofs/') || str_contains($path, '..')) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: The stored payment proof path is not valid.',
+            ], 422);
+        }
+
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+        if (! in_array($extension, $allowedExtensions, true)) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: The payment proof file type is not supported.',
+            ], 422);
+        }
+
+        $disk = Storage::disk('public');
+        if (! $disk->exists($path)) {
+            return response()->json([
+                'message' => '404 Not Found: The payment proof file could not be found.',
+            ], 404);
+        }
+
+        $mime = $disk->mimeType($path) ?: null;
+        $allowedMimes = [
+            'image/jpeg' => true,
+            'image/png' => true,
+            'image/webp' => true,
+        ];
+        if ($mime === null || ! isset($allowedMimes[$mime])) {
+            // Fall back to extension-mapped type when the driver cannot detect MIME.
+            $mime = match ($extension) {
+                'jpg', 'jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'webp' => 'image/webp',
+                default => null,
+            };
+        }
+        if ($mime === null || ! isset($allowedMimes[$mime])) {
+            return response()->json([
+                'message' => '422 Unprocessable Entity: The payment proof file type is not supported.',
+            ], 422);
+        }
+
+        return $disk->response($path, basename($path), [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.basename($path).'"',
+            'Cache-Control' => 'private, no-store, no-cache, must-revalidate',
+            'Pragma' => 'no-cache',
+            'X-Content-Type-Options' => 'nosniff',
         ]);
     }
 

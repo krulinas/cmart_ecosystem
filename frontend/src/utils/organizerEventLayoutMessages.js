@@ -40,6 +40,20 @@ export const LAYOUT_COPY = {
   disableSite: 'Disable',
   enableSite: 'Enable',
   deleteSite: 'Delete Site',
+  physicalSitesOfTotal: (present, total) =>
+    `${present} of ${total} physical sites`,
+  sitesCountFallback: (count) =>
+    `${count} site${count === 1 ? '' : 's'}`,
+  restoreSite: (label) => `Restore ${label}`,
+  restoreMissingSites: 'Restore missing sites',
+  restoreAllMissingSites: 'Restore all missing sites',
+  restoringSite: (label) => `Restoring ${label}…`,
+  restoringAllMissingSites: 'Restoring missing sites…',
+  siteRestoredNotOpen: (label) => `${label} restored as NOT OPEN.`,
+  sitesRestoredNotOpen: (count) =>
+    `${count} physical site${count === 1 ? '' : 's'} restored as NOT OPEN.`,
+  canonicalSiteDeleteForbidden:
+    'Physical parking sites cannot be deleted. Set the site to NOT OPEN or Unavailable instead.',
   save: 'Save',
   cancel: 'Cancel',
   tryAgain: 'Try Again',
@@ -247,6 +261,12 @@ export const LAYOUT_ERROR_MESSAGES = {
     'One or more selected sites are protected by an existing booking or reservation.',
   INVALID_SITE: 'One or more selected sites are invalid for this event.',
   NO_PHYSICAL_SITES: 'No physical sites exist for this event.',
+  CANONICAL_SITE_DELETE_FORBIDDEN:
+    'Physical parking sites cannot be deleted. Set the site to NOT OPEN or Unavailable instead.',
+  CANONICAL_SITE_ALREADY_EXISTS: 'That physical site already exists. Refresh the layout and try again.',
+  CANONICAL_SITE_POSITION_CONFLICT:
+    'That parking position is already occupied. Refresh the layout and try again.',
+  CANONICAL_ROW_COMPLETE: 'This row already has all 16 physical sites.',
   VENUE_TEMPLATE_ROWS_EXHAUSTED: 'All physical rows for this venue are already in use.',
   ROW_OUTSIDE_VENUE_TEMPLATE: 'Physical row identity must be A, B, C, or D for this venue.',
   ACTIVE_SITE_COUNT_EXCEEDS_VENDOR_LIMIT: 'Opening this site would exceed Vendor sites to open.',

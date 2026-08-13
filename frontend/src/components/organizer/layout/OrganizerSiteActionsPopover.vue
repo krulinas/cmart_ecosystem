@@ -84,6 +84,7 @@
           {{ mutating && pendingStatus === 'disabled' ? copy.updatingStatus : copy.setDisabled }}
         </button>
         <button
+          v-if="canDeleteSite"
           type="button"
           class="site-popover__btn site-popover__btn--danger"
           :disabled="mutating || site.locks?.delete_locked"
@@ -101,7 +102,10 @@
       <p v-if="site.locks?.structure_locked" class="site-popover__hint site-popover__hint--violet">
         {{ copy.structureLockedHint }}
       </p>
-      <p v-if="site.locks?.delete_locked" class="site-popover__hint">
+      <p v-if="isCanonicalPhysicalSite" class="site-popover__hint">
+        {{ copy.canonicalSiteDeleteForbidden }}
+      </p>
+      <p v-else-if="site.locks?.delete_locked" class="site-popover__hint">
         Prefer {{ copy.setDisabled }} or {{ copy.setUnavailable }} for locked physical sites.
       </p>
     </div>
@@ -121,6 +125,7 @@ import {
   OCCUPANCY_LABELS,
   SITE_STATUS_LABELS,
 } from '../../../utils/organizerEventLayoutMessages';
+import { isCanonicalSiteLabel } from '../../../config/cmartCarbootPhysicalLayout';
 
 const POPOVER_WIDTH = 248;
 const POPOVER_ESTIMATED_HEIGHT = 292;
@@ -153,6 +158,8 @@ const coords = ref({ top: 0, left: 0 });
 const arrowOffsetX = ref(POPOVER_WIDTH / 2);
 
 const disableLocked = computed(() => Boolean(props.site?.locks?.disable_locked));
+const isCanonicalPhysicalSite = computed(() => isCanonicalSiteLabel(props.site?.label));
+const canDeleteSite = computed(() => !isCanonicalPhysicalSite.value);
 const occupancyLabel = computed(
   () => OCCUPANCY_LABELS[props.site?.occupancy] || props.site?.occupancy || copy.available,
 );

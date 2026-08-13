@@ -999,6 +999,13 @@ class EventLayoutService
             CarbootEvent::query()->whereKey($site->carboot_event_id)->lockForUpdate()->firstOrFail();
             $locked = EventSite::query()->whereKey($site->id)->lockForUpdate()->firstOrFail();
 
+            if (CmartCarbootPhysicalLayout::isCanonicalSiteLabel((string) $locked->label)) {
+                throw new DomainConflictException(
+                    'Physical parking sites cannot be deleted. Set the site to NOT OPEN or Unavailable instead.',
+                    'CANONICAL_SITE_DELETE_FORBIDDEN',
+                );
+            }
+
             if ($locked->hasAllocationHistory()) {
                 throw new DomainConflictException(
                     'Event site has allocation history and cannot be deleted.',
@@ -1022,6 +1029,308 @@ class EventLayoutService
                 $siteId,
             );
         });
+    }
+
+    /**
+     * Restore one missing canonical CMart physical site as NOT OPEN.
+     *
+     * Sites are hard-deleted in this schema, so restoration creates the
+     * missing canonical identity (label/position) without touching bookings.
+     *
+     * @return array{
+     *   site: EventSite,
+     *   restored_labels: list<string>,
+     *   readiness: array<string, mixed>
+     * }
+     */
+    public function restoreCanonicalSite(EventLayoutRow $row, User $actor, string $label): array
+    {
+        return DB::transaction(function () use ($row, $actor, $label) {
+            $event = CarbootEvent::query()->whereKey($row->carboot_event_id)->lockForUpdate()->firstOrFail();
+            $lockedRow = EventLayoutRow::query()->whereKey($row->id)->lockForUpdate()->firstOrFail();
+
+            if ((int) $lockedRow->carboot_event_id !== (int) $event->id) {
+                throw new DomainConflictException(
+                    'Layout row does not belong to this event.',
+                    'INVALID_SITE',
+                );
+            }
+
+            $rowLabel = CmartCarbootPhysicalLayout::normalizeRowLabel((string) $lockedRow->label);
+            if (! CmartCarbootPhysicalLayout::isAllowedRowLabel($rowLabel)) {
+                throw new DomainConflictException(
+                    'Canonical site restoration is only available for physical rows A–D.',
+                    'ROW_OUTSIDE_VENUE_TEMPLATE',
+                );
+            }
+
+            $parsed = CmartCarbootPhysicalLayout::parseCanonicalSiteLabel($label);
+            if ($parsed === null || $parsed['row'] !== $rowLabel) {
+                throw new InvalidArgumentException(
+                    "Label must be a missing canonical site for row {$rowLabel} (e.g. {$rowLabel}01–{$rowLabel}16)."
+                );
+            }
+
+            $canonicalLabel = CmartCarbootPhysicalLayout::siteLabelFor($rowLabel, $parsed['position']);
+            $position = $parsed['position'];
+
+            $existingOnRow = EventSite::query()
+                ->forEvent((int) $event->id)
+                ->where('event_layout_row_id', $lockedRow->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            $existingLabels = $existingOnRow->pluck('label')->all();
+            $missing = CmartCarbootPhysicalLayout::missingSiteLabels($rowLabel, $existingLabels);
+            if (! in_array($canonicalLabel, $missing, true)) {
+                throw new DomainConflictException(
+                    "Site {$canonicalLabel} already exists on this row.",
+                    'CANONICAL_SITE_ALREADY_EXISTS',
+                );
+            }
+
+            if ($existingOnRow->contains(fn (EventSite $site) => (int) $site->position_number === $position)) {
+                throw new DomainConflictException(
+                    "Position {$position} is already occupied on row {$rowLabel}.",
+                    'CANONICAL_SITE_POSITION_CONFLICT',
+                );
+            }
+
+            // Event-wide uniqueness: label must not exist under another row/unresolved site.
+            $eventWide = EventSite::query()
+                ->forEvent((int) $event->id)
+                ->whereRaw('UPPER(TRIM(label)) = ?', [$canonicalLabel])
+                ->lockForUpdate()
+                ->first();
+            if ($eventWide) {
+                throw new DomainConflictException(
+                    "Site {$canonicalLabel} already exists for this event.",
+                    'CANONICAL_SITE_ALREADY_EXISTS',
+                );
+            }
+
+            if (! $lockedRow->is_active || $lockedRow->archived_at !== null) {
+                throw new InvalidArgumentException('Sites can only be restored under an active, non-archived row.');
+            }
+            if ($lockedRow->vendor_category_id === null) {
+                throw new InvalidArgumentException('Row must have a category before sites can be restored.');
+            }
+            $this->requireAssignableCategory((int) $lockedRow->vendor_category_id);
+
+            $space = Space::query()->findOrFail(Space::resolveId(null));
+            $gridRow = CmartCarbootPhysicalLayout::gridRowForLabel($rowLabel);
+
+            try {
+                $site = EventSite::create([
+                    'carboot_event_id' => $event->id,
+                    'event_layout_row_id' => $lockedRow->id,
+                    'space_id' => $space->id,
+                    'label' => $canonicalLabel,
+                    'row_label' => $rowLabel,
+                    'position_number' => $position,
+                    'grid_row' => $gridRow,
+                    'grid_column' => $position,
+                    'display_order' => $position,
+                    'operational_status' => EventSite::STATUS_DISABLED,
+                    'metadata' => [
+                        'template' => CmartCarbootPhysicalLayout::TEMPLATE_KEY,
+                        'restored_canonical' => true,
+                    ],
+                ]);
+            } catch (QueryException $exception) {
+                $this->translateSiteUnique($exception);
+                throw $exception;
+            }
+
+            $this->normalizeCanonicalRowDisplayOrder($lockedRow, $rowLabel);
+
+            $this->audit->record(
+                (int) $event->id,
+                $actor,
+                EventLayoutAuditLog::ACTION_CANONICAL_SITE_RESTORED,
+                null,
+                $this->siteSnapshot($site->fresh()),
+                $lockedRow->id,
+                $site->id,
+                [
+                    'restored_labels' => [$canonicalLabel],
+                    'initial_status' => EventSite::STATUS_DISABLED,
+                ],
+            );
+
+            $readiness = $this->readiness->assess($event->fresh());
+
+            return [
+                'site' => $site->fresh(['space', 'eventLayoutRow']),
+                'restored_labels' => [$canonicalLabel],
+                'readiness' => [
+                    'operational_ready' => $readiness['operational_ready'],
+                    'public_ready' => $readiness['public_ready'],
+                    'blocking_reasons' => $readiness['blocking_reasons'],
+                ],
+            ];
+        });
+    }
+
+    /**
+     * Restore every currently missing canonical site for a physical row as NOT OPEN.
+     *
+     * @return array{
+     *   sites: list<EventSite>,
+     *   restored_labels: list<string>,
+     *   readiness: array<string, mixed>
+     * }
+     */
+    public function restoreAllMissingCanonicalSites(EventLayoutRow $row, User $actor): array
+    {
+        return DB::transaction(function () use ($row, $actor) {
+            $event = CarbootEvent::query()->whereKey($row->carboot_event_id)->lockForUpdate()->firstOrFail();
+            $lockedRow = EventLayoutRow::query()->whereKey($row->id)->lockForUpdate()->firstOrFail();
+
+            $rowLabel = CmartCarbootPhysicalLayout::normalizeRowLabel((string) $lockedRow->label);
+            if (! CmartCarbootPhysicalLayout::isAllowedRowLabel($rowLabel)) {
+                throw new DomainConflictException(
+                    'Canonical site restoration is only available for physical rows A–D.',
+                    'ROW_OUTSIDE_VENUE_TEMPLATE',
+                );
+            }
+
+            $existingOnRow = EventSite::query()
+                ->forEvent((int) $event->id)
+                ->where('event_layout_row_id', $lockedRow->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            $missing = CmartCarbootPhysicalLayout::missingSiteLabels(
+                $rowLabel,
+                $existingOnRow->pluck('label')->all(),
+            );
+            if ($missing === []) {
+                throw new DomainConflictException(
+                    'This row already has all 16 physical sites.',
+                    'CANONICAL_ROW_COMPLETE',
+                );
+            }
+
+            if (! $lockedRow->is_active || $lockedRow->archived_at !== null) {
+                throw new InvalidArgumentException('Sites can only be restored under an active, non-archived row.');
+            }
+            if ($lockedRow->vendor_category_id === null) {
+                throw new InvalidArgumentException('Row must have a category before sites can be restored.');
+            }
+            $this->requireAssignableCategory((int) $lockedRow->vendor_category_id);
+
+            $space = Space::query()->findOrFail(Space::resolveId(null));
+            $gridRow = CmartCarbootPhysicalLayout::gridRowForLabel($rowLabel);
+            $created = [];
+            $labels = [];
+
+            foreach ($missing as $canonicalLabel) {
+                $parsed = CmartCarbootPhysicalLayout::parseCanonicalSiteLabel($canonicalLabel);
+                $position = (int) $parsed['position'];
+
+                if ($existingOnRow->contains(fn (EventSite $site) => (int) $site->position_number === $position)) {
+                    throw new DomainConflictException(
+                        "Position {$position} is already occupied on row {$rowLabel}.",
+                        'CANONICAL_SITE_POSITION_CONFLICT',
+                    );
+                }
+
+                $eventWide = EventSite::query()
+                    ->forEvent((int) $event->id)
+                    ->whereRaw('UPPER(TRIM(label)) = ?', [$canonicalLabel])
+                    ->lockForUpdate()
+                    ->first();
+                if ($eventWide) {
+                    throw new DomainConflictException(
+                        "Site {$canonicalLabel} already exists for this event.",
+                        'CANONICAL_SITE_ALREADY_EXISTS',
+                    );
+                }
+
+                try {
+                    $site = EventSite::create([
+                        'carboot_event_id' => $event->id,
+                        'event_layout_row_id' => $lockedRow->id,
+                        'space_id' => $space->id,
+                        'label' => $canonicalLabel,
+                        'row_label' => $rowLabel,
+                        'position_number' => $position,
+                        'grid_row' => $gridRow,
+                        'grid_column' => $position,
+                        'display_order' => $position,
+                        'operational_status' => EventSite::STATUS_DISABLED,
+                        'metadata' => [
+                            'template' => CmartCarbootPhysicalLayout::TEMPLATE_KEY,
+                            'restored_canonical' => true,
+                        ],
+                    ]);
+                } catch (QueryException $exception) {
+                    $this->translateSiteUnique($exception);
+                    throw $exception;
+                }
+
+                $this->audit->record(
+                    (int) $event->id,
+                    $actor,
+                    EventLayoutAuditLog::ACTION_CANONICAL_SITE_RESTORED,
+                    null,
+                    $this->siteSnapshot($site),
+                    $lockedRow->id,
+                    $site->id,
+                    [
+                        'restored_labels' => [$canonicalLabel],
+                        'initial_status' => EventSite::STATUS_DISABLED,
+                        'restore_batch' => true,
+                    ],
+                );
+
+                $created[] = $site->fresh(['space', 'eventLayoutRow']);
+                $labels[] = $canonicalLabel;
+                $existingOnRow->push($site);
+            }
+
+            $this->normalizeCanonicalRowDisplayOrder($lockedRow, $rowLabel);
+
+            $readiness = $this->readiness->assess($event->fresh());
+
+            return [
+                'sites' => $created,
+                'restored_labels' => $labels,
+                'readiness' => [
+                    'operational_ready' => $readiness['operational_ready'],
+                    'public_ready' => $readiness['public_ready'],
+                    'blocking_reasons' => $readiness['blocking_reasons'],
+                ],
+            ];
+        });
+    }
+
+    /**
+     * Keep restored canonical sites in numeric parking order (A01…A16).
+     * Updates display_order only — never renumbers existing site labels.
+     */
+    private function normalizeCanonicalRowDisplayOrder(EventLayoutRow $row, string $rowLabel): void
+    {
+        $sites = EventSite::query()
+            ->where('event_layout_row_id', $row->id)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($sites as $site) {
+            $parsed = CmartCarbootPhysicalLayout::parseCanonicalSiteLabel((string) $site->label);
+            if ($parsed === null || $parsed['row'] !== $rowLabel) {
+                continue;
+            }
+            $position = $parsed['position'];
+            if ((int) $site->display_order !== $position) {
+                $site->display_order = $position;
+                $site->save();
+            }
+        }
     }
 
     public function requireAssignableCategory(int $categoryId): VendorCategory

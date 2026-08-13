@@ -320,20 +320,22 @@
                       {{ b.invoice.payment_status }}
                     </span>
                     <span v-else class="text-ink-400">—</span>
-                    <span
+                    <button
                       v-if="b.invoice?.payment_proof_present"
+                      type="button"
                       data-testid="payment-proof-link"
-                      class="text-xs font-semibold text-brand-700"
+                      class="inline-flex items-center rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800 transition hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+                      @click="openPaymentProofReview(b, { allowVerify: canVerifyPayment(b) })"
                     >
-                      Payment proof submitted
-                    </span>
+                      View payment proof
+                    </button>
                     <button
                       v-if="canVerifyPayment(b)"
                       type="button"
-                      class="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100"
+                      class="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
                       data-testid="verify-payment-button"
                       :data-booking-id="b.id"
-                      @click="openPaymentVerifyModal(b)"
+                      @click="openPaymentProofReview(b, { allowVerify: true })"
                     >
                       Verify Paid
                     </button>
@@ -425,28 +427,111 @@
     <Teleport to="body">
       <div
         v-if="showPaymentVerifyModal && paymentVerifyTarget"
-        class="fixed inset-0 z-[120] flex items-center justify-center p-4"
+        class="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-4"
         data-testid="verify-payment-modal"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="payment-proof-review-title"
+        @keydown.esc.stop.prevent="closePaymentVerifyModal"
       >
         <div class="absolute inset-0 bg-[rgba(15,23,42,0.55)] backdrop-blur-[2px]" @click="closePaymentVerifyModal" />
-        <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
-          <h3 class="text-lg font-extrabold text-ink-900">Verify payment as Paid?</h3>
-          <p class="mt-2 text-sm text-ink-600">
-            Confirm that the organizer will verify the submitted payment proof for booking
-            <span class="font-semibold text-ink-900">#{{ paymentVerifyTarget.id }}</span>.
-            The vendor receipt and event pass will unlock after confirmation.
-          </p>
-          <div class="mt-6 flex flex-wrap justify-end gap-3">
+        <div class="relative z-10 flex max-h-[min(92vh,56rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
+          <div class="flex items-start justify-between gap-3 border-b border-ink-100 px-5 py-4">
+            <div>
+              <h3 id="payment-proof-review-title" class="text-lg font-extrabold text-ink-900">
+                Review payment proof
+              </h3>
+              <p class="mt-1 text-sm text-ink-500">
+                Booking #{{ paymentVerifyTarget.id }}
+              </p>
+            </div>
+            <button
+              type="button"
+              class="ml-btn-ghost px-2 py-1 text-sm"
+              aria-label="Close payment proof review"
+              @click="closePaymentVerifyModal"
+            >
+              ×
+            </button>
+          </div>
+
+          <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-4">
+            <dl class="grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-400">Vendor / business</dt>
+                <dd class="mt-0.5 font-semibold text-ink-900">{{ vendorLabel(paymentVerifyTarget) }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-400">Invoice amount</dt>
+                <dd class="mt-0.5 font-semibold text-ink-900">{{ formatInvoiceAmount(paymentVerifyTarget.invoice?.amount) }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-400">Submitted</dt>
+                <dd class="mt-0.5 font-semibold text-ink-900">
+                  {{ formatSubmittedAt(paymentVerifyTarget.invoice?.payment_submitted_at) }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-400">Payment status</dt>
+                <dd class="mt-0.5">
+                  <span
+                    class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    :class="paymentStatusBadgeClass(paymentVerifyTarget.invoice?.payment_status)"
+                  >
+                    {{ paymentVerifyTarget.invoice?.payment_status || '—' }}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+
+            <div
+              class="overflow-hidden rounded-xl border border-ink-200 bg-ink-50"
+              data-testid="payment-proof-preview"
+            >
+              <div v-if="proofLoading" class="flex min-h-[12rem] items-center justify-center px-4 py-10 text-sm text-ink-500">
+                Loading payment proof…
+              </div>
+              <div
+                v-else-if="proofError"
+                class="flex min-h-[12rem] flex-col items-center justify-center gap-3 px-4 py-10 text-center"
+              >
+                <p class="text-sm text-rose-700" data-testid="payment-proof-error">{{ proofError }}</p>
+                <button
+                  type="button"
+                  class="ml-btn-ghost text-sm"
+                  data-testid="payment-proof-retry"
+                  @click="loadPaymentProof(paymentVerifyTarget.id)"
+                >
+                  Retry
+                </button>
+              </div>
+              <img
+                v-else-if="proofObjectUrl"
+                :src="proofObjectUrl"
+                :alt="`Payment proof for booking #${paymentVerifyTarget.id}`"
+                class="mx-auto max-h-[min(55vh,28rem)] w-full object-contain"
+                data-testid="payment-proof-image"
+                @load="onProofImageLoad"
+                @error="onProofImageError"
+              />
+            </div>
+
+            <p v-if="paymentReviewAllowVerify" class="text-sm text-ink-600">
+              Confirm that you have reviewed this payment proof and verified the payment as received.
+              The vendor receipt and event pass will be unlocked.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap justify-end gap-3 border-t border-ink-100 px-5 py-4">
             <button type="button" class="ml-btn-ghost text-sm" @click="closePaymentVerifyModal">
-              Cancel
+              {{ paymentReviewAllowVerify ? 'Cancel' : 'Close' }}
             </button>
             <button
+              v-if="paymentReviewAllowVerify"
               type="button"
               class="ml-btn-primary text-sm"
               data-testid="confirm-verify-payment-button"
-              :disabled="verifyingPayment"
+              :disabled="!canConfirmPaid"
               @click="confirmVerifyPayment"
             >
               {{ verifyingPayment ? 'Verifying…' : 'Confirm Paid' }}
@@ -571,6 +656,160 @@ const canVerifyPayment = (booking) =>
 const paymentVerifyTarget = ref(null);
 const showPaymentVerifyModal = ref(false);
 const verifyingPayment = ref(false);
+const paymentReviewAllowVerify = ref(false);
+const proofLoading = ref(false);
+const proofError = ref('');
+const proofObjectUrl = ref('');
+const proofImageReady = ref(false);
+let proofRequestToken = 0;
+
+const canConfirmPaid = computed(() =>
+  Boolean(
+    paymentReviewAllowVerify.value
+    && proofImageReady.value
+    && proofObjectUrl.value
+    && !proofLoading.value
+    && !proofError.value
+    && !verifyingPayment.value,
+  ),
+);
+
+const formatInvoiceAmount = (amount) => {
+  const numeric = Number(amount);
+  if (!Number.isFinite(numeric)) return 'RM —';
+  return `RM ${numeric.toFixed(2)}`;
+};
+
+const formatSubmittedAt = (value) => {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return String(value);
+  }
+};
+
+const revokeProofObjectUrl = () => {
+  if (proofObjectUrl.value) {
+    URL.revokeObjectURL(proofObjectUrl.value);
+    proofObjectUrl.value = '';
+  }
+  proofImageReady.value = false;
+};
+
+const extractProofErrorMessage = async (error) => {
+  if (error?.forbiddenMessage) return error.forbiddenMessage;
+  const data = error?.response?.data;
+  if (!data) return 'Unable to load payment proof.';
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed?.message) return parsed.message;
+    } catch {
+      // fall through
+    }
+  }
+  if (data instanceof Blob) {
+    try {
+      const text = await data.text();
+      const parsed = JSON.parse(text);
+      if (parsed?.message) return parsed.message;
+    } catch {
+      // fall through
+    }
+  }
+  if (typeof data?.message === 'string' && data.message.trim()) {
+    return data.message;
+  }
+  return 'Unable to load payment proof.';
+};
+
+const loadPaymentProof = async (bookingId) => {
+  if (!bookingId) return;
+  const token = ++proofRequestToken;
+  proofLoading.value = true;
+  proofError.value = '';
+  proofImageReady.value = false;
+  revokeProofObjectUrl();
+
+  try {
+    const response = await api.get(`/bookings/${bookingId}/payment-proof`, {
+      responseType: 'blob',
+    });
+    if (token !== proofRequestToken) return;
+
+    const contentType = String(response.headers?.['content-type'] || '');
+    if (contentType.includes('application/json')) {
+      const text = await response.data.text();
+      let message = 'Unable to load payment proof.';
+      try {
+        message = JSON.parse(text)?.message || message;
+      } catch {
+        // keep default
+      }
+      proofError.value = message;
+      return;
+    }
+
+    proofObjectUrl.value = URL.createObjectURL(response.data);
+  } catch (error) {
+    if (token !== proofRequestToken) return;
+    proofError.value = await extractProofErrorMessage(error);
+  } finally {
+    if (token === proofRequestToken) {
+      proofLoading.value = false;
+    }
+  }
+};
+
+const onProofImageLoad = () => {
+  proofImageReady.value = true;
+  proofError.value = '';
+};
+
+const onProofImageError = () => {
+  proofImageReady.value = false;
+  revokeProofObjectUrl();
+  proofError.value = 'The payment proof image could not be displayed.';
+};
+
+const openPaymentProofReview = (booking, { allowVerify = false } = {}) => {
+  paymentVerifyTarget.value = booking;
+  paymentReviewAllowVerify.value = Boolean(allowVerify && canVerifyPayment(booking));
+  showPaymentVerifyModal.value = true;
+  loadPaymentProof(booking.id);
+};
+
+const closePaymentVerifyModal = () => {
+  proofRequestToken += 1;
+  showPaymentVerifyModal.value = false;
+  paymentVerifyTarget.value = null;
+  paymentReviewAllowVerify.value = false;
+  proofLoading.value = false;
+  proofError.value = '';
+  verifyingPayment.value = false;
+  revokeProofObjectUrl();
+};
+
+const confirmVerifyPayment = async () => {
+  const booking = paymentVerifyTarget.value;
+  if (!booking || !canConfirmPaid.value) return;
+
+  verifyingPayment.value = true;
+  try {
+    await api.patch(`/bookings/${booking.id}/verify-payment`);
+    toast.success(`Payment for booking #${booking.id} marked as Paid.`);
+    closePaymentVerifyModal();
+    await fetchBookings();
+  } catch (e) {
+    if (!e.forbiddenMessage) {
+      toast.error(e.response?.data?.message || 'Unable to verify payment.');
+    }
+  } finally {
+    verifyingPayment.value = false;
+  }
+};
+
 const showBookingDetails = ref(false);
 const activeWorkspaceTab = ref('bookings');
 const recoveryPanel = ref(null);
@@ -602,35 +841,6 @@ const handleBookingDetailsUpdated = async (booking) => {
   toast.success('Attendance exception applied.');
   await fetchBookings();
   emit('refreshed');
-};
-
-const openPaymentVerifyModal = (booking) => {
-  paymentVerifyTarget.value = booking;
-  showPaymentVerifyModal.value = true;
-};
-
-const closePaymentVerifyModal = () => {
-  showPaymentVerifyModal.value = false;
-  paymentVerifyTarget.value = null;
-};
-
-const confirmVerifyPayment = async () => {
-  const booking = paymentVerifyTarget.value;
-  if (!booking || verifyingPayment.value) return;
-
-  verifyingPayment.value = true;
-  try {
-    await api.patch(`/bookings/${booking.id}/verify-payment`);
-    toast.success(`Payment for booking #${booking.id} marked as Paid.`);
-    closePaymentVerifyModal();
-    await fetchBookings();
-  } catch (e) {
-    if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to verify payment.');
-    }
-  } finally {
-    verifyingPayment.value = false;
-  }
 };
 
 const hasActiveFilters = computed(() =>
@@ -914,6 +1124,8 @@ const viewPdf = async (bookingId) => {
 
 onBeforeUnmount(() => {
   clearTimeout(searchDebounceTimer);
+  proofRequestToken += 1;
+  revokeProofObjectUrl();
 });
 
 const switchToRecoveryTab = async () => {

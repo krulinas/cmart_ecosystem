@@ -119,7 +119,6 @@
             </div>
             <div class="flex flex-wrap gap-2">
               <button type="button" class="ml-btn-primary text-sm" @click="openReport(item.id)">View</button>
-              <button type="button" class="ml-btn-ghost text-sm" @click="printCurrent">Print</button>
               <button type="button" class="ml-btn-ghost text-sm" @click="downloadPdf(item.id)">Download PDF</button>
             </div>
           </div>
@@ -140,10 +139,9 @@
         <ReportNotificationActivity :items="requestDetail.notification_activity || []" />
       </div>
 
-      <div v-if="activeReport" class="report-print-root rounded-2xl border border-ink-200 bg-white p-5 shadow-sm">
-        <div class="mb-4 flex flex-wrap gap-2 print:hidden">
+      <div v-if="activeReport" class="rounded-2xl border border-ink-200 bg-white p-5 shadow-sm">
+        <div class="mb-4 flex flex-wrap gap-2">
           <button type="button" class="ml-btn-ghost text-sm" @click="activeReport = null">Back</button>
-          <button type="button" class="ml-btn-ghost text-sm" @click="printCurrent">Print</button>
           <button type="button" class="ml-btn-ghost text-sm" @click="downloadPdf(activeReport.id)">Download PDF</button>
         </div>
         <PostEventSummaryView :report="activeReport" />
@@ -282,8 +280,6 @@ const openReport = async (id) => {
     toast.error(error.response?.data?.message || 'Unable to open report.');
   }
 };
-
-const printCurrent = () => window.print();
 
 const downloadPdf = async (id) => {
   try {

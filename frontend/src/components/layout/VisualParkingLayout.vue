@@ -107,9 +107,16 @@
               </p>
             </div>
             <div class="vpl__row-meta-aside">
-              <p class="vpl__row-count">
-                {{ copy.sitesCount(segment.row.siteCount) }}
-              </p>
+              <slot
+                name="rowCount"
+                :row="segment.row"
+                :row-index="rowIndexForSegment(index)"
+                :source-row="segment.row.raw || segment.row"
+              >
+                <p class="vpl__row-count">
+                  {{ copy.sitesCount(segment.row.siteCount) }}
+                </p>
+              </slot>
               <slot
                 v-if="manageMode"
                 name="rowActions"
