@@ -168,13 +168,14 @@ import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 import {
   boothTypeLabel,
-  canVendorProceedToDemoPayment,
+  canVendorPayBooking,
   formatBookingDate,
   isTerminalBookingStatus,
   isValidBookingDate,
   siteLabelsForBooking,
   statusBadgeClass,
   statusLabel,
+  vendorPaymentBlockedMessage,
 } from '../../utils/bookingDisplay';
 import { mapApiNewsToCard } from '../../utils/newsDisplay';
 import { resolveVendorOnboardingState } from '../../utils/vendorOnboarding';
@@ -215,13 +216,19 @@ const openLatestActionableBooking = () => {
 };
 
 const openPaymentSubmission = (row) => {
-  paymentBookingId.value = row?.booking_id ?? row?.id ?? null;
-  paymentInvoiceAmount.value = row?.amount ?? row?.invoice?.amount ?? null;
+  const bookingId = row?.booking_id ?? row?.id ?? null;
+  const booking = myBookings.value.find((item) => String(item.id) === String(bookingId)) || row;
+  if (!canVendorPayBooking(booking)) {
+    toast.error(vendorPaymentBlockedMessage(booking) || vendorPaymentBlockedMessage(row));
+    return;
+  }
+  paymentBookingId.value = bookingId;
+  paymentInvoiceAmount.value = row?.amount ?? row?.invoice?.amount ?? booking?.invoice?.amount ?? null;
   showPaymentModal.value = true;
 };
 
 const handleFocusPrimaryAction = (action) => {
-  if (!action) return;
+  if (!action || action.disabled) return;
   if (action.type === 'pay') {
     openPaymentSubmission({
       booking_id: action.bookingId,
@@ -298,7 +305,7 @@ const focusBooking = computed(() => {
   const actionable = candidates.find(
     (booking) =>
       booking.approval_status === 'Needs_Revision'
-      || canVendorProceedToDemoPayment(booking)
+      || canVendorPayBooking(booking)
       || ['Pending_Organizer', 'Pending_Staff', 'Pending_Boss'].includes(booking.approval_status),
   );
 

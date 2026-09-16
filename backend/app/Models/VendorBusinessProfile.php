@@ -15,6 +15,7 @@ class VendorBusinessProfile extends Model
         'user_id',
         'business_name',
         'business_phone',
+        'marketplace_whatsapp_enabled',
         'business_category',
         'vendor_category_id',
         'description',
@@ -23,6 +24,10 @@ class VendorBusinessProfile extends Model
 
     protected $appends = [
         'logo_url',
+    ];
+
+    protected $casts = [
+        'marketplace_whatsapp_enabled' => 'boolean',
     ];
 
     public function user(): BelongsTo

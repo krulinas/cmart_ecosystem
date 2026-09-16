@@ -82,20 +82,38 @@
         >
           Price changes apply only to new bookings. Existing bookings and payment totals will not change.
         </p>
-        <div>
-          <label class="ml-label">Item reservation service fee (RM, optional)</label>
-          <input
-            v-model="form.item_reservation_service_fee"
-            type="number"
-            min="0"
-            max="99999999.99"
-            step="0.01"
-            class="ml-input"
-            placeholder="Not configured"
-          />
-          <p class="mt-1 text-xs text-ink-500">
-            Leave blank to keep item reservations closed. RM0.00 means no service charge is required.
-          </p>
+        <div class="rounded-xl border border-ink-100 bg-ink-50/70 px-3 py-3 space-y-3">
+          <label class="flex items-start gap-2 text-sm text-ink-700">
+            <input
+              v-model="form.enable_item_reservations"
+              type="checkbox"
+              class="mt-1"
+              data-testid="event-enable-item-reservations"
+            />
+            <span>
+              <span class="font-semibold text-ink-800">Enable item reservations</span>
+              <span class="mt-0.5 block text-xs text-ink-500">
+                RM 0.00 enables free reservation holds. A blank or disabled setting keeps item reservations closed for this event.
+              </span>
+            </span>
+          </label>
+          <div v-if="form.enable_item_reservations">
+            <label class="ml-label">Reservation service fee (RM)</label>
+            <div class="relative">
+              <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-ink-500">RM</span>
+              <input
+                v-model="form.item_reservation_service_fee"
+                type="number"
+                min="0"
+                max="99999999.99"
+                step="0.01"
+                class="ml-input pl-10"
+                placeholder="0.00"
+                data-testid="event-reservation-service-fee"
+              />
+            </div>
+            <p v-if="reservationFeeError" class="mt-1 text-xs text-rose-600">{{ reservationFeeError }}</p>
+          </div>
         </div>
         <div>
           <label class="ml-label">Description</label>
@@ -145,8 +163,10 @@
                 {{ ev.site_price == null ? 'Not configured' : `RM ${Number(ev.site_price).toFixed(2)}` }}
               </p>
               <p class="text-xs text-ink-500 mt-1">
-                Reservation fee:
-                {{ ev.item_reservation_service_fee == null ? 'Not configured' : `RM ${Number(ev.item_reservation_service_fee).toFixed(2)}` }}
+                Reservations:
+                {{ ev.item_reservation_service_fee == null
+                  ? 'Closed'
+                  : `Enabled · RM ${Number(ev.item_reservation_service_fee).toFixed(2)}` }}
               </p>
               <p v-if="ev.description" class="text-xs text-ink-500 mt-1 line-clamp-2">{{ ev.description }}</p>
             </div>
@@ -228,10 +248,32 @@ const emptyForm = () => ({
   vendor_site_open_limit: null,
   site_price: organizerDefaultSitePrice.value,
   save_as_default_site_price: false,
+  enable_item_reservations: false,
   item_reservation_service_fee: '',
 });
 
 const form = reactive(emptyForm());
+
+const reservationFeeError = computed(() => {
+  if (!form.enable_item_reservations) return '';
+  const raw = form.item_reservation_service_fee;
+  if (raw === '' || raw == null) return '';
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) {
+    return 'Reservation service fee must be RM 0.00 or greater.';
+  }
+  if (value > 99999999.99) {
+    return 'Reservation service fee cannot exceed RM 99999999.99.';
+  }
+  return '';
+});
+
+const reservationFeePayload = () => {
+  if (!form.enable_item_reservations) return null;
+  const raw = form.item_reservation_service_fee;
+  if (raw === '' || raw == null) return '0.00';
+  return Number(raw).toFixed(2);
+};
 
 const vendorBookingSitesLabel = computed(() => {
   const limit = form.vendor_site_open_limit;
@@ -295,7 +337,8 @@ const buildFormData = () => {
   }
   fd.append('site_price', String(form.site_price));
   fd.append('save_as_default_site_price', form.save_as_default_site_price ? '1' : '0');
-  fd.append('item_reservation_service_fee', form.item_reservation_service_fee);
+  const reservationFee = reservationFeePayload();
+  fd.append('item_reservation_service_fee', reservationFee == null ? '' : reservationFee);
 
   imageFiles.value.forEach((file) => {
     fd.append('images[]', file);
@@ -353,7 +396,10 @@ const edit = (ev) => {
     ? Number(normalized.site_price).toFixed(2)
     : PRODUCT_DEFAULT_SITE_PRICE;
   form.save_as_default_site_price = false;
-  form.item_reservation_service_fee = normalized.item_reservation_service_fee ?? '';
+  form.enable_item_reservations = normalized.item_reservation_service_fee != null;
+  form.item_reservation_service_fee = normalized.item_reservation_service_fee == null
+    ? ''
+    : Number(normalized.item_reservation_service_fee).toFixed(2);
   editingImages.value = normalized.images?.filter((image) => image.id) || [];
   legacyImagePath.value = normalized.image_path || '';
   imageFiles.value = [];
@@ -378,6 +424,11 @@ const save = async () => {
     return;
   }
 
+  if (reservationFeeError.value) {
+    toast.error(reservationFeeError.value);
+    return;
+  }
+
   saving.value = true;
   const payload = {
     title: form.title.trim(),
@@ -388,9 +439,7 @@ const save = async () => {
     max_slots: form.max_slots || null,
     site_price: sitePrice.toFixed(2),
     save_as_default_site_price: Boolean(form.save_as_default_site_price),
-    item_reservation_service_fee: form.item_reservation_service_fee === ''
-      ? null
-      : form.item_reservation_service_fee,
+    item_reservation_service_fee: reservationFeePayload(),
   };
 
   const usesMultipart = imageFiles.value.length > 0

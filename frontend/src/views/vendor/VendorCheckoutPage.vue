@@ -151,8 +151,9 @@ import { useAuthStore } from '../../stores/auth';
 import {
   boothLabelForBooking,
   boothTypeLabel,
-  canVendorProceedToDemoPayment,
+  canVendorPayBooking,
   formatBookingDate,
+  vendorPaymentBlockedMessage,
 } from '../../utils/bookingDisplay';
 
 const route = useRoute();
@@ -188,21 +189,9 @@ const eventLabel = computed(() =>
   || 'Carboot Event',
 );
 
-const canPay = computed(() => canVendorProceedToDemoPayment(booking.value));
+const canPay = computed(() => canVendorPayBooking(booking.value));
 
-const payBlockedMessage = computed(() => {
-  if (!booking.value) return '';
-  if (booking.value.approval_status !== 'Approved') {
-    return 'Only approved bookings can proceed to payment.';
-  }
-  if (booking.value.invoice?.payment_status === 'Paid') {
-    return 'This booking has already been paid.';
-  }
-  if (booking.value.invoice?.payment_status === 'Pending Verification') {
-    return 'Your payment proof is awaiting CMart verification.';
-  }
-  return 'Please contact the Carboot Organizer if you need help with this booking.';
-});
+const payBlockedMessage = computed(() => vendorPaymentBlockedMessage(booking.value) || '');
 
 const loadBooking = async () => {
   loading.value = true;
@@ -210,7 +199,7 @@ const loadBooking = async () => {
   try {
     const { data } = await api.get(`/vendor/bookings/${bookingId.value}`);
     booking.value = data;
-    if (!canVendorProceedToDemoPayment(data) && data.invoice?.payment_status === 'Paid') {
+    if (!canVendorPayBooking(data) && data.invoice?.payment_status === 'Paid') {
       router.replace('/vendor/manage/bookings');
       toast.info('This booking is already paid.');
     }
@@ -222,7 +211,11 @@ const loadBooking = async () => {
 };
 
 const submitPayment = async () => {
-  if (!canPay.value || !selectedMethod.value) return;
+  if (!canPay.value) {
+    toast.error(vendorPaymentBlockedMessage(booking.value));
+    return;
+  }
+  if (!selectedMethod.value) return;
 
   processing.value = true;
   try {

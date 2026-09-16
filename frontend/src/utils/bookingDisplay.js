@@ -305,15 +305,284 @@ export const productSummary = (booking) => {
   return details ? `${category} · ${details}` : category;
 };
 
-export const normalizePaymentStatus = (booking) =>
-  String(booking?.invoice?.payment_status || booking?.payment_status || '').trim();
+export const VENDOR_PAYMENT_APPROVAL_REQUIRED_MESSAGE =
+  'Your booking must be approved by the organizer before payment can be submitted.';
+
+export const bookingApprovalStatusOf = (bookingOrRow) =>
+  bookingOrRow?.approval_status || bookingOrRow?.booking_status || null;
+
+export const paymentStatusOf = (bookingOrRow) =>
+  String(
+    bookingOrRow?.invoice?.payment_status
+    || bookingOrRow?.payment_status
+    || '',
+  ).trim();
+
+export const normalizePaymentStatus = (booking) => paymentStatusOf(booking);
 
 export const isBookingPaymentPaid = (booking) =>
-  normalizePaymentStatus(booking).toLowerCase() === 'paid';
+  paymentStatusOf(booking).toLowerCase() === 'paid';
 
-export const canVendorProceedToDemoPayment = (booking) =>
-  booking?.approval_status === 'Approved'
-  && normalizePaymentStatus(booking).toLowerCase() === 'unpaid';
+export const isVendorPaymentPendingVerification = (booking) =>
+  paymentStatusOf(booking).toLowerCase() === 'pending verification';
+
+export const isVendorInvoicePayableStatus = (bookingOrRow) => {
+  const status = paymentStatusOf(bookingOrRow).toLowerCase();
+  return status === 'unpaid' || status === 'failed';
+};
+
+/**
+ * Canonical vendor payment eligibility. Mirrors backend submit-payment / demo-payment:
+ * approval_status must be Approved and the invoice must still be unpaid.
+ * Unpaid does not mean payable.
+ */
+export const canVendorPayBooking = (bookingOrRow) => {
+  if (!bookingOrRow) return false;
+  const approval = bookingApprovalStatusOf(bookingOrRow);
+  if (approval !== 'Approved') return false;
+  if (isTerminalBookingStatus(approval)) return false;
+  if (!isVendorInvoicePayableStatus(bookingOrRow)) return false;
+  if ('invoice_available' in bookingOrRow && !bookingOrRow.invoice_available) return false;
+  return true;
+};
+
+export const canVendorProceedToDemoPayment = (booking) => canVendorPayBooking(booking);
+
+export const isVendorPaymentLockedUntilApproval = (bookingOrRow) => {
+  if (!bookingOrRow) return false;
+  const approval = bookingApprovalStatusOf(bookingOrRow);
+  if (!approval || approval === 'Approved' || isTerminalBookingStatus(approval)) return false;
+  return isVendorInvoicePayableStatus(bookingOrRow) || !paymentStatusOf(bookingOrRow);
+};
+
+export const vendorPaymentBlockedMessage = (bookingOrRow) => {
+  if (canVendorPayBooking(bookingOrRow)) return null;
+  if (isVendorPaymentPendingVerification(bookingOrRow)) {
+    return 'Your payment proof is awaiting organizer verification.';
+  }
+  if (isBookingPaymentPaid(bookingOrRow)) {
+    return 'This booking has already been paid.';
+  }
+  if (bookingApprovalStatusOf(bookingOrRow) !== 'Approved') {
+    return VENDOR_PAYMENT_APPROVAL_REQUIRED_MESSAGE;
+  }
+  return 'Payment is not available for this booking.';
+};
+
+export const vendorPaymentStatusLabel = (bookingOrRow) => {
+  if (isVendorPaymentLockedUntilApproval(bookingOrRow)) return 'Locked until approval';
+  if (isVendorPaymentPendingVerification(bookingOrRow)) return 'Payment submitted';
+  if (isBookingPaymentPaid(bookingOrRow)) return 'Paid';
+  return paymentStatusOf(bookingOrRow) || 'Unpaid';
+};
+
+export const formatVendorAmountLabel = (amount) => {
+  if (amount == null || amount === '') return null;
+  const numeric = Number(amount);
+  if (Number.isNaN(numeric)) return null;
+  return `RM${numeric.toFixed(2)}`;
+};
+
+export const vendorBookingStatusHint = (booking, boothNumber = null) => {
+  if (!booking) return null;
+  const approval = booking.approval_status;
+  if (approval === 'Pending_Organizer' || approval === 'Pending_Staff' || approval === 'Pending_Boss') {
+    return 'Waiting for organizer approval';
+  }
+  if (approval === 'Approved' && canVendorPayBooking(booking)) {
+    return 'Ready for payment';
+  }
+  return boothNumber ? `Booth ${boothNumber}` : null;
+};
+
+const paymentSnapshot = (booking, paymentRecord = null) => {
+  const status = String(paymentRecord?.payment_status || paymentStatusOf(booking)).trim();
+  const amount = paymentRecord?.amount ?? booking?.invoice?.amount ?? null;
+  return {
+    ...booking,
+    approval_status: booking?.approval_status,
+    payment_status: status,
+    invoice: {
+      ...(booking?.invoice || {}),
+      payment_status: status || booking?.invoice?.payment_status,
+      amount,
+    },
+  };
+};
+
+export const resolveVendorPaymentUi = (booking, paymentRecord = null) => {
+  if (!booking) {
+    return {
+      actionable: false,
+      complete: false,
+      value: 'Not started',
+      hint: null,
+      statusKey: 'none',
+      canPay: false,
+    };
+  }
+
+  if (isTerminalBookingStatus(booking.approval_status)) {
+    return {
+      actionable: false,
+      complete: false,
+      value: 'Not applicable',
+      hint: statusLabel(booking.approval_status),
+      statusKey: 'terminal',
+      canPay: false,
+    };
+  }
+
+  const snapshot = paymentSnapshot(booking, paymentRecord);
+  const status = paymentStatusOf(snapshot);
+  const statusLower = status.toLowerCase();
+  const amount = snapshot.invoice?.amount ?? null;
+  const amountLabel = formatVendorAmountLabel(amount);
+  const canPay = canVendorPayBooking(snapshot);
+
+  if (canPay) {
+    return {
+      actionable: true,
+      complete: false,
+      value: status || 'Unpaid',
+      hint: amountLabel ? `${amountLabel} due` : 'Payment required',
+      statusKey: 'unpaid',
+      amount,
+      canPay: true,
+    };
+  }
+
+  if (isVendorPaymentLockedUntilApproval(snapshot)) {
+    const awaitingOrganizer = [
+      'Pending_Organizer',
+      'Pending_Staff',
+      'Pending_Boss',
+    ].includes(booking.approval_status);
+
+    return {
+      actionable: false,
+      complete: false,
+      value: 'Locked until approval',
+      hint: amountLabel ? `${amountLabel} due after approval` : 'Payment is not due yet',
+      lockCopy: 'Payment will be available once the organizer approves your booking.',
+      statusKey: 'locked',
+      amount,
+      canPay: false,
+      lockedPayCta: awaitingOrganizer,
+    };
+  }
+
+  if (isVendorPaymentPendingVerification(snapshot)) {
+    return {
+      actionable: false,
+      complete: false,
+      value: 'Payment submitted',
+      hint: 'Waiting for organizer verification.',
+      statusKey: 'pending',
+      amount,
+      canPay: false,
+      canViewInvoice: Boolean(paymentRecord?.invoice_available || booking.invoice),
+    };
+  }
+
+  if (isBookingPaymentPaid(snapshot) || statusLower === 'paid') {
+    return {
+      actionable: false,
+      complete: true,
+      value: 'Paid',
+      hint: amountLabel,
+      statusKey: 'paid',
+      amount,
+      canPay: false,
+      canViewReceipt: Boolean(paymentRecord?.receipt_available),
+      canViewInvoice: Boolean(paymentRecord?.invoice_available || booking.invoice),
+    };
+  }
+
+  if (booking.approval_status === 'Approved' && !status) {
+    return {
+      actionable: false,
+      complete: false,
+      value: 'Awaiting invoice',
+      hint: 'Check again after approval processing',
+      statusKey: 'awaiting',
+      canPay: false,
+    };
+  }
+
+  if (!status) {
+    return {
+      actionable: false,
+      complete: false,
+      value: 'Not due yet',
+      hint: 'Pay after approval',
+      statusKey: 'not_due',
+      canPay: false,
+    };
+  }
+
+  return {
+    actionable: false,
+    complete: false,
+    value: status,
+    hint: amountLabel,
+    statusKey: 'other',
+    canPay: false,
+  };
+};
+
+export const resolveVendorFocusPrimaryAction = (booking, payment = {}) => {
+  if (!booking?.id) return null;
+
+  if (booking.approval_status === 'Needs_Revision') {
+    return { type: 'view-booking', bookingId: booking.id, label: 'Review Booking' };
+  }
+
+  if (payment.canPay) {
+    return {
+      type: 'pay',
+      bookingId: booking.id,
+      amount: payment.amount ?? null,
+      label: 'Pay Now',
+      emphasis: 'payment',
+    };
+  }
+
+  if (payment.lockedPayCta) {
+    return {
+      type: 'pay',
+      bookingId: booking.id,
+      amount: payment.amount ?? null,
+      label: 'Pay Now',
+      emphasis: 'locked',
+      disabled: true,
+      locked: true,
+      lockHint: 'Payment will be available once the organizer approves your booking.',
+    };
+  }
+
+  if (payment.statusKey === 'pending' && payment.canViewInvoice) {
+    return {
+      type: 'view-document',
+      bookingId: booking.id,
+      label: 'View Invoice',
+    };
+  }
+
+  if (booking.approval_status === 'Approved' && (payment.complete || isBookingPaymentPaid(booking))) {
+    return {
+      type: 'view-pass',
+      bookingId: booking.id,
+      label: 'View Event Pass',
+    };
+  }
+
+  if (PENDING_STATUSES.includes(booking.approval_status)) {
+    return { type: 'view-booking', bookingId: booking.id, label: 'View Booking' };
+  }
+
+  return { type: 'view-booking', bookingId: booking.id, label: 'View Details' };
+};
 
 export const canVendorAccessWhatsAppGroup = (booking) =>
   booking?.approval_status === 'Approved' && isBookingPaymentPaid(booking);

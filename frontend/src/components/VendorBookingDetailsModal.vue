@@ -84,7 +84,10 @@
                 </div>
                 <div v-if="booking.invoice" class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
                   <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Payment Status</dt>
-                  <dd class="mt-1 font-semibold text-ink-900">{{ booking.invoice.payment_status }}</dd>
+                  <dd class="mt-1 font-semibold text-ink-900">{{ vendorPaymentStatusLabel(booking) }}</dd>
+                  <dd v-if="isVendorPaymentLockedUntilApproval(booking)" class="mt-1 text-xs text-ink-500">
+                    Payment will be available once the organizer approves your booking.
+                  </dd>
                 </div>
               </dl>
 
@@ -181,6 +184,14 @@
                     <p class="mt-1 text-xs text-emerald-700">View your scannable pass in Event Passes.</p>
                   </div>
                   <div
+                    v-else-if="isVendorPaymentPendingVerification(booking)"
+                    class="flex flex-col items-center justify-center rounded-xl border border-amber-100 bg-amber-50/60 p-4 text-center"
+                    data-testid="vendor-pass-pending-verification"
+                  >
+                    <p class="text-sm font-semibold text-amber-900">Payment submitted</p>
+                    <p class="mt-1 text-xs text-amber-800">Waiting for organizer verification.</p>
+                  </div>
+                  <div
                     v-else
                     class="flex flex-col items-center justify-center rounded-xl border border-amber-100 bg-amber-50/60 p-4 text-center"
                     data-testid="vendor-pass-locked-message"
@@ -216,7 +227,29 @@
               </section>
 
               <section
-                v-if="canVendorProceedToDemoPayment(booking)"
+                v-if="isVendorPaymentLockedUntilApproval(booking)"
+                class="rounded-xl border border-ink-200 bg-ink-50/70 p-5 space-y-2"
+                data-testid="vendor-booking-payment-locked"
+              >
+                <h3 class="font-bold text-ink-900">Payment locked until approval</h3>
+                <p class="text-sm text-ink-600 leading-relaxed">
+                  Payment will be available once the organizer approves your booking.
+                </p>
+              </section>
+
+              <section
+                v-else-if="isVendorPaymentPendingVerification(booking)"
+                class="rounded-xl border border-amber-200 bg-amber-50/50 p-5 space-y-2"
+                data-testid="vendor-booking-payment-submitted"
+              >
+                <h3 class="font-bold text-ink-900">Payment submitted</h3>
+                <p class="text-sm text-ink-600 leading-relaxed">
+                  Waiting for organizer verification.
+                </p>
+              </section>
+
+              <section
+                v-else-if="canVendorPayBooking(booking)"
                 class="rounded-xl border border-brand-200 bg-brand-50/50 p-5 space-y-3"
                 data-testid="vendor-booking-payment-cta"
               >
@@ -378,14 +411,18 @@ import {
   boothTypeLabel,
   canVendorAccessWhatsAppGroup,
   canVendorEdit,
-  canVendorProceedToDemoPayment,
+  canVendorPayBooking,
   canVendorRequestChange,
   canVendorResubmit,
   canVendorWithdraw,
   formatBookingDate,
   formatWithdrawnDate,
   isBookingPaymentPaid,
+  isVendorPaymentLockedUntilApproval,
+  isVendorPaymentPendingVerification,
   isWithdrawnBooking,
+  vendorPaymentBlockedMessage,
+  vendorPaymentStatusLabel,
   withdrawnNoRefundNotice,
   VENDOR_WHATSAPP_GROUP_URL,
   progressBarClass,
@@ -432,6 +469,10 @@ const formatAttendanceDay = (day) => {
 const close = () => emit('update:modelValue', false);
 
 const goToCheckout = () => {
+  if (!canVendorPayBooking(booking.value)) {
+    toast.error(vendorPaymentBlockedMessage(booking.value));
+    return;
+  }
   const id = props.bookingId;
   close();
   router.push(`/dashboard/checkout/${id}`);

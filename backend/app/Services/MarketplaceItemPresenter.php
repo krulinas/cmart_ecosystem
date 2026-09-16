@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\CarbootEvent;
 use App\Models\VendorBusinessProfile;
 use App\Models\VendorItem;
+use App\Support\WhatsAppContact;
 
 class MarketplaceItemPresenter
 {
@@ -49,6 +51,11 @@ class MarketplaceItemPresenter
                 ? round((float) $event->item_reservation_service_fee, 2)
                 : null,
             'reservation_service_fee_currency' => $feeConfigured ? 'MYR' : null,
+            'reservation_availability' => self::reservationAvailability(
+                $event,
+                $hasActiveReservation,
+                $isOwnItem,
+            ),
             'event' => $event ? [
                 'title' => $event->title,
                 'starts_at' => $event->starts_at?->toIso8601String(),
@@ -61,9 +68,72 @@ class MarketplaceItemPresenter
                 ...$vendor,
                 'description' => $profile?->description,
             ];
+
+            $contact = self::whatsappContact($profile, $item, $event);
+            if ($contact) {
+                $payload['vendor']['whatsapp_contact'] = $contact;
+            }
         }
 
         return $payload;
+    }
+
+    private static function reservationAvailability(
+        ?CarbootEvent $event,
+        bool $hasActiveReservation,
+        bool $isOwnItem,
+    ): array {
+        if ($isOwnItem) {
+            return [
+                'available' => false,
+                'code' => 'own_item',
+                'message' => 'This is your listing.',
+            ];
+        }
+
+        if ($event === null) {
+            return [
+                'available' => false,
+                'code' => 'no_eligible_upcoming_event',
+                'message' => 'Reservations are not available because this vendor has no upcoming approved event.',
+            ];
+        }
+
+        if ($event->item_reservation_service_fee === null) {
+            return [
+                'available' => false,
+                'code' => 'event_reservations_not_configured',
+                'message' => 'Reservations are not available for this event.',
+            ];
+        }
+
+        if ($hasActiveReservation) {
+            return [
+                'available' => false,
+                'code' => 'already_reserved',
+                'message' => 'This item already has an active reservation.',
+            ];
+        }
+
+        return [
+            'available' => true,
+            'code' => 'available',
+            'message' => 'This item can be reserved as a temporary hold.',
+        ];
+    }
+
+    private static function whatsappContact(
+        ?VendorBusinessProfile $profile,
+        VendorItem $item,
+        ?CarbootEvent $event,
+    ): ?array {
+        $vendorName = $profile?->business_name ?: ($item->user?->name ?? 'CMart Vendor');
+        $eventLabel = $event?->starts_at?->format('j M Y') ?: $event?->title;
+
+        return WhatsAppContact::publicContact(
+            $profile,
+            WhatsAppContact::marketplaceMessage($vendorName, (string) $item->name, $eventLabel),
+        );
     }
 
     private static function publicVendorSummary(?VendorBusinessProfile $profile, VendorItem $item): array

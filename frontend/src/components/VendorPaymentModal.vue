@@ -101,7 +101,12 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useToast } from 'vue-toastification';
 import api from '../services/api';
+import {
+  canVendorPayBooking,
+  vendorPaymentBlockedMessage,
+} from '../utils/bookingDisplay';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -110,6 +115,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue', 'submitted']);
+const toast = useToast();
 
 const fileInputRef = ref(null);
 const selectedFile = ref(null);
@@ -141,6 +147,15 @@ const onFileChange = (event) => {
   selectedFile.value = file;
   selectedFileName.value = file?.name ?? '';
   errorMessage.value = '';
+};
+
+const closeIfIneligible = (booking) => {
+  if (canVendorPayBooking(booking)) return false;
+  const message = vendorPaymentBlockedMessage(booking);
+  errorMessage.value = message;
+  toast.error(message);
+  emit('update:modelValue', false);
+  return true;
 };
 
 const submitPayment = async () => {
@@ -175,10 +190,17 @@ const submitPayment = async () => {
 
 watch(
   () => props.modelValue,
-  (open) => {
+  async (open) => {
     if (open) {
       resetForm();
       document.body.style.overflow = 'hidden';
+      if (!props.bookingId) return;
+      try {
+        const { data } = await api.get(`/vendor/bookings/${props.bookingId}`);
+        closeIfIneligible(data);
+      } catch {
+        // Keep the modal open; submit still hits the backend approval guard.
+      }
     } else {
       document.body.style.overflow = '';
       resetForm();

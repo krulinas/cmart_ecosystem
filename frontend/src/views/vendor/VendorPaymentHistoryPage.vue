@@ -27,6 +27,10 @@ import VendorPageShell from '../../components/vendor/VendorPageShell.vue';
 import VendorHistoryReceipts from '../../components/VendorHistoryReceipts.vue';
 import VendorPaymentModal from '../../components/VendorPaymentModal.vue';
 import api from '../../services/api';
+import {
+  canVendorPayBooking,
+  vendorPaymentBlockedMessage,
+} from '../../utils/bookingDisplay';
 
 const router = useRouter();
 const toast = useToast();
@@ -72,6 +76,10 @@ const openBookingDocument = async (bookingId) => {
 };
 
 const openPaymentSubmission = (row) => {
+  if (!canVendorPayBooking(row)) {
+    toast.error(vendorPaymentBlockedMessage(row));
+    return;
+  }
   paymentBookingId.value = row?.booking_id ?? row?.id ?? null;
   paymentInvoiceAmount.value = row?.amount ?? row?.invoice?.amount ?? null;
   showPaymentModal.value = true;

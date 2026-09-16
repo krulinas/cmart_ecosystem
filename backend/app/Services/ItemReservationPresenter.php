@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ItemReservation;
 use App\Models\ItemReservationAudit;
 use App\Models\User;
+use App\Support\WhatsAppContact;
 
 class ItemReservationPresenter
 {
@@ -12,12 +13,19 @@ class ItemReservationPresenter
     {
         $reservation->loadMissing(['carbootEvent', 'vendorUser.businessProfile']);
 
+        $vendor = [
+            'business_name' => $reservation->vendorUser?->businessProfile?->business_name
+                ?: $reservation->vendorUser?->name,
+        ];
+
+        $contact = self::whatsappContactForReservingUser($reservation);
+        if ($contact) {
+            $vendor['whatsapp_contact'] = $contact;
+        }
+
         return [
             ...self::common($reservation),
-            'vendor' => [
-                'business_name' => $reservation->vendorUser?->businessProfile?->business_name
-                    ?: $reservation->vendorUser?->name,
-            ],
+            'vendor' => $vendor,
         ];
     }
 
@@ -132,5 +140,25 @@ class ItemReservationPresenter
             'cancelled_at' => $reservation->cancelled_at?->toIso8601String(),
             'completed_at' => $reservation->completed_at?->toIso8601String(),
         ];
+    }
+
+    private static function whatsappContactForReservingUser(ItemReservation $reservation): ?array
+    {
+        if (! in_array($reservation->reservation_status, [
+            ItemReservation::STATUS_PENDING_CHARGE,
+            ItemReservation::STATUS_CONFIRMED,
+        ], true)) {
+            return null;
+        }
+
+        $profile = $reservation->vendorUser?->businessProfile;
+        $vendorName = $profile?->business_name ?: ($reservation->vendorUser?->name ?? 'CMart Vendor');
+        $itemName = (string) ($reservation->item_name_snapshot ?: 'this item');
+        $reference = (string) $reservation->public_reference;
+
+        return WhatsAppContact::publicContact(
+            $profile,
+            WhatsAppContact::reservationMessage($vendorName, $itemName, $reference),
+        );
     }
 }

@@ -9,6 +9,7 @@ use App\Models\VendorBusinessProfile;
 use App\Services\UserAuthPresenter;
 use App\Services\VendorCategoryResolver;
 use App\Services\VendorProfilePresenter;
+use App\Support\WhatsAppContact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -36,12 +37,29 @@ class VendorProfileController extends Controller
             'phone_number' => 'nullable|string|max:30',
             'business_name' => 'required|string|max:255',
             'business_phone' => 'nullable|string|max:30',
+            'marketplace_whatsapp_enabled' => 'sometimes|boolean',
             'vendor_category_id' => 'nullable|integer|exists:vendor_categories,id',
             'business_category' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:5000',
             'logo' => 'nullable|file|mimes:jpeg,jpg,png,webp|max:5120',
             'remove_logo' => 'nullable|boolean',
         ]);
+
+        $whatsappFields = [];
+        if (array_key_exists('marketplace_whatsapp_enabled', $validated)) {
+            $enabled = $request->boolean('marketplace_whatsapp_enabled');
+            $optInError = WhatsAppContact::optInError($validated['business_phone'] ?? null, $enabled);
+            if ($optInError) {
+                return response()->json([
+                    'message' => $optInError,
+                    'errors' => [
+                        'marketplace_whatsapp_enabled' => [$optInError],
+                        'business_phone' => [$optInError],
+                    ],
+                ], 422);
+            }
+            $whatsappFields['marketplace_whatsapp_enabled'] = $enabled;
+        }
 
         $user->update([
             'name' => $validated['name'],
@@ -87,7 +105,7 @@ class VendorProfileController extends Controller
             'business_name' => $validated['business_name'],
             'business_phone' => $validated['business_phone'] ?? null,
             'description' => $validated['description'] ?? null,
-        ], $categoryFields));
+        ], $categoryFields, $whatsappFields));
 
         if ($request->boolean('remove_logo')) {
             $this->deleteLogoFile($profile->logo_path);

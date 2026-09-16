@@ -175,7 +175,11 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import { filterTabClass } from '../utils/bookingDisplay';
+import {
+  canVendorPayBooking,
+  filterTabClass,
+  vendorPaymentStatusLabel,
+} from '../utils/bookingDisplay';
 
 const columns = ['Event', 'Date', 'Booth', 'Amount', 'Status', 'Action'];
 
@@ -197,10 +201,7 @@ const props = defineProps({
 
 defineEmits(['retry', 'view-document', 'submit-payment', 'close']);
 
-const canSubmitPayment = (row) =>
-  row.invoice_available
-  && row.booking_status === 'Approved'
-  && row.payment_status === 'Unpaid';
+const canSubmitPayment = (row) => canVendorPayBooking(row);
 
 const receiptsSearchQuery = ref('');
 const selectedReceiptStatus = ref('all');
@@ -224,9 +225,7 @@ const displayStatus = (row) => {
   if (['Cancelled', 'Rejected'].includes(row.booking_status)) {
     return row.booking_status;
   }
-  if (row.payment_status === 'Pending Verification') return 'Pending Verification';
-  if (row.payment_status === 'Unpaid') return 'Unpaid';
-  return row.payment_status;
+  return vendorPaymentStatusLabel(row);
 };
 
 const matchesReceiptStatusFilter = (row, filterId) => {
@@ -286,7 +285,9 @@ const statusBadgeClass = (row) => {
   return {
     Paid: 'ml-badge bg-emerald-100 text-emerald-800',
     Unpaid: 'ml-badge bg-amber-100 text-amber-800',
+    'Payment submitted': 'ml-badge bg-sky-100 text-sky-800',
     'Pending Verification': 'ml-badge bg-sky-100 text-sky-800',
+    'Locked until approval': 'ml-badge bg-ink-100 text-ink-700',
     Pending: 'ml-badge bg-brand-100 text-brand-800',
     'Not Issued': 'ml-badge bg-ink-100 text-ink-700',
     Cancelled: 'ml-badge bg-ink-100 text-ink-700',

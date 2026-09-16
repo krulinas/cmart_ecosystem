@@ -11,7 +11,7 @@
         <p class="text-brand-200 font-bold uppercase tracking-wider text-sm mb-3">Carboot@CMart</p>
         <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4">Carboot Preview</h1>
         <p class="text-lg text-brand-100 max-w-3xl mx-auto leading-relaxed">
-          Browse item previews from approved vendors before you visit the CMart Carboot in person.
+          Browse items from approved vendors, reserve eligible holds, and collect in person at CMart Carboot.
         </p>
       </div>
     </header>
@@ -30,10 +30,10 @@
             </svg>
           </div>
           <div class="min-w-0 space-y-1">
-            <p class="text-sm font-extrabold text-[#78350F]">Visit in person on event day</p>
+            <p class="text-sm font-extrabold text-[#78350F]">Browse online, collect in person</p>
             <p class="text-sm text-[#92400E]/95 leading-relaxed">
-              Purchases are made at vendor booths during the carboot. There is no online checkout,
-              delivery, or postage for reuse items.
+              Eligible items can be reserved as a hold before the event. Item payment, inspection and collection
+              still take place directly at the vendor booth. There is no online checkout, delivery, or postage.
             </p>
           </div>
         </div>
@@ -42,13 +42,14 @@
       <section class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8 space-y-5">
         <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div>
-            <h2 class="text-xl font-extrabold text-gray-900">Browse item previews</h2>
+            <h2 class="text-xl font-extrabold text-gray-900">Browse items</h2>
             <p class="mt-1 text-sm text-gray-600">
-              Items shown here are previews only. Confirm availability and purchase at vendor booths on event day.
+              A reservation is a temporary hold, not an online purchase. Availability and final item condition
+              are confirmed with the vendor at the booth.
             </p>
           </div>
           <p v-if="!loading" class="text-sm font-semibold text-gray-500">
-            {{ totalItems }} preview{{ totalItems === 1 ? '' : 's' }} available
+            {{ totalItems }} item{{ totalItems === 1 ? '' : 's' }} available
           </p>
         </div>
 
@@ -121,6 +122,7 @@
     <MarketplaceItemDetailsModal
       v-model="showDetailsModal"
       :item-id="selectedItemId"
+      @reserved="onItemReserved"
     />
   </div>
 </template>
@@ -152,8 +154,8 @@ const selectedItemId = ref(null);
 
 let searchTimer = null;
 
-const fetchItems = async () => {
-  loading.value = true;
+const fetchItems = async ({ quiet = false } = {}) => {
+  if (!quiet) loading.value = true;
   try {
     const { data } = await api.get('/marketplace/items', {
       params: {
@@ -170,8 +172,26 @@ const fetchItems = async () => {
     items.value = [];
     totalItems.value = 0;
   } finally {
-    loading.value = false;
+    if (!quiet) loading.value = false;
   }
+};
+
+const onItemReserved = async () => {
+  const reservedId = selectedItemId.value;
+  items.value = items.value.map((item) => {
+    if (String(item.id) !== String(reservedId)) return item;
+    return {
+      ...item,
+      is_reservable: false,
+      has_active_reservation: true,
+      reservation_availability: {
+        available: false,
+        code: 'already_reserved',
+        message: 'This item already has an active reservation.',
+      },
+    };
+  });
+  await fetchItems({ quiet: true });
 };
 
 const openItemDetails = (item) => {

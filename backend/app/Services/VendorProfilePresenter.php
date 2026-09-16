@@ -23,6 +23,7 @@ class VendorProfilePresenter
             'vendor_status' => $user->vendor_status,
             'business_name' => $profile?->business_name,
             'business_phone' => $profile?->business_phone,
+            'marketplace_whatsapp_enabled' => (bool) ($profile?->marketplace_whatsapp_enabled),
             'business_category' => $profile?->business_category,
             'vendor_category_id' => $profile?->vendor_category_id,
             'category' => $profile?->vendorCategory ? [

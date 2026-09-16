@@ -76,6 +76,24 @@
               <p v-if="errors.business_phone" class="mt-1 text-xs text-rose-600">{{ errors.business_phone }}</p>
             </div>
 
+            <label class="flex items-start gap-2 rounded-xl border border-ink-100 bg-ink-50/50 p-3 text-sm text-ink-700">
+              <input
+                v-model="form.marketplace_whatsapp_enabled"
+                type="checkbox"
+                class="mt-1"
+                data-testid="vendor-whatsapp-opt-in"
+              />
+              <span>
+                <span class="font-semibold text-ink-800">Allow marketplace visitors to contact me on WhatsApp</span>
+                <span class="mt-0.5 block text-xs text-ink-500">
+                  When enabled, a WhatsApp button will appear on your public item listings. Your business phone number will be used for the conversation.
+                </span>
+              </span>
+            </label>
+            <p v-if="errors.marketplace_whatsapp_enabled" class="text-xs text-rose-600">
+              {{ errors.marketplace_whatsapp_enabled }}
+            </p>
+
             <div>
               <label class="ml-label">Business category</label>
               <select v-model="form.business_category" class="ml-input">
@@ -112,6 +130,10 @@ import { useToast } from 'vue-toastification';
 import api from '../services/api';
 import { extractApiError } from '../utils/apiErrors';
 import { PRODUCT_CATEGORIES } from '../utils/bookingDisplay';
+import {
+  WHATSAPP_OPT_IN_PHONE_REQUIRED,
+  normalizeWhatsAppNumber,
+} from '../utils/whatsappContact';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -135,6 +157,7 @@ const form = reactive({
   phone_number: '',
   business_name: '',
   business_phone: '',
+  marketplace_whatsapp_enabled: false,
   business_category: '',
   description: '',
 });
@@ -160,6 +183,7 @@ const fillForm = () => {
   form.phone_number = p?.phone_number || '';
   form.business_name = p?.business_name || p?.name || '';
   form.business_phone = p?.business_phone || p?.phone_number || '';
+  form.marketplace_whatsapp_enabled = Boolean(p?.marketplace_whatsapp_enabled);
   form.business_category = p?.business_category || '';
   form.description = p?.description || '';
   logoPreviewUrl.value = p?.logo_url || '';
@@ -203,8 +227,16 @@ const close = () => {
 };
 
 const save = async () => {
-  saving.value = true;
   clearErrors();
+
+  if (form.marketplace_whatsapp_enabled && !normalizeWhatsAppNumber(form.business_phone)) {
+    errors.marketplace_whatsapp_enabled = WHATSAPP_OPT_IN_PHONE_REQUIRED;
+    errors.business_phone = WHATSAPP_OPT_IN_PHONE_REQUIRED;
+    toast.error(WHATSAPP_OPT_IN_PHONE_REQUIRED);
+    return;
+  }
+
+  saving.value = true;
 
   try {
     const fd = new FormData();
@@ -212,6 +244,7 @@ const save = async () => {
     fd.append('phone_number', form.phone_number?.trim() || '');
     fd.append('business_name', form.business_name.trim());
     fd.append('business_phone', form.business_phone?.trim() || '');
+    fd.append('marketplace_whatsapp_enabled', form.marketplace_whatsapp_enabled ? '1' : '0');
     if (form.business_category) fd.append('business_category', form.business_category);
     if (form.description?.trim()) fd.append('description', form.description.trim());
     if (logoFile.value) fd.append('logo', logoFile.value);

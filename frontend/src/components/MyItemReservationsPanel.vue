@@ -96,6 +96,17 @@
               >
                 Cancel
               </button>
+              <a
+                v-if="reservationWhatsapp(reservation)"
+                :href="reservationWhatsapp(reservation).url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="ml-2 ml-btn-ghost text-sm"
+                data-testid="my-reservation-whatsapp"
+                :aria-label="`Contact ${reservation.vendor?.business_name || 'vendor'} on WhatsApp`"
+              >
+                Contact Vendor
+              </a>
             </td>
           </tr>
         </tbody>
@@ -124,8 +135,19 @@
             <div v-if="detail.cancelled_at"><dt class="text-xs uppercase text-ink-400 font-bold">Cancelled</dt><dd>{{ formatReservationTimestamp(detail.cancelled_at) }}</dd></div>
             <div v-if="detail.completed_at"><dt class="text-xs uppercase text-ink-400 font-bold">Completed</dt><dd>{{ formatReservationTimestamp(detail.completed_at) }}</dd></div>
           </dl>
-          <div class="mt-5 flex justify-end gap-2">
+          <div class="mt-5 flex flex-wrap justify-end gap-2">
             <button type="button" class="ml-btn-ghost" @click="detail = null">Close</button>
+            <a
+              v-if="reservationWhatsapp(detail)"
+              :href="reservationWhatsapp(detail).url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="ml-btn-ghost"
+              data-testid="my-reservation-detail-whatsapp"
+              :aria-label="`Contact ${detail.vendor?.business_name || 'vendor'} on WhatsApp`"
+            >
+              Contact Vendor
+            </a>
           </div>
         </div>
       </div>
@@ -194,8 +216,10 @@ import {
   reservationStatusBadgeClass,
   reservationStatusLabel,
 } from '../utils/itemReservationDisplay';
+import { vendorWhatsappContact } from '../utils/whatsappContact';
 
 const toast = useToast();
+const reservationWhatsapp = (reservation) => vendorWhatsappContact(reservation);
 const rows = ref([]);
 const loading = ref(false);
 const loadError = ref('');

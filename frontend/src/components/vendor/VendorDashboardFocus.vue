@@ -16,18 +16,48 @@
             {{ focusSubtitle }}
           </p>
         </div>
-        <button
+        <div
           v-if="primaryAction"
-          type="button"
-          class="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 min-h-[44px] text-[15px] font-bold text-white shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 transition shrink-0"
-          :class="primaryAction.emphasis === 'payment'
-            ? 'bg-amber-500 shadow-amber-500/25 hover:bg-amber-600'
-            : 'bg-brand-500 shadow-brand-500/20 hover:bg-brand-600'"
-          data-testid="vendor-focus-primary-action"
-          @click="$emit('primary-action', primaryAction)"
+          class="flex flex-col items-stretch sm:items-end gap-2 shrink-0 max-w-full sm:max-w-xs"
         >
-          {{ primaryAction.label }}
-        </button>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 min-h-[44px] text-[15px] font-bold shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 transition"
+            :class="primaryAction.disabled
+              ? 'bg-ink-200 text-ink-500 shadow-none cursor-not-allowed hover:bg-ink-200'
+              : primaryAction.emphasis === 'payment'
+                ? 'bg-amber-500 text-white shadow-amber-500/25 hover:bg-amber-600'
+                : 'bg-brand-500 text-white shadow-brand-500/20 hover:bg-brand-600'"
+            :disabled="Boolean(primaryAction.disabled)"
+            :aria-disabled="primaryAction.disabled ? 'true' : undefined"
+            data-testid="vendor-focus-primary-action"
+            @click="onPrimaryAction"
+          >
+            <svg
+              v-if="primaryAction.locked"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
+            </svg>
+            {{ primaryAction.label }}
+          </button>
+          <p
+            v-if="primaryAction.lockHint"
+            class="text-xs text-ink-500 sm:text-right leading-relaxed"
+            data-testid="vendor-focus-pay-lock-hint"
+          >
+            {{ primaryAction.lockHint }}
+          </p>
+        </div>
         <router-link
           v-else
           to="/vendor-booking"
@@ -46,7 +76,11 @@
           :class="card.key === 'payment' && paymentState.actionable
             ? 'border-amber-200 bg-amber-50/70'
             : 'border-ink-100 bg-ink-50/60'"
-          :data-testid="card.key === 'payment' ? 'vendor-focus-payment-card' : undefined"
+          :data-testid="card.key === 'payment'
+            ? 'vendor-focus-payment-card'
+            : card.key === 'booking'
+              ? 'vendor-focus-booking-card'
+              : undefined"
         >
           <div class="flex items-center gap-2">
             <span
@@ -62,6 +96,7 @@
             {{ card.value }}
           </p>
           <p v-if="card.hint" class="mt-1 text-xs text-ink-500">{{ card.hint }}</p>
+          <p v-if="card.detail" class="mt-1 text-xs text-ink-500">{{ card.detail }}</p>
         </article>
       </div>
     </div>
@@ -71,15 +106,13 @@
 <script setup>
 import { computed, h } from 'vue';
 import {
-  canVendorProceedToDemoPayment,
   formatBookingDate,
-  isBookingPaymentPaid,
-  isTerminalBookingStatus,
   isValidBookingDate,
-  normalizePaymentStatus,
-  PENDING_STATUSES,
+  resolveVendorFocusPrimaryAction,
+  resolveVendorPaymentUi,
   siteLabelsForBooking,
   statusLabel,
+  vendorBookingStatusHint,
 } from '../../utils/bookingDisplay';
 
 const props = defineProps({
@@ -92,7 +125,7 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
 });
 
-defineEmits(['primary-action']);
+const emit = defineEmits(['primary-action']);
 
 const MY_TZ = 'Asia/Kuala_Lumpur';
 
@@ -112,124 +145,13 @@ const eventIcon = icon('M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H
 const statusIcon = icon('M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z');
 const paymentIcon = icon('M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z');
 
-const formatAmountLabel = (amount) => {
-  if (amount == null || amount === '') return null;
-  const numeric = Number(amount);
-  if (Number.isNaN(numeric)) return null;
-  return `RM${numeric.toFixed(2)}`;
+const paymentState = computed(() => resolveVendorPaymentUi(props.booking, props.paymentRecord));
+
+const onPrimaryAction = () => {
+  const action = primaryAction.value;
+  if (!action || action.disabled) return;
+  emit('primary-action', action);
 };
-
-const resolvedPaymentStatus = computed(() => {
-  const fromRecord = String(props.paymentRecord?.payment_status || '').trim();
-  if (fromRecord) return fromRecord;
-  return normalizePaymentStatus(props.booking);
-});
-
-const resolvedAmount = computed(() => {
-  if (props.paymentRecord?.amount != null && props.paymentRecord.amount !== '') {
-    return props.paymentRecord.amount;
-  }
-  return props.booking?.invoice?.amount ?? null;
-});
-
-const paymentState = computed(() => {
-  const booking = props.booking;
-  if (!booking) {
-    return {
-      actionable: false,
-      complete: false,
-      value: 'Not started',
-      hint: null,
-      statusKey: 'none',
-    };
-  }
-
-  if (isTerminalBookingStatus(booking.approval_status)) {
-    return {
-      actionable: false,
-      complete: false,
-      value: 'Not applicable',
-      hint: statusLabel(booking.approval_status),
-      statusKey: 'terminal',
-    };
-  }
-
-  const status = resolvedPaymentStatus.value;
-  const statusLower = status.toLowerCase();
-  const amountLabel = formatAmountLabel(resolvedAmount.value);
-  const canPay = canVendorProceedToDemoPayment(booking)
-    || (
-      booking.approval_status === 'Approved'
-      && props.paymentRecord?.invoice_available
-      && statusLower === 'unpaid'
-    );
-
-  if (canPay || statusLower === 'unpaid' || statusLower === 'failed') {
-    return {
-      actionable: true,
-      complete: false,
-      value: status || 'Unpaid',
-      hint: amountLabel ? `${amountLabel} due` : 'Payment required',
-      statusKey: 'unpaid',
-      amount: resolvedAmount.value,
-      canPay: true,
-    };
-  }
-
-  if (statusLower === 'pending verification' || statusLower.includes('pending')) {
-    return {
-      actionable: true,
-      complete: false,
-      value: status || 'Pending verification',
-      hint: amountLabel || 'Awaiting organizer check',
-      statusKey: 'pending',
-      amount: resolvedAmount.value,
-      canPay: false,
-      canViewInvoice: Boolean(props.paymentRecord?.invoice_available || booking.invoice),
-    };
-  }
-
-  if (isBookingPaymentPaid(booking) || statusLower === 'paid') {
-    return {
-      actionable: false,
-      complete: true,
-      value: 'Payment complete',
-      hint: amountLabel,
-      statusKey: 'paid',
-      amount: resolvedAmount.value,
-      canViewReceipt: Boolean(props.paymentRecord?.receipt_available),
-      canViewInvoice: Boolean(props.paymentRecord?.invoice_available || booking.invoice),
-    };
-  }
-
-  if (booking.approval_status === 'Approved' && !status) {
-    return {
-      actionable: false,
-      complete: false,
-      value: 'Awaiting invoice',
-      hint: 'Check again after approval processing',
-      statusKey: 'awaiting',
-    };
-  }
-
-  if (!status) {
-    return {
-      actionable: false,
-      complete: false,
-      value: 'Not due yet',
-      hint: 'Pay after approval',
-      statusKey: 'not_due',
-    };
-  }
-
-  return {
-    actionable: false,
-    complete: false,
-    value: status,
-    hint: amountLabel,
-    statusKey: 'other',
-  };
-});
 
 const focusEyebrow = computed(() => {
   if (props.loading) return 'Loading';
@@ -276,7 +198,7 @@ const statusCards = computed(() => [
     value: props.booking
       ? statusLabel(props.booking.approval_status)
       : (props.boothStatus || 'No active booking'),
-    hint: props.boothNumber ? `Booth ${props.boothNumber}` : null,
+    hint: vendorBookingStatusHint(props.booking, props.boothNumber),
     icon: statusIcon,
     iconWrap: 'text-sky-700 border-sky-100',
   },
@@ -285,60 +207,19 @@ const statusCards = computed(() => [
     label: 'Payment',
     value: paymentState.value.value,
     hint: paymentState.value.hint,
+    detail: paymentState.value.lockCopy || null,
     icon: paymentIcon,
     iconWrap: paymentState.value.actionable
       ? 'text-amber-700 border-amber-200'
       : paymentState.value.complete
         ? 'text-emerald-700 border-emerald-100'
-        : 'text-emerald-700 border-emerald-100',
+        : paymentState.value.statusKey === 'locked'
+          ? 'text-ink-500 border-ink-200'
+          : 'text-emerald-700 border-emerald-100',
   },
 ]);
 
-const primaryAction = computed(() => {
-  const booking = props.booking;
-  if (!booking?.id) return null;
-
-  if (booking.approval_status === 'Needs_Revision') {
-    return { type: 'view-booking', bookingId: booking.id, label: 'Review Booking' };
-  }
-
-  const payment = paymentState.value;
-  if (payment.canPay) {
-    return {
-      type: 'pay',
-      bookingId: booking.id,
-      amount: payment.amount ?? resolvedAmount.value,
-      label: 'Pay Now',
-      emphasis: 'payment',
-    };
-  }
-
-  if (payment.statusKey === 'pending' && payment.canViewInvoice) {
-    return {
-      type: 'view-document',
-      bookingId: booking.id,
-      label: 'View Invoice',
-      emphasis: 'payment',
-    };
-  }
-
-  // Approved + payment complete: pass unlock aligns with existing WhatsApp/pass rules.
-  // Navigate to Event Passes without fetching the full pass list on the dashboard.
-  if (
-    booking.approval_status === 'Approved'
-    && (payment.complete || isBookingPaymentPaid(booking))
-  ) {
-    return {
-      type: 'view-pass',
-      bookingId: booking.id,
-      label: 'View Event Pass',
-    };
-  }
-
-  if (PENDING_STATUSES.includes(booking.approval_status)) {
-    return { type: 'view-booking', bookingId: booking.id, label: 'View Booking' };
-  }
-
-  return { type: 'view-booking', bookingId: booking.id, label: 'View Details' };
-});
+const primaryAction = computed(() =>
+  resolveVendorFocusPrimaryAction(props.booking, paymentState.value),
+);
 </script>

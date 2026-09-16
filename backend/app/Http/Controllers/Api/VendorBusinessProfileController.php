@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\VendorBusinessProfile;
 use App\Services\VendorCategoryResolver;
+use App\Support\WhatsAppContact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -43,6 +44,7 @@ class VendorBusinessProfileController extends Controller
         $validated = $request->validate([
             'business_name' => 'required|string|max:255',
             'business_phone' => 'nullable|string|max:30',
+            'marketplace_whatsapp_enabled' => 'sometimes|boolean',
             'vendor_category_id' => 'nullable|integer|exists:vendor_categories,id',
             'business_category' => 'nullable|string|max:255',
             'description' => 'nullable|string|max:5000',
@@ -52,6 +54,22 @@ class VendorBusinessProfileController extends Controller
             ['user_id' => $user->id],
             ['business_name' => $user->name],
         );
+
+        $whatsappFields = [];
+        if (array_key_exists('marketplace_whatsapp_enabled', $validated)) {
+            $enabled = $request->boolean('marketplace_whatsapp_enabled');
+            $optInError = WhatsAppContact::optInError($validated['business_phone'] ?? null, $enabled);
+            if ($optInError) {
+                return response()->json([
+                    'message' => $optInError,
+                    'errors' => [
+                        'marketplace_whatsapp_enabled' => [$optInError],
+                        'business_phone' => [$optInError],
+                    ],
+                ], 422);
+            }
+            $whatsappFields['marketplace_whatsapp_enabled'] = $enabled;
+        }
 
         $categoryFields = [];
         $hasCategoryInput = array_key_exists('vendor_category_id', $validated)
@@ -90,7 +108,7 @@ class VendorBusinessProfileController extends Controller
             'business_name' => $validated['business_name'],
             'business_phone' => $validated['business_phone'] ?? null,
             'description' => $validated['description'] ?? null,
-        ], $categoryFields));
+        ], $categoryFields, $whatsappFields));
 
         if (array_key_exists('business_phone', $validated)) {
             $user->update(['phone_number' => $validated['business_phone']]);

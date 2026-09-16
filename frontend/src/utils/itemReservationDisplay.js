@@ -91,17 +91,20 @@ export function canOrganizerCancelOrExpire(reservation) {
   return ['pending_charge', 'confirmed'].includes(reservation?.reservation_status);
 }
 
-export function canShowReserveCta({
-  item,
-  isAuthenticated = false,
-  isCommunityMember = false,
-  isCmartWorker = false,
-} = {}) {
-  if (!item?.is_reservable) return false;
-  if (item?.is_own_item) return false;
-  if (isCmartWorker) return false;
-  if (isAuthenticated && !isCommunityMember) return false;
-  return true;
+export function canShowReserveCta(args = {}) {
+  const mode = reserveCtaMode(args);
+  return mode === 'reserve' || mode === 'login';
+}
+
+export function reservationAvailabilityCode(item) {
+  return item?.reservation_availability?.code
+    || (item?.has_active_reservation
+      ? 'already_reserved'
+      : item?.is_own_item
+        ? 'own_item'
+        : item?.is_reservable
+          ? 'available'
+          : 'not_available');
 }
 
 export function reserveCtaMode({
@@ -110,10 +113,21 @@ export function reserveCtaMode({
   isCommunityMember = false,
   isCmartWorker = false,
 } = {}) {
-  if (!canShowReserveCta({ item, isAuthenticated, isCommunityMember, isCmartWorker })) {
-    return 'hidden';
-  }
+  if (!item) return 'hidden';
+
+  const code = reservationAvailabilityCode(item);
+
+  if (code === 'own_item' || item?.is_own_item) return 'own_item';
+  if (code === 'already_reserved' || item?.has_active_reservation) return 'already_reserved';
+  if (code === 'event_reservations_not_configured') return 'not_configured';
+  if (code === 'no_eligible_upcoming_event') return 'not_available';
+  if (isCmartWorker || (isAuthenticated && !isCommunityMember)) return 'ineligible_role';
+
+  const backendAvailable = item?.reservation_availability?.available === true || item?.is_reservable;
+  if (!backendAvailable || code === 'not_available') return 'not_available';
+
   if (!isAuthenticated) return 'login';
+  if (!isCommunityMember) return 'ineligible_role';
   return 'reserve';
 }
 

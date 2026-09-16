@@ -33,24 +33,11 @@
             <div class="p-6 sm:p-8">
               <div
                 class="mb-5 rounded-xl border px-4 py-3 text-sm leading-relaxed"
-                :class="item.is_reservable
-                  ? 'border-emerald-300 bg-emerald-50 text-emerald-950'
-                  : 'border-amber-400 bg-[#FFFBEB] text-[#92400E]'"
+                :class="policyToneClass"
                 role="note"
               >
-                <p
-                  class="font-semibold"
-                  :class="item.is_reservable ? 'text-emerald-900' : 'text-[#78350F]'"
-                >
-                  {{ item.is_reservable
-                    ? 'Reserve a hold, then collect in person at the event.'
-                    : 'Preview only: in-person purchase at the event.' }}
-                </p>
-                <p class="mt-1">
-                  {{ item.is_reservable
-                    ? 'Reserving records a hold and any Organizer service fee. The item itself is still collected and paid for in person at the vendor booth.'
-                    : 'This item is shown to help you plan your visit. Please go to the vendor booth during the CMart Carboot event to view, confirm availability, and purchase in person.' }}
-                </p>
+                <p class="font-semibold" :class="policyTitleClass">{{ policyTitle }}</p>
+                <p class="mt-1">{{ policyBody }}</p>
               </div>
 
               <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -125,8 +112,19 @@
                 </div>
               </div>
 
-              <div class="mt-6 flex flex-wrap gap-3">
+              <div class="mt-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-end gap-3">
                 <button type="button" class="ml-btn-ghost" @click="close">Close</button>
+                <a
+                  v-if="whatsappContact"
+                  :href="whatsappContact.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="ml-btn-ghost"
+                  data-testid="marketplace-whatsapp-contact"
+                  :aria-label="`Contact ${item.vendor?.business_name || 'vendor'} on WhatsApp`"
+                >
+                  Contact Vendor on WhatsApp
+                </a>
                 <router-link
                   v-if="reserveMode === 'login'"
                   :to="loginHref"
@@ -144,7 +142,54 @@
                 >
                   Reserve
                 </button>
+                <button
+                  v-else-if="reserveMode === 'already_reserved'"
+                  type="button"
+                  class="ml-btn-primary"
+                  disabled
+                  data-testid="marketplace-already-reserved"
+                >
+                  Already reserved
+                </button>
+                <button
+                  v-else-if="reserveMode === 'not_configured'"
+                  type="button"
+                  class="ml-btn-primary"
+                  disabled
+                  data-testid="marketplace-reservation-unavailable"
+                >
+                  Reservation unavailable
+                </button>
+                <p
+                  v-else-if="reserveMode === 'own_item'"
+                  class="text-sm font-semibold text-ink-500"
+                  data-testid="marketplace-own-listing"
+                >
+                  Your listing
+                </p>
+                <p
+                  v-else-if="reserveMode === 'ineligible_role'"
+                  class="text-sm font-semibold text-ink-500"
+                  data-testid="marketplace-reservation-ineligible"
+                >
+                  Reservations are available to community members only.
+                </p>
+                <button
+                  v-else
+                  type="button"
+                  class="ml-btn-primary"
+                  disabled
+                  data-testid="marketplace-reservation-closed"
+                >
+                  Reservation unavailable
+                </button>
               </div>
+              <p
+                v-if="reserveMode === 'not_configured'"
+                class="mt-3 text-sm text-ink-500 sm:text-right"
+              >
+                This event is currently available for in-person browsing only.
+              </p>
             </div>
           </template>
         </div>
@@ -168,6 +213,7 @@ import ItemReservationConfirmModal from './ItemReservationConfirmModal.vue';
 import { normalizeReuseItem } from '../utils/imageUrl';
 import { formatItemPrice } from '../utils/vendorCatalog';
 import { formatReservationFee, reserveCtaMode } from '../utils/itemReservationDisplay';
+import { vendorWhatsappContact } from '../utils/whatsappContact';
 import { loginPathWithRedirect } from '../utils/postAuthRedirect';
 import { useAuthStore } from '../stores/auth';
 
@@ -192,6 +238,42 @@ const reserveMode = computed(() => reserveCtaMode({
   isCommunityMember: auth.isCommunityMember,
   isCmartWorker: auth.isCmartWorker,
 }));
+
+const whatsappContact = computed(() => vendorWhatsappContact(item.value));
+
+const policyTitle = computed(() => {
+  if (reserveMode.value === 'already_reserved') return 'This item is currently on hold.';
+  if (reserveMode.value === 'not_configured') return 'In-person browsing for this event.';
+  if (reserveMode.value === 'reserve' || reserveMode.value === 'login') {
+    return 'Reserve a hold, then collect in person at the event.';
+  }
+  return 'Browse online, collect in person.';
+});
+
+const policyBody = computed(() => {
+  if (reserveMode.value === 'already_reserved') {
+    return 'Another visitor already has an active reservation. Availability and final item condition are still confirmed with the vendor at the booth.';
+  }
+  if (reserveMode.value === 'not_configured') {
+    return 'This event is currently available for in-person browsing only. Item payment, inspection and collection take place at the vendor booth.';
+  }
+  if (reserveMode.value === 'reserve' || reserveMode.value === 'login') {
+    return 'A reservation is a temporary hold, not an online purchase. The item price is a guide. Item payment, inspection and collection still take place at the vendor booth. Any reservation service fee is separate from the item price.';
+  }
+  return 'Items are purchased and collected in person. CMart does not process item payment, delivery or refunds.';
+});
+
+const policyToneClass = computed(() => (
+  reserveMode.value === 'reserve' || reserveMode.value === 'login'
+    ? 'border-emerald-300 bg-emerald-50 text-emerald-950'
+    : 'border-amber-400 bg-[#FFFBEB] text-[#92400E]'
+));
+
+const policyTitleClass = computed(() => (
+  reserveMode.value === 'reserve' || reserveMode.value === 'login'
+    ? 'text-emerald-900'
+    : 'text-[#78350F]'
+));
 
 const loginHref = computed(() => {
   const redirect = props.itemId

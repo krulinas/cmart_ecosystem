@@ -83,6 +83,12 @@
               <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Business Phone</dt>
               <dd class="mt-1 text-base font-semibold text-ink-900">{{ profile?.business_phone || '—' }}</dd>
             </div>
+            <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
+              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Marketplace WhatsApp</dt>
+              <dd class="mt-1 text-base font-semibold text-ink-900">
+                {{ profile?.marketplace_whatsapp_enabled ? 'Enabled on public listings' : 'Hidden from public listings' }}
+              </dd>
+            </div>
             <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4 sm:col-span-2">
               <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Business Description</dt>
               <dd class="mt-1 text-sm text-ink-700 whitespace-pre-line">
