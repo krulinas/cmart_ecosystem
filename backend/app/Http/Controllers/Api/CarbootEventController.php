@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\DomainConflictException;
 use App\Http\Controllers\Controller;
 use App\Models\CarbootEvent;
+use App\Models\Feedback;
 use App\Services\EventDayGenerator;
 use App\Services\EventPresenter;
 use App\Support\CmartCarbootPhysicalLayout;
@@ -173,124 +174,260 @@ class CarbootEventController extends Controller
 
     public function destroy(CarbootEvent $carboot_event)
     {
-        $dependencies = $this->eventDeletionDependencies($carboot_event);
-        $blocking = array_filter($dependencies, fn ($count) => $count > 0);
+        $eventId = (int) $carboot_event->id;
 
-        if ($blocking !== []) {
-            return response()->json([
-                'message' => 'This event cannot be permanently deleted because it already has operational or report records. Cancel or archive the event instead.',
-                'code' => 'event_has_dependencies',
-                'suggested_action' => 'set_status_closed',
-                'available_statuses' => self::STATUSES,
-                'dependencies' => $blocking,
-            ], 409);
+        if ($this->eventHasBookingHistory($eventId)) {
+            return $this->eventHasBookingsConflictResponse();
         }
 
+        $surveyStorageCleanup = [];
+
         try {
-            $carboot_event->delete();
+            DB::transaction(function () use ($carboot_event, &$surveyStorageCleanup) {
+                $locked = CarbootEvent::query()
+                    ->whereKey($carboot_event->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $lockedId = (int) $locked->id;
+
+                // Re-check bookings inside the lock to avoid races.
+                if ($this->eventHasBookingHistory($lockedId)) {
+                    throw new DomainConflictException(
+                        'This event cannot be permanently deleted because booking history already exists. Set the event status to Closed if it should no longer be available.',
+                        'event_has_bookings',
+                    );
+                }
+
+                $this->purgeEventOwnedDependents($lockedId, $surveyStorageCleanup);
+
+                // Event images + legacy poster are cleaned by CarbootEvent::deleting.
+                // Cascading FKs also remove event_days, layout rows/sites, layout audit
+                // logs and registrations when the event row is deleted.
+                $locked->delete();
+            });
+        } catch (DomainConflictException $exception) {
+            if ($exception->error === 'event_has_bookings') {
+                return $this->eventHasBookingsConflictResponse();
+            }
+
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'code' => $exception->error,
+                'error' => $exception->error,
+            ], 409);
         } catch (QueryException $e) {
             report($e);
 
             return response()->json([
-                'message' => 'This event cannot be permanently deleted because it already has operational or report records. Cancel or archive the event instead.',
-                'code' => 'event_has_dependencies',
-                'suggested_action' => 'set_status_closed',
-                'available_statuses' => self::STATUSES,
-            ], 409);
+                'message' => 'Unable to permanently delete this event. Please try again later.',
+                'code' => 'event_delete_failed',
+                'error' => 'event_delete_failed',
+            ], 500);
         } catch (Throwable $e) {
             report($e);
 
             return response()->json([
-                'message' => 'Unable to delete this event. Please try again or set the event status to Closed.',
+                'message' => 'Unable to permanently delete this event. Please try again later.',
                 'code' => 'event_delete_failed',
+                'error' => 'event_delete_failed',
             ], 500);
         }
+
+        $this->deleteCollectedStorageObjects($surveyStorageCleanup);
 
         return response()->json([
             'message' => '200 OK: Carboot event deleted successfully.',
         ]);
     }
 
-    /**
-     * Count foreign-key / operational dependencies that block permanent event deletion.
-     * Does not mutate or cascade-delete report requests, published reports, or bookings.
-     *
-     * @return array<string, int>
-     */
-    private function eventDeletionDependencies(CarbootEvent $event): array
+    private function eventHasBookingHistory(int $eventId): bool
     {
-        $eventId = (int) $event->id;
-        $counts = [];
+        if (! Schema::hasTable('bookings')) {
+            return false;
+        }
 
-        $checks = [
-            'report_requests' => fn () => Schema::hasTable('report_requests')
-                ? (int) DB::table('report_requests')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'generated_reports' => fn () => Schema::hasTable('generated_reports')
-                ? (int) DB::table('generated_reports')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'report_workflow_audits' => fn () => Schema::hasTable('report_workflow_audits')
-                ? (int) DB::table('report_workflow_audits')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'bookings' => fn () => Schema::hasTable('bookings')
-                ? (int) DB::table('bookings')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'invoices' => function () use ($eventId) {
-                if (! Schema::hasTable('invoices') || ! Schema::hasTable('bookings')) {
-                    return 0;
+        return DB::table('bookings')->where('carboot_event_id', $eventId)->exists();
+    }
+
+    private function eventHasBookingsConflictResponse(): JsonResponse
+    {
+        return response()->json([
+            'message' => 'This event cannot be permanently deleted because booking history already exists. Set the event status to Closed if it should no longer be available.',
+            'code' => 'event_has_bookings',
+            'error' => 'event_has_bookings',
+        ], 409);
+    }
+
+    /**
+     * Remove event-owned dependents that restrict or would otherwise leave orphans.
+     * Booking rows are never deleted here — booking existence blocks deletion above.
+     *
+     * @param  list<array{disk: string, path: string}>  $surveyStorageCleanup
+     */
+    private function purgeEventOwnedDependents(int $eventId, array &$surveyStorageCleanup): void
+    {
+        // Report Centre workflow (restrictOnDelete on requests/reports).
+        $reportRequestIds = [];
+        $generatedReportIds = [];
+
+        if (Schema::hasTable('report_requests')) {
+            $reportRequestIds = DB::table('report_requests')
+                ->where('carboot_event_id', $eventId)
+                ->pluck('id')
+                ->all();
+        }
+
+        if (Schema::hasTable('generated_reports')) {
+            $generatedReportIds = DB::table('generated_reports')
+                ->where('carboot_event_id', $eventId)
+                ->pluck('id')
+                ->all();
+        }
+
+        if (Schema::hasTable('report_workflow_audits')) {
+            DB::table('report_workflow_audits')
+                ->where(function ($query) use ($eventId, $reportRequestIds, $generatedReportIds) {
+                    $query->where('carboot_event_id', $eventId);
+                    if ($reportRequestIds !== []) {
+                        $query->orWhereIn('report_request_id', $reportRequestIds);
+                    }
+                    if ($generatedReportIds !== []) {
+                        $query->orWhereIn('generated_report_id', $generatedReportIds);
+                    }
+                })
+                ->delete();
+        }
+
+        if (Schema::hasTable('generated_reports')) {
+            if (Schema::hasColumn('generated_reports', 'supersedes_report_id')) {
+                DB::table('generated_reports')
+                    ->where('carboot_event_id', $eventId)
+                    ->update(['supersedes_report_id' => null]);
+            }
+            DB::table('generated_reports')->where('carboot_event_id', $eventId)->delete();
+        }
+
+        if (Schema::hasTable('report_requests')) {
+            DB::table('report_requests')->where('carboot_event_id', $eventId)->delete();
+        }
+
+        // Analytics + survey dataset (restrictOnDelete).
+        if (Schema::hasTable('analytics_results')) {
+            DB::table('analytics_results')->where('carboot_event_id', $eventId)->delete();
+        }
+
+        if (Schema::hasTable('survey_responses')) {
+            DB::table('survey_responses')->where('carboot_event_id', $eventId)->delete();
+        }
+
+        if (Schema::hasTable('raw_survey_uploads')) {
+            $uploadNulls = [];
+            if (Schema::hasColumn('raw_survey_uploads', 'duplicate_of_id')) {
+                $uploadNulls['duplicate_of_id'] = null;
+            }
+            if (Schema::hasColumn('raw_survey_uploads', 'superseded_by_id')) {
+                $uploadNulls['superseded_by_id'] = null;
+            }
+            if ($uploadNulls !== []) {
+                DB::table('raw_survey_uploads')
+                    ->where('carboot_event_id', $eventId)
+                    ->update($uploadNulls);
+            }
+
+            $uploads = DB::table('raw_survey_uploads')
+                ->where('carboot_event_id', $eventId)
+                ->get(['storage_disk', 'storage_path']);
+
+            foreach ($uploads as $upload) {
+                $disk = is_string($upload->storage_disk ?? null) && $upload->storage_disk !== ''
+                    ? $upload->storage_disk
+                    : 'local';
+                $path = is_string($upload->storage_path ?? null) ? trim($upload->storage_path) : '';
+                if ($path !== '') {
+                    $surveyStorageCleanup[] = ['disk' => $disk, 'path' => $path];
                 }
+            }
 
-                return (int) DB::table('invoices')
-                    ->whereIn('booking_id', function ($query) use ($eventId) {
-                        $query->select('id')
-                            ->from('bookings')
-                            ->where('carboot_event_id', $eventId);
-                    })
-                    ->count();
-            },
-            'item_reservations' => fn () => Schema::hasTable('item_reservations')
-                ? (int) DB::table('item_reservations')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'event_sites' => fn () => Schema::hasTable('event_sites')
-                ? (int) DB::table('event_sites')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'event_layout_rows' => fn () => Schema::hasTable('event_layout_rows')
-                ? (int) DB::table('event_layout_rows')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'event_days' => fn () => Schema::hasTable('event_days')
-                ? (int) DB::table('event_days')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'event_layout_audit_logs' => fn () => Schema::hasTable('event_layout_audit_logs')
-                ? (int) DB::table('event_layout_audit_logs')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'raw_survey_uploads' => fn () => Schema::hasTable('raw_survey_uploads')
-                ? (int) DB::table('raw_survey_uploads')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'survey_responses' => fn () => Schema::hasTable('survey_responses')
-                ? (int) DB::table('survey_responses')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'analytics_results' => fn () => Schema::hasTable('analytics_results')
-                ? (int) DB::table('analytics_results')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'feedbacks' => fn () => Schema::hasTable('feedbacks') && Schema::hasColumn('feedbacks', 'carboot_event_id')
-                ? (int) DB::table('feedbacks')->where('carboot_event_id', $eventId)->count()
-                : 0,
-            'registrations' => fn () => Schema::hasTable('event_user')
-                ? (int) DB::table('event_user')->where('carboot_event_id', $eventId)->count()
-                : 0,
-        ];
+            DB::table('raw_survey_uploads')->where('carboot_event_id', $eventId)->delete();
+        }
 
-        foreach ($checks as $key => $counter) {
-            try {
-                $counts[$key] = $counter();
-            } catch (Throwable $e) {
-                report($e);
-                // Treat unknown schema/query failure as a blocking dependency to avoid unsafe delete.
-                $counts[$key] = 1;
+        // Item reservations (restrictOnDelete) + append-only audits (DB delete only).
+        if (Schema::hasTable('item_reservations')) {
+            $reservationIds = DB::table('item_reservations')
+                ->where('carboot_event_id', $eventId)
+                ->pluck('id')
+                ->all();
+
+            if ($reservationIds !== [] && Schema::hasTable('item_reservation_audits')) {
+                DB::table('item_reservation_audits')
+                    ->whereIn('item_reservation_id', $reservationIds)
+                    ->delete();
+            }
+
+            DB::table('item_reservations')->where('carboot_event_id', $eventId)->delete();
+        }
+
+        // Event-linked feedback only (nullOnDelete would otherwise orphan the link).
+        // Unrelated global feedback (carboot_event_id IS NULL) is never touched.
+        if (Schema::hasTable('feedbacks') && Schema::hasColumn('feedbacks', 'carboot_event_id')) {
+            $feedbacks = Feedback::query()
+                ->where('carboot_event_id', $eventId)
+                ->get();
+
+            foreach ($feedbacks as $feedback) {
+                $feedback->delete();
             }
         }
 
-        return $counts;
+        // Explicit structural cleanup (also covered by cascades/trigger on event delete).
+        if (Schema::hasTable('event_layout_audit_logs')) {
+            DB::table('event_layout_audit_logs')->where('carboot_event_id', $eventId)->delete();
+        }
+
+        if (Schema::hasTable('event_sites')) {
+            DB::table('event_sites')->where('carboot_event_id', $eventId)->delete();
+        }
+
+        if (Schema::hasTable('event_layout_rows')) {
+            DB::table('event_layout_rows')->where('carboot_event_id', $eventId)->delete();
+        }
+
+        if (Schema::hasTable('event_days')) {
+            DB::table('event_days')->where('carboot_event_id', $eventId)->delete();
+        }
+
+        if (Schema::hasTable('event_user')) {
+            DB::table('event_user')->where('carboot_event_id', $eventId)->delete();
+        }
+    }
+
+    /**
+     * @param  list<array{disk: string, path: string}>  $objects
+     */
+    private function deleteCollectedStorageObjects(array $objects): void
+    {
+        $seen = [];
+
+        foreach ($objects as $object) {
+            $disk = $object['disk'] ?? 'local';
+            $path = $object['path'] ?? '';
+            if ($path === '') {
+                continue;
+            }
+
+            $key = $disk.'|'.$path;
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+
+            try {
+                Storage::disk($disk)->delete($path);
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
     }
 
     /**

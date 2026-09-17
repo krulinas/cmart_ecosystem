@@ -34,6 +34,16 @@
             {{ copy.refresh }}
           </button>
           <button
+            v-if="hasDeletableParkingLayout"
+            type="button"
+            class="ml-btn-ghost text-sm text-rose-700"
+            :disabled="!selectedEventId || loading || mutating"
+            data-testid="delete-parking-layout-button"
+            @click="confirmDeleteParkingLayout"
+          >
+            {{ copy.deleteParkingLayout }}
+          </button>
+          <button
             type="button"
             class="ml-btn-ghost text-sm"
             :disabled="!selectedEventId || loading || addRowDisabled || isBookingSelectionMode"
@@ -529,6 +539,9 @@ const activeSite = ref(null);
 
 const rows = computed(() => sortRowsByDisplayOrder(layout.value?.rows || []));
 const unresolvedSites = computed(() => layout.value?.unresolved_sites || []);
+const hasDeletableParkingLayout = computed(
+  () => rows.value.length > 0 || unresolvedSites.value.length > 0,
+);
 const activeSiteCount = computed(() => countActiveSites(rows.value));
 const physicalSiteCount = computed(() => layout.value?.counts?.physical_sites ?? null);
 const vendorSiteOpenLimit = computed(() => {
@@ -778,6 +791,24 @@ function enterLayoutManagementMode() {
 function exitLayoutManagementMode() {
   setLayoutWorkspaceMode(LAYOUT_WORKSPACE_MODE.VIEW);
   closeSitePopover({ restoreFocus: false });
+}
+
+async function confirmDeleteParkingLayout() {
+  if (!selectedEventId.value || mutating.value || !hasDeletableParkingLayout.value) return;
+  if (!window.confirm(copy.confirmDeleteParkingLayout)) return;
+
+  await withMutation(async () => {
+    await layoutApi.deleteOrganizerEventLayout(selectedEventId.value);
+    toast.success(copy.parkingLayoutDeleted);
+    setLayoutWorkspaceMode(LAYOUT_WORKSPACE_MODE.VIEW);
+    selectedOpenSiteIds.value = [];
+    baselineOpenSiteIds.value = [];
+    closeSitePopover({ restoreFocus: false });
+    focusedSiteId.value = null;
+    activeRow.value = null;
+    activeSite.value = null;
+    entranceNote.value = '';
+  });
 }
 
 function rectFromElement(el) {

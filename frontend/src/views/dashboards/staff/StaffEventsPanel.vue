@@ -120,6 +120,7 @@
           label="Event images (optional)"
           :existing="editingImages"
           :legacy-field="legacyImagePath"
+          enable-preview
           @update:files="imageFiles = $event"
           @update:removeIds="removeImageIds = $event"
         />
@@ -139,50 +140,72 @@
       <div v-if="loading && !hasLoaded" class="text-ink-500 text-sm">Loading events…</div>
       <div v-else-if="hasLoaded && !events.length" class="text-ink-500 text-sm">No events yet.</div>
       <ul v-else class="space-y-3">
-        <li v-for="ev in events" :key="ev.id" class="rounded-lg border border-ink-200 p-3 flex justify-between gap-3">
-          <div class="flex gap-3 min-w-0">
-            <img
-              v-if="resolveEventImageUrl(ev)"
-              :src="resolveEventImageUrl(ev)"
-              :alt="`${ev.title} poster`"
-              class="w-16 h-16 rounded-lg object-cover border border-ink-200 shrink-0"
-            />
-            <div v-else class="w-16 h-16 rounded-lg border border-dashed border-ink-200 bg-ink-50 shrink-0 flex items-center justify-center text-[10px] font-bold text-ink-400">
-              No image
+        <li
+          v-for="ev in events"
+          :key="ev.id"
+          tabindex="0"
+          role="button"
+          :aria-label="`Preview full event: ${ev.title}`"
+          class="rounded-lg border border-ink-200 p-3 cursor-pointer hover:border-brand-300 hover:bg-brand-50/30 hover:ring-2 hover:ring-brand-500/10 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 group"
+          @click="openEventPreview(ev)"
+          @keydown.enter.prevent="openEventPreview(ev)"
+          @keydown.space.prevent="openEventPreview(ev)"
+        >
+          <div class="flex justify-between gap-3">
+            <div class="flex gap-3 min-w-0 pointer-events-none">
+              <img
+                v-if="resolveEventImageUrl(ev)"
+                :src="resolveEventImageUrl(ev)"
+                :alt="`${ev.title} poster`"
+                class="w-16 h-16 rounded-lg object-cover border border-ink-200 shrink-0"
+              />
+              <div v-else class="w-16 h-16 rounded-lg border border-dashed border-ink-200 bg-ink-50 shrink-0 flex items-center justify-center text-[10px] font-bold text-ink-400">
+                No image
+              </div>
+              <div class="min-w-0">
+                <div class="font-bold text-ink-900">{{ ev.title }}</div>
+                <div class="text-xs text-ink-500">{{ formatEventDateTime(ev.starts_at) }} → {{ formatEventDateTime(ev.ends_at) }}</div>
+                <span class="mt-1 inline-block ml-badge bg-brand-100 text-brand-800">{{ ev.status }}</span>
+                <p class="text-xs text-ink-500 mt-1">
+                  Price per site:
+                  {{ ev.site_price == null ? 'Not configured' : `RM ${Number(ev.site_price).toFixed(2)}` }}
+                </p>
+                <p class="text-xs text-ink-500 mt-1">
+                  Reservations:
+                  {{ ev.item_reservation_service_fee == null
+                    ? 'Closed'
+                    : `Enabled · RM ${Number(ev.item_reservation_service_fee).toFixed(2)}` }}
+                </p>
+                <p v-if="ev.description" class="text-xs text-ink-500 mt-1 line-clamp-2">{{ ev.description }}</p>
+                <p class="text-xs text-brand-600 font-semibold mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  Click to preview full event
+                </p>
+              </div>
             </div>
-            <div class="min-w-0">
-              <div class="font-bold text-ink-900">{{ ev.title }}</div>
-              <div class="text-xs text-ink-500">{{ formatEventDateTime(ev.starts_at) }} → {{ formatEventDateTime(ev.ends_at) }}</div>
-              <span class="mt-1 inline-block ml-badge bg-brand-100 text-brand-800">{{ ev.status }}</span>
-              <p class="text-xs text-ink-500 mt-1">
-                Price per site:
-                {{ ev.site_price == null ? 'Not configured' : `RM ${Number(ev.site_price).toFixed(2)}` }}
-              </p>
-              <p class="text-xs text-ink-500 mt-1">
-                Reservations:
-                {{ ev.item_reservation_service_fee == null
-                  ? 'Closed'
-                  : `Enabled · RM ${Number(ev.item_reservation_service_fee).toFixed(2)}` }}
-              </p>
-              <p v-if="ev.description" class="text-xs text-ink-500 mt-1 line-clamp-2">{{ ev.description }}</p>
+            <div class="flex flex-col gap-1 shrink-0" @click.stop>
+              <button class="ml-btn-ghost text-sm" @click="edit(ev)">Edit</button>
+              <button
+                class="ml-btn-ghost text-sm text-cyan-800"
+                data-testid="manage-layout-button"
+                @click="openLayout(ev)"
+              >
+                Layout Management
+              </button>
+              <button class="ml-btn-ghost text-sm text-rose-600" :disabled="deletingId === ev.id" @click="remove(ev)">
+                {{ deletingId === ev.id ? 'Deleting…' : 'Delete' }}
+              </button>
             </div>
-          </div>
-          <div class="flex flex-col gap-1 shrink-0">
-            <button class="ml-btn-ghost text-sm" @click="edit(ev)">Edit</button>
-            <button
-              class="ml-btn-ghost text-sm text-cyan-800"
-              data-testid="manage-layout-button"
-              @click="openLayout(ev)"
-            >
-              Layout Management
-            </button>
-            <button class="ml-btn-ghost text-sm text-rose-600" :disabled="deletingId === ev.id" @click="remove(ev)">
-              {{ deletingId === ev.id ? 'Deleting…' : 'Delete' }}
-            </button>
           </div>
         </li>
       </ul>
     </section>
+
+    <EventDetailsModal
+      v-model="showEventModal"
+      :event="selectedEvent"
+      booking-link=""
+      :show-booking-action="false"
+    />
   </div>
 </template>
 
@@ -192,10 +215,12 @@ import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
 import MultiImageUploadField from '../../../components/MultiImageUploadField.vue';
+import EventDetailsModal from '../../../components/EventDetailsModal.vue';
 import { resolveEventImageUrl, normalizeEvent } from '../../../utils/imageUrl';
 import {
   formatEventDateTime,
   fromDatetimeLocalValue,
+  mapApiEventToCard,
   toDatetimeLocalValue,
 } from '../../../utils/eventDisplay';
 import { useAuthStore } from '../../../stores/auth';
@@ -216,7 +241,8 @@ const imageFiles = ref([]);
 const removeImageIds = ref([]);
 const editingImages = ref([]);
 const legacyImagePath = ref('');
-
+const selectedEvent = ref(null);
+const showEventModal = ref(false);
 const PRODUCT_DEFAULT_SITE_PRICE = '20.00';
 
 const organizerDefaultSitePrice = computed(() => {
@@ -281,8 +307,15 @@ const vendorBookingSitesLabel = computed(() => {
 
 const extractApiError = (error) => {
   const data = error.response?.data;
-  if (data?.code === 'event_has_dependencies' || data?.error === 'event_has_dependencies') {
-    return 'This event already has bookings, analytics or report history and cannot be permanently deleted.';
+  const stripStatusPrefix = (message) => (
+    typeof message === 'string'
+      ? message.replace(/^\d{3}\s+[A-Za-z ]+:\s*/, '')
+      : message
+  );
+
+  if (data?.code === 'event_has_bookings' || data?.error === 'event_has_bookings') {
+    return stripStatusPrefix(data?.message)
+      || 'This event cannot be permanently deleted because booking history already exists. Set the event status to Closed if it should no longer be available.';
   }
   if (data?.error === 'event_operating_dates_locked_by_allocations') {
     return 'This event already has vendor bookings. Operating dates cannot be changed because existing bookings depend on them.';
@@ -291,9 +324,7 @@ const extractApiError = (error) => {
     return Object.values(data.errors).flat().join(' ');
   }
   const message = data?.message || error.message || 'Request failed.';
-  const text = typeof message === 'string'
-    ? message.replace(/^\d{3}\s+[A-Za-z ]+:\s*/, '')
-    : message;
+  const text = stripStatusPrefix(message);
   // Never surface raw SQL / integrity constraint noise in the UI.
   if (typeof text === 'string' && /SQLSTATE|Integrity constraint|1451|QueryException/i.test(text)) {
     return 'Unable to complete this action. The event could not be permanently deleted.';
@@ -301,24 +332,9 @@ const extractApiError = (error) => {
   return text;
 };
 
-const closeEventInstead = async (event) => {
-  if (!event?.id) return;
-  if (event.status === 'Closed') {
-    toast.info('This event is already Closed.');
-    return;
-  }
-  const confirmed = window.confirm(
-    'This event cannot be permanently deleted. Set status to Closed instead?',
-  );
-  if (!confirmed) return;
-
-  try {
-    await api.put(`/carboot-events/${event.id}`, { status: 'Closed' });
-    toast.success('Event status set to Closed.');
-    await load();
-  } catch (error) {
-    toast.error(extractApiError(error));
-  }
+const openEventPreview = (ev) => {
+  selectedEvent.value = mapApiEventToCard(ev);
+  showEventModal.value = true;
 };
 
 const buildFormData = () => {
@@ -477,19 +493,19 @@ const save = async () => {
 
 const remove = async (event) => {
   const id = event?.id ?? event;
-  if (!window.confirm('Delete this event? This cannot be undone.')) return;
+  if (!window.confirm('Permanently delete this event? This cannot be undone.')) return;
 
   deletingId.value = id;
   try {
     await api.delete(`/carboot-events/${id}`);
     toast.success('Event deleted.');
+    if (selectedEvent.value?.id === id) {
+      showEventModal.value = false;
+      selectedEvent.value = null;
+    }
     await load();
   } catch (error) {
-    const code = error.response?.data?.code || error.response?.data?.error;
     toast.error(extractApiError(error));
-    if (code === 'event_has_dependencies' && event && typeof event === 'object') {
-      await closeEventInstead(event);
-    }
   } finally {
     deletingId.value = null;
   }

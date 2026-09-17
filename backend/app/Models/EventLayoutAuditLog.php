@@ -42,6 +42,8 @@ class EventLayoutAuditLog extends Model
 
     public const ACTION_OPEN_SITES_SET = 'layout_open_sites_set';
 
+    public const ACTION_LAYOUT_DELETED = 'parking_layout_deleted';
+
     protected $fillable = [
         'carboot_event_id',
         'actor_user_id',

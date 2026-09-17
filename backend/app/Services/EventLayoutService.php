@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\DomainConflictException;
+use App\Models\Booking;
 use App\Models\CarbootEvent;
 use App\Models\EventLayoutAuditLog;
 use App\Models\EventLayoutRow;
@@ -1299,6 +1300,159 @@ class EventLayoutService
             return [
                 'sites' => $created,
                 'restored_labels' => $labels,
+                'readiness' => [
+                    'operational_ready' => $readiness['operational_ready'],
+                    'public_ready' => $readiness['public_ready'],
+                    'blocking_reasons' => $readiness['blocking_reasons'],
+                ],
+            ];
+        });
+    }
+
+    /**
+     * Bulk-delete the complete event parking layout (rows + sites).
+     * Does not delete the Carboot Event or its event days.
+     *
+     * @return array{
+     *   rows_deleted: int,
+     *   sites_deleted: int,
+     *   vendor_site_open_limit: null,
+     *   readiness: array{operational_ready: bool, public_ready: bool, blocking_reasons: list<string>}
+     * }
+     */
+    public function deleteEntireParkingLayout(CarbootEvent $event, User $actor): array
+    {
+        return DB::transaction(function () use ($event, $actor) {
+            $lockedEvent = CarbootEvent::query()
+                ->whereKey($event->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedEvent->public_layout_published_at !== null) {
+                throw new DomainConflictException(
+                    'Unpublish the public layout before deleting the parking layout.',
+                    'PUBLIC_LAYOUT_PUBLISHED',
+                );
+            }
+
+                if (
+                    Booking::query()
+                        ->where('carboot_event_id', $lockedEvent->id)
+                        ->exists()
+                ) {
+                throw new DomainConflictException(
+                    'This parking layout cannot be deleted because the event already has booking history.',
+                    'EVENT_HAS_BOOKINGS',
+                );
+            }
+
+            $eventLocks = $this->locks->eventLockSummary((int) $lockedEvent->id);
+            if ($eventLocks['has_active_allocations']) {
+                throw new DomainConflictException(
+                    'This parking layout cannot be deleted while active booking allocations exist.',
+                    'ACTIVE_ALLOCATIONS_PRESENT',
+                );
+            }
+            if ($eventLocks['has_allocation_history'] || $eventLocks['structural_replacement_locked']) {
+                throw new DomainConflictException(
+                    'This parking layout cannot be deleted because booking allocation history already exists.',
+                    'ALLOCATION_HISTORY_PRESENT',
+                );
+            }
+
+            $sitesQuery = EventSite::query()->forEvent($lockedEvent->id);
+            $rowsQuery = EventLayoutRow::query()->forEvent($lockedEvent->id);
+
+            $siteIds = (clone $sitesQuery)->orderBy('id')->pluck('id')->all();
+            $rowIds = (clone $rowsQuery)->orderBy('id')->pluck('id')->all();
+            $siteLabels = (clone $sitesQuery)->orderBy('id')->pluck('label')->all();
+            $rowLabels = (clone $rowsQuery)->orderBy('display_order')->orderBy('id')->pluck('label')->all();
+
+            $sitesDeleted = count($siteIds);
+            $rowsDeleted = count($rowIds);
+
+            if ($sitesDeleted === 0 && $rowsDeleted === 0) {
+                throw new DomainConflictException(
+                    'No parking layout exists for this event.',
+                    'LAYOUT_NOT_FOUND',
+                );
+            }
+
+            // Confirm scoped ownership before mutation (defensive).
+            if ($siteIds !== []) {
+                $foreignSites = EventSite::query()
+                    ->whereIn('id', $siteIds)
+                    ->where('carboot_event_id', '!=', $lockedEvent->id)
+                    ->exists();
+                if ($foreignSites) {
+                    throw new DomainConflictException(
+                        'Layout sites do not belong to the selected event.',
+                        'INVALID_SITE',
+                    );
+                }
+            }
+            if ($rowIds !== []) {
+                $foreignRows = EventLayoutRow::query()
+                    ->whereIn('id', $rowIds)
+                    ->where('carboot_event_id', '!=', $lockedEvent->id)
+                    ->exists();
+                if ($foreignRows) {
+                    throw new DomainConflictException(
+                        'Layout rows do not belong to the selected event.',
+                        'INVALID_LAYOUT_ROW',
+                    );
+                }
+            }
+
+            $before = [
+                'vendor_site_open_limit' => $lockedEvent->vendor_site_open_limit,
+                'public_layout_published_at' => $lockedEvent->public_layout_published_at?->toIso8601String(),
+                'public_layout_entrance_note' => $lockedEvent->public_layout_entrance_note,
+                'row_count' => $rowsDeleted,
+                'site_count' => $sitesDeleted,
+                'row_labels' => $rowLabels,
+                'site_labels' => $siteLabels,
+            ];
+
+            // FK-safe order: sites first (restrict on event_layout_row_id), then rows.
+            EventSite::query()->where('carboot_event_id', $lockedEvent->id)->delete();
+            EventLayoutRow::query()->where('carboot_event_id', $lockedEvent->id)->delete();
+
+            $lockedEvent->vendor_site_open_limit = null;
+            $lockedEvent->public_layout_published_at = null;
+            $lockedEvent->public_layout_entrance_note = null;
+            $lockedEvent->save();
+
+            $this->audit->record(
+                (int) $lockedEvent->id,
+                $actor,
+                EventLayoutAuditLog::ACTION_LAYOUT_DELETED,
+                $before,
+                [
+                    'vendor_site_open_limit' => null,
+                    'public_layout_published_at' => null,
+                    'public_layout_entrance_note' => null,
+                    'row_count' => 0,
+                    'site_count' => 0,
+                ],
+                null,
+                null,
+                [
+                    'rows_deleted' => $rowsDeleted,
+                    'sites_deleted' => $sitesDeleted,
+                    'row_labels' => $rowLabels,
+                    'site_labels' => $siteLabels,
+                ],
+                'Bulk parking layout deletion',
+            );
+
+            $fresh = $lockedEvent->fresh();
+            $readiness = $this->readiness->assess($fresh);
+
+            return [
+                'rows_deleted' => $rowsDeleted,
+                'sites_deleted' => $sitesDeleted,
+                'vendor_site_open_limit' => $fresh->vendor_site_open_limit,
                 'readiness' => [
                     'operational_ready' => $readiness['operational_ready'],
                     'public_ready' => $readiness['public_ready'],

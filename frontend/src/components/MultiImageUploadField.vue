@@ -17,15 +17,35 @@
 
     <div v-if="existingImages.length || newPreviews.length" class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
       <div
-        v-for="image in existingImages"
+        v-for="(image, index) in existingImages"
         :key="`existing-${image.id}`"
         class="relative rounded-lg border border-ink-200 overflow-hidden"
       >
-        <img :src="image.image_url" :alt="`${label} existing`" class="h-28 w-full object-cover" />
+        <button
+          v-if="enablePreview"
+          type="button"
+          class="block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+          :aria-label="`Preview ${label} image ${index + 1}`"
+          @click="openPreview('existing', index)"
+          @keydown.enter.prevent="openPreview('existing', index)"
+          @keydown.space.prevent="openPreview('existing', index)"
+        >
+          <img
+            :src="image.image_url"
+            :alt="`${label} image ${index + 1}`"
+            class="h-28 w-full object-cover"
+          />
+        </button>
+        <img
+          v-else
+          :src="image.image_url"
+          :alt="`${label} existing`"
+          class="h-28 w-full object-cover"
+        />
         <button
           type="button"
-          class="absolute top-1 right-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-rose-600 shadow"
-          @click="removeExisting(image.id)"
+          class="absolute top-1 right-1 z-10 rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-rose-600 shadow"
+          @click.stop="removeExisting(image.id)"
         >
           Remove
         </button>
@@ -38,25 +58,54 @@
       </div>
 
       <div
-        v-for="preview in newPreviews"
+        v-for="(preview, index) in newPreviews"
         :key="preview.key"
         class="relative rounded-lg border border-ink-200 overflow-hidden"
       >
-        <img :src="preview.url" :alt="`${label} new preview`" class="h-28 w-full object-cover" />
+        <button
+          v-if="enablePreview"
+          type="button"
+          class="block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
+          :aria-label="`Preview newly selected ${label} image ${index + 1}`"
+          @click="openPreview('new', index)"
+          @keydown.enter.prevent="openPreview('new', index)"
+          @keydown.space.prevent="openPreview('new', index)"
+        >
+          <img
+            :src="preview.url"
+            :alt="`Newly selected ${label} image ${index + 1}`"
+            class="h-28 w-full object-cover"
+          />
+        </button>
+        <img
+          v-else
+          :src="preview.url"
+          :alt="`${label} new preview`"
+          class="h-28 w-full object-cover"
+        />
         <button
           type="button"
-          class="absolute top-1 right-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-rose-600 shadow"
-          @click="removeNewPreview(preview.key)"
+          class="absolute top-1 right-1 z-10 rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-rose-600 shadow"
+          @click.stop="removeNewPreview(preview.key)"
         >
           Remove
         </button>
       </div>
     </div>
+
+    <ImageLightbox
+      v-if="enablePreview"
+      v-model:open="lightboxOpen"
+      :images="lightboxImages"
+      :start-index="lightboxStartIndex"
+      :alt-text="lightboxAlt"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, onUnmounted, ref, watch } from 'vue';
+import ImageLightbox from './management/ImageLightbox.vue';
 import { resolveStorageUrl } from '../utils/imageUrl';
 
 const props = defineProps({
@@ -64,6 +113,8 @@ const props = defineProps({
   maxImages: { type: Number, default: 5 },
   existing: { type: Array, default: () => [] },
   legacyField: { type: String, default: '' },
+  /** Opt-in full-size preview; off by default so other upload fields stay unchanged. */
+  enablePreview: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['update:files', 'update:removeIds']);
@@ -72,6 +123,10 @@ const fileInput = ref(null);
 const newFiles = ref([]);
 const newPreviews = ref([]);
 const removedIds = ref(new Set());
+const lightboxOpen = ref(false);
+const lightboxImages = ref([]);
+const lightboxStartIndex = ref(0);
+const lightboxAlt = ref('Image preview');
 
 const existingImages = computed(() => {
   const fromGallery = (Array.isArray(props.existing) ? props.existing : [])
@@ -115,6 +170,28 @@ const syncEmit = () => {
   emit('update:removeIds', [...removedIds.value].filter((id) => id !== 'legacy'));
 };
 
+const openPreview = (source, index) => {
+  if (!props.enablePreview) return;
+
+  const existingUrls = existingImages.value
+    .map((image) => image.image_url)
+    .filter(Boolean);
+  const newUrls = newPreviews.value
+    .map((preview) => preview.url)
+    .filter(Boolean);
+  const urls = [...existingUrls, ...newUrls];
+  if (!urls.length) return;
+
+  const startIndex = source === 'new'
+    ? existingUrls.length + index
+    : index;
+
+  lightboxImages.value = urls;
+  lightboxStartIndex.value = Math.min(Math.max(0, startIndex), urls.length - 1);
+  lightboxAlt.value = props.label || 'Event image';
+  lightboxOpen.value = true;
+};
+
 const onFilesSelected = (event) => {
   const files = Array.from(event.target.files || []);
   if (!files.length) return;
@@ -155,6 +232,7 @@ const removeNewPreview = (key) => {
 };
 
 const reset = () => {
+  lightboxOpen.value = false;
   revokePreviews();
   newFiles.value = [];
   newPreviews.value = [];

@@ -309,6 +309,29 @@ class OrganizerEventLayoutController extends Controller
         });
     }
 
+    /**
+     * DELETE /organizer/events/{event}/layout — bulk remove the parking layout.
+     */
+    public function destroy(Request $request, CarbootEvent $carboot_event): JsonResponse
+    {
+        try {
+            $result = $this->layout->deleteEntireParkingLayout($carboot_event, $request->user());
+        } catch (DomainConflictException $exception) {
+            return response()->json([
+                'message' => '409 Conflict: '.$exception->getMessage(),
+                'error' => $exception->error,
+            ], 409);
+        }
+
+        return response()->json([
+            'message' => '200 OK: Parking layout deleted successfully.',
+            'rows_deleted' => $result['rows_deleted'],
+            'sites_deleted' => $result['sites_deleted'],
+            'vendor_site_open_limit' => $result['vendor_site_open_limit'],
+            'readiness' => $result['readiness'],
+        ]);
+    }
+
     private function presentCategory(EventLayoutRow $row): ?array
     {
         $category = $row->vendorCategory;

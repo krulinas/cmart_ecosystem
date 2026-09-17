@@ -76,6 +76,10 @@ export const LAYOUT_COPY = {
   generateStandardLimitRequired:
     'You will choose booking sites on the layout after generation.',
   standardLayoutGenerated: 'Standard parking layout generated. Choose the sites vendors can book.',
+  deleteParkingLayout: 'Delete Parking Layout',
+  confirmDeleteParkingLayout:
+    'Delete the entire parking layout for this event? All rows and parking sites will be removed. This cannot be undone.',
+  parkingLayoutDeleted: 'Parking layout deleted.',
   selectOpenSitesTitle: 'Choose Booking Sites',
   selectOpenSitesHelp:
     'Select the physical sites vendors can book. The system counts your selection and opens booking when layout readiness passes.',
@@ -247,9 +251,12 @@ export const LAYOUT_ERROR_MESSAGES = {
   LAYOUT_ALREADY_EXISTS:
     'A layout already exists for this event. The standard parking template can only be generated on an empty layout.',
   PUBLIC_LAYOUT_PUBLISHED:
-    'Unpublish the public layout before generating the standard parking template.',
+    'Unpublish the public layout before changing the parking layout.',
   ALLOCATION_HISTORY_PRESENT:
-    'This event has booking allocation history and cannot receive a destructive layout template.',
+    'This event has booking allocation history and cannot receive a destructive layout change.',
+  EVENT_HAS_BOOKINGS:
+    'This parking layout cannot be deleted because the event already has booking history.',
+  LAYOUT_NOT_FOUND: 'No parking layout exists for this event.',
   INVALID_STANDARD_TEMPLATE: 'The standard parking template request is invalid.',
   INVALID_SPACE: 'The selected space type is invalid.',
   VENDOR_SITE_OPEN_LIMIT_NOT_SET: 'Choose booking sites before continuing.',
@@ -258,7 +265,7 @@ export const LAYOUT_ERROR_MESSAGES = {
   OPEN_SITE_SELECTION_COUNT_MISMATCH:
     'The layout changed while confirming booking sites. Refresh and try again.',
   ACTIVE_ALLOCATIONS_PRESENT:
-    'One or more selected sites are protected by an existing booking or reservation.',
+    'This action is not allowed while active bookings or allocations exist.',
   INVALID_SITE: 'One or more selected sites are invalid for this event.',
   NO_PHYSICAL_SITES: 'No physical sites exist for this event.',
   CANONICAL_SITE_DELETE_FORBIDDEN:
@@ -273,7 +280,6 @@ export const LAYOUT_ERROR_MESSAGES = {
   ROW_LABEL_LOCKED: 'This row name cannot be changed because it has booking history.',
   ROW_CATEGORY_LOCKED: 'This row category cannot be changed because it has booking history.',
   ROW_NOT_EMPTY: 'This row still has sites and cannot be deleted.',
-  ACTIVE_ALLOCATIONS_PRESENT: 'This action is not allowed while active bookings exist.',
   SITE_STRUCTURE_LOCKED: 'This site structure is locked because it has booking history.',
   SITE_HAS_ALLOCATION_HISTORY: 'This site has booking history and cannot be deleted.',
   SITE_LABEL_CONFLICT: 'This site label is already in use.',

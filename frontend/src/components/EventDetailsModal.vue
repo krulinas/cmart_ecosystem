@@ -192,9 +192,11 @@ import {
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   event: { type: Object, default: null },
-  bookingLink: { type: String, required: true },
+  bookingLink: { type: String, default: '' },
   bookingLabel: { type: String, default: 'Book Space' },
   hideBookingWhenClosed: { type: Boolean, default: true },
+  /** When false, hides the vendor/community booking CTA (Organizer preview). */
+  showBookingAction: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -214,7 +216,8 @@ const urgencyLabel = computed(() => {
 });
 
 const showBookingCta = computed(() => {
-  if (!props.event) return false;
+  if (!props.showBookingAction) return false;
+  if (!props.event || !props.bookingLink) return false;
   if (!props.hideBookingWhenClosed) return true;
   return isEventBookable(props.event.status) && urgencyLabel.value !== 'Event ended';
 });
