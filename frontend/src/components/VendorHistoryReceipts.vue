@@ -178,6 +178,7 @@ import { computed, ref } from 'vue';
 import {
   canVendorPayBooking,
   filterTabClass,
+  formatBookingReference,
   vendorPaymentStatusLabel,
 } from '../utils/bookingDisplay';
 
@@ -255,6 +256,7 @@ const recordMatchesSearch = (row, query) => {
     displayStatus(row),
     row.booking_id,
     `#${row.booking_id}`,
+    formatBookingReference(row.booking_id),
   ]
     .filter((part) => part != null && part !== '')
     .join(' ')

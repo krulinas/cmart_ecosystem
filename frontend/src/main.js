@@ -5,6 +5,7 @@ import router from './router/router.js';
 import Toast from 'vue-toastification';
 import 'vue-toastification/dist/index.css';
 import './assets/main.css';
+import { isSessionExpiryHandling } from './utils/sessionExpiry';
 
 const app = createApp(App);
 
@@ -21,7 +22,13 @@ const toastOptions = {
     hideProgressBar: false,
     closeButton: "button",
     icon: true,
-    rtl: false
+    rtl: false,
+    filterBeforeCreate: (toast) => {
+      if (isSessionExpiryHandling()) {
+        return false;
+      }
+      return toast;
+    },
 };
 
 app.use(createPinia());

@@ -42,7 +42,7 @@
         <label class="ml-label">Select event pass</label>
         <select v-model="selectedPassId" class="ml-input max-w-xl">
           <option v-for="pass in upcomingPasses" :key="pass.booking_id" :value="pass.booking_id">
-            #{{ pass.booking_id }} · {{ pass.event_name }} · {{ pass.event_date_label }}
+            {{ formatBookingReference(pass.booking_id) }} · {{ pass.event_name }} · {{ pass.event_date_label }}
           </option>
         </select>
       </div>
@@ -51,7 +51,7 @@
         <div class="xl:col-span-3 rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-white p-5 sm:p-6 shadow-inner">
           <div class="flex flex-wrap items-center gap-2 mb-4">
             <span :class="passStatusBadgeClass(selectedPass.pass_status)">{{ selectedPass.pass_status_label }}</span>
-            <span class="ml-badge bg-brand-100 text-brand-800">Booking #{{ selectedPass.booking_id }}</span>
+            <span class="ml-badge bg-brand-100 text-brand-800">Booking {{ formatBookingReference(selectedPass.booking_id) }}</span>
           </div>
 
           <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -162,7 +162,7 @@
           >
             <div>
               <div class="flex flex-wrap items-center gap-2">
-                <span class="font-semibold text-ink-900">#{{ pass.booking_id }} · {{ pass.event_name }}</span>
+                <span class="font-semibold text-ink-900">{{ formatBookingReference(pass.booking_id) }} · {{ pass.event_name }}</span>
                 <span :class="passStatusBadgeClass(pass.pass_status)">{{ pass.pass_status_label }}</span>
               </div>
               <p class="mt-1 text-sm text-ink-500">{{ pass.event_date_label }} · {{ pass.product_label }}</p>
@@ -188,6 +188,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import VendorPassModal from './VendorPassModal.vue';
 import api from '../services/api';
+import { formatBookingReference } from '../utils/bookingDisplay';
 import {
   buildQrImageUrl,
   formatEventTimeLabel,

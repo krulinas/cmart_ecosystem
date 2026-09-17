@@ -215,6 +215,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('role:'.ManagementRole::routeRoleList(ManagementRole::organizerEquivalentRoles()))->group(function () {
             Route::post('/feedbacks/{feedback}/official-reply/publish', [FeedbackController::class, 'publishOfficialReply']);
             Route::delete('/feedbacks/{feedback}', [FeedbackController::class, 'destroy']);
+            Route::delete('/feedbacks/{feedback}/images/{image}', [FeedbackController::class, 'destroyImage']);
         });
 
         Route::apiResource('carboot-events', CarbootEventController::class);

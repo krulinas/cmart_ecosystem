@@ -122,17 +122,34 @@
         </p>
       </div>
 
-      <div>
-        <label class="block text-gray-700 font-bold mb-2">Photo Proof (Optional)</label>
-        <input
-          ref="mediaInput"
-          type="file"
-          accept="image/jpeg,image/png,image/jpg"
-          class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 cursor-pointer"
-          @change="handleFileUpload"
-        />
-        <p class="text-xs text-ink-500 mt-1">One photo only. Max 5MB. JPEG or PNG.</p>
-      </div>
+        <div>
+          <label class="block text-gray-700 font-bold mb-2">Photo Proof (Optional)</label>
+          <input
+            ref="mediaInput"
+            type="file"
+            accept="image/jpeg,image/png,image/jpg,image/webp"
+            multiple
+            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 cursor-pointer"
+            @change="handleFileUpload"
+          />
+          <p class="text-xs text-ink-500 mt-1">Up to 3 photos. Max 5MB each. JPEG, PNG, JPG, or WebP.</p>
+          <div v-if="mediaPreviews.length" class="mt-3 grid grid-cols-3 gap-3">
+            <div
+              v-for="preview in mediaPreviews"
+              :key="preview.key"
+              class="relative overflow-hidden rounded-lg border border-gray-200"
+            >
+              <img :src="preview.url" :alt="preview.name || 'Feedback image preview'" class="h-24 w-full object-cover" />
+              <button
+                type="button"
+                class="absolute top-1 right-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-rose-600 shadow"
+                @click="removeMediaPreview(preview.key)"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
 
       <button
         type="submit"
@@ -154,7 +171,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onUnmounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { loginPathWithRedirect, registerPathWithRedirect, COMMUNITY_REVIEW_INTENT_PATH } from '../utils/postAuthRedirect';
 import {
@@ -178,12 +195,16 @@ const registerPath = registerPathWithRedirect(reviewIntentPath);
 
 const MIN_WORDS = 5;
 const MAX_WORDS = 100;
+const MAX_IMAGES = 3;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
 
 const overallRating = ref(0);
 const participationType = ref('');
 const communityBackgrounds = ref([]);
 const comments = ref('');
-const mediaFile = ref(null);
+const mediaFiles = ref([]);
+const mediaPreviews = ref([]);
 const mediaInput = ref(null);
 const isSubmitting = ref(false);
 const message = ref('');
@@ -218,31 +239,61 @@ const onCommunityBackgroundChange = (changedValue) => {
   );
 };
 
+const revokeMediaPreviews = () => {
+  mediaPreviews.value.forEach((preview) => {
+    if (preview.url?.startsWith('blob:')) {
+      URL.revokeObjectURL(preview.url);
+    }
+  });
+};
+
 const handleFileUpload = (event) => {
-  const file = event.target.files?.[0];
-  if (!file) {
-    mediaFile.value = null;
-    return;
+  const files = Array.from(event.target.files || []);
+  if (mediaInput.value) {
+    mediaInput.value.value = '';
   }
+  if (!files.length) return;
 
-  if (!file.type.startsWith('image/')) {
-    message.value = 'Only JPEG or PNG images are allowed.';
+  if (mediaFiles.value.length + files.length > MAX_IMAGES) {
+    message.value = 'You can attach up to 3 images.';
     isSuccess.value = false;
-    event.target.value = '';
-    mediaFile.value = null;
     return;
   }
 
-  if (file.size > 5 * 1024 * 1024) {
-    message.value = 'File is too large. Maximum size is 5MB.';
-    isSuccess.value = false;
-    event.target.value = '';
-    mediaFile.value = null;
-    return;
+  for (const file of files) {
+    const typeOk = ALLOWED_IMAGE_TYPES.includes(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name);
+    if (!typeOk) {
+      message.value = 'Only JPEG, PNG, JPG, or WebP images are allowed.';
+      isSuccess.value = false;
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      message.value = 'Each image must be 5 MB or smaller.';
+      isSuccess.value = false;
+      return;
+    }
   }
 
-  mediaFile.value = file;
+  files.forEach((file) => {
+    mediaFiles.value.push(file);
+    mediaPreviews.value.push({
+      key: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
+      url: URL.createObjectURL(file),
+      name: file.name,
+    });
+  });
   message.value = '';
+};
+
+const removeMediaPreview = (key) => {
+  const index = mediaPreviews.value.findIndex((preview) => preview.key === key);
+  if (index === -1) return;
+  const preview = mediaPreviews.value[index];
+  if (preview.url?.startsWith('blob:')) {
+    URL.revokeObjectURL(preview.url);
+  }
+  mediaPreviews.value.splice(index, 1);
+  mediaFiles.value.splice(index, 1);
 };
 
 const resetForm = () => {
@@ -250,7 +301,9 @@ const resetForm = () => {
   participationType.value = '';
   communityBackgrounds.value = [];
   comments.value = '';
-  mediaFile.value = null;
+  revokeMediaPreviews();
+  mediaFiles.value = [];
+  mediaPreviews.value = [];
   if (mediaInput.value) {
     mediaInput.value.value = '';
   }
@@ -273,9 +326,9 @@ const submitFeedback = async () => {
     formData.append(`community_backgrounds[${index}]`, value);
   });
   formData.append('comments', comments.value);
-  if (mediaFile.value) {
-    formData.append('media', mediaFile.value);
-  }
+  mediaFiles.value.forEach((file) => {
+    formData.append('images[]', file);
+  });
 
   try {
     const response = await api.post('/feedback/submit', formData);
@@ -300,4 +353,6 @@ const submitFeedback = async () => {
     isSubmitting.value = false;
   }
 };
+
+onUnmounted(revokeMediaPreviews);
 </script>

@@ -115,7 +115,7 @@
             <div class="min-w-0 flex-1">
               <p class="text-sm font-bold text-ink-900 truncate">
                 {{ booking.event_label || booking.carboot_event?.title || formatBookingDate(booking.booking_date) }}
-                <span class="font-semibold text-ink-500"> · #{{ booking.id }}</span>
+                <span class="font-semibold text-ink-500"> · {{ formatBookingReference(booking.id) }}</span>
               </p>
               <p class="mt-0.5 text-xs text-ink-500">
                 {{ formatBookingDate(booking.booking_date) }}
@@ -170,6 +170,7 @@ import {
   boothTypeLabel,
   canVendorPayBooking,
   formatBookingDate,
+  formatBookingReference,
   isTerminalBookingStatus,
   isValidBookingDate,
   siteLabelsForBooking,

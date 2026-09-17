@@ -23,10 +23,6 @@
             <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
           </select>
         </div>
-        <div>
-          <label class="ml-label">Max slots (optional — community RSVP)</label>
-          <input v-model.number="form.max_slots" type="number" min="1" class="ml-input" />
-        </div>
         <div
           class="rounded-xl border border-ink-100 bg-ink-50/70 px-3 py-3 space-y-2"
           data-testid="event-vendor-booking-sites"
@@ -35,7 +31,7 @@
             {{ vendorBookingSitesLabel }}
           </p>
           <p class="text-xs text-ink-500">
-            Choose physical booking sites on the parking layout. This is separate from Max slots.
+            Choose physical booking sites on the parking layout.
           </p>
           <button
             v-if="editingId"
@@ -332,9 +328,6 @@ const buildFormData = () => {
   fd.append('ends_at', fromDatetimeLocalValue(form.ends_at));
   fd.append('status', form.status);
   fd.append('description', form.description || '');
-  if (form.max_slots) {
-    fd.append('max_slots', String(form.max_slots));
-  }
   fd.append('site_price', String(form.site_price));
   fd.append('save_as_default_site_price', form.save_as_default_site_price ? '1' : '0');
   const reservationFee = reservationFeePayload();
@@ -436,7 +429,6 @@ const save = async () => {
     ends_at: fromDatetimeLocalValue(form.ends_at),
     status: form.status,
     description: form.description || null,
-    max_slots: form.max_slots || null,
     site_price: sitePrice.toFixed(2),
     save_as_default_site_price: Boolean(form.save_as_default_site_price),
     item_reservation_service_fee: reservationFeePayload(),

@@ -71,7 +71,7 @@
         <table class="min-w-full divide-y divide-ink-100 text-sm">
           <thead class="bg-ink-50/80">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Booking ID</th>
+              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Booking Ref.</th>
               <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Event Date</th>
               <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Booth Type</th>
               <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Product</th>
@@ -88,7 +88,7 @@
               :data-booking-status="booking.approval_status"
               class="hover:bg-brand-50/40 transition-colors"
             >
-              <td class="px-4 py-3 font-semibold text-ink-900">#{{ booking.id }}</td>
+              <td class="px-4 py-3 font-semibold text-ink-900">{{ formatBookingReference(booking.id) }}</td>
               <td class="px-4 py-3 text-ink-600">{{ formatBookingDate(booking.booking_date) }}</td>
               <td class="px-4 py-3 text-ink-600">{{ boothTypeLabel(booking) }}</td>
               <td class="px-4 py-3 text-ink-600 max-w-[220px] truncate" :title="productSummary(booking)">
@@ -134,6 +134,7 @@ import {
   boothTypeLabel,
   filterTabClass,
   formatBookingDate,
+  formatBookingReference,
   isValidBookingDate,
   matchesStatusFilter,
   productSummary,
@@ -180,6 +181,7 @@ const bookingMatchesSearch = (booking, query) => {
   const haystack = [
     booking.id,
     `#${booking.id}`,
+    formatBookingReference(booking.id),
     formatBookingDate(booking.booking_date),
     booking.booking_date,
     boothTypeLabel(booking),

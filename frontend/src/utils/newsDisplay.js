@@ -1,4 +1,4 @@
-import { resolveNewsBannerUrl, normalizeNews } from './imageUrl';
+import { resolveNewsBannerUrl, resolveNewsVideoUrl, normalizeNews } from './imageUrl';
 
 const MY_TZ = 'Asia/Kuala_Lumpur';
 
@@ -46,6 +46,8 @@ export const mapApiNewsToCard = (post) => {
     publishedDateLabel: formatNewsDateTime(normalized.published_at),
     publishedDateShort: formatNewsDate(normalized.published_at),
     bannerUrl: resolveNewsBannerUrl(normalized),
+    videoUrl: resolveNewsVideoUrl(normalized),
+    hasVideo: Boolean(normalized.has_video || resolveNewsVideoUrl(normalized)),
     images: normalized.images || [],
     isPublished: Boolean(normalized.is_published),
     is_published: Boolean(normalized.is_published),

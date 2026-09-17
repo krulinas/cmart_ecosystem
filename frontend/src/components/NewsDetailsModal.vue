@@ -59,6 +59,25 @@
                   placeholder-text="No news image"
                   enable-lightbox
                 />
+                <div
+                  v-if="!hasBanner && post.hasVideo"
+                  class="mt-3 flex h-48 items-center justify-center rounded-lg border border-dashed border-ink-200 bg-ink-50 text-sm font-semibold uppercase tracking-wide text-ink-500"
+                >
+                  Video
+                </div>
+                <div v-if="post.videoUrl || post.video_url" class="mt-4">
+                  <p class="mb-2 text-xs font-bold uppercase tracking-wider text-ink-500">Video</p>
+                  <video
+                    :src="post.videoUrl || post.video_url"
+                    class="w-full rounded-lg bg-ink-900"
+                    controls
+                    preload="metadata"
+                    playsinline
+                    muted
+                  >
+                    Your browser does not support this video.
+                  </video>
+                </div>
               </div>
 
               <div class="flex flex-col min-w-0" :class="post.bannerUrl ? '' : 'lg:col-span-2'">

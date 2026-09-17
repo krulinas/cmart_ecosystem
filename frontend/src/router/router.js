@@ -260,10 +260,14 @@ router.beforeEach(async (to) => {
 
   if (auth.token) {
     try {
-      await auth.ensureSession();
+      // Protected destinations must re-validate the Bearer token. A stale
+      // localStorage user alone would otherwise leave Organizer shells on a
+      // permanent loader after /auth/me fails without showing the expiry modal.
+      const mustValidateToken = Boolean(to.meta.requiresAuth) || isManagementProtectedRoute(to.path);
+      await auth.ensureSession({ refresh: mustValidateToken });
     } catch {
       auth.clearSession();
-      if (to.meta.requiresAuth) {
+      if (to.meta.requiresAuth || isManagementProtectedRoute(to.path)) {
         return loginRedirectFor(to);
       }
     }

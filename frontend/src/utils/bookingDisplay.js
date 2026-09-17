@@ -30,6 +30,15 @@ export const FILTER_TABS = [
   { id: 'cancelled', label: 'Cancelled' },
 ];
 
+export const formatBookingReference = (id) => {
+  const numeric = Number.parseInt(String(id ?? ''), 10);
+  if (!Number.isFinite(numeric) || numeric < 1) {
+    return '';
+  }
+
+  return `CB-${String(numeric).padStart(6, '0')}`;
+};
+
 export const isValidBookingDate = (dateStr) => {
   if (!dateStr) return false;
   if (String(dateStr).startsWith('0000')) return false;

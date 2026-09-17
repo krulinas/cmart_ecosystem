@@ -5,7 +5,7 @@
     <div class="max-w-2xl mx-auto py-10 px-4 sm:px-6">
       <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
         <h1 class="text-2xl font-black text-ink-900">Vendor Pass Verification</h1>
-        <p class="mt-1 text-sm text-ink-500">Booking #{{ bookingId }}</p>
+        <p class="mt-1 text-sm text-ink-500">Booking {{ formatBookingReference(bookingId) }}</p>
 
         <div v-if="loading" class="mt-8 text-sm text-ink-500">Verifying pass…</div>
 
@@ -67,6 +67,7 @@ import { useRoute } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import api from '../../services/api';
+import { formatBookingReference } from '../../utils/bookingDisplay';
 import { passStatusBadgeClass } from '../../utils/vendorPass';
 
 const route = useRoute();

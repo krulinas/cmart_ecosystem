@@ -217,7 +217,7 @@
             >
               <div
                 v-if="post.bannerUrl || post.images?.length"
-                class="pointer-events-auto shrink-0"
+                class="relative pointer-events-auto shrink-0"
                 @click.stop
               >
                 <MediaImageGallery
@@ -226,6 +226,19 @@
                   enable-lightbox
                   compact
                 />
+                <span
+                  v-if="post.hasVideo"
+                  class="pointer-events-none absolute top-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                  aria-label="This post includes a video"
+                >
+                  Video
+                </span>
+              </div>
+              <div
+                v-else-if="post.hasVideo"
+                class="h-[140px] bg-ink-100 flex items-center justify-center pointer-events-none"
+              >
+                <span class="text-sm font-bold uppercase tracking-wider text-ink-500">Video</span>
               </div>
               <div v-else class="h-[140px] bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center pointer-events-none">
                 <span class="text-brand-400 font-black text-4xl">@</span>

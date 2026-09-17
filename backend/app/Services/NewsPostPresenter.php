@@ -26,6 +26,7 @@ class NewsPostPresenter
             'body',
             'category',
             'image_path',
+            'video_path',
             'published_at',
             'is_published',
             'author_id',
@@ -35,6 +36,8 @@ class NewsPostPresenter
             'image_url' => $displayUrl ?? $externalUrl,
             'external_image_url' => $externalUrl,
             'banner_url' => $displayUrl ?? $externalUrl,
+            'video_url' => $post->video_url,
+            'has_video' => (bool) $post->normalizedVideoPath(),
             'images' => $images,
         ]);
 

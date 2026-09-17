@@ -36,7 +36,7 @@
             <dl class="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div class="rounded-xl bg-white p-3 ring-1 ring-slate-200">
                 <dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Source booking</dt>
-                <dd class="mt-1 font-semibold text-ink-900">{{ item.source_booking?.reference }}</dd>
+                <dd class="mt-1 font-semibold text-ink-900">{{ formatBookingReference(item.source_booking?.id) || item.source_booking?.reference }}</dd>
                 <dd class="text-xs text-ink-500">{{ statusLabel(item.source_booking?.status) }}</dd>
               </div>
               <div class="rounded-xl bg-white p-3 ring-1 ring-slate-200">
@@ -131,6 +131,7 @@
 
 <script setup>
 import {
+  formatBookingReference,
   formatDateTime,
   formatOperationalDate,
   recoveryStateBadgeClass,

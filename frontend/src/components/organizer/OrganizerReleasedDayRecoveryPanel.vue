@@ -19,6 +19,17 @@
       </div>
     </div>
 
+    <div class="border-b border-ink-100 bg-white px-4 py-3 sm:px-6">
+      <details>
+        <summary class="cursor-pointer text-sm font-semibold text-ink-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded">
+          What is Released-Day Recovery?
+        </summary>
+        <p class="mt-2 text-sm leading-relaxed text-ink-600">
+          This read-only list shows individual event-day sites released after an Organizer records an attendance exception for part of a multi-day booking. The booking may remain active on its other event days. This view does not assign replacement vendors.
+        </p>
+      </details>
+    </div>
+
     <div class="border-b border-ink-100 bg-ink-50/40 px-4 py-4 sm:px-6">
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-4">
         <input
@@ -100,7 +111,7 @@
             </td>
             <td class="px-4 py-3.5">
               <div class="font-bold text-ink-900" data-testid="recovery-source-booking-reference">
-                {{ row.source_booking?.reference || '—' }}
+                {{ formatBookingReference(row.source_booking?.id) || row.source_booking?.reference || '—' }}
               </div>
               <div class="text-xs text-ink-500">{{ statusLabel(row.source_booking?.status) }}</div>
             </td>
@@ -178,6 +189,7 @@ import ManagementEmptyState from '../management/ManagementEmptyState.vue';
 import OrganizerReleasedDayRecoveryModal from './OrganizerReleasedDayRecoveryModal.vue';
 import { useManagementAccess } from '../../composables/useManagementAccess';
 import {
+  formatBookingReference,
   formatOperationalDate,
   recoveryBlockerSummary,
   recoveryPaymentBadgeClass,

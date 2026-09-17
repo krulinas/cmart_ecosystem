@@ -12,11 +12,12 @@
           <input v-model="form.category" required class="ml-input" placeholder="Announcement" />
         </div>
         <div>
-          <label class="ml-label">Excerpt</label>
-          <textarea v-model="form.excerpt" required rows="2" class="ml-input"></textarea>
+          <label class="ml-label">Short summary</label>
+          <textarea v-model="form.excerpt" required rows="5" class="ml-input"></textarea>
+          <p class="text-xs text-ink-500 mt-1">Shown as a short preview on the Venue News page.</p>
         </div>
         <div>
-          <label class="ml-label">Body (optional)</label>
+          <label class="ml-label">Full details (optional)</label>
           <textarea v-model="form.body" rows="4" class="ml-input"></textarea>
         </div>
         <MultiImageUploadField
@@ -27,6 +28,46 @@
           @update:files="imageFiles = $event"
           @update:removeIds="removeImageIds = $event"
         />
+        <div>
+          <label class="ml-label" for="news-video-input">Promotional video (optional)</label>
+          <input
+            id="news-video-input"
+            ref="videoInput"
+            type="file"
+            accept="video/mp4,video/webm"
+            class="ml-input file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-brand-700"
+            @change="onVideoSelected"
+          />
+          <p class="text-xs text-ink-500 mt-1">
+            One MP4 or WebM video, up to 10 MB. Images remain the cover. Video is secondary and optional.
+          </p>
+          <div v-if="videoPreviewUrl || (existingVideoUrl && !removeVideo)" class="mt-3 rounded-lg border border-ink-200 p-3 space-y-2">
+            <p class="text-xs font-semibold text-ink-700">
+              {{ videoFileName || 'Current video' }}
+              <span v-if="videoFileSizeLabel" class="font-normal text-ink-500"> · {{ videoFileSizeLabel }}</span>
+            </p>
+            <video
+              v-if="videoPreviewUrl || existingVideoUrl"
+              :src="videoPreviewUrl || existingVideoUrl"
+              class="w-full max-h-48 rounded-md bg-ink-900"
+              controls
+              preload="metadata"
+              playsinline
+              muted
+            />
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="ml-btn-ghost text-sm" @click="triggerVideoReplace">Replace</button>
+              <button type="button" class="ml-btn-ghost text-sm text-rose-600" @click="removeSelectedVideo">Remove</button>
+            </div>
+          </div>
+        </div>
+        <p
+          v-if="draftRestoredNotice"
+          class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+          role="status"
+        >
+          Your text was restored. Please select image and video files again after logging in.
+        </p>
         <div>
           <label class="ml-label">External image URL (optional fallback)</label>
           <input v-model="form.image_url" type="url" class="ml-input" placeholder="https://..." />
@@ -65,14 +106,29 @@
         >
           <div class="flex justify-between gap-3">
             <div class="flex gap-3 min-w-0 pointer-events-none">
-              <img
-                v-if="post.bannerUrl"
-                :src="post.bannerUrl"
-                :alt="`${post.title} banner preview`"
-                class="w-16 h-16 rounded-lg object-cover object-top border border-ink-200 shrink-0"
-              />
-              <div v-else class="w-16 h-16 rounded-lg border border-dashed border-ink-200 bg-ink-50 shrink-0 flex items-center justify-center text-[10px] font-bold text-ink-400">
-                No image
+              <div class="relative w-16 h-16 shrink-0">
+                <img
+                  v-if="post.bannerUrl"
+                  :src="post.bannerUrl"
+                  :alt="`${post.title} banner preview`"
+                  class="w-16 h-16 rounded-lg object-cover object-top border border-ink-200"
+                />
+                <div
+                  v-else-if="post.hasVideo"
+                  class="w-16 h-16 rounded-lg border border-dashed border-ink-200 bg-ink-50 flex items-center justify-center text-[10px] font-bold uppercase tracking-wide text-ink-500"
+                >
+                  Video
+                </div>
+                <div v-else class="w-16 h-16 rounded-lg border border-dashed border-ink-200 bg-ink-50 flex items-center justify-center text-[10px] font-bold text-ink-400">
+                  No image
+                </div>
+                <span
+                  v-if="post.hasVideo && post.bannerUrl"
+                  class="absolute bottom-0.5 left-0.5 rounded bg-black/70 px-1 py-px text-[9px] font-bold uppercase tracking-wide text-white"
+                  aria-label="This post includes a video"
+                >
+                  Video
+                </span>
               </div>
               <div class="min-w-0">
                 <div class="font-bold text-ink-900">{{ post.title }}</div>
@@ -102,13 +158,14 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 import { useToast } from 'vue-toastification';
 import NewsDetailsModal from '../../../components/NewsDetailsModal.vue';
 import MultiImageUploadField from '../../../components/MultiImageUploadField.vue';
 import api from '../../../services/api';
 import { mapApiNewsToCard } from '../../../utils/newsDisplay';
 import { normalizeNews } from '../../../utils/imageUrl';
+import { onSessionExpired } from '../../../utils/sessionExpiry';
 
 const toast = useToast();
 const posts = ref([]);
@@ -124,6 +181,15 @@ const imageFiles = ref([]);
 const removeImageIds = ref([]);
 const editingImages = ref([]);
 const legacyImagePath = ref('');
+const videoInput = ref(null);
+const videoFile = ref(null);
+const videoPreviewUrl = ref('');
+const existingVideoUrl = ref('');
+const removeVideo = ref(false);
+const draftRestoredNotice = ref(false);
+
+const NEWS_DRAFT_KEY = 'cmart_news_form_draft';
+const MAX_VIDEO_BYTES = 10 * 1024 * 1024;
 
 const emptyForm = () => ({
   title: '',
@@ -136,6 +202,117 @@ const emptyForm = () => ({
 });
 
 const form = reactive(emptyForm());
+
+const videoFileName = computed(() => videoFile.value?.name || '');
+const videoFileSizeLabel = computed(() => {
+  if (!videoFile.value) return '';
+  const mb = videoFile.value.size / (1024 * 1024);
+  return `${mb.toFixed(1)} MB`;
+});
+
+const clearNewsDraft = () => {
+  try {
+    sessionStorage.removeItem(NEWS_DRAFT_KEY);
+  } catch {
+    /* ignore */
+  }
+  draftRestoredNotice.value = false;
+};
+
+const persistNewsDraft = () => {
+  const hasText = Boolean(
+    editingId.value
+    || form.title.trim()
+    || form.excerpt.trim()
+    || form.body.trim()
+    || form.image_url.trim(),
+  );
+  if (!hasText) return;
+
+  const payload = {
+    editingId: editingId.value,
+    title: form.title,
+    excerpt: form.excerpt,
+    body: form.body,
+    category: form.category,
+    image_url: form.image_url,
+    published_at: form.published_at,
+    is_published: form.is_published,
+    hadFiles: imageFiles.value.length > 0 || Boolean(videoFile.value) || Boolean(existingVideoUrl.value && !removeVideo.value),
+  };
+
+  try {
+    sessionStorage.setItem(NEWS_DRAFT_KEY, JSON.stringify(payload));
+  } catch {
+    /* ignore */
+  }
+};
+
+const restoreNewsDraft = () => {
+  let raw = null;
+  try {
+    raw = sessionStorage.getItem(NEWS_DRAFT_KEY);
+  } catch {
+    return;
+  }
+  if (!raw) return;
+
+  try {
+    const draft = JSON.parse(raw);
+    if (!draft || typeof draft !== 'object') return;
+    editingId.value = draft.editingId || null;
+    form.title = draft.title || '';
+    form.excerpt = draft.excerpt || '';
+    form.body = draft.body || '';
+    form.category = draft.category || 'Announcement';
+    form.image_url = draft.image_url || '';
+    form.published_at = draft.published_at || '';
+    form.is_published = draft.is_published !== false;
+    draftRestoredNotice.value = Boolean(draft.hadFiles);
+  } catch {
+    clearNewsDraft();
+  }
+};
+
+const revokeVideoPreview = () => {
+  if (videoPreviewUrl.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(videoPreviewUrl.value);
+  }
+  videoPreviewUrl.value = '';
+};
+
+const onVideoSelected = (event) => {
+  const file = event.target.files?.[0];
+  if (videoInput.value) videoInput.value.value = '';
+  if (!file) return;
+
+  const typeOk = file.type === 'video/mp4' || file.type === 'video/webm' || /\.(mp4|webm)$/i.test(file.name);
+  if (!typeOk) {
+    toast.error('Only MP4 or WebM video files are allowed.');
+    return;
+  }
+  if (file.size > MAX_VIDEO_BYTES) {
+    toast.error('Video must be 10 MB or smaller.');
+    return;
+  }
+
+  revokeVideoPreview();
+  videoFile.value = file;
+  videoPreviewUrl.value = URL.createObjectURL(file);
+  removeVideo.value = false;
+};
+
+const triggerVideoReplace = () => {
+  videoInput.value?.click();
+};
+
+const removeSelectedVideo = () => {
+  revokeVideoPreview();
+  videoFile.value = null;
+  if (existingVideoUrl.value) {
+    removeVideo.value = true;
+  }
+};
 
 const toLocalInput = (iso) => {
   if (!iso) return '';
@@ -178,6 +355,14 @@ const buildFormData = () => {
     fd.append('remove_banner', '1');
   }
 
+  if (videoFile.value) {
+    fd.append('video', videoFile.value);
+  }
+
+  if (removeVideo.value && !videoFile.value) {
+    fd.append('remove_video', '1');
+  }
+
   return fd;
 };
 
@@ -192,6 +377,15 @@ const load = async () => {
     const { data } = await api.get('/news-posts');
     posts.value = (Array.isArray(data) ? data : []).map(mapApiNewsToCard);
     hasLoaded.value = true;
+    if (editingId.value) {
+      const current = posts.value.find((post) => post.id === editingId.value);
+      if (current) {
+        const normalized = normalizeNews(current);
+        editingImages.value = normalized.images?.filter((image) => image.id) || [];
+        legacyImagePath.value = normalized.image_path || '';
+        existingVideoUrl.value = normalized.videoUrl || normalized.video_url || '';
+      }
+    }
   } catch (error) {
     console.error('Failed to load news posts:', error);
     toast.error(extractApiError(error));
@@ -208,7 +402,13 @@ const resetForm = () => {
   imageFiles.value = [];
   removeImageIds.value = [];
   imageField.value?.reset();
+  revokeVideoPreview();
+  videoFile.value = null;
+  existingVideoUrl.value = '';
+  removeVideo.value = false;
+  if (videoInput.value) videoInput.value.value = '';
   Object.assign(form, emptyForm());
+  clearNewsDraft();
 };
 
 const edit = (post) => {
@@ -223,21 +423,29 @@ const edit = (post) => {
   form.is_published = Boolean(normalized.is_published);
   editingImages.value = normalized.images?.filter((image) => image.id) || [];
   legacyImagePath.value = normalized.image_path || '';
+  existingVideoUrl.value = normalized.video_url || normalized.videoUrl || '';
   imageFiles.value = [];
   removeImageIds.value = [];
+  revokeVideoPreview();
+  videoFile.value = null;
+  removeVideo.value = false;
+  if (videoInput.value) videoInput.value.value = '';
   imageField.value?.reset();
+  draftRestoredNotice.value = false;
 };
 
 const save = async () => {
   if (!form.title.trim() || !form.excerpt.trim() || !form.category.trim()) {
-    toast.error('Title, excerpt, and category are required.');
+    toast.error('Title, short summary, and category are required.');
     return;
   }
 
   saving.value = true;
   const usesMultipart = imageFiles.value.length > 0
     || removeImageIds.value.length > 0
-    || imageField.value?.hasLegacyRemoval?.();
+    || imageField.value?.hasLegacyRemoval?.()
+    || Boolean(videoFile.value)
+    || removeVideo.value;
 
   try {
     if (usesMultipart) {
@@ -304,4 +512,17 @@ const remove = async (id) => {
 };
 
 defineExpose({ load });
+
+onMounted(() => {
+  restoreNewsDraft();
+});
+
+const stopExpiryListener = onSessionExpired(() => {
+  persistNewsDraft();
+});
+
+onUnmounted(() => {
+  stopExpiryListener();
+  revokeVideoPreview();
+});
 </script>

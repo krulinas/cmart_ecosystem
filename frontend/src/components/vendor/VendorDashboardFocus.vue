@@ -107,6 +107,7 @@
 import { computed, h } from 'vue';
 import {
   formatBookingDate,
+  formatBookingReference,
   isValidBookingDate,
   resolveVendorFocusPrimaryAction,
   resolveVendorPaymentUi,
@@ -169,7 +170,7 @@ const focusTitle = computed(() => {
     || props.booking.carboot_event?.title
     || props.currentEventLabel
     || formatBookingDate(props.booking.booking_date)
-    || `Booking #${props.booking.id}`
+    || formatBookingReference(props.booking.id)
   );
 });
 

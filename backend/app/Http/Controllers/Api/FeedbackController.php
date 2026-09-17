@@ -7,6 +7,7 @@ use App\Models\Feedback;
 use App\Support\FeedbackClassification;
 use App\Support\ManagementRole;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -15,6 +16,7 @@ class FeedbackController extends Controller
     private const MIN_WORDS = 5;
     private const MAX_WORDS = 100;
     private const PER_PAGE = 6;
+    private const MAX_IMAGES = 3;
 
     public function store(Request $request)
     {
@@ -39,7 +41,9 @@ class FeedbackController extends Controller
                     }
                 },
             ],
-            'media' => 'nullable|file|mimes:jpeg,png,jpg|max:5120',
+            'media' => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
+            'images' => 'nullable|array|max:' . self::MAX_IMAGES,
+            'images.*' => 'file|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         $backgrounds = FeedbackClassification::normalizeCommunityBackgrounds(
@@ -62,11 +66,6 @@ class FeedbackController extends Controller
         $participationType = $validated['participation_type'];
         $participationLabel = FeedbackClassification::participationLabel($participationType);
 
-        $mediaPath = null;
-        if ($request->hasFile('media')) {
-            $mediaPath = $request->file('media')->store('feedback_media', 'public');
-        }
-
         $feedback = Feedback::create([
             'user_id' => $request->user()->id,
             'participation_type' => $participationType,
@@ -77,15 +76,17 @@ class FeedbackController extends Controller
             'comments' => $validated['comments'],
             'service_rating' => $validated['rating'],
             'value_rating' => $validated['rating'],
-            'media_path' => $mediaPath,
+            'media_path' => null,
             'helpful_count' => 0,
             'is_hidden' => false,
         ]);
 
+        $this->attachUploadedImages($request, $feedback);
+
         return response()->json([
             'message' => 'Feedback submitted successfully. Thank you!',
             'success' => true,
-            'feedback' => $this->formatFeedback($feedback->load('user')),
+            'feedback' => $this->formatFeedback($feedback->load(['user', 'images'])),
         ], 201);
     }
 
@@ -147,7 +148,7 @@ class FeedbackController extends Controller
     /** Staff listing — includes hidden reviews with optional filters. */
     public function staffIndex(Request $request)
     {
-        $query = Feedback::with(['user', 'reviewedByUser', 'officialReplyByUser'])
+        $query = Feedback::with(['user', 'reviewedByUser', 'officialReplyByUser', 'images'])
             ->orderByDesc('created_at');
 
         $this->applyStaffFilter($query, $request->query('filter', 'all'));
@@ -161,7 +162,7 @@ class FeedbackController extends Controller
     public function show(Feedback $feedback)
     {
         return response()->json(
-            $this->formatFeedback($feedback->load(['user', 'reviewedByUser', 'officialReplyByUser']), true),
+            $this->formatFeedback($feedback->load(['user', 'reviewedByUser', 'officialReplyByUser', 'images']), true),
             200
         );
     }
@@ -177,7 +178,7 @@ class FeedbackController extends Controller
         return response()->json([
             'message' => '200 OK: Feedback updated successfully.',
             'feedback' => $this->formatFeedback(
-                $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser']),
+                $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser', 'images']),
                 true
             ),
         ], 200);
@@ -193,7 +194,7 @@ class FeedbackController extends Controller
         return response()->json([
             'message' => 'Feedback marked as reviewed.',
             'feedback' => $this->formatFeedback(
-                $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser']),
+                $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser', 'images']),
                 true
             ),
         ], 200);
@@ -235,7 +236,7 @@ class FeedbackController extends Controller
         return response()->json([
             'message' => $text === '' ? 'Official reply removed.' : 'Official reply draft saved.',
             'feedback' => $this->formatFeedback(
-                $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser']),
+                $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser', 'images']),
                 true
             ),
         ], 200);
@@ -267,7 +268,7 @@ class FeedbackController extends Controller
         return response()->json([
             'message' => 'Official reply published.',
             'feedback' => $this->formatFeedback(
-                $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser']),
+                $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser', 'images']),
                 true
             ),
         ], 200);
@@ -284,6 +285,37 @@ class FeedbackController extends Controller
         return response()->json([
             'message' => '200 OK: Feedback deleted successfully.',
             'success' => true,
+        ], 200);
+    }
+
+    public function destroyImage(Request $request, Feedback $feedback, string $image)
+    {
+        if (!ManagementRole::canAccessOrganizerRoutes($request->user()->role)) {
+            return response()->json(['message' => '403 Forbidden: Organizer access required.'], 403);
+        }
+
+        if ($image === 'legacy') {
+            $this->removeLegacyMedia($feedback);
+        } else {
+            $imageId = (int) $image;
+            if ($imageId < 1) {
+                return response()->json(['message' => '404 Not Found: Feedback image not found.'], 404);
+            }
+
+            $record = $feedback->images()->whereKey($imageId)->first();
+            if (!$record) {
+                return response()->json(['message' => '404 Not Found: Feedback image not found.'], 404);
+            }
+
+            $this->removeRelatedImage($feedback, $record);
+        }
+
+        return response()->json([
+            'message' => 'Feedback attachment removed.',
+            'feedback' => $this->formatFeedback(
+                $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser', 'images']),
+                true
+            ),
         ], 200);
     }
 
@@ -334,7 +366,7 @@ class FeedbackController extends Controller
         }
 
         if ($request->boolean('with_photo')) {
-            $query->whereNotNull('media_path')->where('media_path', '!=', '');
+            $this->constrainWithPhoto($query);
         }
     }
 
@@ -373,7 +405,7 @@ class FeedbackController extends Controller
             'hidden' => $query->where('is_hidden', true),
             'unreviewed' => $query->whereNull('reviewed_at'),
             'reviewed' => $query->whereNotNull('reviewed_at'),
-            'with_photo' => $query->whereNotNull('media_path')->where('media_path', '!=', ''),
+            'with_photo' => $this->constrainWithPhoto($query),
             'low_rating' => $query->where(function ($q) {
                 $q->whereBetween('rating', [1, 2])
                     ->orWhere(function ($inner) {
@@ -411,16 +443,19 @@ class FeedbackController extends Controller
             'role' => $participationLabel,
             'rating' => $this->resolveRating($review),
             'comment' => $review->comments,
-            'proof_url' => $this->resolveProofUrl($review->media_path),
             'created_at' => $review->created_at?->toIso8601String(),
             'official_reply' => $this->formatOfficialReply($review, $forManagement),
         ];
 
         if ($forManagement) {
+            $images = $this->managementImages($review);
             $data['is_hidden'] = (bool) $review->is_hidden;
             $data['reviewed_at'] = $review->reviewed_at?->toIso8601String();
             $data['reviewed_by'] = $review->reviewed_by;
             $data['reviewed_by_name'] = $review->reviewedByUser?->name;
+            $data['images'] = $images;
+            $data['image_count'] = count($images);
+            $data['proof_url'] = $images[0]['image_url'] ?? null;
         }
 
         return $data;
@@ -499,5 +534,164 @@ class FeedbackController extends Controller
         }
 
         return count(preg_split('/\s+/u', $trimmed, -1, PREG_SPLIT_NO_EMPTY));
+    }
+
+    private function constrainWithPhoto($query)
+    {
+        return $query->where(function ($q) {
+            $q->where(function ($legacy) {
+                $legacy->whereNotNull('media_path')->where('media_path', '!=', '');
+            })->orWhereHas('images');
+        });
+    }
+
+    private function collectUploadFiles(Request $request): array
+    {
+        $files = [];
+
+        if ($request->hasFile('images')) {
+            foreach ((array) $request->file('images') as $file) {
+                if ($file) {
+                    $files[] = $file;
+                }
+            }
+        }
+
+        if ($request->hasFile('media')) {
+            $files[] = $request->file('media');
+        }
+
+        return array_slice($files, 0, self::MAX_IMAGES);
+    }
+
+    private function attachUploadedImages(Request $request, Feedback $feedback): void
+    {
+        $files = $this->collectUploadFiles($request);
+        if ($files === []) {
+            return;
+        }
+
+        $firstPath = null;
+        foreach ($files as $offset => $file) {
+            $path = $file->store('feedback_media', 'public');
+            $feedback->images()->create([
+                'image_path' => $path,
+                'sort_order' => $offset,
+            ]);
+            if ($firstPath === null) {
+                $firstPath = $path;
+            }
+        }
+
+        if ($firstPath) {
+            $feedback->updateQuietly(['media_path' => $firstPath]);
+        }
+    }
+
+    private function managementImages(Feedback $review): array
+    {
+        $review->loadMissing('images');
+
+        $images = $review->images
+            ->map(fn ($image) => $image->toApiArray())
+            ->values()
+            ->all();
+
+        $relatedPaths = collect($images)
+            ->pluck('image_path')
+            ->filter()
+            ->all();
+
+        $legacyPath = $review->normalizedMediaPath();
+        if ($legacyPath && !in_array($legacyPath, $relatedPaths, true)) {
+            $url = $this->resolveProofUrl($legacyPath);
+            if ($url) {
+                array_unshift($images, [
+                    'id' => null,
+                    'image_path' => $legacyPath,
+                    'image_url' => $url,
+                    'sort_order' => -1,
+                    'is_legacy' => true,
+                ]);
+            }
+        }
+
+        return array_values($images);
+    }
+
+    private function removeRelatedImage(Feedback $feedback, $image): void
+    {
+        $path = $image->normalizedImagePath() ?: $image->image_path;
+
+        // Avoid FeedbackImage::deleting deleting the same path a second time.
+        $image->image_path = null;
+        $image->delete();
+
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
+
+        $this->syncMediaPathPointer($feedback, $path);
+    }
+
+    private function removeLegacyMedia(Feedback $feedback): void
+    {
+        $path = $feedback->normalizedMediaPath();
+        if (!$path) {
+            return;
+        }
+
+        $shared = $feedback->images()
+            ->get()
+            ->contains(fn ($image) => $image->normalizedImagePath() === $path);
+
+        // Only delete the physical file when no related row still references it.
+        if (!$shared) {
+            Storage::disk('public')->delete($path);
+        }
+
+        $this->syncMediaPathPointer($feedback, $path);
+    }
+
+    /**
+     * Keep feedbacks.media_path as a backward-compatible pointer to the first
+     * remaining related image, never to a deleted file.
+     */
+    private function syncMediaPathPointer(Feedback $feedback, ?string $removedPath = null): void
+    {
+        $remaining = $feedback->images()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $pointer = $feedback->normalizedMediaPath();
+        $remainingPaths = $remaining
+            ->map(fn ($image) => $image->normalizedImagePath())
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($remaining->isNotEmpty()) {
+            // Keep the existing pointer when it still names a remaining image.
+            if ($pointer && in_array($pointer, $remainingPaths, true)) {
+                return;
+            }
+
+            $feedback->updateQuietly([
+                'media_path' => $remaining->first()->image_path,
+            ]);
+
+            return;
+        }
+
+        // No related images remain. Preserve an untouched legacy-only pointer
+        // that does not match the file we just removed; otherwise clear it.
+        if ($pointer && $removedPath && $pointer !== $removedPath) {
+            return;
+        }
+
+        if ($feedback->media_path !== null) {
+            $feedback->updateQuietly(['media_path' => null]);
+        }
     }
 }

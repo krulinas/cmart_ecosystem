@@ -73,7 +73,9 @@
           <span class="ml-badge text-[10px]" :class="item.reviewed_at ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'">
             {{ item.reviewed_at ? 'Reviewed' : 'Unreviewed' }}
           </span>
-          <span v-if="proofUrl(item)" class="ml-badge text-[10px] bg-violet-100 text-violet-800">Has Photo</span>
+          <span v-if="imageCount(item)" class="ml-badge text-[10px] bg-violet-100 text-violet-800">
+            {{ imageCount(item) }} photo{{ imageCount(item) === 1 ? '' : 's' }}
+          </span>
           <span v-if="item.official_reply?.status === 'draft'" class="ml-badge text-[10px] bg-orange-100 text-orange-800">Reply Draft</span>
           <span v-if="item.official_reply?.status === 'published'" class="ml-badge text-[10px] bg-emerald-100 text-emerald-800">Reply Published</span>
         </div>
@@ -81,15 +83,15 @@
         <p class="text-sm text-ink-700 italic mb-3 line-clamp-2">"{{ item.comment || item.comments }}"</p>
 
         <button
-          v-if="proofUrl(item)"
+          v-if="feedbackImages(item).length"
           type="button"
           class="rounded-lg overflow-hidden border border-ink-200 mb-3 hover:border-brand-300 hover:ring-2 hover:ring-brand-500/20 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-          :aria-label="`View photo proof from ${item.user_name}`"
-          @click.stop="openImagePreview(proofUrl(item), item.user_name)"
+          :aria-label="`View ${imageCount(item)} attached photo${imageCount(item) === 1 ? '' : 's'} from ${item.user_name}`"
+          @click.stop="openImagePreview(feedbackImageUrls(item), item.user_name)"
         >
           <img
-            :src="proofUrl(item)"
-            :alt="`Photo proof from ${item.user_name || 'community member'}`"
+            :src="feedbackImages(item)[0].image_url"
+            :alt="`Photo attachment from ${item.user_name || 'community member'}`"
             class="h-16 w-16 object-cover"
             loading="lazy"
           />
@@ -128,6 +130,7 @@
       @mark-reviewed="markReviewed"
       @request-delete="requestDelete"
       @preview-image="openImagePreview"
+      @remove-attachment="removeAttachment"
       @save-reply-draft="saveReplyDraft"
       @publish-reply="publishReply"
       @close="selectedItem = null"
@@ -136,6 +139,8 @@
     <ImageLightbox
       v-model:open="lightbox.open"
       :image-url="lightbox.url"
+      :images="lightbox.images"
+      :start-index="lightbox.startIndex"
       :alt-text="lightbox.alt"
       :caption="lightbox.caption"
     />
@@ -205,12 +210,27 @@ const loadError = ref(null);
 const activeFilter = ref('all');
 const detailOpen = ref(false);
 const selectedItem = ref(null);
-const lightbox = ref({ open: false, url: null, alt: 'Photo proof', caption: '' });
+const lightbox = ref({ open: false, url: null, images: [], startIndex: 0, alt: 'Photo attachment', caption: '' });
 const deleteConfirm = ref({ open: false, item: null });
 const deleting = ref(false);
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-GB') : '');
 const proofUrl = (item) => resolveStorageUrl(item.proof_url || item.media_path || null);
+const feedbackImages = (item) => {
+  if (Array.isArray(item?.images) && item.images.length) {
+    return item.images
+      .map((image) => ({
+        ...image,
+        image_url: resolveStorageUrl(image.image_url || image.image_path),
+      }))
+      .filter((image) => image.image_url);
+  }
+
+  const url = proofUrl(item);
+  return url ? [{ id: null, image_url: url, is_legacy: true }] : [];
+};
+const feedbackImageUrls = (item) => feedbackImages(item).map((image) => image.image_url);
+const imageCount = (item) => item?.image_count ?? feedbackImages(item).length;
 
 const setFilter = async (filter) => {
   activeFilter.value = filter;
@@ -246,13 +266,30 @@ const openDetail = (item) => {
   detailOpen.value = true;
 };
 
-const openImagePreview = (url, caption = '') => {
+const openImagePreview = (urlOrImages, caption = '', startIndex = 0) => {
+  const urls = Array.isArray(urlOrImages) ? urlOrImages.filter(Boolean) : [urlOrImages].filter(Boolean);
   lightbox.value = {
     open: true,
-    url,
-    alt: `Photo proof from ${caption || 'community member'}`,
-    caption: caption ? `Photo proof from ${caption}` : '',
+    url: urls[0] || null,
+    images: urls,
+    startIndex,
+    alt: `Photo attachment from ${caption || 'community member'}`,
+    caption: caption ? `Photo attachment from ${caption}` : '',
   };
+};
+
+const removeAttachment = async (item, image) => {
+  if (!canDeleteFeedback.value || !item?.id) return;
+  const token = image?.is_legacy || !image?.id ? 'legacy' : image.id;
+  try {
+    await api.delete(`/feedbacks/${item.id}/images/${token}`);
+    toast.success('Attachment removed.');
+    await load();
+  } catch (e) {
+    if (!e.forbiddenMessage) {
+      toast.error(e.response?.data?.message || 'Unable to remove attachment.');
+    }
+  }
 };
 
 const toggleHidden = async (item) => {

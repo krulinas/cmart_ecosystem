@@ -35,7 +35,7 @@
                 Submit payment proof
               </h3>
               <p v-if="amount != null" class="mt-1 text-sm text-ink-500">
-                Booking #{{ bookingId }} · RM {{ formattedAmount }}
+                Booking {{ formatBookingReference(bookingId) }} · RM {{ formattedAmount }}
               </p>
             </div>
 
@@ -105,6 +105,7 @@ import { useToast } from 'vue-toastification';
 import api from '../services/api';
 import {
   canVendorPayBooking,
+  formatBookingReference,
   vendorPaymentBlockedMessage,
 } from '../utils/bookingDisplay';
 

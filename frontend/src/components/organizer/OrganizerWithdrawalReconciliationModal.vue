@@ -17,7 +17,7 @@
           <div>
             <p class="text-xs font-bold uppercase tracking-wider text-cyan-700">Organizer booking view</p>
             <h2 id="organizer-reconciliation-title" class="text-lg font-extrabold text-ink-900">
-              Booking #{{ booking?.id || bookingId }}
+              Booking {{ formatBookingReference(booking?.id || bookingId) }}
             </h2>
           </div>
           <button type="button" class="ml-btn-ghost" aria-label="Close reconciliation" @click="close">Close</button>
@@ -283,7 +283,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
-import { allocationStatusLabel, organizerPaymentStateLabel } from '../../utils/bookingDisplay';
+import { allocationStatusLabel, formatBookingReference, organizerPaymentStateLabel } from '../../utils/bookingDisplay';
 import OrganizerAttendanceExceptionModal from './OrganizerAttendanceExceptionModal.vue';
 import OrganizerSiteReassignmentModal from './OrganizerSiteReassignmentModal.vue';
 

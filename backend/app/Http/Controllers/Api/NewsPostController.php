@@ -49,6 +49,7 @@ class NewsPostController extends Controller
         ]));
 
         $this->attachUploadedImages($request, $post);
+        $this->syncVideo($request, $post);
 
         return response()->json([
             'message' => '201 Created: News post created successfully.',
@@ -79,6 +80,7 @@ class NewsPostController extends Controller
         }
 
         $this->attachUploadedImages($request, $news_post);
+        $this->syncVideo($request, $news_post);
 
         return response()->json([
             'message' => '200 OK: News post updated successfully.',
@@ -108,16 +110,20 @@ class NewsPostController extends Controller
             'banner' => 'nullable|file|mimes:jpeg,jpg,png,webp|max:5120',
             'images' => 'nullable|array|max:' . self::MAX_IMAGES,
             'images.*' => 'file|mimes:jpeg,jpg,png,webp|max:5120',
+            'video' => 'nullable|file|mimes:mp4,webm|max:10240',
             'remove_banner' => 'nullable|boolean',
             'remove_image_ids' => 'nullable|array',
             'remove_image_ids.*' => 'integer',
+            'remove_video' => 'nullable|boolean',
         ]);
 
         unset(
             $validated['banner'],
             $validated['images'],
+            $validated['video'],
             $validated['remove_banner'],
             $validated['remove_image_ids'],
+            $validated['remove_video'],
         );
 
         return $validated;
@@ -237,6 +243,37 @@ class NewsPostController extends Controller
             }
 
             $post->updateQuietly(['image_path' => $newPath]);
+        }
+    }
+
+    private function syncVideo(Request $request, NewsPost $post): void
+    {
+        $hasNewVideo = $request->hasFile('video');
+
+        if ($request->boolean('remove_video') && !$hasNewVideo) {
+            $this->deleteStoredVideo($post);
+            return;
+        }
+
+        if (!$hasNewVideo) {
+            return;
+        }
+
+        $this->deleteStoredVideo($post);
+
+        $path = $request->file('video')->store('news_videos', 'public');
+        $post->updateQuietly(['video_path' => $path]);
+    }
+
+    private function deleteStoredVideo(NewsPost $post): void
+    {
+        $path = $post->normalizedVideoPath();
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
+
+        if ($post->video_path) {
+            $post->updateQuietly(['video_path' => null]);
         }
     }
 }

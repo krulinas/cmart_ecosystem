@@ -38,7 +38,7 @@
             </button>
             <p class="text-xs font-bold uppercase tracking-wider text-brand-100">Vendor Event Pass</p>
             <h2 :id="titleId" class="mt-1 text-2xl font-black" data-testid="vendor-pass-booking-reference">
-              Booking #{{ pass.booking_id || pass.id }}
+              Booking {{ formatBookingReference(pass.booking_id || pass.id) }}
             </h2>
           </div>
 
@@ -124,6 +124,7 @@
 
 <script setup>
 import { computed, ref, watch, onUnmounted, nextTick } from 'vue';
+import { formatBookingReference } from '../utils/bookingDisplay';
 import {
   buildQrImageUrl,
   formatEventTimeLabel,

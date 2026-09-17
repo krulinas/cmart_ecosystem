@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Feedback extends Model
 {
@@ -56,5 +58,50 @@ class Feedback extends Model
     public function officialReplyByUser()
     {
         return $this->belongsTo(User::class, 'official_reply_by');
+    }
+
+    public function images(): HasMany
+    {
+        return $this->hasMany(FeedbackImage::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function normalizedMediaPath(): ?string
+    {
+        if (!$this->media_path) {
+            return null;
+        }
+
+        $path = str_replace('\\', '/', trim($this->media_path));
+        $path = preg_replace('#^public/#', '', $path);
+
+        return ltrim($path, '/') ?: null;
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $feedback) {
+            $feedback->loadMissing('images');
+            $paths = [];
+
+            foreach ($feedback->images as $image) {
+                $path = $image->normalizedImagePath() ?: $image->image_path;
+                if ($path) {
+                    $paths[] = $path;
+                }
+                $image->image_path = null;
+                $image->delete();
+            }
+
+            $legacyPath = $feedback->normalizedMediaPath();
+            if ($legacyPath) {
+                $paths[] = $legacyPath;
+            }
+
+            foreach (array_unique(array_filter($paths)) as $path) {
+                Storage::disk('public')->delete($path);
+            }
+        });
     }
 }

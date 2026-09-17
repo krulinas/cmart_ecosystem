@@ -30,7 +30,7 @@
               <div class="font-semibold text-ink-900">{{ entry.actor?.name || '—' }}</div>
               <div class="text-xs text-ink-500">{{ entry.actor?.role }}</div>
             </td>
-            <td class="px-3 py-3 font-semibold">#{{ entry.booking_id }}</td>
+            <td class="px-3 py-3 font-semibold">{{ formatBookingReference(entry.booking_id) }}</td>
             <td class="px-3 py-3">{{ entry.booking?.user?.name || '—' }}</td>
             <td class="px-3 py-3">
               <span class="text-ink-500">{{ entry.from_status }}</span>
@@ -65,6 +65,7 @@
 import { ref, reactive } from 'vue';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
+import { formatBookingReference } from '../../../utils/bookingDisplay';
 
 const toast = useToast();
 const loading = ref(false);

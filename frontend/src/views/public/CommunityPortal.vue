@@ -343,12 +343,6 @@
                         >
                           {{ background }}
                         </span>
-                        <span
-                          v-if="reviewProofUrl(review)"
-                          class="ml-1 text-xs font-semibold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full"
-                        >
-                          Photo attached
-                        </span>
                       </div>
                     </div>
                     <div
@@ -373,20 +367,6 @@
                     <p class="text-xs font-bold uppercase tracking-wide text-brand-700 mb-1">CMart Official Reply</p>
                     <p class="text-base text-gray-700 leading-relaxed">{{ reviewOfficialReply(review) }}</p>
                   </div>
-
-                  <button
-                    v-if="reviewProofUrl(review)"
-                    type="button"
-                    class="mt-3 self-start rounded-lg overflow-hidden border border-gray-200 hover:border-brand-300 hover:ring-2 hover:ring-brand-500/20 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-                    @click="openProofLightbox(reviewProofUrl(review), reviewUserName(review))"
-                  >
-                    <img
-                      :src="reviewProofUrl(review)"
-                      :alt="`Photo proof from ${reviewUserName(review)}`"
-                      class="h-16 w-16 object-cover"
-                      loading="lazy"
-                    />
-                  </button>
                 </article>
               </div>
 
@@ -429,52 +409,6 @@
       booking-link="/calendar"
       booking-label="See full schedule →"
     />
-
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition duration-200 ease-out"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition duration-150 ease-in"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
-      >
-        <div
-          v-if="proofLightbox.open"
-          class="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Photo proof preview"
-          @keydown.esc="closeProofLightbox"
-        >
-          <div
-            class="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            aria-hidden="true"
-            @click="closeProofLightbox"
-          />
-          <div class="relative z-10 max-w-3xl w-full">
-            <button
-              type="button"
-              class="absolute -top-12 right-0 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-md hover:bg-white transition"
-              aria-label="Close photo preview"
-              @click="closeProofLightbox"
-            >
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <img
-              :src="proofLightbox.url"
-              :alt="`Photo proof from ${proofLightbox.caption}`"
-              class="w-full max-h-[80vh] object-contain rounded-xl bg-white shadow-2xl"
-            />
-            <p v-if="proofLightbox.caption" class="mt-3 text-center text-sm text-white/90">
-              Photo proof from {{ proofLightbox.caption }}
-            </p>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
   </div>
 </template>
 
@@ -489,7 +423,6 @@ import { useAuthStore } from '../../stores/auth';
 import api from '../../services/api';
 import { filterEventsByChip, mapApiEventToCard } from '../../utils/eventDisplay';
 import { loginPathWithRedirect, registerPathWithRedirect } from '../../utils/postAuthRedirect';
-import { resolveStorageUrl } from '../../utils/imageUrl';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest first' },
@@ -542,7 +475,6 @@ const showEventModal = ref(false);
 const loadingEvents = ref(true);
 const loadingReviews = ref(true);
 const reviewsSection = ref(null);
-const proofLightbox = ref({ open: false, url: null, caption: '' });
 
 let searchDebounceTimer = null;
 
@@ -661,17 +593,8 @@ const reviewBackgroundLabels = (review) => {
 };
 const reviewComment = (review) => review.comment || review.comments || '';
 const reviewRating = (review) => review.rating || null;
-const reviewProofUrl = (review) => resolveStorageUrl(review.proof_url || review.media_path || null);
 const reviewOfficialReply = (review) => review.official_reply?.text || null;
 const reviewInitial = (review) => reviewUserName(review).charAt(0).toUpperCase();
-
-const openProofLightbox = (url, caption) => {
-  proofLightbox.value = { open: true, url, caption };
-};
-
-const closeProofLightbox = () => {
-  proofLightbox.value = { open: false, url: null, caption: '' };
-};
 
 const onFeedbackSubmitted = async () => {
   toast.success('Feedback submitted successfully!');

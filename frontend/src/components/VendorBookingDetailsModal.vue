@@ -37,7 +37,7 @@
               <div>
                 <p class="text-xs font-bold uppercase tracking-wider text-brand-600">Booking Details</p>
                 <h2 :id="titleId" class="text-lg font-extrabold text-ink-900">
-                  Booking #{{ booking?.id || bookingId }}
+                  Booking {{ formatBookingReference(booking?.id || bookingId) }}
                 </h2>
               </div>
               <button
@@ -416,6 +416,7 @@ import {
   canVendorResubmit,
   canVendorWithdraw,
   formatBookingDate,
+  formatBookingReference,
   formatWithdrawnDate,
   isBookingPaymentPaid,
   isVendorPaymentLockedUntilApproval,

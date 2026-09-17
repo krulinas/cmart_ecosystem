@@ -20,6 +20,7 @@ class NewsPost extends Model
         'category',
         'image_url',
         'image_path',
+        'video_path',
         'published_at',
         'is_published',
         'author_id',
@@ -27,6 +28,7 @@ class NewsPost extends Model
 
     protected $appends = [
         'banner_url',
+        'video_url',
     ];
 
     protected $casts = [
@@ -122,6 +124,25 @@ class NewsPost extends Model
         return null;
     }
 
+    public function normalizedVideoPath(): ?string
+    {
+        if (!$this->video_path) {
+            return null;
+        }
+
+        $path = str_replace('\\', '/', trim($this->video_path));
+        $path = preg_replace('#^public/#', '', $path);
+
+        return ltrim($path, '/') ?: null;
+    }
+
+    public function getVideoUrlAttribute(): ?string
+    {
+        $path = $this->normalizedVideoPath();
+
+        return $path ? asset('storage/' . $path) : null;
+    }
+
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
@@ -138,6 +159,10 @@ class NewsPost extends Model
 
             if ($post->image_path) {
                 Storage::disk('public')->delete($post->image_path);
+            }
+
+            if ($post->video_path) {
+                Storage::disk('public')->delete($post->video_path);
             }
         });
     }

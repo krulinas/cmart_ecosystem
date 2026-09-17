@@ -64,7 +64,9 @@
               <span class="ml-badge" :class="item.reviewed_at ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'">
                 {{ item.reviewed_at ? 'Reviewed' : 'Unreviewed' }}
               </span>
-              <span v-if="proofUrl(item)" class="ml-badge bg-violet-100 text-violet-800">Has Photo</span>
+              <span v-if="feedbackImages.length" class="ml-badge bg-violet-100 text-violet-800">
+                {{ feedbackImages.length }} photo{{ feedbackImages.length === 1 ? '' : 's' }}
+              </span>
               <span
                 v-if="item.official_reply?.status === 'draft'"
                 class="ml-badge bg-orange-100 text-orange-800"
@@ -87,20 +89,37 @@
               "{{ item.comment || item.comments }}"
             </blockquote>
 
-            <button
-              v-if="proofUrl(item)"
-              type="button"
-              class="block w-full overflow-hidden rounded-xl border border-ink-200 hover:border-brand-300 hover:ring-2 hover:ring-brand-500/20 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-              @click="$emit('preview-image', proofUrl(item), item.user_name)"
-            >
-              <img
-                :src="proofUrl(item)"
-                :alt="`Photo proof from ${item.user_name || 'community member'}`"
-                class="max-h-48 w-full object-contain bg-ink-50"
-                loading="lazy"
-              />
-              <span class="block px-3 py-2 text-xs font-semibold text-brand-700 bg-brand-50">Click to view full image</span>
-            </button>
+            <div v-if="feedbackImages.length" class="space-y-2">
+              <p class="text-xs font-bold uppercase tracking-wide text-ink-500">Attachments</p>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div
+                  v-for="(image, index) in feedbackImages"
+                  :key="image.id || `legacy-${index}`"
+                  class="relative overflow-hidden rounded-xl border border-ink-200"
+                >
+                  <button
+                    type="button"
+                    class="block w-full overflow-hidden hover:ring-2 hover:ring-brand-500/20 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                    @click="$emit('preview-image', feedbackImageUrls, item.user_name, index)"
+                  >
+                    <img
+                      :src="image.image_url"
+                      :alt="`Photo attachment ${index + 1} from ${item.user_name || 'community member'}`"
+                      class="h-28 w-full object-cover bg-ink-50"
+                      loading="lazy"
+                    />
+                  </button>
+                  <button
+                    v-if="canDeleteFeedback"
+                    type="button"
+                    class="absolute top-1 right-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-rose-600 shadow"
+                    @click="$emit('remove-attachment', item, image)"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
 
             <section class="rounded-xl border border-brand-100 bg-brand-50/40 p-4 space-y-3">
               <h4 class="text-sm font-bold text-ink-900">Official CMart Reply</h4>
@@ -173,7 +192,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { resolveStorageUrl } from '../../utils/imageUrl';
 
 const props = defineProps({
@@ -190,6 +209,7 @@ const emit = defineEmits([
   'mark-reviewed',
   'request-delete',
   'preview-image',
+  'remove-attachment',
   'save-reply-draft',
   'publish-reply',
 ]);
@@ -200,6 +220,21 @@ const publishingReply = ref(false);
 
 const formatDate = (iso) => (iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '');
 const proofUrl = (item) => resolveStorageUrl(item?.proof_url || item?.media_path || null);
+const feedbackImages = computed(() => {
+  const item = props.item;
+  if (Array.isArray(item?.images) && item.images.length) {
+    return item.images
+      .map((image) => ({
+        ...image,
+        image_url: resolveStorageUrl(image.image_url || image.image_path),
+      }))
+      .filter((image) => image.image_url);
+  }
+
+  const url = proofUrl(item);
+  return url ? [{ id: null, image_url: url, is_legacy: true }] : [];
+});
+const feedbackImageUrls = computed(() => feedbackImages.value.map((image) => image.image_url));
 
 const close = () => {
   emit('update:open', false);

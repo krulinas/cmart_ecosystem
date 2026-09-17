@@ -53,8 +53,8 @@
           <h2 class="text-lg font-extrabold text-ink-900">Booking Summary</h2>
           <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Booking ID</dt>
-              <dd class="mt-1 font-semibold text-ink-900">#{{ booking.id }}</dd>
+              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Booking reference</dt>
+              <dd class="mt-1 font-semibold text-ink-900">{{ formatBookingReference(booking.id) }}</dd>
             </div>
             <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
               <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Event</dt>
@@ -153,6 +153,7 @@ import {
   boothTypeLabel,
   canVendorPayBooking,
   formatBookingDate,
+  formatBookingReference,
   vendorPaymentBlockedMessage,
 } from '../../utils/bookingDisplay';
 

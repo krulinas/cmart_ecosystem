@@ -12,6 +12,7 @@ import {
   managementTierLabel,
 } from '../utils/managementRoles';
 import { communityVisitorFallbackPath } from '../utils/postAuthRedirect';
+import { resetSessionExpiry } from '../utils/sessionExpiry';
 
 const readStoredUser = () => {
   try {
@@ -51,6 +52,7 @@ export const useAuthStore = defineStore('auth', () => {
     sessionReady.value = true;
     localStorage.setItem('carboot_cmart_token', payload.token);
     localStorage.setItem('carboot_cmart_user', JSON.stringify(payload.user));
+    resetSessionExpiry();
   };
 
   const clearSession = () => {

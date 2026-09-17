@@ -128,6 +128,14 @@ export function resolveNewsBannerUrl(post) {
   return resolveStorageUrl(post.banner_url || post.image_url || post.image_path);
 }
 
+export function resolveNewsVideoUrl(post) {
+  if (!post) {
+    return null;
+  }
+
+  return resolveStorageUrl(post.video_url || post.video_path);
+}
+
 /** Normalize gallery images from a news API record. */
 export function resolveNewsGallery(post) {
   if (!post) {
@@ -177,6 +185,7 @@ export function normalizeNews(post) {
   const bannerUrl = images.find((image) => image.is_primary)?.image_url
     || images[0]?.image_url
     || resolveNewsBannerUrl(post);
+  const videoUrl = resolveNewsVideoUrl(post);
 
   return {
     ...post,
@@ -184,6 +193,9 @@ export function normalizeNews(post) {
     external_image_url: post.external_image_url ?? post.image_url ?? '',
     banner_url: bannerUrl,
     bannerUrl,
+    video_url: videoUrl,
+    videoUrl,
+    has_video: Boolean(post.has_video || videoUrl),
   };
 }
 

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from '../stores/auth';
+import { beginSessionExpiry, isAuthAttemptUrl, isSessionExpiryHandling } from '../utils/sessionExpiry';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api',
@@ -45,11 +46,33 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      try {
-        useAuthStore().clearSession();
-      } catch {
-        localStorage.removeItem('carboot_cmart_token');
-        localStorage.removeItem('carboot_cmart_user');
+      const requestUrl = error.config?.url || '';
+      if (!isAuthAttemptUrl(requestUrl)) {
+        const hadToken = Boolean(
+          error.config?.headers?.Authorization
+          || localStorage.getItem('carboot_cmart_token'),
+        );
+        if (hadToken) {
+          error.sessionExpired = true;
+          if (beginSessionExpiry()) {
+            try {
+              useAuthStore().clearSession();
+            } catch {
+              localStorage.removeItem('carboot_cmart_token');
+              localStorage.removeItem('carboot_cmart_user');
+            }
+          }
+        }
+      } else if (
+        !isSessionExpiryHandling()
+        && !/\/auth\/(login|register)(?:\?|$)/.test(requestUrl)
+      ) {
+        try {
+          useAuthStore().clearSession();
+        } catch {
+          localStorage.removeItem('carboot_cmart_token');
+          localStorage.removeItem('carboot_cmart_user');
+        }
       }
     }
 

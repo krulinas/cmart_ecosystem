@@ -98,7 +98,7 @@
                   class="transition hover:bg-ink-50/50"
                 >
                   <td class="px-4 py-3.5">
-                    <div class="font-bold text-ink-900">#{{ b.id }}</div>
+                    <div class="font-bold text-ink-900">{{ formatBookingReference(b.id) }}</div>
                     <div class="text-xs text-ink-500">{{ vendorLabel(b) }}</div>
                   </td>
                   <td class="px-4 py-3.5">
@@ -266,7 +266,7 @@
           <table v-else class="min-w-full text-sm">
             <thead class="bg-ink-50/60">
               <tr class="text-left text-[11px] uppercase tracking-wider text-ink-500">
-                <th class="px-4 py-3 font-semibold">ID</th>
+                <th class="px-4 py-3 font-semibold">Booking Ref.</th>
                 <th class="px-4 py-3 font-semibold">Vendor</th>
                 <th class="px-4 py-3 font-semibold">Category</th>
                 <th class="px-4 py-3 font-semibold">Details</th>
@@ -288,7 +288,7 @@
                 :data-booking-payment-status="b.invoice?.payment_status || ''"
                 class="transition hover:bg-ink-50/40"
               >
-                <td class="px-4 py-3.5 font-bold text-ink-900">#{{ b.id }}</td>
+                <td class="px-4 py-3.5 font-bold text-ink-900">{{ formatBookingReference(b.id) }}</td>
                 <td class="px-4 py-3.5 text-ink-800">{{ vendorLabel(b) }}</td>
                 <td class="px-4 py-3.5 text-ink-700">{{ b.product_category || 'Others' }}</td>
                 <td class="px-4 py-3.5 max-w-[200px] truncate text-ink-600">{{ b.product_details || '—' }}</td>
@@ -442,7 +442,7 @@
                 Review payment proof
               </h3>
               <p class="mt-1 text-sm text-ink-500">
-                Booking #{{ paymentVerifyTarget.id }}
+                Booking {{ formatBookingReference(paymentVerifyTarget.id) }}
               </p>
             </div>
             <button
@@ -508,7 +508,7 @@
               <img
                 v-else-if="proofObjectUrl"
                 :src="proofObjectUrl"
-                :alt="`Payment proof for booking #${paymentVerifyTarget.id}`"
+                :alt="`Payment proof for booking ${formatBookingReference(paymentVerifyTarget.id)}`"
                 class="mx-auto max-h-[min(55vh,28rem)] w-full object-contain"
                 data-testid="payment-proof-image"
                 @load="onProofImageLoad"
@@ -562,7 +562,7 @@ import ManagementStatusChip from '../../../components/management/ManagementStatu
 import OrganizerWithdrawalReconciliationModal from '../../../components/organizer/OrganizerWithdrawalReconciliationModal.vue';
 import OrganizerReleasedDayRecoveryPanel from '../../../components/organizer/OrganizerReleasedDayRecoveryPanel.vue';
 import { useManagementAccess } from '../../../composables/useManagementAccess';
-import { formatBookingDate, isTerminalBookingStatus, siteLabelsForBooking, allocationStatusLabel, organizerWithdrawalSummary, statusLabel } from '../../../utils/bookingDisplay';
+import { formatBookingDate, formatBookingReference, isTerminalBookingStatus, siteLabelsForBooking, allocationStatusLabel, organizerWithdrawalSummary, statusLabel } from '../../../utils/bookingDisplay';
 
 const emit = defineEmits(['refreshed']);
 
@@ -798,7 +798,7 @@ const confirmVerifyPayment = async () => {
   verifyingPayment.value = true;
   try {
     await api.patch(`/bookings/${booking.id}/verify-payment`);
-    toast.success(`Payment for booking #${booking.id} marked as Paid.`);
+    toast.success(`Payment for booking ${formatBookingReference(booking.id)} marked as Paid.`);
     closePaymentVerifyModal();
     await fetchBookings();
   } catch (e) {
@@ -1077,7 +1077,7 @@ const updateStatus = async (id, status, revisionComment = null) => {
   if (revisionComment) payload.revision_comment = revisionComment;
   try {
     await api.put(`/bookings/${id}`, payload);
-    toast.success(`Booking #${id} updated to ${statusLabel(status)}.`);
+    toast.success(`Booking ${formatBookingReference(id)} updated to ${statusLabel(status)}.`);
     await fetchBookings();
   } catch (e) {
     if (!e.forbiddenMessage) {
@@ -1097,10 +1097,10 @@ const requestRevision = async (id) => {
 
 const deleteBooking = async (id) => {
   if (!canDeleteBookings.value) return;
-  if (!window.confirm(`Delete booking #${id}? This cannot be undone.`)) return;
+  if (!window.confirm(`Delete booking ${formatBookingReference(id)}? This cannot be undone.`)) return;
   try {
     await api.delete(`/bookings/${id}`);
-    toast.success(`Booking #${id} deleted.`);
+    toast.success(`Booking ${formatBookingReference(id)} deleted.`);
     await fetchBookings();
   } catch (e) {
     if (!e.forbiddenMessage) {
