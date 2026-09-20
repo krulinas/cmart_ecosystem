@@ -50,6 +50,11 @@ class Feedback extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function carbootEvent()
+    {
+        return $this->belongsTo(CarbootEvent::class, 'carboot_event_id');
+    }
+
     public function reviewedByUser()
     {
         return $this->belongsTo(User::class, 'reviewed_by');

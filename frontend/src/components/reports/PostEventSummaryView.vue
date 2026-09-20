@@ -118,14 +118,14 @@
     <!-- 4. Financial Summary -->
     <section v-if="payments" class="pes-section">
       <h2>3. Financial Summary</h2>
-      <p class="pes-note">Organizer booth-fee invoices only. Vendor-reported survey sales are not organizer revenue.</p>
+      <p class="pes-note">Site booking revenue from frozen booking price snapshots and invoices. Vendor survey sales are not organizer revenue.</p>
       <dl class="pes-kv">
-        <div><dt>Expected booth fees</dt><dd>{{ moneyOrMissing(paymentExpected) }}</dd></div>
-        <div><dt>Collected booth fees</dt><dd class="pes-pos">{{ moneyOrMissing(paymentCollected) }}</dd></div>
-        <div><dt>Unpaid amount</dt><dd class="pes-amber">{{ moneyOrMissing(paymentUnpaid) }}</dd></div>
-        <div v-if="paymentPending != null"><dt>Pending verification</dt><dd>{{ moneyOrMissing(paymentPending) }}</dd></div>
-        <div v-if="paymentRefunded != null"><dt>Refunded</dt><dd>{{ moneyOrMissing(paymentRefunded) }}</dd></div>
-        <div v-if="collectionRateValue != null"><dt>Collection rate</dt><dd>{{ collectionRateValue }}%</dd></div>
+        <div><dt>Expected booking revenue</dt><dd>{{ moneyOrMissing(paymentExpected) }}</dd></div>
+        <div><dt>Invoiced amount</dt><dd>{{ moneyOrMissing(payments.invoiced_amount) }}</dd></div>
+        <div><dt>Collected revenue</dt><dd class="pes-pos">{{ moneyOrMissing(paymentCollected) }}</dd></div>
+        <div><dt>Outstanding invoice balance</dt><dd class="pes-amber">{{ hasInvoices ? moneyOrMissing(payments.outstanding_invoice_balance ?? paymentUnpaid) : 'Not available' }}</dd></div>
+        <div><dt>Unbilled booking value</dt><dd>{{ moneyOrMissing(payments.unbilled_booking_value) }}</dd></div>
+        <div><dt>Collection rate</dt><dd>{{ collectionRateDisplay }}</dd></div>
         <div v-if="withoutInvoice != null">
           <dt>Approved bookings without invoices</dt><dd>{{ withoutInvoice }}</dd>
         </div>
@@ -135,8 +135,41 @@
       </p>
       <p v-if="payments.potentially_incomplete" class="pes-warn">
         Financial summary may be incomplete because one or more approved bookings have no invoice.
-        Missing invoices are not treated as RM 0.00 due.
+        Unbilled booking value is not treated as outstanding invoice balance.
       </p>
+    </section>
+
+    <section v-if="eventPerformance" class="pes-section" data-testid="event-performance-section">
+      <h2>Event Performance</h2>
+      <dl class="pes-kv">
+        <div><dt>Unique approved vendors</dt><dd>{{ eventPerformance.unique_approved_vendors ?? '—' }}</dd></div>
+        <div><dt>Approved bookings</dt><dd>{{ eventPerformance.approved_bookings ?? '—' }}</dd></div>
+        <div><dt>Open booking sites</dt><dd>{{ eventPerformance.open_booking_sites ?? '—' }}</dd></div>
+        <div><dt>Sites sold</dt><dd>{{ eventPerformance.sites_sold ?? '—' }}</dd></div>
+        <div><dt>Available sites</dt><dd>{{ eventPerformance.available_sites ?? '—' }}</dd></div>
+        <div>
+          <dt>Site utilisation</dt>
+          <dd>{{ eventPerformance.site_utilisation_percent != null ? `${eventPerformance.site_utilisation_percent}%` : '—' }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section v-if="feedbackSection" class="pes-section" data-testid="feedback-summary-section">
+      <h2>User Feedback Summary</h2>
+      <p class="pes-note">Aggregate In-app Feedback only. Raw comments are excluded from published reports.</p>
+      <template v-if="Number(feedbackSection.response_count) > 0">
+        <dl class="pes-kv">
+          <div><dt>Total feedback responses</dt><dd>{{ feedbackSection.response_count }}</dd></div>
+          <div><dt>Vendor responses</dt><dd>{{ feedbackSection.vendor_response_count ?? 0 }}</dd></div>
+          <div><dt>Non-vendor responses</dt><dd>{{ feedbackSection.non_vendor_response_count ?? 0 }}</dd></div>
+          <div><dt>Average overall rating</dt><dd>{{ feedbackSection.average_rating ?? '—' }}</dd></div>
+          <div>
+            <dt>Vendor response rate</dt>
+            <dd>{{ feedbackSection.vendor_response_rate_percent != null ? `${feedbackSection.vendor_response_rate_percent}%` : '—' }}</dd>
+          </div>
+        </dl>
+      </template>
+      <p v-else class="pes-muted">{{ feedbackSection.message || 'No feedback has been submitted for this event yet.' }}</p>
     </section>
 
     <!-- 5. Vendor and Sales Insights -->
@@ -304,6 +337,16 @@ const payments = computed(() => {
   if (!section || section.excluded) return null;
   return section;
 });
+const eventPerformance = computed(() => {
+  const section = snapshot.value?.sections?.event_performance;
+  if (!section || section.excluded) return null;
+  return section;
+});
+const feedbackSection = computed(() => {
+  const section = snapshot.value?.sections?.feedback;
+  if (!section || section.excluded) return null;
+  return section;
+});
 const utilisationSection = computed(() => {
   const section = snapshot.value?.sections?.site_day_utilisation;
   if (!section || section.excluded) return null;
@@ -343,13 +386,30 @@ const publishedDisplay = computed(
   () => props.report?.published_at_display || formatEnglishDate(props.report?.published_at),
 );
 
-const paymentExpected = computed(() => firstDefined(payments.value?.expected_booth_fees, payments.value?.expected));
-const paymentCollected = computed(() => firstDefined(payments.value?.collected_booth_fees, payments.value?.collected));
+const paymentExpected = computed(() => firstDefined(
+  payments.value?.expected_booking_revenue,
+  payments.value?.expected_booth_fees,
+  payments.value?.expected,
+));
+const paymentCollected = computed(() => firstDefined(
+  payments.value?.collected_revenue,
+  payments.value?.collected_booth_fees,
+  payments.value?.collected,
+));
 const paymentUnpaid = computed(() => firstDefined(payments.value?.unpaid_approved, payments.value?.outstanding));
 const paymentPending = computed(() => payments.value?.pending_verification_approved ?? null);
 const paymentRefunded = computed(() => payments.value?.refunded_approved ?? null);
 const withoutInvoice = computed(() => payments.value?.approved_bookings_without_invoice ?? null);
 const paidWithdrawalDisclosure = computed(() => payments.value?.paid_withdrawals?.disclosure || null);
+const hasInvoices = computed(() => Number(payments.value?.invoice_count ?? payments.value?.invoice_count_approved ?? 0) > 0);
+const collectionRateDisplay = computed(() => {
+  if (payments.value?.collection_rate_percent != null) {
+    return `${payments.value.collection_rate_percent}%`;
+  }
+  if (!hasInvoices.value) return 'Not available';
+  const legacy = collectionRate(paymentCollected.value, paymentExpected.value);
+  return legacy != null ? `${legacy}%` : '—';
+});
 const collectionRateValue = computed(() => collectionRate(paymentCollected.value, paymentExpected.value));
 
 const categories = computed(() => {

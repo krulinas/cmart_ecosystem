@@ -163,6 +163,8 @@
     $pipeline = is_array($sections['booking_pipeline'] ?? null) ? $sections['booking_pipeline'] : [];
     $attendance = is_array($sections['attendance'] ?? null) ? $sections['attendance'] : [];
     $payments = is_array($sections['payments'] ?? null) ? $sections['payments'] : [];
+    $eventPerformance = is_array($sections['event_performance'] ?? null) ? $sections['event_performance'] : [];
+    $feedback = is_array($sections['feedback'] ?? null) ? $sections['feedback'] : [];
     $utilisation = is_array($sections['site_day_utilisation'] ?? null) ? $sections['site_day_utilisation'] : [];
     $categories = is_array($sections['vendor_categories'] ?? null) ? $sections['vendor_categories'] : [];
     $survey = is_array($sections['vendor_survey'] ?? null) ? $sections['vendor_survey'] : [];
@@ -197,6 +199,8 @@
 
     $pipelineOk = !empty($pipeline) && empty($pipeline['excluded']);
     $paymentsOk = !empty($payments) && empty($payments['excluded']);
+    $eventPerformanceOk = !empty($eventPerformance) && empty($eventPerformance['excluded']);
+    $feedbackOk = !empty($feedback) && empty($feedback['excluded']);
     $attendanceRecorded = !empty($attendance['recorded']) && ($attendance['verified_check_in_count'] ?? null) !== null;
     $utilisationOk = !empty($utilisation['available']) && empty($utilisation['excluded']);
     $surveyOk = !empty($survey['available']) && empty($survey['excluded']);
@@ -432,20 +436,36 @@
 @if ($paymentsOk)
 <section class="section section-break">
     <h2>3. Financial Summary</h2>
-    <p class="note" style="margin-top:0;">Organizer booth-fee invoices only. Vendor-reported survey sales are not organizer revenue.</p>
+    <p class="note" style="margin-top:0;">Site booking revenue from frozen booking price snapshots and invoices. Vendor survey sales are not organizer revenue.</p>
     <table class="kv">
-        <tr><th>Expected booth fees</th><td>{{ Pres::money($expected) ?? 'Not available for this event' }}</td></tr>
-        <tr><th>Collected booth fees</th><td class="money-pos">{{ Pres::money($collected) ?? 'Not available for this event' }}</td></tr>
-        <tr><th>Unpaid amount</th><td class="money-warn">{{ Pres::money($unpaid) ?? 'Not available for this event' }}</td></tr>
-        @if ($pendingPay !== null)
-            <tr><th>Pending verification</th><td>{{ Pres::money($pendingPay) }}</td></tr>
-        @endif
-        @if ($refunded !== null)
-            <tr><th>Refunded</th><td>{{ Pres::money($refunded) }}</td></tr>
-        @endif
-        @if ($collectionRate !== null)
-            <tr><th>Collection rate</th><td>{{ $collectionRate }}%</td></tr>
-        @endif
+        <tr><th>Expected booking revenue</th><td>{{ Pres::money($metric($payments, 'expected_booking_revenue', 'expected_booth_fees') ?? $expected) ?? 'Not available for this event' }}</td></tr>
+        <tr><th>Invoiced amount</th><td>{{ Pres::money($metric($payments, 'invoiced_amount')) ?? 'Not available for this event' }}</td></tr>
+        <tr><th>Collected revenue</th><td class="money-pos">{{ Pres::money($metric($payments, 'collected_revenue', 'collected_booth_fees') ?? $collected) ?? 'Not available for this event' }}</td></tr>
+        <tr>
+            <th>Outstanding invoice balance</th>
+            <td class="money-warn">
+                @if (($metric($payments, 'invoice_count', 'invoice_count_approved') ?? 0) > 0)
+                    {{ Pres::money($metric($payments, 'outstanding_invoice_balance', 'outstanding') ?? $unpaid) ?? 'Not available for this event' }}
+                @else
+                    Not available
+                @endif
+            </td>
+        </tr>
+        <tr><th>Unbilled booking value</th><td>{{ Pres::money($metric($payments, 'unbilled_booking_value')) ?? 'Not available for this event' }}</td></tr>
+        <tr>
+            <th>Collection rate</th>
+            <td>
+                @if ($metric($payments, 'collection_rate_percent') !== null)
+                    {{ $metric($payments, 'collection_rate_percent') }}%
+                @elseif (($metric($payments, 'invoice_count', 'invoice_count_approved') ?? 0) <= 0)
+                    Not available
+                @elseif ($collectionRate !== null)
+                    {{ $collectionRate }}%
+                @else
+                    —
+                @endif
+            </td>
+        </tr>
         @if ($withoutInvoice !== null)
             <tr><th>Approved bookings without invoices</th><td>{{ (int) $withoutInvoice }}</td></tr>
         @endif
@@ -454,7 +474,132 @@
         <p class="note">{{ $paidWd['disclosure'] }}</p>
     @endif
     @if (!empty($payments['potentially_incomplete']))
-        <div class="warn">Financial summary may be incomplete because one or more approved bookings have no invoice. Missing invoices are not treated as RM 0.00 due.</div>
+        <div class="warn">Financial summary may be incomplete because one or more approved bookings have no invoice. Unbilled booking value is not outstanding invoice balance.</div>
+    @endif
+</section>
+@endif
+
+@if ($eventPerformanceOk)
+<section class="section">
+    <h2>Event Performance</h2>
+    <table class="kv">
+        <tr><th>Unique approved vendors</th><td>{{ $metric($eventPerformance, 'unique_approved_vendors') ?? '—' }}</td></tr>
+        <tr><th>Approved bookings</th><td>{{ $metric($eventPerformance, 'approved_bookings') ?? '—' }}</td></tr>
+        <tr><th>Open booking sites</th><td>{{ $metric($eventPerformance, 'open_booking_sites') ?? '—' }}</td></tr>
+        <tr><th>Sites sold</th><td>{{ $metric($eventPerformance, 'sites_sold') ?? '—' }}</td></tr>
+        <tr><th>Available sites</th><td>{{ $metric($eventPerformance, 'available_sites') ?? '—' }}</td></tr>
+        <tr>
+            <th>Site utilisation</th>
+            <td>
+                @if ($metric($eventPerformance, 'site_utilisation_percent') !== null)
+                    {{ $metric($eventPerformance, 'site_utilisation_percent') }}%
+                @else
+                    —
+                @endif
+            </td>
+        </tr>
+    </table>
+    @if ($categoryRows !== [])
+        <h3 style="margin-top:12px;">Vendor category distribution</h3>
+        <p class="note" style="margin-top:0;">Primary metric: unique participating vendors. Category totals may exceed unique vendors if a vendor has multiple category-labelled bookings.</p>
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Unique vendors</th>
+                    <th>Approved bookings</th>
+                    <th>Sites sold</th>
+                    <th>Share of vendors</th>
+                    <th>Expected booking revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($categoryRows as $row)
+                    <tr>
+                        <td>{{ $row['label'] ?? 'Uncategorised' }}</td>
+                        <td>{{ (int) ($row['unique_vendors'] ?? 0) }}</td>
+                        <td>{{ (int) ($row['approved_bookings'] ?? 0) }}</td>
+                        <td>{{ (int) ($row['sites_sold'] ?? 0) }}</td>
+                        <td>
+                            @if (isset($row['vendor_percent']) && $row['vendor_percent'] !== null)
+                                {{ $row['vendor_percent'] }}%
+                            @elseif (isset($row['vendor_share_percent']) && $row['vendor_share_percent'] !== null)
+                                {{ $row['vendor_share_percent'] }}%
+                            @else
+                                —
+                            @endif
+                        </td>
+                        <td>{{ Pres::money($row['expected_booking_revenue'] ?? null) ?? '—' }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+</section>
+@endif
+
+@if ($feedbackOk)
+<section class="section">
+    <h2>User Feedback Summary</h2>
+    <p class="note" style="margin-top:0;">Aggregate In-app Feedback only. Raw comments are excluded from published reports.</p>
+    @if (($metric($feedback, 'response_count') ?? 0) > 0)
+        <table class="kv">
+            <tr><th>Total feedback responses</th><td>{{ (int) $metric($feedback, 'response_count') }}</td></tr>
+            <tr><th>Vendor responses</th><td>{{ (int) ($metric($feedback, 'vendor_response_count') ?? 0) }}</td></tr>
+            <tr><th>Non-vendor responses</th><td>{{ (int) ($metric($feedback, 'non_vendor_response_count') ?? 0) }}</td></tr>
+            <tr><th>Average overall rating</th><td>{{ $metric($feedback, 'average_rating') ?? '—' }}</td></tr>
+            <tr>
+                <th>Vendor response rate</th>
+                <td>
+                    @if ($metric($feedback, 'vendor_response_rate_percent') !== null)
+                        {{ $metric($feedback, 'vendor_response_rate_percent') }}%
+                    @else
+                        —
+                    @endif
+                </td>
+            </tr>
+        </table>
+        @php
+            $ratingDist = is_array($feedback['rating_distribution'] ?? null) ? $feedback['rating_distribution'] : [];
+            $participationDist = is_array($feedback['participation_distribution'] ?? null)
+                ? $feedback['participation_distribution']
+                : (is_array($feedback['participation_type_distribution'] ?? null)
+                    ? $feedback['participation_type_distribution']
+                    : []);
+        @endphp
+        @if ($ratingDist !== [])
+            <h3 style="margin-top:12px;">Rating distribution</h3>
+            <table class="kv">
+                @foreach ([5, 4, 3, 2, 1] as $star)
+                    <tr>
+                        <th>{{ $star }}★</th>
+                        <td>{{ (int) ($ratingDist[$star] ?? $ratingDist[(string) $star] ?? 0) }}</td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif
+        @if ($participationDist !== [])
+            <h3 style="margin-top:12px;">Participant-type distribution</h3>
+            <table class="kv">
+                @foreach ($participationDist as $pkey => $prow)
+                    @php
+                        if (is_array($prow)) {
+                            $plabel = $prow['label'] ?? $prow['type'] ?? 'Other';
+                            $pcount = (int) ($prow['count'] ?? 0);
+                        } else {
+                            $plabel = is_string($pkey) ? $pkey : 'Other';
+                            $pcount = (int) $prow;
+                        }
+                    @endphp
+                    <tr>
+                        <th>{{ $plabel }}</th>
+                        <td>{{ $pcount }}</td>
+                    </tr>
+                @endforeach
+            </table>
+        @endif
+    @else
+        <p class="note">{{ $feedback['message'] ?? 'No feedback has been submitted for this event yet.' }}</p>
     @endif
 </section>
 @endif

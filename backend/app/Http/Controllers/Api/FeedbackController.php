@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Feedback;
+use App\Services\FeedbackEligibilityService;
 use App\Support\FeedbackClassification;
 use App\Support\ManagementRole;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -18,11 +20,46 @@ class FeedbackController extends Controller
     private const PER_PAGE = 6;
     private const MAX_IMAGES = 3;
 
+    public function __construct(
+        private readonly FeedbackEligibilityService $eligibility,
+    ) {}
+
+    /**
+     * Authenticated feedback options: visible events + vendor-eligible events.
+     */
+    public function options(Request $request)
+    {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $vendorEvents = $this->eligibility->eligibleVendorEventsForUser($user);
+        $hasVendorEligibility = $vendorEvents !== [];
+
+        return response()->json([
+            'visible_events' => $this->eligibility->visibleEventsForFeedback(),
+            'vendor_eligible_events' => $vendorEvents,
+            'vendor_eligible' => $hasVendorEligibility,
+            'vendor_ineligible_message' => FeedbackEligibilityService::VENDOR_INELIGIBLE_MESSAGE,
+        ]);
+    }
+
     public function store(Request $request)
     {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
         $validated = $request->validate([
             'rating' => 'required|integer|min:1|max:5',
             'participation_type' => ['required', 'string', Rule::in(FeedbackClassification::PARTICIPATION_TYPES)],
+            'carboot_event_id' => [
+                'required',
+                'integer',
+                Rule::exists('carboot_events', 'id'),
+            ],
             'community_backgrounds' => ['nullable', 'array'],
             'community_backgrounds.*' => ['string', Rule::in(FeedbackClassification::COMMUNITY_BACKGROUNDS)],
             // Legacy clients may still send reviewer_role; ignore for write path when participation_type is present.
@@ -65,9 +102,19 @@ class FeedbackController extends Controller
 
         $participationType = $validated['participation_type'];
         $participationLabel = FeedbackClassification::participationLabel($participationType);
+        $eventId = (int) $validated['carboot_event_id'];
 
-        $feedback = Feedback::create([
-            'user_id' => $request->user()->id,
+        // Never trust client event selection for vendor without an Approved booking.
+        if ($this->eligibility->isVendorParticipation($participationType)) {
+            $this->eligibility->assertVendorMaySubmit($user, $eventId);
+        } else {
+            // Non-vendor: event must exist (including Closed); no booking check.
+            $this->eligibility->assertEventAcceptsFeedback($eventId);
+        }
+
+        $payload = [
+            'user_id' => $user->id,
+            'carboot_event_id' => $eventId,
             'participation_type' => $participationType,
             'community_backgrounds' => $backgrounds === [] ? null : $backgrounds,
             // Mirror human-readable participation label for legacy list/search surfaces.
@@ -76,18 +123,40 @@ class FeedbackController extends Controller
             'comments' => $validated['comments'],
             'service_rating' => $validated['rating'],
             'value_rating' => $validated['rating'],
-            'media_path' => null,
-            'helpful_count' => 0,
             'is_hidden' => false,
-        ]);
+        ];
 
-        $this->attachUploadedImages($request, $feedback);
+        $existing = $this->eligibility->findExistingFeedback($user, $eventId, $participationType);
+        $updated = false;
+
+        if ($existing) {
+            // One submission per user + event + participation type — update in place.
+            $existing->fill($payload);
+            if ($existing->media_path === null) {
+                $existing->media_path = null;
+            }
+            $existing->save();
+            $feedback = $existing;
+            $updated = true;
+            // Only attach new images when provided; keep existing gallery otherwise.
+            if ($request->hasFile('images') || $request->hasFile('media')) {
+                $this->attachUploadedImages($request, $feedback);
+            }
+        } else {
+            $payload['media_path'] = null;
+            $payload['helpful_count'] = 0;
+            $feedback = Feedback::create($payload);
+            $this->attachUploadedImages($request, $feedback);
+        }
 
         return response()->json([
-            'message' => 'Feedback submitted successfully. Thank you!',
+            'message' => $updated
+                ? 'Feedback updated successfully. Thank you!'
+                : 'Feedback submitted successfully. Thank you!',
             'success' => true,
+            'updated' => $updated,
             'feedback' => $this->formatFeedback($feedback->load(['user', 'images'])),
-        ], 201);
+        ], $updated ? 200 : 201);
     }
 
     public function markHelpful($id)

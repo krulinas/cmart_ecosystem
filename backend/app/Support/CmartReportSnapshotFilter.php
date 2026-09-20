@@ -18,6 +18,9 @@ final class CmartReportSnapshotFilter
     public const DENIED_KEYS = [
         'qualitative_comments',
         'comments_and_suggestions',
+        'anonymous_vendor_comments',
+        'anonymous_non_vendor_comments',
+        'comments',
         'difficulty_details',
         'improvement_areas_other_text',
         'product_categories_other_text',

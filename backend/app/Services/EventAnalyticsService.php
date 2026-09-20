@@ -119,14 +119,16 @@ class EventAnalyticsService
                 'survey' => $overview['survey']['sections']['operations'] ?? null,
                 'survey_status' => $overview['survey']['status'] ?? 'unavailable',
             ],
-            'survey-results', 'survey_results' => $base + [
-                'section' => 'survey-results',
+            'survey-results', 'survey_results', 'feedback-summary', 'feedback_summary' => $base + [
+                'section' => 'feedback-summary',
                 'survey' => $overview['survey']['sections'] ?? null,
                 'survey_status' => $overview['survey']['status'] ?? 'unavailable',
                 'respondent_count' => $overview['survey']['respondent_count'] ?? 0,
+                'operational_feedback' => $overview['operational']['sections']['feedback'] ?? null,
+                'event_performance' => $overview['operational']['sections']['event_performance'] ?? null,
             ],
-            'vendor-comments', 'vendor_comments', 'comments' => $base + [
-                'section' => 'vendor-comments',
+            'vendor-comments', 'vendor_comments', 'comments', 'vendor-feedback', 'vendor_feedback' => $base + [
+                'section' => 'vendor-feedback',
                 'survey' => $overview['survey']['sections']['experience'] ?? null,
                 'qualitative' => $overview['survey']['sections']['experience']['qualitative_comments']
                     ?? $overview['survey']['sections']['experience']['comments_and_suggestions']
@@ -214,12 +216,20 @@ class EventAnalyticsService
     {
         try {
             $snapshot = $this->aggregator->build($event);
+            $sections = $snapshot['sections'] ?? [];
+
+            if (isset($sections['feedback']) && is_array($sections['feedback'])) {
+                $sections['feedback'] = $this->attachLiveFeedbackComments(
+                    $event->id,
+                    $sections['feedback'],
+                );
+            }
 
             return [
                 'available' => true,
                 'status' => 'ready',
                 'included_in_analytics' => true,
-                'sections' => $snapshot['sections'] ?? [],
+                'sections' => $sections,
                 'data_availability' => $snapshot['data_availability'] ?? [],
                 'provisional' => $snapshot['provisional'] ?? null,
                 'unavailable' => [],
@@ -235,6 +245,62 @@ class EventAnalyticsService
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Live anonymized comments for Analytics Hub only (never frozen into reports).
+     *
+     * @param  array<string, mixed>  $feedback
+     * @return array<string, mixed>
+     */
+    private function attachLiveFeedbackComments(int $eventId, array $feedback): array
+    {
+        if (! Schema::hasTable('feedbacks') || ! Schema::hasColumn('feedbacks', 'carboot_event_id')) {
+            return $feedback;
+        }
+
+        $rows = \Illuminate\Support\Facades\DB::table('feedbacks')
+            ->where('carboot_event_id', $eventId)
+            ->where(function ($query) {
+                $query->whereNull('is_hidden')->orWhere('is_hidden', false);
+            })
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get([
+                'participation_type',
+                'rating',
+                'comments',
+                'community_backgrounds',
+                'created_at',
+                'updated_at',
+            ]);
+
+        $mapRow = function ($row, string $authorLabel) {
+            return [
+                'author_label' => $authorLabel,
+                'rating' => (int) $row->rating,
+                'participation_type' => $row->participation_type,
+                'submitted_at' => $row->updated_at ?: $row->created_at,
+                'comments' => is_string($row->comments) ? $row->comments : '',
+            ];
+        };
+
+        $feedback['anonymous_vendor_comments'] = $rows
+            ->where('participation_type', 'vendor')
+            ->take(50)
+            ->map(fn ($row) => $mapRow($row, 'Vendor respondent'))
+            ->values()
+            ->all();
+
+        $feedback['anonymous_non_vendor_comments'] = $rows
+            ->where('participation_type', '!=', 'vendor')
+            ->take(50)
+            ->map(fn ($row) => $mapRow($row, 'Community respondent'))
+            ->values()
+            ->all();
+
+        return $feedback;
     }
 
     /**
@@ -568,13 +634,42 @@ class EventAnalyticsService
         ], true);
 
         // Always describe System Data availability for provenance, with include/exclude flag.
+        $feedbackSection = $operational['sections']['feedback'] ?? [];
+        $feedbackCount = (int) ($feedbackSection['response_count'] ?? 0);
+        $feedbackUpdated = null;
+
         $sources[] = [
             'type' => 'system_database',
-            'label' => 'System Data',
+            'label' => 'System Booking Data',
             'updated_at' => now()->toIso8601String(),
+            'record_count' => (int) ($operational['sections']['booking_pipeline']['total_bookings'] ?? 0),
             'sources' => ['bookings', 'invoices', 'event_sites', 'item_reservations'],
-            'status' => ($operational['available'] ?? false) ? 'active' : 'unavailable',
+            'status' => ($operational['available'] ?? false)
+                ? (((int) ($operational['sections']['booking_pipeline']['total_bookings'] ?? 0) > 0)
+                    ? 'connected_with_records'
+                    : 'connected_no_records')
+                : 'not_connected',
+            'availability_label' => ($operational['available'] ?? false)
+                ? (((int) ($operational['sections']['booking_pipeline']['total_bookings'] ?? 0) > 0)
+                    ? 'Connected with records'
+                    : 'Connected but no records')
+                : 'Not connected',
             'included_in_analytics' => $includeSystem && ($operational['available'] ?? false),
+            'inclusion_label' => $includeSystem ? 'Included in analytics' : 'Excluded from analytics',
+        ];
+
+        $sources[] = [
+            'type' => 'in_app_feedback',
+            'label' => 'In-app Feedback',
+            'updated_at' => $feedbackUpdated,
+            'record_count' => $feedbackCount,
+            'status' => Schema::hasTable('feedbacks') && Schema::hasColumn('feedbacks', 'carboot_event_id')
+                ? ($feedbackCount > 0 ? 'connected_with_records' : 'connected_no_records')
+                : 'not_applicable',
+            'availability_label' => Schema::hasTable('feedbacks') && Schema::hasColumn('feedbacks', 'carboot_event_id')
+                ? ($feedbackCount > 0 ? 'Connected with records' : 'Connected but no records')
+                : 'Not applicable',
+            'included_in_analytics' => $includeSystem,
             'inclusion_label' => $includeSystem ? 'Included in analytics' : 'Excluded from analytics',
         ];
 
@@ -583,22 +678,37 @@ class EventAnalyticsService
             $csvIncluded = $includeSurvey && ($survey['status'] ?? null) === 'ready';
             $sources[] = [
                 'type' => 'csv_import',
-                'label' => 'CSV Import',
+                'label' => 'Imported Survey CSV',
                 'batch_id' => $batch->id,
                 'original_filename' => $includeSurvey ? $batch->original_filename : null,
                 'schema_name' => $batch->schema_name,
                 'schema_version' => $batch->schema_version,
                 'imported_at' => optional($batch->processing_finished_at ?? $batch->created_at)?->toIso8601String(),
+                'updated_at' => optional($batch->processing_finished_at ?? $batch->created_at)?->toIso8601String(),
+                'record_count' => $includeSurvey
+                    ? (int) ($survey['respondent_count'] ?? $batch->valid_row_count ?? 0)
+                    : 0,
                 'respondent_count' => $includeSurvey
                     ? (int) ($survey['respondent_count'] ?? $batch->valid_row_count ?? 0)
                     : 0,
-                'status' => $csvIncluded ? 'active' : 'excluded',
+                'status' => $csvIncluded ? 'connected_with_records' : 'connected_no_records',
+                'availability_label' => $csvIncluded ? 'Connected with records' : 'Connected but no records',
                 'included_in_analytics' => $csvIncluded,
                 'inclusion_label' => $includeSurvey ? 'Included in analytics' : 'Excluded from analytics',
             ];
+        } else {
+            $sources[] = [
+                'type' => 'csv_import',
+                'label' => 'Imported Survey CSV',
+                'record_count' => 0,
+                'status' => 'connected_no_records',
+                'availability_label' => 'Connected but no records',
+                'included_in_analytics' => false,
+                'inclusion_label' => $includeSurvey ? 'No CSV connected' : 'Excluded from analytics',
+            ];
         }
 
-        // Hide CSV filename entirely in system_only mode (requirement).
+        // Hide CSV card entirely in system_only mode.
         if ($mode === EventAnalyticsDataSourceService::MODE_SYSTEM_ONLY) {
             $sources = array_values(array_filter(
                 $sources,
@@ -606,11 +716,9 @@ class EventAnalyticsService
             ));
         }
 
-        // Hide system card details when csv_only? Spec says show System/CSV/Mixed/No Data.
-        // Keep system with Excluded label for csv_only.
         if ($mode === EventAnalyticsDataSourceService::MODE_CSV_ONLY) {
             foreach ($sources as &$source) {
-                if ($source['type'] === 'system_database') {
+                if ($source['type'] === 'system_database' || $source['type'] === 'in_app_feedback') {
                     $source['included_in_analytics'] = false;
                     $source['inclusion_label'] = 'Excluded from analytics';
                     $source['status'] = 'excluded';

@@ -305,4 +305,5 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::post('/feedback/submit', [FeedbackController::class, 'store'])->middleware('throttle:10,1');
+    Route::get('/feedback/options', [FeedbackController::class, 'options']);
 });

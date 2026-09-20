@@ -77,6 +77,71 @@
         </select>
       </div>
 
+      <!-- Vendor event selection -->
+      <div v-if="isVendorParticipation" class="space-y-2">
+        <label for="vendor-event" class="block text-gray-700 font-bold mb-2">
+          Which event did you join as a vendor?
+        </label>
+        <p
+          v-if="!vendorEligible"
+          class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          data-testid="vendor-feedback-ineligible"
+        >
+          {{ vendorIneligibleMessage }}
+        </p>
+        <template v-else>
+          <select
+            id="vendor-event"
+            v-model="selectedEventId"
+            required
+            class="w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-800 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition cursor-pointer"
+            :disabled="vendorEvents.length === 1 && Boolean(preselectedEventId)"
+          >
+            <option value="" disabled>Select an event</option>
+            <option
+              v-for="event in vendorEvents"
+              :key="event.id"
+              :value="String(event.id)"
+            >
+              {{ event.title }} · {{ event.date_label }}
+            </option>
+          </select>
+          <p v-if="selectedEventDisplay" class="text-sm text-ink-600">
+            Reviewing: <span class="font-semibold text-ink-900">{{ selectedEventDisplay }}</span>
+          </p>
+        </template>
+      </div>
+
+      <!-- Non-vendor event selection -->
+      <div v-else-if="participationType" class="space-y-2">
+        <label for="feedback-event" class="block text-gray-700 font-bold mb-2">
+          Which Carboot event are you reviewing?
+        </label>
+        <div
+          v-if="lockedEvent"
+          class="rounded-lg border border-brand-100 bg-brand-50/50 px-3 py-2 text-sm text-ink-800"
+        >
+          <span class="font-semibold">{{ lockedEvent.title }}</span>
+          <span class="text-ink-500"> · {{ lockedEvent.date_label }}</span>
+        </div>
+        <select
+          v-else
+          id="feedback-event"
+          v-model="selectedEventId"
+          required
+          class="w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-800 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition cursor-pointer"
+        >
+          <option value="" disabled>Select an event</option>
+          <option
+            v-for="event in visibleEvents"
+            :key="event.id"
+            :value="String(event.id)"
+          >
+            {{ event.title }} · {{ event.date_label }}
+          </option>
+        </select>
+      </div>
+
       <fieldset>
         <legend class="block text-gray-700 font-bold mb-1">
           Tell us about your background (optional)
@@ -122,34 +187,34 @@
         </p>
       </div>
 
-        <div>
-          <label class="block text-gray-700 font-bold mb-2">Photo Proof (Optional)</label>
-          <input
-            ref="mediaInput"
-            type="file"
-            accept="image/jpeg,image/png,image/jpg,image/webp"
-            multiple
-            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 cursor-pointer"
-            @change="handleFileUpload"
-          />
-          <p class="text-xs text-ink-500 mt-1">Up to 3 photos. Max 5MB each. JPEG, PNG, JPG, or WebP.</p>
-          <div v-if="mediaPreviews.length" class="mt-3 grid grid-cols-3 gap-3">
-            <div
-              v-for="preview in mediaPreviews"
-              :key="preview.key"
-              class="relative overflow-hidden rounded-lg border border-gray-200"
+      <div>
+        <label class="block text-gray-700 font-bold mb-2">Photo Proof (Optional)</label>
+        <input
+          ref="mediaInput"
+          type="file"
+          accept="image/jpeg,image/png,image/jpg,image/webp"
+          multiple
+          class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 cursor-pointer"
+          @change="handleFileUpload"
+        />
+        <p class="text-xs text-ink-500 mt-1">Up to 3 photos. Max 5MB each. JPEG, PNG, JPG, or WebP.</p>
+        <div v-if="mediaPreviews.length" class="mt-3 grid grid-cols-3 gap-3">
+          <div
+            v-for="preview in mediaPreviews"
+            :key="preview.key"
+            class="relative overflow-hidden rounded-lg border border-gray-200"
+          >
+            <img :src="preview.url" :alt="preview.name || 'Feedback image preview'" class="h-24 w-full object-cover" />
+            <button
+              type="button"
+              class="absolute top-1 right-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-rose-600 shadow"
+              @click="removeMediaPreview(preview.key)"
             >
-              <img :src="preview.url" :alt="preview.name || 'Feedback image preview'" class="h-24 w-full object-cover" />
-              <button
-                type="button"
-                class="absolute top-1 right-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-rose-600 shadow"
-                @click="removeMediaPreview(preview.key)"
-              >
-                Remove
-              </button>
-            </div>
+              Remove
+            </button>
           </div>
         </div>
+      </div>
 
       <button
         type="submit"
@@ -171,7 +236,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { loginPathWithRedirect, registerPathWithRedirect, COMMUNITY_REVIEW_INTENT_PATH } from '../utils/postAuthRedirect';
 import {
@@ -183,8 +248,10 @@ import api from '../services/api';
 
 const emit = defineEmits(['submitted']);
 
-defineProps({
+const props = defineProps({
   hideGuestGate: { type: Boolean, default: false },
+  /** Preselect when the page is opened from a specific event. */
+  eventId: { type: [Number, String], default: null },
 });
 
 const auth = useAuthStore();
@@ -198,6 +265,8 @@ const MAX_WORDS = 100;
 const MAX_IMAGES = 3;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+const DEFAULT_VENDOR_MESSAGE =
+  'You can review an event as a vendor after receiving an approved booking for that event.';
 
 const overallRating = ref(0);
 const participationType = ref('');
@@ -209,6 +278,32 @@ const mediaInput = ref(null);
 const isSubmitting = ref(false);
 const message = ref('');
 const isSuccess = ref(false);
+const selectedEventId = ref('');
+const visibleEvents = ref([]);
+const vendorEvents = ref([]);
+const vendorEligible = ref(false);
+const vendorIneligibleMessage = ref(DEFAULT_VENDOR_MESSAGE);
+const optionsLoaded = ref(false);
+
+const preselectedEventId = computed(() => (
+  props.eventId != null && String(props.eventId).trim() !== ''
+    ? String(props.eventId)
+    : ''
+));
+
+const isVendorParticipation = computed(() => participationType.value === 'vendor');
+
+const lockedEvent = computed(() => {
+  if (!preselectedEventId.value || isVendorParticipation.value) return null;
+  return visibleEvents.value.find((event) => String(event.id) === preselectedEventId.value) || null;
+});
+
+const selectedEventDisplay = computed(() => {
+  const pool = isVendorParticipation.value ? vendorEvents.value : visibleEvents.value;
+  const match = pool.find((event) => String(event.id) === String(selectedEventId.value));
+  if (!match) return '';
+  return `${match.title} · ${match.date_label}`;
+});
 
 const countWords = (text) => {
   const trimmed = text.trim();
@@ -225,11 +320,16 @@ const wordCountClass = computed(() => {
 });
 
 const canSubmit = computed(() => {
-  return overallRating.value >= 1
-    && participationType.value !== ''
-    && wordCount.value >= MIN_WORDS
-    && wordCount.value <= MAX_WORDS
-    && !isSubmitting.value;
+  if (overallRating.value < 1 || !participationType.value) return false;
+  if (wordCount.value < MIN_WORDS || wordCount.value > MAX_WORDS) return false;
+  if (isSubmitting.value) return false;
+  if (isVendorParticipation.value) {
+    if (!vendorEligible.value) return false;
+    if (!selectedEventId.value) return false;
+  } else if (participationType.value) {
+    if (!selectedEventId.value && !lockedEvent.value) return false;
+  }
+  return true;
 });
 
 const onCommunityBackgroundChange = (changedValue) => {
@@ -301,6 +401,9 @@ const resetForm = () => {
   participationType.value = '';
   communityBackgrounds.value = [];
   comments.value = '';
+  if (!preselectedEventId.value) {
+    selectedEventId.value = '';
+  }
   revokeMediaPreviews();
   mediaFiles.value = [];
   mediaPreviews.value = [];
@@ -309,8 +412,76 @@ const resetForm = () => {
   }
 };
 
+const applyEventDefaults = () => {
+  if (isVendorParticipation.value) {
+    if (vendorEvents.value.length === 1) {
+      selectedEventId.value = String(vendorEvents.value[0].id);
+      return;
+    }
+    if (
+      preselectedEventId.value
+      && vendorEvents.value.some((event) => String(event.id) === preselectedEventId.value)
+    ) {
+      selectedEventId.value = preselectedEventId.value;
+      return;
+    }
+    selectedEventId.value = '';
+    return;
+  }
+
+  if (preselectedEventId.value) {
+    selectedEventId.value = preselectedEventId.value;
+    return;
+  }
+  if (visibleEvents.value.length === 1) {
+    selectedEventId.value = String(visibleEvents.value[0].id);
+  }
+};
+
+const loadOptions = async () => {
+  if (!auth.isAuthenticated) return;
+  try {
+    const { data } = await api.get('/feedback/options');
+    visibleEvents.value = Array.isArray(data.visible_events) ? data.visible_events : [];
+    vendorEvents.value = Array.isArray(data.vendor_eligible_events) ? data.vendor_eligible_events : [];
+    vendorEligible.value = Boolean(data.vendor_eligible);
+    vendorIneligibleMessage.value = data.vendor_ineligible_message || DEFAULT_VENDOR_MESSAGE;
+    optionsLoaded.value = true;
+    applyEventDefaults();
+  } catch {
+    visibleEvents.value = [];
+    vendorEvents.value = [];
+    vendorEligible.value = false;
+    optionsLoaded.value = true;
+  }
+};
+
+watch(participationType, () => {
+  applyEventDefaults();
+});
+
+watch(() => props.eventId, () => {
+  applyEventDefaults();
+});
+
 const submitFeedback = async () => {
   if (!canSubmit.value) {
+    return;
+  }
+
+  const eventId = lockedEvent.value
+    ? String(lockedEvent.value.id)
+    : String(selectedEventId.value || '');
+
+  if (!eventId) {
+    message.value = 'Please select the event you are reviewing.';
+    isSuccess.value = false;
+    return;
+  }
+
+  if (isVendorParticipation.value && !vendorEligible.value) {
+    message.value = vendorIneligibleMessage.value;
+    isSuccess.value = false;
     return;
   }
 
@@ -322,6 +493,7 @@ const submitFeedback = async () => {
   const formData = new FormData();
   formData.append('rating', String(overallRating.value));
   formData.append('participation_type', participationType.value);
+  formData.append('carboot_event_id', eventId);
   backgrounds.forEach((value, index) => {
     formData.append(`community_backgrounds[${index}]`, value);
   });
@@ -353,6 +525,16 @@ const submitFeedback = async () => {
     isSubmitting.value = false;
   }
 };
+
+onMounted(() => {
+  if (auth.isAuthenticated) {
+    loadOptions();
+  }
+});
+
+watch(() => auth.isAuthenticated, (authed) => {
+  if (authed) loadOptions();
+});
 
 onUnmounted(revokeMediaPreviews);
 </script>

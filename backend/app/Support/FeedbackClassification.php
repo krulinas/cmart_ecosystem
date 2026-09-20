@@ -59,6 +59,15 @@ final class FeedbackClassification
         return self::participationLabels()[$value] ?? $value;
     }
 
+    public static function communityBackgroundLabel(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return self::communityBackgroundLabels()[$value] ?? $value;
+    }
+
     /**
      * @param  list<string>|null  $values
      * @return list<string>

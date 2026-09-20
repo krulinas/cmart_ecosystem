@@ -29,7 +29,7 @@ use Throwable;
  */
 class PostEventSummaryAggregator
 {
-    public const SCHEMA_VERSION = 2;
+    public const SCHEMA_VERSION = 3;
 
     public const TIMEZONE = ReportDateTimeFormatter::TIMEZONE;
 
@@ -51,6 +51,7 @@ class PostEventSummaryAggregator
             $attendance = $this->attendanceSummary($event->id, $dataAvailability);
             $invoiceSummary = $this->financialSummary($event->id, $warnings);
             $siteSummary = $this->eventSiteSummary($event->id);
+            $eventPerformance = $this->eventPerformanceSummary($event->id, $bookingPipeline, $siteSummary, $invoiceSummary);
             $siteDayUtilisation = $this->siteDayUtilisation($event->id, $dataAvailability);
             $categoryDistribution = $this->vendorCategoryDistribution($event->id);
         } catch (Throwable $e) {
@@ -67,7 +68,11 @@ class PostEventSummaryAggregator
         }
 
         $reservationCounts = $this->itemReservationCounts($event->id, $dataAvailability);
-        $feedbackSummary = $this->feedbackSummary($event->id, $dataAvailability);
+        $feedbackSummary = $this->feedbackSummary(
+            $event->id,
+            $dataAvailability,
+            (int) ($bookingPipeline['approved_unique_vendors'] ?? 0),
+        );
 
         $mode = $this->analyticsSourceMode($event);
         $includeSystem = in_array($mode, ['combined', 'system_only'], true);
@@ -104,13 +109,15 @@ class PostEventSummaryAggregator
                 'booking_pipeline' => $includeSystem ? $bookingPipeline : ['excluded' => true],
                 'attendance' => $includeSystem ? $attendance : ['excluded' => true],
                 'payments' => $includeSystem ? $invoiceSummary : ['excluded' => true],
+                'event_performance' => $includeSystem ? $eventPerformance : ['excluded' => true],
                 'event_sites' => $includeSystem ? $siteSummary : ['excluded' => true],
                 'site_day_utilisation' => $includeSystem ? $siteDayUtilisation : ['excluded' => true],
                 'item_reservations' => $includeSystem ? $reservationCounts : ['excluded' => true],
                 'vendor_categories' => $includeSystem ? [
                     'available' => true,
+                    'primary_metric' => 'unique_vendors',
                     'distribution' => $categoryDistribution,
-                    'note' => 'Counts use booking category labels only; no vendor identity is included.',
+                    'note' => 'Counts use booking category labels only; no vendor identity is included. Primary metric is unique participating vendors.',
                 ] : ['excluded' => true],
                 'feedback' => $includeSystem ? $feedbackSummary : ['excluded' => true],
                 'vendor_survey' => $vendorSurveySummary,
@@ -284,10 +291,20 @@ class PostEventSummaryAggregator
      */
     private function financialSummary(int $eventId, array &$warnings): array
     {
-        $approvedBookingIds = Booking::query()
+        $approvedBookings = Booking::query()
             ->where('carboot_event_id', $eventId)
             ->where('approval_status', 'Approved')
-            ->pluck('id');
+            ->get(['id', 'user_id', 'unit_site_price', 'site_quantity']);
+
+        $approvedBookingIds = $approvedBookings->pluck('id');
+
+        // Expected booking revenue from frozen booking price snapshots (not live event site_price).
+        $expectedBookingRevenue = round((float) $approvedBookings->sum(function ($booking) {
+            $unit = (float) ($booking->unit_site_price ?? 0);
+            $qty = max(0, (int) ($booking->site_quantity ?? 0));
+
+            return $unit * $qty;
+        }), 2);
 
         $approvedInvoices = Invoice::query()
             ->whereIn('booking_id', $approvedBookingIds)
@@ -296,7 +313,7 @@ class PostEventSummaryAggregator
         $approvedWithoutInvoice = max(0, $approvedBookingIds->count() - $approvedInvoices->pluck('booking_id')->unique()->count());
         if ($approvedWithoutInvoice > 0) {
             $warnings[] = sprintf(
-                '%d approved booking(s) have no invoice; expected booth fees may be incomplete.',
+                '%d approved booking(s) have no invoice; unbilled booking value is reported separately.',
                 $approvedWithoutInvoice,
             );
         }
@@ -312,34 +329,78 @@ class PostEventSummaryAggregator
         $paidWithdrawalAmount = round((float) $paidWithdrawnInvoices->sum('amount'), 2);
         $paidWithdrawalCount = $paidWithdrawnInvoices->count();
 
-        $expectedApproved = round((float) $approvedInvoices->sum('amount'), 2);
-        $collectedApprovedPaid = round((float) $approvedInvoices->where('payment_status', 'Paid')->sum('amount'), 2);
-        $unpaid = round((float) $approvedInvoices->where('payment_status', 'Unpaid')->sum('amount'), 2);
-        $pendingVerification = round((float) $approvedInvoices->where('payment_status', 'Pending Verification')->sum('amount'), 2);
-        $refunded = round((float) $approvedInvoices->where('payment_status', 'Refunded')->sum('amount'), 2);
+        // Issued invoices only. No Voided/Cancelled invoice status exists today;
+        // filter those labels defensively if ever introduced.
+        $issuedInvoices = $approvedInvoices->filter(function ($invoice) {
+            $status = strtolower((string) ($invoice->payment_status ?? ''));
+
+            return ! in_array($status, ['voided', 'cancelled', 'canceled'], true);
+        });
+
+        $invoicedAmount = round((float) $issuedInvoices->sum('amount'), 2);
+        $collectedApprovedPaid = round((float) $issuedInvoices->where('payment_status', 'Paid')->sum('amount'), 2);
+        $outstanding = round((float) $issuedInvoices
+            ->whereIn('payment_status', ['Unpaid', 'Pending Verification'])
+            ->sum('amount'), 2);
+        $unpaid = round((float) $issuedInvoices->where('payment_status', 'Unpaid')->sum('amount'), 2);
+        $pendingVerification = round((float) $issuedInvoices->where('payment_status', 'Pending Verification')->sum('amount'), 2);
+        $refunded = round((float) $issuedInvoices->where('payment_status', 'Refunded')->sum('amount'), 2);
 
         $collectedTotal = round($collectedApprovedPaid + $paidWithdrawalAmount, 2);
+        $unbilledBookingValue = round(max(0, $expectedBookingRevenue - $invoicedAmount), 2);
+
+        $hasInvoices = $issuedInvoices->count() > 0;
+        $collectionRate = $hasInvoices && $invoicedAmount > 0
+            ? round(($collectedApprovedPaid / $invoicedAmount) * 100, 1)
+            : null;
+
+        $uniqueVendors = $approvedBookings->whereNotNull('user_id')->pluck('user_id')->unique()->count();
+        $sitesSoldResult = $this->countSitesSold($eventId, $approvedBookings);
+        $sitesSold = (int) $sitesSoldResult['sites_sold'];
+
+        $avgPerVendor = $uniqueVendors > 0
+            ? round($expectedBookingRevenue / $uniqueVendors, 2)
+            : null;
+        $avgPerSiteSold = $sitesSold > 0
+            ? round($expectedBookingRevenue / $sitesSold, 2)
+            : null;
 
         return [
             'available' => true,
             'currency' => 'MYR',
-            'expected_booth_fees' => $expectedApproved,
+            'label' => 'Booking Revenue',
+            'expected_booking_revenue' => $expectedBookingRevenue,
+            'expected_booth_fees' => $expectedBookingRevenue,
+            'invoiced_amount' => $invoicedAmount,
+            'collected_revenue' => $collectedTotal,
             'collected_booth_fees' => $collectedTotal,
             'collected_from_approved_paid' => $collectedApprovedPaid,
+            'outstanding_invoice_balance' => $hasInvoices ? $outstanding : null,
+            'unbilled_booking_value' => $unbilledBookingValue,
+            'collection_rate_percent' => $collectionRate,
+            'collection_rate_available' => $hasInvoices && $invoicedAmount > 0,
+            'average_revenue_per_approved_vendor' => $avgPerVendor,
+            'average_revenue_per_site_sold' => $avgPerSiteSold,
+            'sites_sold' => $sitesSold,
+            'sites_sold_source' => $sitesSoldResult['source'],
+            'sites_sold_breakdown' => $sitesSoldResult['breakdown'],
             'unpaid_approved' => $unpaid,
             'pending_verification_approved' => $pendingVerification,
             'refunded_approved' => $refunded,
             // Legacy aliases for EventAnalyticsService / older consumers.
-            'expected' => $expectedApproved,
+            'expected' => $expectedBookingRevenue,
             'collected' => $collectedTotal,
-            'outstanding' => $unpaid,
+            'outstanding' => $hasInvoices ? $outstanding : null,
+            'paid_count' => $issuedInvoices->where('payment_status', 'Paid')->count(),
+            'unpaid_count' => $issuedInvoices->where('payment_status', 'Unpaid')->count(),
+            'invoice_count' => $issuedInvoices->count(),
             'approved_bookings_without_invoice' => $approvedWithoutInvoice,
-            'invoice_count_approved' => $approvedInvoices->count(),
+            'invoice_count_approved' => $issuedInvoices->count(),
             'by_payment_status_approved' => [
-                'Paid' => $approvedInvoices->where('payment_status', 'Paid')->count(),
-                'Unpaid' => $approvedInvoices->where('payment_status', 'Unpaid')->count(),
-                'Pending Verification' => $approvedInvoices->where('payment_status', 'Pending Verification')->count(),
-                'Refunded' => $approvedInvoices->where('payment_status', 'Refunded')->count(),
+                'Paid' => $issuedInvoices->where('payment_status', 'Paid')->count(),
+                'Unpaid' => $issuedInvoices->where('payment_status', 'Unpaid')->count(),
+                'Pending Verification' => $issuedInvoices->where('payment_status', 'Pending Verification')->count(),
+                'Refunded' => $issuedInvoices->where('payment_status', 'Refunded')->count(),
             ],
             'paid_withdrawals' => [
                 'count' => $paidWithdrawalCount,
@@ -354,8 +415,190 @@ class PostEventSummaryAggregator
                     : null,
             ],
             'potentially_incomplete' => $approvedWithoutInvoice > 0,
-            'scope' => 'Booth-fee invoices for this event. Vendor survey sales are not organizer revenue.',
-            'note' => 'Paid withdrawn bookings are included in collected booth-fee revenue but are not approved participation or attendance.',
+            'scope' => 'Site booking revenue for this event. Vendor survey sales are not organizer revenue.',
+            'note' => 'Expected booking revenue uses frozen unit_site_price × site_quantity on approved bookings. Invoiced amount excludes voided/cancelled invoices when present. Collected revenue uses Paid invoices only. Collection rate is blank when invoiced amount is zero. Unbilled booking value is not outstanding invoice balance.',
+        ];
+    }
+
+    /**
+     * Distinct physical sites sold for approved bookings.
+     *
+     * Precedence per booking (never both for the same booking):
+     * 1. Distinct occupying allocation event_site_id values.
+     * 2. Else that booking's stored site_quantity snapshot.
+     *
+     * @param  \Illuminate\Support\Collection<int, Booking>  $approvedBookings
+     * @return array{
+     *   sites_sold: int,
+     *   source: string,
+     *   breakdown: array{
+     *     allocation_bookings: int,
+     *     quantity_fallback_bookings: int,
+     *     allocation_sites: int,
+     *     quantity_fallback_sites: int
+     *   }
+     * }
+     */
+    private function countSitesSold(int $eventId, $approvedBookings): array
+    {
+        $empty = [
+            'sites_sold' => 0,
+            'source' => 'none',
+            'breakdown' => [
+                'allocation_bookings' => 0,
+                'quantity_fallback_bookings' => 0,
+                'allocation_sites' => 0,
+                'quantity_fallback_sites' => 0,
+            ],
+        ];
+
+        $bookingIds = $approvedBookings->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if ($bookingIds === []) {
+            return $empty;
+        }
+
+        $allocationSitesByBooking = [];
+        if (Schema::hasTable('booking_day_allocations')) {
+            $rows = BookingDayAllocation::query()
+                ->whereIn('booking_id', $bookingIds)
+                ->whereIn('allocation_status', BookingDayAllocation::OCCUPYING_STATUSES)
+                ->whereNotNull('event_site_id')
+                ->get(['booking_id', 'event_site_id']);
+
+            foreach ($rows as $row) {
+                $bid = (int) $row->booking_id;
+                $sid = (int) $row->event_site_id;
+                if (! isset($allocationSitesByBooking[$bid])) {
+                    $allocationSitesByBooking[$bid] = [];
+                }
+                $allocationSitesByBooking[$bid][$sid] = true;
+            }
+        }
+
+        $allSiteIds = [];
+        $allocationBookings = 0;
+        $fallbackBookings = 0;
+        $fallbackSites = 0;
+
+        foreach ($approvedBookings as $booking) {
+            $bid = (int) $booking->id;
+            $allocated = $allocationSitesByBooking[$bid] ?? [];
+
+            if ($allocated !== []) {
+                $allocationBookings++;
+                foreach (array_keys($allocated) as $sid) {
+                    $allSiteIds[(int) $sid] = true;
+                }
+                continue;
+            }
+
+            // Historical fallback only — never reconstruct from live event site_price.
+            $qty = max(0, (int) ($booking->site_quantity ?? 0));
+            if ($qty > 0) {
+                $fallbackBookings++;
+                $fallbackSites += $qty;
+            }
+        }
+
+        $allocationSites = count($allSiteIds);
+        $sitesSold = $allocationSites + $fallbackSites;
+
+        $source = match (true) {
+            $allocationBookings > 0 && $fallbackBookings > 0 => 'mixed_allocations_and_site_quantity_fallback',
+            $allocationBookings > 0 => 'distinct_allocations',
+            $fallbackBookings > 0 => 'site_quantity_fallback',
+            default => 'none',
+        };
+
+        return [
+            'sites_sold' => $sitesSold,
+            'source' => $source,
+            'breakdown' => [
+                'allocation_bookings' => $allocationBookings,
+                'quantity_fallback_bookings' => $fallbackBookings,
+                'allocation_sites' => $allocationSites,
+                'quantity_fallback_sites' => $fallbackSites,
+            ],
+        ];
+    }
+
+    /**
+     * Concise event-performance block for Analytics Hub and reports.
+     *
+     * @param  array<string, mixed>  $bookingPipeline
+     * @param  array<string, mixed>  $siteSummary
+     * @param  array<string, mixed>  $payments
+     * @return array<string, mixed>
+     */
+    private function eventPerformanceSummary(
+        int $eventId,
+        array $bookingPipeline,
+        array $siteSummary,
+        array $payments,
+    ): array {
+        $openBookingSites = (int) ($siteSummary['open_booking_sites'] ?? $siteSummary['active_count'] ?? 0);
+        $physicalSites = (int) ($siteSummary['physical_sites'] ?? $siteSummary['total'] ?? 0);
+
+        $approvedBookings = Booking::query()
+            ->where('carboot_event_id', $eventId)
+            ->where('approval_status', 'Approved')
+            ->get(['id', 'user_id', 'unit_site_price', 'site_quantity']);
+
+        $sitesSoldResult = $this->countSitesSold($eventId, $approvedBookings);
+        $sitesSold = (int) $sitesSoldResult['sites_sold'];
+        $availableSites = max(0, $openBookingSites - $sitesSold);
+        $utilisation = $openBookingSites > 0
+            ? round(($sitesSold / $openBookingSites) * 100, 1)
+            : null;
+
+        $feedback = DB::table('feedbacks')
+            ->where('carboot_event_id', $eventId)
+            ->where(function ($query) {
+                $query->whereNull('is_hidden')->orWhere('is_hidden', false);
+            });
+        $feedbackCount = Schema::hasTable('feedbacks') && Schema::hasColumn('feedbacks', 'carboot_event_id')
+            ? (int) (clone $feedback)->count()
+            : null;
+        $avgRating = $feedbackCount
+            ? round((float) (clone $feedback)->avg('rating'), 2)
+            : null;
+
+        $reservationTotal = null;
+        if (Schema::hasTable('item_reservations')) {
+            $reservationTotal = (int) ItemReservation::query()
+                ->where('carboot_event_id', $eventId)
+                ->count();
+        }
+
+        $fallbackNote = ($sitesSoldResult['breakdown']['quantity_fallback_bookings'] ?? 0) > 0
+            ? ' Historical site_quantity fallback contributed for '
+                . $sitesSoldResult['breakdown']['quantity_fallback_bookings']
+                . ' booking(s).'
+            : '';
+
+        return [
+            'available' => true,
+            'total_bookings' => (int) ($bookingPipeline['total_bookings'] ?? 0),
+            'approved_bookings' => (int) ($bookingPipeline['approved_count'] ?? 0),
+            'unique_approved_vendors' => (int) ($bookingPipeline['approved_unique_vendors'] ?? 0),
+            'physical_sites' => $physicalSites,
+            'open_booking_sites' => $openBookingSites,
+            'sites_sold' => $sitesSold,
+            'sites_sold_source' => $sitesSoldResult['source'],
+            'sites_sold_breakdown' => $sitesSoldResult['breakdown'],
+            'available_sites' => $availableSites,
+            'site_utilisation_percent' => $utilisation,
+            'item_reservations_total' => $reservationTotal,
+            'feedback_response_count' => $feedbackCount,
+            'average_overall_rating' => $avgRating,
+            'definitions' => [
+                'physical_sites' => 'Total canonical physical parking sites for this event layout.',
+                'open_booking_sites' => 'Sites currently opened for vendor booking (active).',
+                'sites_sold' => 'Per approved booking: distinct occupying allocation site IDs when present; otherwise that booking\'s site_quantity snapshot. Never both for the same booking; never booking-record count.',
+                'available_sites' => 'Open booking sites minus sites sold.',
+                'site_utilisation' => 'Sites sold ÷ open booking sites.',
+            ],
+            'note' => 'Physical site capacity is not treated as sites sold. Booking-record count is not used as sites sold.' . $fallbackNote,
         ];
     }
 
@@ -372,12 +615,17 @@ class PostEventSummaryAggregator
             ->map(fn ($count) => (int) $count)
             ->all();
 
+        $total = array_sum($counts);
+        $active = (int) ($counts[EventSite::STATUS_ACTIVE] ?? 0);
+
         return [
             'available' => true,
-            'total' => array_sum($counts),
-            'active_count' => (int) ($counts[EventSite::STATUS_ACTIVE] ?? 0),
+            'total' => $total,
+            'physical_sites' => $total,
+            'active_count' => $active,
+            'open_booking_sites' => $active,
             'by_operational_status' => $counts,
-            'note' => 'Operational site status is not the same as site-day occupancy.',
+            'note' => 'Operational site status is not the same as site-day occupancy. Open booking sites are active sites only.',
         ];
     }
 
@@ -476,7 +724,15 @@ class PostEventSummaryAggregator
     }
 
     /**
-     * @return list<array{label: string, count: int}>
+     * @return list<array{
+     *   label: string,
+     *   unique_vendors: int,
+     *   approved_bookings: int,
+     *   sites_sold: int,
+     *   vendor_percent: float|null,
+     *   expected_booking_revenue: float,
+     *   count: int
+     * }>
      */
     private function vendorCategoryDistribution(int $eventId): array
     {
@@ -485,59 +741,161 @@ class PostEventSummaryAggregator
             ? "COALESCE(bookings.category_label_snapshot, vendor_categories.label, bookings.product_category, 'Uncategorised')"
             : "COALESCE(vendor_categories.label, bookings.product_category, 'Uncategorised')";
 
-        $inner = Booking::query()
+        $bookings = Booking::query()
             ->where('bookings.carboot_event_id', $eventId)
             ->where('bookings.approval_status', 'Approved')
             ->leftJoin('vendor_categories', 'bookings.vendor_category_id', '=', 'vendor_categories.id')
-            ->selectRaw("{$resolvedExpression} as resolved_category");
+            ->get([
+                'bookings.id',
+                'bookings.user_id',
+                'bookings.unit_site_price',
+                'bookings.site_quantity',
+                DB::raw("{$resolvedExpression} as resolved_category"),
+            ]);
 
-        $rows = DB::query()
-            ->fromSub($inner, 'category_resolution')
-            ->select('resolved_category', DB::raw('COUNT(*) as aggregate'))
-            ->groupBy('resolved_category')
-            ->orderByDesc('aggregate')
-            ->get();
+        $totalUniqueVendors = $bookings->whereNotNull('user_id')->pluck('user_id')->unique()->count();
+        $grouped = $bookings->groupBy(fn ($row) => (string) ($row->resolved_category ?: 'Uncategorised'));
 
-        return $rows->map(fn ($row) => [
-            'label' => (string) ($row->resolved_category ?: 'Uncategorised'),
-            'count' => (int) $row->aggregate,
-        ])->values()->all();
+        return $grouped->map(function ($rows, $label) use ($totalUniqueVendors) {
+            $uniqueVendors = $rows->whereNotNull('user_id')->pluck('user_id')->unique()->count();
+            $sitesSold = (int) $rows->sum(fn ($row) => max(0, (int) ($row->site_quantity ?? 0)));
+            $revenue = round((float) $rows->sum(function ($row) {
+                return (float) ($row->unit_site_price ?? 0) * max(0, (int) ($row->site_quantity ?? 0));
+            }), 2);
+
+            return [
+                'label' => $label !== '' ? $label : 'Uncategorised',
+                'unique_vendors' => $uniqueVendors,
+                'approved_bookings' => $rows->count(),
+                'sites_sold' => $sitesSold,
+                'vendor_percent' => $totalUniqueVendors > 0
+                    ? round(($uniqueVendors / $totalUniqueVendors) * 100, 1)
+                    : null,
+                'expected_booking_revenue' => $revenue,
+                // Legacy count = unique vendors (primary category metric).
+                'count' => $uniqueVendors,
+            ];
+        })->sortByDesc('unique_vendors')->values()->all();
     }
 
     /**
+     * Aggregate in-app feedback for the event. Never invents zeros for missing linkage.
+     * Does not include raw comments (privacy).
+     *
      * @param  array<string, mixed>  $dataAvailability
      * @return array<string, mixed>
      */
-    private function feedbackSummary(int $eventId, array &$dataAvailability): array
+    private function feedbackSummary(int $eventId, array &$dataAvailability, int $approvedUniqueVendors = 0): array
     {
         if (! Schema::hasTable('feedbacks') || ! Schema::hasColumn('feedbacks', 'carboot_event_id')) {
             $dataAvailability['feedback'] = 'omitted';
 
             return [
                 'available' => false,
+                'source_label' => 'In-app Feedback',
                 'average_rating' => null,
                 'response_count' => null,
                 'message' => 'Not available for this event',
             ];
         }
 
-        $stats = DB::table('feedbacks')
+        $rows = DB::table('feedbacks')
             ->where('carboot_event_id', $eventId)
             ->where(function ($query) {
                 $query->whereNull('is_hidden')->orWhere('is_hidden', false);
             })
-            ->selectRaw('count(*) as response_count, avg(rating) as average_rating')
-            ->first();
+            ->get([
+                'id',
+                'user_id',
+                'participation_type',
+                'rating',
+                'community_backgrounds',
+                'created_at',
+                'updated_at',
+            ]);
 
-        $count = (int) ($stats->response_count ?? 0);
+        $count = $rows->count();
+        if ($count === 0) {
+            return [
+                'available' => true,
+                'source_label' => 'In-app Feedback',
+                'response_count' => 0,
+                'vendor_response_count' => 0,
+                'non_vendor_response_count' => 0,
+                'average_rating' => null,
+                'rating_distribution' => [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0],
+                'participation_distribution' => [],
+                'background_distribution' => [],
+                'vendor_response_rate_percent' => $approvedUniqueVendors > 0 ? 0.0 : null,
+                'vendor_respondents' => 0,
+                'approved_unique_vendors' => $approvedUniqueVendors,
+                'message' => 'No feedback has been submitted for this event yet.',
+            ];
+        }
+
+        $vendorRows = $rows->where('participation_type', 'vendor');
+        $nonVendorRows = $rows->where('participation_type', '!=', 'vendor');
+        $vendorRespondents = $vendorRows->whereNotNull('user_id')->pluck('user_id')->unique()->count();
+
+        $ratingDistribution = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
+        foreach ($rows as $row) {
+            $rating = (int) $row->rating;
+            if ($rating >= 1 && $rating <= 5) {
+                $ratingDistribution[$rating]++;
+            }
+        }
+
+        $participationDistribution = $rows
+            ->groupBy(fn ($row) => $row->participation_type ?: 'other')
+            ->map(fn ($group, $type) => [
+                'type' => $type,
+                'label' => \App\Support\FeedbackClassification::participationLabel((string) $type),
+                'count' => $group->count(),
+            ])
+            ->values()
+            ->all();
+
+        $backgroundCounts = [];
+        foreach ($rows as $row) {
+            $backgrounds = json_decode((string) ($row->community_backgrounds ?? '[]'), true);
+            if (! is_array($backgrounds)) {
+                continue;
+            }
+            foreach ($backgrounds as $bg) {
+                if (! is_string($bg) || $bg === '') {
+                    continue;
+                }
+                $backgroundCounts[$bg] = ($backgroundCounts[$bg] ?? 0) + 1;
+            }
+        }
+        $backgroundDistribution = collect($backgroundCounts)
+            ->map(fn ($count, $key) => [
+                'key' => $key,
+                'label' => \App\Support\FeedbackClassification::communityBackgroundLabel((string) $key),
+                'count' => $count,
+            ])
+            ->sortByDesc('count')
+            ->values()
+            ->all();
 
         return [
             'available' => true,
+            'source_label' => 'In-app Feedback',
             'response_count' => $count,
-            'average_rating' => $count > 0 && $stats->average_rating !== null
-                ? round((float) $stats->average_rating, 2)
+            'vendor_response_count' => $vendorRows->count(),
+            'non_vendor_response_count' => $nonVendorRows->count(),
+            'average_rating' => round((float) $rows->avg('rating'), 2),
+            'rating_distribution' => $ratingDistribution,
+            'participation_distribution' => $participationDistribution,
+            'background_distribution' => $backgroundDistribution,
+            'vendor_response_rate_percent' => $approvedUniqueVendors > 0
+                ? round(($vendorRespondents / $approvedUniqueVendors) * 100, 1)
                 : null,
-            'message' => $count === 0 ? 'No community feedback submissions were recorded for this event.' : null,
+            'vendor_respondents' => $vendorRespondents,
+            'approved_unique_vendors' => $approvedUniqueVendors,
+            // Raw comments are intentionally omitted from frozen report snapshots.
+            // Analytics Hub loads anonymized comments live (not from published reports).
+            'message' => null,
         ];
     }
 
