@@ -18,7 +18,7 @@
             class="px-3.5 py-2.5 rounded-lg text-gray-600 hover:text-brand-600 hover:bg-brand-50 font-semibold transition text-[15px]"
             :class="{ 'text-brand-600 bg-brand-50': isDashboardActive }"
           >
-            {{ vendorDashboardLink.label }}
+            {{ navLabel(vendorDashboardLink) }}
           </router-link>
 
           <div
@@ -35,7 +35,7 @@
               :aria-haspopup="true"
               @click="toggleMenu(menu.id)"
             >
-              {{ menu.label }}
+              {{ navLabel(menu) }}
               <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
@@ -54,7 +54,7 @@
                 :class="{ 'text-brand-700 bg-brand-50': isActive(item) }"
                 @click="closeMenus"
               >
-                {{ item.label }}
+                {{ navLabel(item) }}
               </router-link>
               <button
                 v-if="menu.id === 'account'"
@@ -63,7 +63,7 @@
                 data-testid="nav-logout"
                 @click="handleLogout"
               >
-                Logout
+                {{ t('common.logout') }}
               </button>
             </div>
           </div>
@@ -78,7 +78,7 @@
             class="px-3.5 py-2.5 rounded-lg text-gray-600 hover:text-brand-600 hover:bg-brand-50 font-semibold transition text-[15px]"
             :class="{ 'text-brand-600 bg-brand-50': isActive(link) }"
           >
-            {{ link.label }}
+            {{ navLabel(link) }}
           </router-link>
 
           <div class="relative" :data-testid="communityExploreMenu.testId">
@@ -90,7 +90,7 @@
               :aria-haspopup="true"
               @click="toggleMenu(communityExploreMenu.id)"
             >
-              {{ communityExploreMenu.label }}
+              {{ navLabel(communityExploreMenu) }}
               <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
@@ -109,7 +109,7 @@
                 :class="{ 'text-brand-700 bg-brand-50': isActive(item) }"
                 @click="closeMenus"
               >
-                {{ item.label }}
+                {{ navLabel(item) }}
               </router-link>
             </div>
           </div>
@@ -124,10 +124,11 @@
             class="px-3.5 py-2.5 rounded-lg text-gray-600 hover:text-brand-600 hover:bg-brand-50 font-semibold transition text-[15px]"
             :class="{ 'text-brand-600 bg-brand-50': isActive(link) }"
           >
-            {{ link.label }}
+            {{ navLabel(link) }}
           </router-link>
         </template>
 
+        <LanguageToggle class="ml-2" />
         <div class="h-6 w-px bg-gray-200 mx-2"></div>
 
         <template v-if="isCommunityVisitorNav">
@@ -137,7 +138,7 @@
             class="bg-brand-500 text-white px-5 py-2.5 min-h-[40px] rounded-lg shadow hover:bg-brand-600 transition text-[15px] font-bold whitespace-nowrap"
             @click="closeMenus"
           >
-            {{ communityBecomeVendorCta.label }}
+            {{ navLabel(communityBecomeVendorCta) }}
           </router-link>
 
           <div class="relative" :data-testid="communityAccountMenu.testId">
@@ -149,7 +150,7 @@
               :aria-haspopup="true"
               @click="toggleMenu(communityAccountMenu.id)"
             >
-              {{ communityAccountMenu.label }}
+              {{ navLabel(communityAccountMenu) }}
               <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
@@ -173,7 +174,7 @@
                 data-testid="nav-logout"
                 @click="handleLogout"
               >
-                Logout
+                {{ t('common.logout') }}
               </button>
             </div>
           </div>
@@ -184,29 +185,32 @@
             :to="auth.startVendorBookingPath()"
             class="bg-brand-500 text-white px-5 py-2.5 min-h-[40px] rounded-lg shadow hover:bg-brand-600 transition text-[15px] font-bold whitespace-nowrap"
           >
-            Start Vendor Booking
+            {{ t('navigation.startVendorBooking') }}
           </router-link>
 
           <router-link
             to="/login"
             class="px-5 py-2.5 min-h-[40px] rounded-lg border-2 border-brand-500 text-brand-600 hover:bg-brand-50 font-bold transition text-[15px] whitespace-nowrap"
           >
-            Sign in
+            {{ t('common.signIn') }}
           </router-link>
         </template>
       </div>
 
-      <button
-        type="button"
-        class="md:hidden text-gray-800 hover:text-brand-600 focus:outline-none transition"
-        aria-label="Toggle menu"
-        @click="toggleMobile"
-      >
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path v-if="!isMobileOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-          <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+      <div class="flex items-center gap-2 md:hidden">
+        <LanguageToggle />
+        <button
+          type="button"
+          class="text-gray-800 hover:text-brand-600 focus:outline-none transition"
+          :aria-label="t('common.toggleMenu')"
+          @click="toggleMobile"
+        >
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path v-if="!isMobileOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Mobile navigation -->
@@ -228,11 +232,11 @@
               :class="{ 'text-brand-600 bg-brand-50': isDashboardActive }"
               @click="closeMobile"
             >
-              {{ vendorDashboardLink.label }}
+              {{ navLabel(vendorDashboardLink) }}
             </router-link>
 
             <div v-for="menu in vendorMenus" :key="'m-' + menu.id" class="space-y-1">
-              <p class="text-xs font-bold uppercase tracking-wider text-gray-400 px-2 pt-1">{{ menu.label }}</p>
+              <p class="text-xs font-bold uppercase tracking-wider text-gray-400 px-2 pt-1">{{ navLabel(menu) }}</p>
               <router-link
                 v-for="item in menu.items"
                 :key="'m-' + linkNavKey(item)"
@@ -242,7 +246,7 @@
                 :class="{ 'text-brand-600 bg-brand-50': isActive(item) }"
                 @click="closeMobile"
               >
-                {{ item.label }}
+                {{ navLabel(item) }}
               </router-link>
               <button
                 v-if="menu.id === 'account'"
@@ -251,7 +255,7 @@
                 data-testid="nav-logout-mobile"
                 @click="handleMobileLogout"
               >
-                Logout
+                {{ t('common.logout') }}
               </button>
             </div>
           </template>
@@ -266,12 +270,12 @@
               :class="{ 'text-brand-600 bg-brand-50': isActive(link) }"
               @click="closeMobile"
             >
-              {{ link.label }}
+              {{ navLabel(link) }}
             </router-link>
 
             <div class="space-y-1">
               <p class="text-xs font-bold uppercase tracking-wider text-gray-400 px-2 pt-1">
-                {{ communityExploreMenu.label }}
+                {{ navLabel(communityExploreMenu) }}
               </p>
               <router-link
                 v-for="item in communityExploreMenu.items"
@@ -282,7 +286,7 @@
                 :class="{ 'text-brand-600 bg-brand-50': isActive(item) }"
                 @click="closeMobile"
               >
-                {{ item.label }}
+                {{ navLabel(item) }}
               </router-link>
             </div>
 
@@ -294,12 +298,12 @@
               class="bg-brand-500 text-white px-4 py-3 rounded-lg text-center font-bold shadow hover:bg-brand-600 transition"
               @click="closeMobile"
             >
-              {{ communityBecomeVendorCta.label }}
+              {{ navLabel(communityBecomeVendorCta) }}
             </router-link>
 
             <div class="space-y-1">
               <p class="text-xs font-bold uppercase tracking-wider text-gray-400 px-2 pt-1">
-                {{ communityAccountMenu.label }}
+                {{ navLabel(communityAccountMenu) }}
               </p>
               <p
                 v-if="auth.user?.name"
@@ -314,7 +318,7 @@
                 data-testid="nav-logout-mobile"
                 @click="handleMobileLogout"
               >
-                Logout
+                {{ t('common.logout') }}
               </button>
             </div>
           </template>
@@ -329,7 +333,7 @@
               :class="{ 'text-brand-600 bg-brand-50': isActive(link) }"
               @click="closeMobile"
             >
-              {{ link.label }}
+              {{ navLabel(link) }}
             </router-link>
 
             <hr class="border-gray-200" />
@@ -339,7 +343,7 @@
               class="bg-brand-500 text-white px-4 py-3 rounded-lg text-center font-bold shadow hover:bg-brand-600 transition"
               @click="closeMobile"
             >
-              Start Vendor Booking
+              {{ t('navigation.startVendorBooking') }}
             </router-link>
 
             <router-link
@@ -347,7 +351,7 @@
               class="border-2 border-brand-500 text-brand-600 px-4 py-3 rounded-lg text-center font-bold hover:bg-brand-50 transition"
               @click="closeMobile"
             >
-              Sign in
+              {{ t('common.signIn') }}
             </router-link>
           </template>
         </div>
@@ -372,6 +376,8 @@ import {
   VENDOR_ACCOUNT_MENU,
 } from '../../config/navigation';
 import { useLogout } from '../../composables/useLogout';
+import { useI18n } from 'vue-i18n';
+import LanguageToggle from '../LanguageToggle.vue';
 
 defineProps({
   variant: {
@@ -388,6 +394,7 @@ defineProps({
 const auth = useAuthStore();
 const route = useRoute();
 const { logout } = useLogout();
+const { t } = useI18n({ useScope: 'global' });
 const isMobileOpen = ref(false);
 const openMenu = ref(null);
 
@@ -406,6 +413,7 @@ const communityExploreMenu = COMMUNITY_EXPLORE_MENU;
 const communityBecomeVendorCta = COMMUNITY_BECOME_VENDOR_CTA;
 const communityAccountMenu = COMMUNITY_ACCOUNT_MENU;
 const guestLinks = PUBLIC_LINKS;
+const navLabel = (item) => (item.labelKey ? t(item.labelKey) : item.label);
 
 const homeLink = computed(() => {
   if (auth.isAuthenticated) {

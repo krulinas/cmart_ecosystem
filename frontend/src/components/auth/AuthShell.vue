@@ -1,5 +1,6 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-brand-50 via-white to-cyan-50/40 flex items-center justify-center px-4 py-12">
+  <div class="relative min-h-screen bg-gradient-to-br from-brand-50 via-white to-cyan-50/40 flex items-center justify-center px-4 py-12">
+    <LanguageToggle class="absolute right-4 top-4 sm:right-6 sm:top-6" />
     <div class="w-full" :class="wide ? 'max-w-lg' : 'max-w-md'">
       <router-link
         v-if="showBackLink"
@@ -7,7 +8,7 @@
         class="inline-flex items-center text-sm text-ink-500 hover:text-brand-600 mb-6 transition-colors"
       >
         <span class="mr-1" aria-hidden="true">←</span>
-        {{ backLabel }}
+        {{ resolvedBackLabel }}
       </router-link>
 
       <div class="ml-card shadow-lg shadow-brand-500/5 border border-white/80">
@@ -33,12 +34,19 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import LanguageToggle from '../LanguageToggle.vue';
+
+const props = defineProps({
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },
   backTo: { type: String, default: '/' },
-  backLabel: { type: String, default: 'Back to public portal' },
+  backLabel: { type: String, default: '' },
   showBackLink: { type: Boolean, default: true },
   wide: { type: Boolean, default: false },
 });
+
+const { t } = useI18n({ useScope: 'global' });
+const resolvedBackLabel = computed(() => props.backLabel || t('common.backToPublicPortal'));
 </script>

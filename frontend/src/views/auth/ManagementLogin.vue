@@ -1,11 +1,11 @@
 <template>
   <AuthShell
-    title="CMart Operations Login"
-    subtitle="Authorized staff and management access only."
+    :title="t('auth.managementTitle')"
+    :subtitle="t('auth.managementSubtitle')"
   >
     <form @submit.prevent="submit" class="space-y-4">
       <div>
-        <label class="ml-label" for="management-login-email">Work email</label>
+        <label class="ml-label" for="management-login-email">{{ t('auth.workEmail') }}</label>
         <input
           id="management-login-email"
           v-model="form.email"
@@ -19,7 +19,7 @@
       </div>
 
       <div>
-        <label class="ml-label" for="management-login-password">Password</label>
+        <label class="ml-label" for="management-login-password">{{ t('common.password') }}</label>
         <div class="relative w-full">
           <input
             id="management-login-password"
@@ -28,7 +28,7 @@
             required
             autocomplete="current-password"
             class="ml-input pr-16"
-            placeholder="Enter your password"
+            :placeholder="t('auth.passwordPlaceholder')"
             data-testid="management-login-password"
           />
           <button
@@ -37,7 +37,7 @@
             :aria-pressed="showPassword"
             @click="showPassword = !showPassword"
           >
-            {{ showPassword ? 'Hide' : 'Show' }}
+            {{ showPassword ? t('common.hide') : t('common.show') }}
           </button>
         </div>
       </div>
@@ -48,7 +48,7 @@
         :disabled="auth.loading"
         data-testid="management-login-submit"
       >
-        {{ auth.loading ? 'Signing in…' : 'Sign in' }}
+        {{ auth.loading ? t('common.signingIn') : t('common.signIn') }}
       </button>
     </form>
   </AuthShell>
@@ -61,11 +61,13 @@ import { useToast } from 'vue-toastification';
 import AuthShell from '../../components/auth/AuthShell.vue';
 import { resolveManagementPostAuthRedirect } from '../../utils/postAuthRedirect';
 import { useAuthStore } from '../../stores/auth';
+import { useI18n } from 'vue-i18n';
 
 const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const { t } = useI18n({ useScope: 'global' });
 
 const showPassword = ref(false);
 
@@ -80,15 +82,14 @@ const submit = async () => {
 
     if (!auth.isCmartWorker) {
       await auth.logout();
-      toast.error('This portal is restricted to authorized CMart management users.');
+      toast.error(t('auth.managementRestricted'));
       return;
     }
 
-    toast.success('Signed in successfully.');
+    toast.success(t('auth.signInSuccess'));
     router.push(resolveManagementPostAuthRedirect(auth, route.query.redirect));
-  } catch (error) {
-    const message = error.response?.data?.message || 'Invalid email or password. Please try again.';
-    toast.error(message);
+  } catch {
+    toast.error(t('auth.invalidCredentials'));
   }
 };
 </script>

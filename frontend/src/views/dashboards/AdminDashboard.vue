@@ -36,7 +36,7 @@
         <span class="hidden sm:inline">{{ refreshButtonLabel }}</span>
       </button>
       <button class="ml-btn-ghost text-sm ring-1 ring-ink-200/80 bg-white/70" @click="logout">
-        Logout
+        {{ t('common.logout') }}
       </button>
     </template>
 
@@ -139,6 +139,7 @@ import {
 } from '../../config/workspaceNav';
 import { MANAGEMENT_WORKSPACE_ROLES, defaultManagementHashForRole } from '../../utils/managementRoles';
 import { getManagementUnreadNotificationCount } from '../../services/reportWorkflowApi';
+import { useI18n } from 'vue-i18n';
 
 const SECTION_LABELS = {
   bookings: 'Bookings',
@@ -154,6 +155,7 @@ const SECTION_LABELS = {
 };
 
 const toast = useToast();
+const { t } = useI18n({ useScope: 'global' });
 const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
@@ -367,7 +369,7 @@ const onBookingsRefreshed = () => {
 const logout = async () => {
   invalidateAll();
   await auth.logout();
-  toast.success('200 OK: Session terminated successfully.');
+  toast.success(t('auth.logoutSuccess'));
   router.push('/');
 };
 
