@@ -16,5 +16,13 @@ return [
     'failed' => 'These credentials do not match our records.',
     'password' => 'The provided password is incorrect.',
     'throttle' => 'Too many login attempts. Please try again in :seconds seconds.',
+    'api' => [
+        'registered' => 'Account registered successfully.',
+        'authenticated' => 'Authentication successful.',
+        'logged_out' => 'Session terminated successfully.',
+        'invalid_credentials' => 'Invalid email or password.',
+        'google_authenticated' => 'Google authentication successful.',
+        'google_failed' => 'Failed to authenticate with Google.',
+    ],
 
 ];

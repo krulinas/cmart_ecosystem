@@ -2,6 +2,7 @@ import axios from 'axios';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from '../stores/auth';
 import { beginSessionExpiry, isAuthAttemptUrl, isSessionExpiryHandling } from '../utils/sessionExpiry';
+import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY } from '../i18n';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api',
@@ -34,6 +35,9 @@ const maybeShowForbiddenToast = (message) => {
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('carboot_cmart_token');
+  const locale = localStorage.getItem(LOCALE_STORAGE_KEY) || DEFAULT_LOCALE;
+
+  config.headers['Accept-Language'] = locale;
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

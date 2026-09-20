@@ -4,32 +4,38 @@ export const WORKSPACE_NAV_GROUPS = [
   {
     id: 'carboot_operations',
     label: 'Event Operations',
+    labelKey: 'navigation.eventOperations',
     items: ['bookings', 'feedback', 'events', 'layout', 'item-reservations'],
   },
   {
     id: 'cmart_activities',
     label: 'CMart Activities',
+    labelKey: 'navigation.cmartActivities',
     items: ['news'],
   },
   {
     id: 'generated_reports',
     label: 'Reports',
+    labelKey: 'navigation.reports',
     items: ['reports'],
   },
   {
     id: 'report_centre',
     label: 'Reporting',
+    labelKey: 'navigation.reporting',
     items: ['report-centre'],
   },
   {
     id: 'carboot_analytics',
     label: 'Event Analytics',
+    labelKey: 'navigation.eventAnalytics',
     analyticsOnly: true,
     items: ['event-analytics'],
   },
   {
     id: 'administration',
     label: 'Administration',
+    labelKey: 'navigation.administration',
     items: ['audit'],
   },
 ];

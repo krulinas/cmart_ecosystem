@@ -1,11 +1,11 @@
 <template>
   <AuthShell
-    title="Welcome to Carboot@CMart"
-    subtitle="Sign in or create an account to book vendor spaces, manage bookings, view receipts, and follow upcoming carboot events."
+    :title="t('auth.publicTitle')"
+    :subtitle="t('auth.publicSubtitle')"
   >
     <div v-if="showMethodChooser" class="space-y-3">
       <AuthMethodButton
-        label="Continue with Google"
+        :label="t('auth.continueWithGoogle')"
         variant="google"
         test-id="auth-continue-google"
         @click="continueWithGoogle"
@@ -16,7 +16,7 @@
       </AuthMethodButton>
 
       <AuthMethodButton
-        label="Continue with email"
+        :label="t('auth.continueWithEmail')"
         test-id="auth-continue-email"
         @click="step = 'email'"
       />
@@ -30,11 +30,11 @@
         data-testid="auth-back-to-options"
         @click="step = 'chooser'"
       >
-        ← Back to all sign-in options
+        ← {{ t('auth.backToOptions') }}
       </button>
 
       <div>
-        <label class="ml-label" for="login-email">Email</label>
+        <label class="ml-label" for="login-email">{{ t('common.email') }}</label>
         <input
           id="login-email"
           v-model="form.email"
@@ -42,13 +42,13 @@
           required
           autocomplete="username"
           class="ml-input"
-          placeholder="you@example.com"
+          :placeholder="t('auth.emailPlaceholder')"
           data-testid="login-email"
         />
       </div>
 
       <div>
-        <label class="ml-label" for="login-password">Password</label>
+        <label class="ml-label" for="login-password">{{ t('common.password') }}</label>
         <div class="relative w-full">
           <input
             id="login-password"
@@ -57,7 +57,7 @@
             required
             autocomplete="current-password"
             class="ml-input pr-16"
-            placeholder="Enter your password"
+            :placeholder="t('auth.passwordPlaceholder')"
             data-testid="login-password"
           />
           <button
@@ -66,21 +66,21 @@
             :aria-pressed="showPassword"
             @click="showPassword = !showPassword"
           >
-            {{ showPassword ? 'Hide' : 'Show' }}
+            {{ showPassword ? t('common.hide') : t('common.show') }}
           </button>
         </div>
       </div>
 
       <button type="submit" class="ml-btn-primary w-full" :disabled="auth.loading" data-testid="login-submit">
-        {{ auth.loading ? 'Signing in…' : 'Sign in' }}
+        {{ auth.loading ? t('common.signingIn') : t('common.signIn') }}
       </button>
     </form>
 
     <template #footer>
       <p class="text-center text-sm text-ink-500">
-        New to Carboot@CMart?
+        {{ t('auth.newToCmart') }}
         <router-link to="/register" class="font-semibold text-brand-600 hover:text-brand-700">
-          Create an account
+          {{ t('auth.createAccount') }}
         </router-link>
       </p>
     </template>
@@ -97,11 +97,13 @@ import GoogleIcon from '../../components/auth/GoogleIcon.vue';
 import { getGoogleAuthUrl, isGoogleLoginEnabled } from '../../config/auth';
 import { resolvePostAuthRedirect } from '../../utils/postAuthRedirect';
 import { useAuthStore } from '../../stores/auth';
+import { useI18n } from 'vue-i18n';
 
 const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const { t } = useI18n({ useScope: 'global' });
 
 const googleEnabled = isGoogleLoginEnabled();
 const step = ref(googleEnabled ? 'chooser' : 'email');
@@ -121,11 +123,10 @@ const continueWithGoogle = () => {
 const submit = async () => {
   try {
     await auth.login(form);
-    toast.success('Signed in successfully.');
+    toast.success(t('auth.signInSuccess'));
     router.push(resolvePostAuthRedirect(auth, route.query.redirect));
-  } catch (error) {
-    const message = error.response?.data?.message || 'Invalid email or password. Please try again.';
-    toast.error(message);
+  } catch {
+    toast.error(t('auth.invalidCredentials'));
   }
 };
 </script>

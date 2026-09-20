@@ -41,7 +41,7 @@
         </router-link>
 
         <div v-if="branchName" class="mt-3 space-y-1">
-          <div class="text-[10px] font-semibold uppercase tracking-wider text-white/55">Host venue</div>
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-white/55">{{ t('common.hostVenue') }}</div>
           <div class="text-sm font-bold leading-snug text-white/95">{{ branchName }}</div>
           <div v-if="department" class="flex flex-wrap gap-1.5 pt-0.5">
             <span
@@ -80,7 +80,7 @@
               <span
                 v-if="badgeCountFor(item.hash)"
                 class="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-400 px-1.5 text-[10px] font-bold text-amber-950"
-                aria-label="Unread notifications"
+                :aria-label="t('common.unreadNotifications')"
               >
                 {{ badgeCountFor(item.hash) }}
               </span>
@@ -161,6 +161,7 @@
           </div>
 
           <div class="flex shrink-0 flex-wrap items-center gap-2">
+            <LanguageToggle />
             <slot name="actions" />
           </div>
         </div>
@@ -178,9 +179,12 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useI18n } from 'vue-i18n';
+import LanguageToggle from '../components/LanguageToggle.vue';
 
 const route = useRoute();
 const auth = useAuthStore();
+const { t } = useI18n({ useScope: 'global' });
 const homeLink = computed(() => auth.homeForUser());
 
 const props = defineProps({
