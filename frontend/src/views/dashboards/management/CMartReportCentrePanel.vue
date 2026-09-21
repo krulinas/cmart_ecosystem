@@ -156,6 +156,7 @@ import { useToast } from 'vue-toastification';
 import { statusLabel } from '../../../i18n';
 import PostEventSummaryView from '../../../components/reports/PostEventSummaryView.vue';
 import ReportNotificationActivity from '../../../components/reports/ReportNotificationActivity.vue';
+import { formatLocaleDateTime } from '../../../utils/localeFormat';
 import {
   REPORT_TYPE_POST_EVENT,
   cancelCmartReportRequest,
@@ -198,7 +199,7 @@ const form = ref({
 const formatDate = (value) => {
   if (!value) return '—';
   try {
-    return new Date(value).toLocaleString();
+    return formatLocaleDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
   } catch {
     return value;
   }

@@ -405,6 +405,7 @@ import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import api from '../services/api';
 import WithdrawBookingModal from './WithdrawBookingModal.vue';
+import { formatLocaleDateTime } from '../utils/localeFormat';
 import {
   PIPELINE_STEPS,
   pipelineStepLabel,
@@ -467,7 +468,7 @@ const attendancePolicy = computed(() => booking.value?.attendance_policy || null
 const formatAttendanceDay = (day) => {
   const date = new Date(day.starts_at || `${day.operational_date}T00:00:00`);
   if (Number.isNaN(date.getTime())) return day.operational_date;
-  return date.toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' });
+  return formatLocaleDateTime(date, { dateStyle: 'full', timeStyle: 'short' });
 };
 
 const close = () => emit('update:modelValue', false);

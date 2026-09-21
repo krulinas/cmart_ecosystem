@@ -133,6 +133,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
+import { formatLocaleDateTime } from '../../utils/localeFormat';
 import {
   attendanceExceptionValidation,
   attendanceReleaseCount,
@@ -191,7 +192,7 @@ const dayStateLabel = (day) => {
 const formatDay = (day) => {
   const start = new Date(day.starts_at || `${day.operational_date}T00:00:00`);
   if (Number.isNaN(start.getTime())) return day.operational_date;
-  return start.toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' });
+  return formatLocaleDateTime(start, { dateStyle: 'full', timeStyle: 'short' });
 };
 const close = () => {
   if (!submitting.value) emit('update:modelValue', false);

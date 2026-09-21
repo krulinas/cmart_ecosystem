@@ -32,7 +32,7 @@ class ItemReservationController extends Controller
         }
 
         return response()->json([
-            'message' => '201 Created: Item reservation created successfully.',
+            'message' => __('api.item_reservation_created_successfully'),
             'reservation' => ItemReservationPresenter::forReservingUser($reservation),
         ], 201);
     }
@@ -88,7 +88,7 @@ class ItemReservationController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Item reservation cancelled successfully.',
+            'message' => __('api.item_reservation_cancelled_successfully'),
             'reservation' => ItemReservationPresenter::forReservingUser($reservation),
         ]);
     }

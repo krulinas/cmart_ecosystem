@@ -1,5 +1,6 @@
 import { tt, statusLabel as i18nStatusLabel, getAppLocale } from '../i18n';
 import { bcp47ForLocale } from '../i18n/localeStorage';
+import { formatLocaleDate, formatLocaleDateTime } from './localeFormat';
 
 const MY_TZ = 'Asia/Kuala_Lumpur';
 
@@ -609,13 +610,12 @@ export const formatDateTime = (value, t = tt) => {
   if (!value) return t('common.notRecorded');
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return t('common.notRecorded');
-  return date.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: MY_TZ });
+  return formatLocaleDateTime(date, { dateStyle: 'medium', timeStyle: 'short' });
 };
 
 export const formatOperationalDate = (dateStr) => {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    timeZone: MY_TZ,
+  return formatLocaleDate(dateStr, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

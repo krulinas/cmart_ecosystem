@@ -29,14 +29,14 @@ class OrganizerBookingReassignmentEligibilityService
         if (! in_array($booking->approval_status, self::REASSIGNABLE_STATUSES, true)) {
             $blockers[] = [
                 'code' => 'BOOKING_NOT_REASSIGNABLE',
-                'message' => 'This booking cannot be reassigned in its current state.',
+                'message' => __('api.this_booking_cannot_be_reassigned_in_its_current_state'),
             ];
         }
 
         if ($booking->checked_in_at !== null) {
             $blockers[] = [
                 'code' => 'BOOKING_NOT_REASSIGNABLE',
-                'message' => 'This booking cannot be reassigned in its current state.',
+                'message' => __('api.this_booking_cannot_be_reassigned_in_its_current_state'),
             ];
         }
 
@@ -44,12 +44,12 @@ class OrganizerBookingReassignmentEligibilityService
         if (! $invoice) {
             $blockers[] = [
                 'code' => 'BOOKING_NOT_REASSIGNABLE',
-                'message' => 'This booking does not have a valid invoice.',
+                'message' => __('api.this_booking_does_not_have_a_valid_invoice'),
             ];
         } elseif ($invoice->payment_status !== 'Unpaid') {
             $blockers[] = [
                 'code' => 'BOOKING_PAYMENT_LOCKED',
-                'message' => 'Sites cannot be changed after payment is submitted or verified.',
+                'message' => __('api.sites_cannot_be_changed_after_payment_is_submitted_bef94186'),
             ];
         }
 
@@ -57,12 +57,12 @@ class OrganizerBookingReassignmentEligibilityService
         if ($active->isEmpty()) {
             $blockers[] = [
                 'code' => 'BOOKING_NOT_REASSIGNABLE',
-                'message' => 'This booking does not have an active allocation.',
+                'message' => __('api.this_booking_does_not_have_an_active_allocation'),
             ];
         } elseif ($active->contains(fn (BookingDayAllocation $row) => $row->allocation_status !== BookingDayAllocation::STATUS_RESERVED)) {
             $blockers[] = [
                 'code' => 'BOOKING_ALLOCATION_CONFIRMED',
-                'message' => 'Sites cannot be changed because the booking allocation is confirmed.',
+                'message' => __('api.sites_cannot_be_changed_because_the_booking_alloca_8a74c877'),
             ];
         }
 
@@ -70,14 +70,14 @@ class OrganizerBookingReassignmentEligibilityService
             if ($day->starts_at !== null && $day->starts_at->lte(now())) {
                 $blockers[] = [
                     'code' => 'EVENT_DAY_ALREADY_STARTED',
-                    'message' => 'Sites cannot be changed after an event day has started.',
+                    'message' => __('api.sites_cannot_be_changed_after_an_event_day_has_started'),
                 ];
                 break;
             }
             if ($day->operational_status !== EventDay::STATUS_ACTIVE) {
                 $blockers[] = [
                     'code' => 'EVENT_DAY_ALREADY_STARTED',
-                    'message' => 'Sites cannot be changed after an event day has started.',
+                    'message' => __('api.sites_cannot_be_changed_after_an_event_day_has_started'),
                 ];
                 break;
             }

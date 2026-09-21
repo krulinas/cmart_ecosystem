@@ -90,7 +90,7 @@ export const getEventCalendarParts = (value) => {
   if (!parsed) return { day: '', month: '' };
 
   const parts = getEventZonedParts(value);
-  const month = parsed.toLocaleString('en-GB', {
+  const month = parsed.toLocaleString(bcp47ForLocale(getAppLocale()), {
     timeZone: EVENT_TZ,
     month: 'short',
   });

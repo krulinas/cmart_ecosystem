@@ -20,6 +20,7 @@
 
 <script setup>
 import { useI18n } from 'vue-i18n';
+import { formatLocaleDateTime } from '../../utils/localeFormat';
 
 defineProps({
   items: { type: Array, default: () => [] },
@@ -37,7 +38,7 @@ const glyph = (row) => {
 const formatDate = (value) => {
   if (!value) return '';
   try {
-    return new Date(value).toLocaleString();
+    return formatLocaleDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
   } catch {
     return value;
   }

@@ -14,7 +14,7 @@ class BossAnalyticsController extends Controller
     public function wordcloud(string $source)
     {
         if (! in_array($source, ['feedback', 'products'], true)) {
-            return response()->json(['message' => 'Invalid word cloud source.'], 404);
+            return response()->json(['message' => __('api.invalid_word_cloud_source')], 404);
         }
 
         $baseUrl = rtrim(config('services.analytics.url'), '/');
@@ -31,7 +31,7 @@ class BossAnalyticsController extends Controller
                 ->get("{$baseUrl}/api/analytics/wordcloud/{$source}", $query);
         } catch (\Throwable) {
             return response()->json([
-                'message' => 'Analytics service is unavailable. Ensure the Python service is running on the configured analytics URL.',
+                'message' => __('api.analytics_service_is_unavailable_ensure_the_python_a07204ae'),
             ], 502);
         }
 

@@ -195,6 +195,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { resolveStorageUrl } from '../../utils/imageUrl';
+import { formatLocaleDateTime } from '../../utils/localeFormat';
 
 const { t } = useI18n();
 
@@ -221,7 +222,7 @@ const replyDraft = ref('');
 const savingReply = ref(false);
 const publishingReply = ref(false);
 
-const formatDate = (iso) => (iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '');
+const formatDate = (iso) => (iso ? formatLocaleDateTime(iso, { dateStyle: 'medium', timeStyle: 'short' }) : '');
 const proofUrl = (item) => resolveStorageUrl(item?.proof_url || item?.media_path || null);
 const feedbackImages = computed(() => {
   const item = props.item;

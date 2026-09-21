@@ -61,7 +61,7 @@ class EventDayController extends Controller
         ) {
             if ($this->eventDayGenerator->eventHasAllocationHistory($carboot_event)) {
                 return response()->json([
-                    'message' => '409 Conflict: This event already has vendor booking allocations. Its operating dates cannot be changed because existing bookings depend on those dates.',
+                    'message' => __('api.this_event_already_has_vendor_booking_allocations__d83e3e0f'),
                     'error' => EventDayGenerator::ERROR_OPERATING_DATES_LOCKED,
                 ], 409);
             }
@@ -79,12 +79,12 @@ class EventDayController extends Controller
             );
         } catch (DomainConflictException $exception) {
             return response()->json([
-                'message' => '409 Conflict: ' . $exception->getMessage(),
+                'message' => __('api.msg') . $exception->getMessage(),
                 'error' => $exception->error,
             ], 409);
         } catch (InvalidArgumentException $exception) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: ' . $exception->getMessage(),
+                'message' => __('api.msg') . $exception->getMessage(),
             ], 422);
         }
 
@@ -93,7 +93,7 @@ class EventDayController extends Controller
             ->values();
 
         return response()->json([
-            'message' => '201 Created: Operational event days generated successfully.',
+            'message' => __('api.operational_event_days_generated_successfully'),
             'event_id' => $carboot_event->id,
             'day_generation_mode' => $result['mode'],
             'replaced' => $result['replaced'],
@@ -120,7 +120,7 @@ class EventDayController extends Controller
         }
 
         return response()->json([
-            'message' => '201 Created: Event day created successfully.',
+            'message' => __('api.event_day_created_successfully'),
             'day' => $this->present($day),
         ], 201);
     }
@@ -140,7 +140,7 @@ class EventDayController extends Controller
             $blocked = $this->structuralFieldsAttempted($request, $event_day);
             if ($blocked !== []) {
                 return response()->json([
-                    'message' => '409 Conflict: Event day operational identity cannot change after allocation history exists.',
+                    'message' => __('api.event_day_operational_identity_cannot_change_after_071da157'),
                     'error' => 'event_day_history_structural_lock',
                     'blocked_fields' => $blocked,
                 ], 409);
@@ -162,7 +162,7 @@ class EventDayController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Event day updated successfully.',
+            'message' => __('api.event_day_updated_successfully'),
             'day' => $this->present($event_day->fresh()),
         ]);
     }
@@ -171,7 +171,7 @@ class EventDayController extends Controller
     {
         if ($event_day->hasAllocationHistory()) {
             return response()->json([
-                'message' => '409 Conflict: Event day has allocation history and cannot be deleted.',
+                'message' => __('api.event_day_has_allocation_history_and_cannot_be_deleted'),
                 'error' => 'event_day_has_allocation_history',
             ], 409);
         }
@@ -179,7 +179,7 @@ class EventDayController extends Controller
         $event_day->delete();
 
         return response()->json([
-            'message' => '200 OK: Event day deleted successfully.',
+            'message' => __('api.event_day_deleted_successfully'),
         ]);
     }
 
@@ -291,7 +291,7 @@ class EventDayController extends Controller
     private function rangeValidationResponse(InvalidArgumentException $exception): JsonResponse
     {
         return response()->json([
-            'message' => '422 Unprocessable Entity: ' . $exception->getMessage(),
+            'message' => __('api.msg') . $exception->getMessage(),
             'error' => EventDayGenerator::ERROR_DAY_OUTSIDE_EVENT_RANGE,
         ], 422);
     }
@@ -318,7 +318,7 @@ class EventDayController extends Controller
     {
         if (str_contains($exception->getMessage(), 'event_days_event_date_unique')) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: An operational day with this date already exists for this event.',
+                'message' => __('api.an_operational_day_with_this_date_already_exists_f_6a4e6e84'),
                 'error' => 'duplicate_operational_date',
             ], 422);
         }

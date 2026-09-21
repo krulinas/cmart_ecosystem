@@ -52,7 +52,7 @@ class UserBookingPreferenceController extends Controller
         );
 
         return response()->json([
-            'message' => 'Saved booking details updated successfully.',
+            'message' => __('api.saved_booking_details_updated_successfully'),
             'preference' => $this->formatPreference($preference),
         ]);
     }
@@ -64,7 +64,7 @@ class UserBookingPreferenceController extends Controller
             ->delete();
 
         return response()->json([
-            'message' => 'Saved booking details cleared.',
+            'message' => __('api.saved_booking_details_cleared'),
         ]);
     }
 

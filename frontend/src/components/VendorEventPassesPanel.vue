@@ -190,6 +190,7 @@ import { useI18n } from 'vue-i18n';
 import VendorPassModal from './VendorPassModal.vue';
 import api from '../services/api';
 import { formatBookingReference } from '../utils/bookingDisplay';
+import { formatLocaleDateTime } from '../utils/localeFormat';
 import {
   buildQrImageUrl,
   formatEventTimeLabel,
@@ -226,7 +227,7 @@ const qrImageUrl = computed(() =>
 
 const formatCheckedIn = (iso) => {
   if (!iso) return '—';
-  return new Date(iso).toLocaleString('en-GB', {
+  return formatLocaleDateTime(iso, {
     timeZone: 'Asia/Kuala_Lumpur',
     day: 'numeric',
     month: 'short',

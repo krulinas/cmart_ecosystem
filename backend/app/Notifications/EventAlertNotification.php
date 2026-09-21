@@ -40,26 +40,26 @@ class EventAlertNotification extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $title = $this->eventSnapshot['title'] ?? 'Carboot Event';
-        $startsAt = $this->eventSnapshot['starts_at'] ?? 'TBC';
+        $title = $this->eventSnapshot['title'] ?? __('mail.default_title');
+        $startsAt = $this->eventSnapshot['starts_at'] ?? __('mail.tbc');
 
         if ($this->alertType === 'cancelled') {
             return (new MailMessage)
-                ->subject("Event cancelled: {$title}")
-                ->greeting("Hello {$notifiable->name},")
-                ->line("We are sorry to inform you that the event \"{$title}\" has been cancelled.")
-                ->line("Originally scheduled to start: {$startsAt}")
-                ->line('If you have questions, please contact Cmart Management.')
-                ->salutation('— Cmart Ecosystem Team');
+                ->subject(__('mail.event_cancelled_subject', ['title' => $title]))
+                ->greeting(__('mail.hello', ['name' => $notifiable->name]))
+                ->line(__('mail.cancelled_line', ['title' => $title]))
+                ->line(__('mail.originally_scheduled', ['starts' => $startsAt]))
+                ->line(__('mail.contact_management'))
+                ->salutation(__('mail.salutation'));
         }
 
         $mail = (new MailMessage)
-            ->subject("Event updated: {$title}")
-            ->greeting("Hello {$notifiable->name},")
-            ->line("The event \"{$title}\" you registered for has been updated by Cmart Management.");
+            ->subject(__('mail.event_updated_subject', ['title' => $title]))
+            ->greeting(__('mail.hello', ['name' => $notifiable->name]))
+            ->line(__('mail.updated_line', ['title' => $title]));
 
         if (! empty($this->changes)) {
-            $mail->line('The following details were changed:');
+            $mail->line(__('mail.changes_intro'));
             foreach ($this->changes as $field => $value) {
                 // Skip Laravel internal timestamp-only noise when possible.
                 if (in_array($field, ['updated_at'], true)) {
@@ -70,8 +70,8 @@ class EventAlertNotification extends Notification implements ShouldQueue
             }
         }
 
-        $mail->line("Current start time: {$startsAt}");
+        $mail->line(__('mail.current_start', ['starts' => $startsAt]));
 
-        return $mail->salutation('— Cmart Ecosystem Team');
+        return $mail->salutation(__('mail.salutation'));
     }
 }

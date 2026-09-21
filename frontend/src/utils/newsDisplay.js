@@ -1,11 +1,9 @@
 import { resolveNewsBannerUrl, resolveNewsVideoUrl, normalizeNews } from './imageUrl';
-
-const MY_TZ = 'Asia/Kuala_Lumpur';
+import { formatLocaleDate, formatLocaleDateTime } from './localeFormat';
 
 export const formatNewsDate = (dateStr) => {
   if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    timeZone: MY_TZ,
+  return formatLocaleDate(dateStr, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -14,8 +12,7 @@ export const formatNewsDate = (dateStr) => {
 
 export const formatNewsDateTime = (dateStr) => {
   if (!dateStr) return '';
-  return new Date(dateStr).toLocaleString('en-GB', {
-    timeZone: MY_TZ,
+  return formatLocaleDateTime(dateStr, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

@@ -162,7 +162,7 @@ class VendorEventPassService
         if ($booking->approval_status !== 'Approved') {
             return [
                 'success' => false,
-                'message' => 'Only approved bookings can be checked in.',
+                'message' => __('api.only_approved_bookings_can_be_checked_in'),
             ];
         }
 
@@ -181,7 +181,7 @@ class VendorEventPassService
 
         return [
             'success' => true,
-            'message' => 'Vendor checked in successfully.',
+            'message' => __('api.vendor_checked_in_successfully'),
             'pass' => $this->presentPass($booking->load('space')),
         ];
     }

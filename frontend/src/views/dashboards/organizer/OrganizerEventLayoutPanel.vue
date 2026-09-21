@@ -478,6 +478,7 @@ import OrganizerCanonicalSiteRestoreControls from '../../../components/organizer
 import StandardParkingLayoutModal from '../../../components/organizer/layout/StandardParkingLayoutModal.vue';
 import * as layoutApi from '../../../services/organizerEventLayoutApi';
 import { getLayoutCopy, layoutErrorMessage } from '../../../utils/organizerEventLayoutMessages';
+import { formatLocaleDateTime } from '../../../utils/localeFormat';
 import {
   CMART_CARBOOT_SITES_PER_ROW,
   isAllowedPhysicalRowLabel,
@@ -658,7 +659,7 @@ const loadingMessage = computed(() => {
 
 function formatLoadedAt(value) {
   try {
-    return new Date(value).toLocaleString();
+    return formatLocaleDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
   } catch {
     return String(value);
   }

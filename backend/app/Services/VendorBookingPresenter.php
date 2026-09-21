@@ -457,7 +457,7 @@ class VendorBookingPresenter
         if ($booking->activeCategoryOverride) {
             $payload['placement_exception'] = [
                 'applied' => true,
-                'message' => 'The organizer has placed your site in a different category zone.',
+                'message' => __('api.the_organizer_has_placed_your_site_in_a_different__eb6e9d62'),
             ];
         }
 

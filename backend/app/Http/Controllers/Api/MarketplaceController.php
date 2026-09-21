@@ -98,7 +98,7 @@ class MarketplaceController extends Controller
     {
         if (! MarketplaceEligibility::isItemPubliclyPreviewable($vendor_item)) {
             return response()->json([
-                'message' => '404 Not Found: Public item preview is unavailable.',
+                'message' => __('api.public_item_preview_is_unavailable'),
             ], 404);
         }
 

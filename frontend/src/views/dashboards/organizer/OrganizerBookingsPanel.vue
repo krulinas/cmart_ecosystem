@@ -563,6 +563,7 @@ import OrganizerWithdrawalReconciliationModal from '../../../components/organize
 import OrganizerReleasedDayRecoveryPanel from '../../../components/organizer/OrganizerReleasedDayRecoveryPanel.vue';
 import { useManagementAccess } from '../../../composables/useManagementAccess';
 import { formatBookingDate, formatBookingReference, isTerminalBookingStatus, siteLabelsForBooking, allocationStatusLabel, organizerWithdrawalSummary, statusLabel } from '../../../utils/bookingDisplay';
+import { formatLocaleDateTime } from '../../../utils/localeFormat';
 
 const emit = defineEmits(['refreshed']);
 
@@ -688,7 +689,7 @@ const formatInvoiceAmount = (amount) => {
 const formatSubmittedAt = (value) => {
   if (!value) return t('common.none');
   try {
-    return new Date(value).toLocaleString();
+    return formatLocaleDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
   } catch {
     return String(value);
   }

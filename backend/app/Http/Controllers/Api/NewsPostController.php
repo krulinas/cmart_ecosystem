@@ -52,7 +52,7 @@ class NewsPostController extends Controller
         $this->syncVideo($request, $post);
 
         return response()->json([
-            'message' => '201 Created: News post created successfully.',
+            'message' => __('api.news_post_created_successfully'),
             'post' => NewsPostPresenter::fromModel($post->fresh(['images', 'author']), true),
         ], 201);
     }
@@ -83,7 +83,7 @@ class NewsPostController extends Controller
         $this->syncVideo($request, $news_post);
 
         return response()->json([
-            'message' => '200 OK: News post updated successfully.',
+            'message' => __('api.news_post_updated_successfully'),
             'post' => NewsPostPresenter::fromModel($news_post->fresh(['images', 'author']), true),
         ]);
     }
@@ -93,7 +93,7 @@ class NewsPostController extends Controller
         $news_post->delete();
 
         return response()->json([
-            'message' => '200 OK: News post deleted successfully.',
+            'message' => __('api.news_post_deleted_successfully'),
         ]);
     }
 

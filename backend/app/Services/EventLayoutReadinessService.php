@@ -45,7 +45,7 @@ class EventLayoutReadinessService
         if ($event->vendor_site_open_limit === null) {
             $blockers[] = [
                 'code' => 'VENDOR_SITE_OPEN_LIMIT_NOT_SET',
-                'message' => 'Choose the physical sites that vendors can book.',
+                'message' => __('api.choose_the_physical_sites_that_vendors_can_book'),
             ];
         }
 
@@ -57,7 +57,7 @@ class EventLayoutReadinessService
         if (! $hasActiveDays) {
             $blockers[] = [
                 'code' => 'NO_ACTIVE_EVENT_DAYS',
-                'message' => 'The event has no active operational days.',
+                'message' => __('api.the_event_has_no_active_operational_days'),
             ];
         }
 
@@ -72,7 +72,7 @@ class EventLayoutReadinessService
         if ($activeRows->isEmpty()) {
             $blockers[] = [
                 'code' => 'NO_ACTIVE_LAYOUT_ROWS',
-                'message' => 'The event has no active layout rows.',
+                'message' => __('api.the_event_has_no_active_layout_rows'),
             ];
         }
 
@@ -86,7 +86,7 @@ class EventLayoutReadinessService
         if ($outsideTemplate !== []) {
             $blockers[] = [
                 'code' => 'ROW_OUTSIDE_VENUE_TEMPLATE',
-                'message' => 'One or more rows are outside this venue’s physical row definition (A–D). Resolve or archive them before booking readiness.',
+                'message' => __('api.one_or_more_rows_are_outside_this_venue_s_physical_b13348ca'),
                 'row_ids' => $outsideTemplate,
             ];
         }
@@ -99,7 +99,7 @@ class EventLayoutReadinessService
         if ($missingCategory !== []) {
             $blockers[] = [
                 'code' => 'ACTIVE_ROW_MISSING_CATEGORY',
-                'message' => 'One or more active rows do not have a category.',
+                'message' => __('api.one_or_more_active_rows_do_not_have_a_category'),
                 'row_ids' => $missingCategory,
             ];
         }
@@ -121,7 +121,7 @@ class EventLayoutReadinessService
         if ($inactiveCategory !== []) {
             $blockers[] = [
                 'code' => 'ROW_CATEGORY_INACTIVE',
-                'message' => 'One or more active rows reference an inactive or archived category.',
+                'message' => __('api.one_or_more_active_rows_reference_an_inactive_or_a_1f828061'),
                 'row_ids' => $inactiveCategory,
             ];
         }
@@ -136,7 +136,7 @@ class EventLayoutReadinessService
         if ($rowsWithoutSites !== []) {
             $blockers[] = [
                 'code' => 'ACTIVE_ROW_HAS_NO_ACTIVE_SITES',
-                'message' => 'One or more active rows have no physical sites. Delete the empty row or add sites before booking.',
+                'message' => __('api.one_or_more_active_rows_have_no_physical_sites_del_fe4b22c6'),
                 'row_ids' => $rowsWithoutSites,
             ];
         }
@@ -172,12 +172,12 @@ class EventLayoutReadinessService
         if ($missingRow !== []) {
             $blockers[] = [
                 'code' => 'ACTIVE_SITE_MISSING_ROW',
-                'message' => 'One or more active sites are not linked to a layout row.',
+                'message' => __('api.one_or_more_active_sites_are_not_linked_to_a_layout_row'),
                 'site_ids' => $missingRow,
             ];
             $blockers[] = [
                 'code' => 'UNRESOLVED_ACTIVE_SITES',
-                'message' => 'Unresolved active legacy sites exist outside a layout row.',
+                'message' => __('api.unresolved_active_legacy_sites_exist_outside_a_layout_row'),
                 'site_ids' => $missingRow,
             ];
         }
@@ -197,7 +197,7 @@ class EventLayoutReadinessService
         if ($mismatch !== []) {
             $blockers[] = [
                 'code' => 'SITE_EVENT_ROW_MISMATCH',
-                'message' => 'One or more active sites reference a row belonging to a different event.',
+                'message' => __('api.one_or_more_active_sites_reference_a_row_belonging_0e36207d'),
                 'site_ids' => $mismatch,
             ];
         }
@@ -210,7 +210,7 @@ class EventLayoutReadinessService
         if ($missingSpace !== []) {
             $blockers[] = [
                 'code' => 'ACTIVE_SITE_MISSING_SPACE',
-                'message' => 'One or more active sites are missing a space type.',
+                'message' => __('api.one_or_more_active_sites_are_missing_a_space_type'),
                 'site_ids' => $missingSpace,
             ];
         }
@@ -223,7 +223,7 @@ class EventLayoutReadinessService
         if ($invalidLabel !== []) {
             $blockers[] = [
                 'code' => 'ACTIVE_SITE_INVALID_LABEL',
-                'message' => 'One or more active sites have an empty label.',
+                'message' => __('api.one_or_more_active_sites_have_an_empty_label'),
                 'site_ids' => $invalidLabel,
             ];
         }
@@ -246,7 +246,7 @@ class EventLayoutReadinessService
         if ($duplicateIds !== []) {
             $blockers[] = [
                 'code' => 'DUPLICATE_ACTIVE_SITE_IDENTITY',
-                'message' => 'Duplicate active site labels or row positions exist.',
+                'message' => __('api.duplicate_active_site_labels_or_row_positions_exist'),
                 'site_ids' => $duplicateIds,
             ];
         }
@@ -277,7 +277,7 @@ class EventLayoutReadinessService
         if ($publicRows->isEmpty()) {
             $blockers[] = [
                 'code' => 'NO_PUBLIC_ROWS',
-                'message' => 'No active public layout rows are available for publication.',
+                'message' => __('api.no_active_public_layout_rows_are_available_for_publication'),
             ];
 
             return $blockers;
@@ -287,7 +287,7 @@ class EventLayoutReadinessService
         if (count($orders) !== count(array_unique($orders))) {
             $blockers[] = [
                 'code' => 'INVALID_PUBLIC_ROW_ORDER',
-                'message' => 'Public rows have duplicate display_order values.',
+                'message' => __('api.public_rows_have_duplicate_display_order_values'),
                 'row_ids' => $publicRows->pluck('id')->all(),
             ];
         }
@@ -307,7 +307,7 @@ class EventLayoutReadinessService
         if ($nonPublicCategory !== []) {
             $blockers[] = [
                 'code' => 'PUBLIC_ROW_CATEGORY_NOT_PUBLIC',
-                'message' => 'One or more public rows reference a category that is not active and public.',
+                'message' => __('api.one_or_more_public_rows_reference_a_category_that__76099725'),
                 'row_ids' => $nonPublicCategory,
             ];
         }
@@ -327,7 +327,7 @@ class EventLayoutReadinessService
         if ($rowsWithoutVisibleSites !== []) {
             $blockers[] = [
                 'code' => 'PUBLIC_ROW_HAS_NO_VISIBLE_SITES',
-                'message' => 'One or more public rows have no active visible sites.',
+                'message' => __('api.one_or_more_public_rows_have_no_active_visible_sites'),
                 'row_ids' => $rowsWithoutVisibleSites,
             ];
         }
@@ -335,7 +335,7 @@ class EventLayoutReadinessService
         if ($visibleSiteCount === 0) {
             $blockers[] = [
                 'code' => 'EMPTY_PUBLIC_LAYOUT',
-                'message' => 'The public layout projection is empty.',
+                'message' => __('api.the_public_layout_projection_is_empty'),
             ];
         }
 

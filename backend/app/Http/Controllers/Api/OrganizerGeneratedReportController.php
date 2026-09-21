@@ -73,12 +73,12 @@ class OrganizerGeneratedReportController extends Controller
             report($e);
 
             return response()->json([
-                'message' => 'Unable to generate the draft report. Please try again or contact support.',
+                'message' => __('api.unable_to_generate_the_draft_report_please_try_aga_57275536'),
             ], 500);
         }
 
         return response()->json([
-            'message' => '201 Created: Draft report generated.',
+            'message' => __('api.draft_report_generated'),
             'generated_report' => new OrganizerGeneratedReportResource($report),
         ], 201);
     }
@@ -100,7 +100,7 @@ class OrganizerGeneratedReportController extends Controller
     {
         if ($generated_report->status !== GeneratedReportStatus::DRAFT) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Only draft reports can have narratives updated.',
+                'message' => __('api.only_draft_reports_can_have_narratives_updated'),
             ], 422);
         }
 
@@ -124,7 +124,7 @@ class OrganizerGeneratedReportController extends Controller
         $generated_report->load(['carbootEvent', 'reportRequest', 'preparedByUser', 'publishedByUser']);
 
         return response()->json([
-            'message' => '200 OK: Narratives updated.',
+            'message' => __('api.narratives_updated'),
             'generated_report' => new OrganizerGeneratedReportResource($generated_report),
         ]);
     }
@@ -141,12 +141,12 @@ class OrganizerGeneratedReportController extends Controller
             report($e);
 
             return response()->json([
-                'message' => 'Unable to regenerate the draft snapshot. Please try again or contact support.',
+                'message' => __('api.unable_to_regenerate_the_draft_snapshot_please_try_6924435c'),
             ], 500);
         }
 
         return response()->json([
-            'message' => '200 OK: Draft snapshot regenerated.',
+            'message' => __('api.draft_snapshot_regenerated'),
             'generated_report' => new OrganizerGeneratedReportResource($report),
         ]);
     }
@@ -156,7 +156,7 @@ class OrganizerGeneratedReportController extends Controller
         $report = $this->publication->publish($generated_report, $request->user(), $request);
 
         return response()->json([
-            'message' => '200 OK: Report published.',
+            'message' => __('api.report_published'),
             'generated_report' => new OrganizerGeneratedReportResource($report),
         ]);
     }
@@ -165,7 +165,7 @@ class OrganizerGeneratedReportController extends Controller
     {
         if ($generated_report->status !== GeneratedReportStatus::DRAFT) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Only draft reports can be deleted.',
+                'message' => __('api.only_draft_reports_can_be_deleted'),
             ], 422);
         }
 
@@ -182,7 +182,7 @@ class OrganizerGeneratedReportController extends Controller
         $generated_report->delete();
 
         return response()->json([
-            'message' => '200 OK: Draft report deleted.',
+            'message' => __('api.draft_report_deleted'),
         ]);
     }
 
@@ -200,7 +200,7 @@ class OrganizerGeneratedReportController extends Controller
         );
 
         return response()->json([
-            'message' => '201 Created: Revision draft created.',
+            'message' => __('api.revision_draft_created'),
             'generated_report' => new OrganizerGeneratedReportResource($revision),
         ], 201);
     }
@@ -209,7 +209,7 @@ class OrganizerGeneratedReportController extends Controller
     {
         if (! class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
             return response()->json([
-                'message' => '503 Service Unavailable: PDF generation is not available.',
+                'message' => __('api.503_service_unavailable_pdf_generation_is_not_available'),
             ], 503);
         }
 

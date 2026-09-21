@@ -190,6 +190,7 @@ import { resolveStorageUrl } from '../../../utils/imageUrl';
 import { useManagementAccess } from '../../../composables/useManagementAccess';
 import FeedbackDetailModal from '../../../components/management/FeedbackDetailModal.vue';
 import ImageLightbox from '../../../components/management/ImageLightbox.vue';
+import { formatLocaleDate } from '../../../utils/localeFormat';
 
 const { t } = useI18n();
 
@@ -217,7 +218,7 @@ const lightbox = ref({ open: false, url: null, images: [], startIndex: 0, alt: '
 const deleteConfirm = ref({ open: false, item: null });
 const deleting = ref(false);
 
-const formatDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-GB') : '');
+const formatDate = (iso) => (iso ? formatLocaleDate(iso, { dateStyle: 'medium' }) : '');
 const proofUrl = (item) => resolveStorageUrl(item.proof_url || item.media_path || null);
 const feedbackImages = (item) => {
   if (Array.isArray(item?.images) && item.images.length) {

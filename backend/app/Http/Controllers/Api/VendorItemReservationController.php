@@ -72,7 +72,7 @@ class VendorItemReservationController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Item reservation cancelled successfully.',
+            'message' => __('api.item_reservation_cancelled_successfully'),
             'reservation' => ItemReservationPresenter::forVendor($reservation),
         ]);
     }
@@ -94,7 +94,7 @@ class VendorItemReservationController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Reservation marked completed and the item is now inactive.',
+            'message' => __('api.reservation_marked_completed_and_the_item_is_now_inactive'),
             'reservation' => ItemReservationPresenter::forVendor($reservation),
         ]);
     }

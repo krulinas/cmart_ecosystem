@@ -46,7 +46,7 @@ class CmartGeneratedReportController extends Controller
     {
         if (! in_array($generated_report->status, GeneratedReportStatus::cmartVisible(), true)) {
             return response()->json([
-                'message' => '404 Not Found: Published report not available.',
+                'message' => __('api.published_report_not_available'),
             ], 404);
         }
 
@@ -60,13 +60,13 @@ class CmartGeneratedReportController extends Controller
     {
         if (! in_array($generated_report->status, GeneratedReportStatus::cmartVisible(), true)) {
             return response()->json([
-                'message' => '404 Not Found: Published report not available.',
+                'message' => __('api.published_report_not_available'),
             ], 404);
         }
 
         if (! class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
             return response()->json([
-                'message' => '503 Service Unavailable: PDF generation is not available.',
+                'message' => __('api.503_service_unavailable_pdf_generation_is_not_available'),
             ], 503);
         }
 
@@ -98,7 +98,7 @@ class CmartGeneratedReportController extends Controller
     {
         if (! in_array($generated_report->status, GeneratedReportStatus::cmartVisible(), true)) {
             return response()->json([
-                'message' => '404 Not Found: Published report not available.',
+                'message' => __('api.published_report_not_available'),
             ], 404);
         }
 
@@ -113,7 +113,7 @@ class CmartGeneratedReportController extends Controller
         );
 
         return response()->json([
-            'message' => '200 OK: Report view recorded.',
+            'message' => __('api.report_view_recorded'),
         ]);
     }
 }

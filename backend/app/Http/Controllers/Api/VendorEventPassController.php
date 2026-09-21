@@ -21,7 +21,7 @@ class VendorEventPassController extends Controller
     public function show(Request $request, Booking $booking)
     {
         if ($booking->user_id !== $request->user()->id) {
-            return response()->json(['message' => '403 Forbidden: You do not own this booking pass.'], 403);
+            return response()->json(['message' => __('api.you_do_not_own_this_booking_pass')], 403);
         }
 
         return response()->json([

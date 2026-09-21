@@ -253,7 +253,7 @@ class PostEventSummaryAggregator
             return [
                 'available' => false,
                 'recorded' => false,
-                'message' => 'Attendance verification was not recorded for this event.',
+                'message' => __('api.attendance_verification_was_not_recorded_for_this_event'),
             ];
         }
 
@@ -270,7 +270,7 @@ class PostEventSummaryAggregator
                 'recorded' => false,
                 'verified_check_in_count' => null,
                 'label' => 'Verified vendor check-ins',
-                'message' => 'Attendance verification was not recorded for this event.',
+                'message' => __('api.attendance_verification_was_not_recorded_for_this_event'),
                 'note' => 'A single check-in timestamp does not prove complete multi-day attendance.',
             ];
         }
@@ -643,7 +643,7 @@ class PostEventSummaryAggregator
 
             return [
                 'available' => false,
-                'message' => 'Not available for this event',
+                'message' => __('api.not_available_for_this_event'),
             ];
         }
 
@@ -666,7 +666,7 @@ class PostEventSummaryAggregator
                 'available_active_site_days' => null,
                 'occupied_site_days' => null,
                 'utilisation_percent' => null,
-                'message' => 'Not available for this event',
+                'message' => __('api.not_available_for_this_event'),
                 'formula' => 'occupied active site-days ÷ available active site-days × 100',
                 'note' => 'Site-day utilisation requires at least one active site and one event day. max_slots is not used as booth capacity.',
             ];
@@ -795,7 +795,7 @@ class PostEventSummaryAggregator
                 'source_label' => 'In-app Feedback',
                 'average_rating' => null,
                 'response_count' => null,
-                'message' => 'Not available for this event',
+                'message' => __('api.not_available_for_this_event'),
             ];
         }
 
@@ -829,7 +829,7 @@ class PostEventSummaryAggregator
                 'vendor_response_rate_percent' => $approvedUniqueVendors > 0 ? 0.0 : null,
                 'vendor_respondents' => 0,
                 'approved_unique_vendors' => $approvedUniqueVendors,
-                'message' => 'No feedback has been submitted for this event yet.',
+                'message' => __('api.no_feedback_has_been_submitted_for_this_event_yet'),
             ];
         }
 
@@ -914,7 +914,7 @@ class PostEventSummaryAggregator
                 'available' => false,
                 'schema_name' => SurveySchema::NAME,
                 'analytics_source_mode' => $mode,
-                'message' => 'Not available for this event',
+                'message' => __('api.not_available_for_this_event'),
             ];
         }
 
@@ -944,7 +944,7 @@ class PostEventSummaryAggregator
                 'schema_name' => SurveySchema::NAME,
                 'analytics_source_mode' => $mode,
                 'state' => 'missing_source',
-                'message' => 'No survey responses were collected for this event.',
+                'message' => __('api.no_survey_responses_were_collected_for_this_event'),
                 'note' => 'Survey respondents do not represent all vendors unless response rate is known.',
             ];
         }
@@ -1114,7 +1114,7 @@ class PostEventSummaryAggregator
                 'denominator' => $denominator,
                 'base_display' => sprintf('n = %d responses', $denominator),
                 'rows' => [],
-                'message' => 'No registration difficulty answers were recorded.',
+                'message' => __('api.no_registration_difficulty_answers_were_recorded'),
             ];
         }
 
@@ -1151,7 +1151,7 @@ class PostEventSummaryAggregator
         if (! ($vendorSurveySummary['available'] ?? false)) {
             return [
                 'available' => false,
-                'message' => 'No survey insight is available for environmental and social indicators.',
+                'message' => __('api.no_survey_insight_is_available_for_environmental_a_67d71308'),
             ];
         }
 

@@ -186,6 +186,7 @@
 <script setup>
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { formatLocaleNumber, formatLocaleCurrencyMyr } from '../utils/localeFormat';
 import Chart from 'chart.js/auto';
 import InfoHelpTip from './InfoHelpTip.vue';
 
@@ -234,9 +235,8 @@ const missingProfileFields = computed(() =>
   ),
 );
 
-const formatCount = (value) => new Intl.NumberFormat('en-MY').format(value ?? 0);
-const formatCurrency = (value) =>
-  new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value ?? 0);
+const formatCount = (value) => formatLocaleNumber(value ?? 0);
+const formatCurrency = (value) => formatLocaleCurrencyMyr(value ?? 0);
 
 const icon = (path) => () =>
   h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [

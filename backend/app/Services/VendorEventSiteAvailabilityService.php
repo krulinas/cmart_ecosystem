@@ -191,7 +191,7 @@ class VendorEventSiteAvailabilityService
         if ($flatSites === []) {
             $readiness = [
                 'status' => 'no_compatible_sites',
-                'message' => 'No physical booking sites are available for the selected category yet.',
+                'message' => __('api.no_physical_booking_sites_are_available_for_the_se_ec8e4fea'),
             ];
         }
 
@@ -271,7 +271,7 @@ class VendorEventSiteAvailabilityService
             'sites' => [],
             'readiness' => [
                 'status' => 'layout_not_ready',
-                'message' => 'Vendor booking is not open yet. The organizer is still preparing the site layout.',
+                'message' => __('api.vendor_booking_is_not_open_yet_the_organizer_is_st_97c3fc81'),
                 'operational_ready' => false,
             ],
         ];
@@ -318,7 +318,7 @@ class VendorEventSiteAvailabilityService
             'sites' => [],
             'readiness' => [
                 'status' => 'category_required',
-                'message' => 'Please select a selling category first.',
+                'message' => __('api.please_select_a_selling_category_first'),
             ],
         ];
     }

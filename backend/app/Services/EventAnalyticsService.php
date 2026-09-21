@@ -168,7 +168,7 @@ class EventAnalyticsService
             'sections' => [],
             'data_availability' => [],
             'unavailable' => ['operational_snapshot'],
-            'message' => 'System Data is excluded by the current analytics source mode.',
+            'message' => __('api.system_data_is_excluded_by_the_current_analytics_source_mode'),
         ];
     }
 
@@ -183,7 +183,7 @@ class EventAnalyticsService
             'degraded' => false,
             'available' => false,
             'included_in_analytics' => false,
-            'message' => 'Survey CSV is excluded by the current source mode. System Data remains stored.',
+            'message' => __('api.survey_csv_is_excluded_by_the_current_source_mode__e5bce451'),
             'respondent_count' => 0,
             'sections' => [],
             'unavailable_metrics' => ['vendor_survey'],
@@ -315,7 +315,7 @@ class EventAnalyticsService
                 'status' => 'unavailable',
                 'degraded' => true,
                 'available' => false,
-                'message' => 'Survey storage tables are not migrated yet.',
+                'message' => __('api.survey_storage_tables_are_not_migrated_yet'),
                 'respondent_count' => 0,
                 'sections' => [],
                 'unavailable_metrics' => ['vendor_survey'],
@@ -334,7 +334,7 @@ class EventAnalyticsService
                 'state' => 'missing_source',
                 'degraded' => false,
                 'available' => false,
-                'message' => 'No survey responses are available for the selected analytics source mode.',
+                'message' => __('api.no_survey_responses_are_available_for_the_selected_071cac1b'),
                 'respondent_count' => 0,
                 'import_batch_id' => $mode === EventAnalyticsDataSourceService::MODE_SYSTEM_ONLY
                     ? null

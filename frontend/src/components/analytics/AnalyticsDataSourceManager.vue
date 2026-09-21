@@ -172,6 +172,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
+import { formatLocaleDateTime } from '../../utils/localeFormat';
 import {
   deleteCurrentSurveyCsv,
   setAnalyticsSourceMode,
@@ -259,7 +260,7 @@ watch(
 const formatDate = (value) => {
   if (!value) return t('organizer.analytics.dataSources.notAvailable');
   try {
-    return new Date(value).toLocaleString();
+    return formatLocaleDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
   } catch {
     return value;
   }

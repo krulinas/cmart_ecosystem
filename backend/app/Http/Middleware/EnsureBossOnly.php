@@ -18,7 +18,7 @@ class EnsureBossOnly
 
         if (!$user || !ManagementCapability::canAccessCarbootOperationalAnalytics($user->role)) {
             return response()->json([
-                'message' => '403 Forbidden: Carboot operational analytics access required.',
+                'message' => __('api.carboot_operational_analytics_access_required'),
             ], 403);
         }
 

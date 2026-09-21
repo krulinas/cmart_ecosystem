@@ -87,7 +87,7 @@ class MarketplaceItemPresenter
             return [
                 'available' => false,
                 'code' => 'own_item',
-                'message' => 'This is your listing.',
+                'message' => __('api.this_is_your_listing'),
             ];
         }
 
@@ -95,7 +95,7 @@ class MarketplaceItemPresenter
             return [
                 'available' => false,
                 'code' => 'no_eligible_upcoming_event',
-                'message' => 'Reservations are not available because this vendor has no upcoming approved event.',
+                'message' => __('api.reservations_are_not_available_because_this_vendor_750ef807'),
             ];
         }
 
@@ -103,7 +103,7 @@ class MarketplaceItemPresenter
             return [
                 'available' => false,
                 'code' => 'event_reservations_not_configured',
-                'message' => 'Reservations are not available for this event.',
+                'message' => __('api.reservations_are_not_available_for_this_event'),
             ];
         }
 
@@ -111,14 +111,14 @@ class MarketplaceItemPresenter
             return [
                 'available' => false,
                 'code' => 'already_reserved',
-                'message' => 'This item already has an active reservation.',
+                'message' => __('api.this_item_already_has_an_active_reservation'),
             ];
         }
 
         return [
             'available' => true,
             'code' => 'available',
-            'message' => 'This item can be reserved as a temporary hold.',
+            'message' => __('api.this_item_can_be_reserved_as_a_temporary_hold'),
         ];
     }
 

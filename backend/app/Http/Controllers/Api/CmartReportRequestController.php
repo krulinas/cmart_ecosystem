@@ -106,7 +106,7 @@ class CmartReportRequestController extends Controller
         $this->externalAlerts->simulateRequestCreated($reportRequest);
 
         return response()->json([
-            'message' => '201 Created: Report request submitted to the Organizer.',
+            'message' => __('api.report_request_submitted_to_the_organizer'),
             'report_request' => new CmartReportRequestResource($reportRequest->fresh(['carbootEvent', 'requester'])),
         ], 201);
     }
@@ -126,7 +126,7 @@ class CmartReportRequestController extends Controller
         $updated->load(['carbootEvent', 'requester']);
 
         return response()->json([
-            'message' => '200 OK: Report request cancelled.',
+            'message' => __('api.report_request_cancelled'),
             'report_request' => new CmartReportRequestResource($updated),
         ]);
     }

@@ -22,7 +22,7 @@ class EnsureCapability
         }
 
         return response()->json([
-            'message' => '403 Forbidden: Required management capability not granted.',
+            'message' => __('api.required_management_capability_not_granted'),
         ], 403);
     }
 }

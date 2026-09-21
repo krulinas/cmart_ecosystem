@@ -1,6 +1,7 @@
 /** Presentation labels for Post-Event Summary preview (schema v2). */
 
 import { tt } from '../i18n';
+import { formatLocaleMoneyRm } from './localeFormat';
 
 const OPTION_KEYS = new Set([
   'rm_100_299',
@@ -122,10 +123,7 @@ export function reportMethodologyLabel(key) {
 
 export function formatReportMoney(value) {
   if (value === undefined || value === null || value === '') return null;
-  return `RM ${Number(value).toLocaleString('en-MY', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return formatLocaleMoneyRm(value);
 }
 
 export function collectionRate(collected, expected) {

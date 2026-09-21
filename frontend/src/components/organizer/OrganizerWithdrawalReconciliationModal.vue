@@ -288,6 +288,7 @@ import { useI18n } from 'vue-i18n';
 import { allocationStatusLabel, formatBookingReference, organizerPaymentStateLabel, statusLabel } from '../../utils/bookingDisplay';
 import OrganizerAttendanceExceptionModal from './OrganizerAttendanceExceptionModal.vue';
 import OrganizerSiteReassignmentModal from './OrganizerSiteReassignmentModal.vue';
+import { formatLocaleDateTime } from '../../utils/localeFormat';
 
 const { t } = useI18n();
 
@@ -325,7 +326,7 @@ const formatDateTime = (value) => {
   if (!value) return t('common.notRecorded');
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return t('common.notRecorded');
-  return date.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+  return formatLocaleDateTime(date, { dateStyle: 'medium', timeStyle: 'short' });
 };
 
 const eventDaySummary = (days) => {

@@ -68,6 +68,7 @@ import { useToast } from 'vue-toastification';
 import { statusLabel } from '../../../i18n';
 import api from '../../../services/api';
 import { formatBookingReference } from '../../../utils/bookingDisplay';
+import { formatLocaleDateTime } from '../../../utils/localeFormat';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -80,7 +81,7 @@ const pagination = reactive({
 
 const formatDate = (iso) => {
   if (!iso) return '—';
-  return new Date(iso).toLocaleString('en-GB', {
+  return formatLocaleDateTime(iso, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

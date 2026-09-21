@@ -477,6 +477,7 @@ import EventCommentsWordCloud from '../../../components/analytics/EventCommentsW
 import SurveyResultsPanel from '../../../components/analytics/SurveyResultsPanel.vue';
 import { useEventAnalyticsContext } from '../../../composables/useEventAnalyticsContext';
 import { ANALYTICS_HUB_TAB_STORAGE_KEY } from '../../../config/workspaceNav';
+import { formatLocaleDateTime, formatLocaleDate, formatLocaleNumber } from '../../../utils/localeFormat';
 import {
   getEventAnalyticsOverview,
   listCarbootEventsForAnalytics,
@@ -788,13 +789,13 @@ const formatMoney = (value) => {
   if (value == null || value === '') return '0.00';
   const n = Number(value);
   if (Number.isNaN(n)) return '0.00';
-  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatLocaleNumber(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 const formatDate = (value) => {
   if (!value) return 'Unknown';
   try {
-    return new Date(value).toLocaleString();
+    return formatLocaleDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
   } catch {
     return value;
   }
@@ -804,7 +805,7 @@ const formatDateRange = (start, end) => {
   if (!start && !end) return t('organizer.analytics.datesNotSet');
   const fmt = (v) => {
     try {
-      return new Date(v).toLocaleDateString();
+      return formatLocaleDate(v, { dateStyle: 'medium' });
     } catch {
       return v;
     }

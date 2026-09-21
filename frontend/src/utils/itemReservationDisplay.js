@@ -1,4 +1,5 @@
 import { tt } from '../i18n';
+import { formatLocaleDateTime } from './localeFormat';
 
 /**
  * Phase 4.4 — centralized reservation status / charge / action helpers.
@@ -202,7 +203,7 @@ export function formatReservationTimestamp(value) {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('en-MY', {
+  return formatLocaleDateTime(date, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

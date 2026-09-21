@@ -46,6 +46,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { formatLocaleDateTime } from '../../utils/localeFormat';
 
 const { t } = useI18n();
 
@@ -102,7 +103,7 @@ const pillClass = (source) => {
 const formatDate = (value) => {
   if (!value) return '';
   try {
-    return new Date(value).toLocaleString();
+    return formatLocaleDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
   } catch {
     return String(value);
   }
