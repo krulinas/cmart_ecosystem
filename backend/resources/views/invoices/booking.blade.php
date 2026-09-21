@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="UTF-8">
     <title>Booking #{{ $booking->id }} — Carboot@CMart</title>
@@ -82,36 +82,41 @@
     </style>
 </head>
 <body>
+    @php
+        $gen = $generatedAt->copy()->timezone('Asia/Kuala_Lumpur')->locale(app()->getLocale());
+        $bookingDate = \Carbon\Carbon::parse($booking->booking_date)->timezone('Asia/Kuala_Lumpur')->locale(app()->getLocale());
+        $submittedAt = optional($booking->created_at)?->copy()->timezone('Asia/Kuala_Lumpur')->locale(app()->getLocale());
+    @endphp
     <div class="header">
         <div class="meta">
-            Generated: {{ $generatedAt->format('d M Y, H:i') }}<br>
-            Document: BOOKING-{{ str_pad($booking->id, 6, '0', STR_PAD_LEFT) }}
+            {{ __('invoice.generated') }}: {{ $gen->translatedFormat('d M Y, H:i') }}<br>
+            {{ __('invoice.document') }}: BOOKING-{{ str_pad($booking->id, 6, '0', STR_PAD_LEFT) }}
         </div>
         <div class="brand">Carboot@CMart</div>
-        <div class="doc-title">Booking Summary &amp; Invoice</div>
+        <div class="doc-title">{{ __('invoice.doc_title') }}</div>
     </div>
 
     <table class="grid">
         <tr>
             <td>
                 <div class="section">
-                    <h3>Vendor</h3>
-                    <div class="field"><span class="label">Name:</span> <span class="value">{{ $booking->user?->name ?? '—' }}</span></div>
-                    <div class="field"><span class="label">Email:</span> <span class="value">{{ $booking->user?->email ?? '—' }}</span></div>
-                    <div class="field"><span class="label">Phone:</span> <span class="value">{{ $booking->user?->phone_number ?? '—' }}</span></div>
-                    <div class="field"><span class="label">Vendor Status:</span> <span class="value">{{ ucfirst($booking->user?->vendor_status ?? 'none') }}</span></div>
+                    <h3>{{ __('invoice.vendor') }}</h3>
+                    <div class="field"><span class="label">{{ __('invoice.name') }}:</span> <span class="value">{{ $booking->user?->name ?? '—' }}</span></div>
+                    <div class="field"><span class="label">{{ __('invoice.email') }}:</span> <span class="value">{{ $booking->user?->email ?? '—' }}</span></div>
+                    <div class="field"><span class="label">{{ __('invoice.phone') }}:</span> <span class="value">{{ $booking->user?->phone_number ?? '—' }}</span></div>
+                    <div class="field"><span class="label">{{ __('invoice.vendor_status') }}:</span> <span class="value">{{ ucfirst($booking->user?->vendor_status ?? 'none') }}</span></div>
                 </div>
             </td>
             <td>
                 <div class="section">
-                    <h3>Booking</h3>
-                    <div class="field"><span class="label">Booking ID:</span> <span class="value">#{{ $booking->id }}</span></div>
-                    <div class="field"><span class="label">Booking Date:</span> <span class="value">{{ \Carbon\Carbon::parse($booking->booking_date)->format('d M Y') }}</span></div>
-                    <div class="field"><span class="label">Product Category:</span> <span class="value">{{ $booking->product_category ?? 'Others' }}</span></div>
-                    <div class="field"><span class="label">Product Details:</span> <span class="value">{{ $booking->product_details ?? '—' }}</span></div>
-                    <div class="field"><span class="label">Submitted:</span> <span class="value">{{ optional($booking->created_at)->format('d M Y, H:i') ?? '—' }}</span></div>
+                    <h3>{{ __('invoice.booking') }}</h3>
+                    <div class="field"><span class="label">{{ __('invoice.booking_id') }}:</span> <span class="value">#{{ $booking->id }}</span></div>
+                    <div class="field"><span class="label">{{ __('invoice.booking_date') }}:</span> <span class="value">{{ $bookingDate->translatedFormat('d M Y') }}</span></div>
+                    <div class="field"><span class="label">{{ __('invoice.product_category') }}:</span> <span class="value">{{ $booking->product_category ?? __('invoice.others') }}</span></div>
+                    <div class="field"><span class="label">{{ __('invoice.product_details') }}:</span> <span class="value">{{ $booking->product_details ?? '—' }}</span></div>
+                    <div class="field"><span class="label">{{ __('invoice.submitted') }}:</span> <span class="value">{{ $submittedAt?->translatedFormat('d M Y, H:i') ?? '—' }}</span></div>
                     <div class="field">
-                        <span class="label">Status:</span>
+                        <span class="label">{{ __('invoice.status') }}:</span>
                         <span class="status status-{{ $booking->approval_status }}">
                             {{ str_replace('_', ' ', $booking->approval_status) }}
                         </span>
@@ -122,12 +127,12 @@
     </table>
 
     <div class="section">
-        <h3>Items</h3>
+        <h3>{{ __('invoice.items') }}</h3>
         <table class="items">
             <thead>
                 <tr>
-                    <th>Description</th>
-                    <th class="text-right" style="width: 130px;">Amount (RM)</th>
+                    <th>{{ __('invoice.description') }}</th>
+                    <th class="text-right" style="width: 130px;">{{ __('invoice.amount_rm') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -138,15 +143,15 @@
                 @endphp
                 <tr>
                     <td>
-                        Carboot parking sites ({{ $siteQuantity }} × RM {{ number_format($unitSitePrice, 2) }})<br>
+                        {{ __('invoice.parking_sites', ['qty' => $siteQuantity, 'unit' => number_format($unitSitePrice, 2)]) }}<br>
                         <span style="color: #64748b; font-size: 10px;">
-                            Reserved for {{ \Carbon\Carbon::parse($booking->booking_date)->format('d M Y') }}
+                            {{ __('invoice.reserved_for', ['date' => $bookingDate->translatedFormat('d M Y')]) }}
                         </span>
                     </td>
                     <td class="text-right">{{ number_format($lineAmount, 2) }}</td>
                 </tr>
                 <tr class="total-row">
-                    <td>Total Due</td>
+                    <td>{{ __('invoice.total_due') }}</td>
                     <td class="text-right">
                         RM {{ number_format($booking->invoice?->amount ?? $lineAmount, 2) }}
                     </td>
@@ -156,22 +161,20 @@
     </div>
 
     <div class="section">
-        <h3>Payment</h3>
-        <div class="field"><span class="label">Payment Status:</span> <span class="value">{{ $booking->invoice?->payment_status ?? 'Unpaid' }}</span></div>
-        <div class="field"><span class="label">Invoice ID:</span> <span class="value">{{ $booking->invoice?->id ? '#' . str_pad($booking->invoice->id, 6, '0', STR_PAD_LEFT) : '—' }}</span></div>
+        <h3>{{ __('invoice.payment') }}</h3>
+        <div class="field"><span class="label">{{ __('invoice.payment_status') }}:</span> <span class="value">{{ $booking->invoice?->payment_status ?? __('invoice.unpaid') }}</span></div>
+        <div class="field"><span class="label">{{ __('invoice.invoice_id') }}:</span> <span class="value">{{ $booking->invoice?->id ? '#' . str_pad($booking->invoice->id, 6, '0', STR_PAD_LEFT) : '—' }}</span></div>
     </div>
 
     <div class="section">
-        <h3>Approval Pipeline</h3>
+        <h3>{{ __('invoice.approval_pipeline') }}</h3>
         <div class="field" style="color: #64748b;">
-            Submissions enter <span class="value">Pending_Organizer</span> for direct Carboot Organizer review.
-            Approved bookings proceed to payment; rejected or revision requests return as
-            <span class="value">Needs_Revision</span> when changes are required.
+            {{ __('invoice.approval_note') }}
         </div>
     </div>
 
     <div class="footer">
-        This document is computer-generated and does not require a signature. Carboot@CMart · Changlun, Kedah.
+        {{ __('invoice.footer') }}
     </div>
 </body>
 </html>

@@ -22,7 +22,7 @@ final class ReportType
     public static function label(string $type): string
     {
         return match ($type) {
-            self::POST_EVENT_SUMMARY => 'Post-Event Summary',
+            self::POST_EVENT_SUMMARY => __('reports.type.post_event_summary'),
             default => $type,
         };
     }

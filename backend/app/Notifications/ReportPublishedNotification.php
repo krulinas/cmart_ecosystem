@@ -32,13 +32,17 @@ class ReportPublishedNotification extends Notification
     {
         $typeLabel = ReportType::label($this->report->report_type);
         $eventTitle = $this->report->event_title_snapshot
-            ?: ($this->report->carbootEvent?->title ?? 'an event');
+            ?: ($this->report->carbootEvent?->title ?: __('reports.notify.an_event'));
 
         if ($this->isRevision) {
             return [
                 'type' => ReportNotificationType::REVISED,
-                'title' => 'Revised report published',
-                'body' => "A revised {$typeLabel} for {$eventTitle} is ready to view (v{$this->report->version}).",
+                'title' => __('reports.notify.revised_title'),
+                'body' => __('reports.notify.revised_body', [
+                    'type' => $typeLabel,
+                    'event' => $eventTitle,
+                    'version' => $this->report->version,
+                ]),
                 'link' => '/admin#reports',
                 'generated_report_id' => $this->report->id,
                 'carboot_event_id' => $this->report->carboot_event_id,
@@ -48,8 +52,12 @@ class ReportPublishedNotification extends Notification
 
         return [
             'type' => ReportNotificationType::PUBLISHED,
-            'title' => 'Report published',
-            'body' => "A {$typeLabel} for {$eventTitle} is ready to view (v{$this->report->version}).",
+            'title' => __('reports.notify.published_title'),
+            'body' => __('reports.notify.published_body', [
+                'type' => $typeLabel,
+                'event' => $eventTitle,
+                'version' => $this->report->version,
+            ]),
             'link' => '/admin#reports',
             'generated_report_id' => $this->report->id,
             'carboot_event_id' => $this->report->carboot_event_id,

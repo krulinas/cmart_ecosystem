@@ -313,6 +313,7 @@ import {
   reportDistributionTitle,
   reportOptionLabel,
 } from '../../utils/postEventReportPresentation.js';
+import { formatLocaleDateTime } from '../../utils/localeFormat';
 
 const props = defineProps({
   report: { type: Object, required: true },
@@ -603,15 +604,14 @@ function formatEnglishDate(value) {
   try {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return t('reports.summary.notRecorded');
-    return new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Kuala_Lumpur',
+    return formatLocaleDateTime(date, {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
-    }).format(date);
+    });
   } catch {
     return t('reports.summary.notRecorded');
   }
