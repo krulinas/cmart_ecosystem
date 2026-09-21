@@ -64,7 +64,7 @@
           class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-3 min-h-[44px] text-[15px] font-bold text-white shadow-md shadow-brand-500/20 hover:bg-brand-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 transition shrink-0"
           data-testid="vendor-focus-primary-action"
         >
-          Start Vendor Booking
+          {{ t('vendor.focus.startCta') }}
         </router-link>
       </div>
 
@@ -105,6 +105,7 @@
 
 <script setup>
 import { computed, h } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
   formatBookingDate,
   formatBookingReference,
@@ -128,6 +129,8 @@ const props = defineProps({
 
 const emit = defineEmits(['primary-action']);
 
+const { t } = useI18n();
+
 const MY_TZ = 'Asia/Kuala_Lumpur';
 
 const todayKey = () => new Date().toLocaleDateString('en-CA', { timeZone: MY_TZ });
@@ -146,7 +149,7 @@ const eventIcon = icon('M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H
 const statusIcon = icon('M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z');
 const paymentIcon = icon('M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z');
 
-const paymentState = computed(() => resolveVendorPaymentUi(props.booking, props.paymentRecord));
+const paymentState = computed(() => resolveVendorPaymentUi(props.booking, props.paymentRecord, t));
 
 const onPrimaryAction = () => {
   const action = primaryAction.value;
@@ -155,16 +158,16 @@ const onPrimaryAction = () => {
 };
 
 const focusEyebrow = computed(() => {
-  if (props.loading) return 'Loading';
-  if (!props.booking) return 'Get started';
+  if (props.loading) return t('vendor.focus.eyebrowLoading');
+  if (!props.booking) return t('vendor.focus.eyebrowGetStarted');
   const key = bookingDateKey(props.booking);
-  if (key && key === todayKey()) return "Today's event";
-  if (key && key > todayKey()) return 'Upcoming booking';
-  return 'Latest booking';
+  if (key && key === todayKey()) return t('vendor.focus.eyebrowTodaysEvent');
+  if (key && key > todayKey()) return t('vendor.focus.eyebrowUpcoming');
+  return t('vendor.focus.eyebrowLatest');
 });
 
 const focusTitle = computed(() => {
-  if (!props.booking) return 'No upcoming booth yet';
+  if (!props.booking) return t('vendor.focus.noBoothYet');
   return (
     props.booking.event_label
     || props.booking.carboot_event?.title
@@ -175,37 +178,37 @@ const focusTitle = computed(() => {
 });
 
 const focusSubtitle = computed(() => {
-  if (!props.booking) return 'Book a booth space to appear at the next CMart car boot.';
+  if (!props.booking) return t('vendor.focus.noBoothSubtitle');
   const date = formatBookingDate(props.booking.booking_date);
   const site = siteLabelsForBooking(props.booking) || props.boothNumber;
-  if (site) return `${date} · Site ${site}`;
+  if (site) return `${date} · ${site}`;
   return date;
 });
 
 const statusCards = computed(() => [
   {
     key: 'event',
-    label: 'Event',
+    label: t('vendor.focus.cardEvent'),
     value: props.booking
       ? (props.currentEventLabel || focusTitle.value)
-      : 'None scheduled',
-    hint: props.booking ? formatBookingDate(props.booking.booking_date) : 'Book to get started',
+      : t('vendor.focus.noneScheduled'),
+    hint: props.booking ? formatBookingDate(props.booking.booking_date) : t('vendor.focus.bookToStart'),
     icon: eventIcon,
     iconWrap: 'text-brand-600 border-brand-100',
   },
   {
     key: 'booking',
-    label: 'Booking status',
+    label: t('vendor.focus.cardBookingStatus'),
     value: props.booking
-      ? statusLabel(props.booking.approval_status)
-      : (props.boothStatus || 'No active booking'),
+      ? statusLabel(props.booking.approval_status, t)
+      : (props.boothStatus || t('vendor.focus.noActiveBooking')),
     hint: vendorBookingStatusHint(props.booking, props.boothNumber),
     icon: statusIcon,
     iconWrap: 'text-sky-700 border-sky-100',
   },
   {
     key: 'payment',
-    label: 'Payment',
+    label: t('vendor.focus.cardPayment'),
     value: paymentState.value.value,
     hint: paymentState.value.hint,
     detail: paymentState.value.lockCopy || null,
@@ -221,6 +224,6 @@ const statusCards = computed(() => [
 ]);
 
 const primaryAction = computed(() =>
-  resolveVendorFocusPrimaryAction(props.booking, paymentState.value),
+  resolveVendorFocusPrimaryAction(props.booking, paymentState.value, t),
 );
 </script>

@@ -72,8 +72,9 @@
 </template>
 
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
-import { LAYOUT_COPY } from '../../../utils/organizerEventLayoutMessages';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { getLayoutCopy } from '../../../utils/organizerEventLayoutMessages';
 
 const props = defineProps({
   disabled: { type: Boolean, default: false },
@@ -82,7 +83,8 @@ const props = defineProps({
 
 const emit = defineEmits(['choose-booking-sites', 'edit-layout-structure']);
 
-const copy = LAYOUT_COPY;
+const { t } = useI18n();
+const copy = computed(() => getLayoutCopy(t));
 const open = ref(false);
 const rootEl = ref(null);
 const triggerEl = ref(null);

@@ -42,7 +42,7 @@
             <button
               type="button"
               class="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-gray-500 shadow-md ring-1 ring-gray-200 transition hover:bg-gray-50 hover:text-gray-800"
-              aria-label="Close news details"
+              :aria-label="t('public.newsModal.closeAria')"
               @click="close"
             >
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -55,18 +55,18 @@
                 <MediaImageGallery
                   ref="galleryRef"
                   :images="post.images || []"
-                  :alt-text="`${post.title} news banner`"
-                  placeholder-text="No news image"
+                  :alt-text="t('public.newsBannerAlt', { title: post.title })"
+                  :placeholder-text="t('public.newsModal.noImage')"
                   enable-lightbox
                 />
                 <div
                   v-if="!hasBanner && post.hasVideo"
                   class="mt-3 flex h-48 items-center justify-center rounded-lg border border-dashed border-ink-200 bg-ink-50 text-sm font-semibold uppercase tracking-wide text-ink-500"
                 >
-                  Video
+                  {{ t('public.videoBadge') }}
                 </div>
                 <div v-if="post.videoUrl || post.video_url" class="mt-4">
-                  <p class="mb-2 text-xs font-bold uppercase tracking-wider text-ink-500">Video</p>
+                  <p class="mb-2 text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('public.videoBadge') }}</p>
                   <video
                     :src="post.videoUrl || post.video_url"
                     class="w-full rounded-lg bg-ink-900"
@@ -75,13 +75,13 @@
                     playsinline
                     muted
                   >
-                    Your browser does not support this video.
+                    {{ t('public.newsModal.videoUnsupported') }}
                   </video>
                 </div>
               </div>
 
               <div class="flex flex-col min-w-0" :class="post.bannerUrl ? '' : 'lg:col-span-2'">
-                <p class="text-xs font-bold uppercase tracking-wider text-brand-600 mb-2">News &amp; Updates</p>
+                <p class="text-xs font-bold uppercase tracking-wider text-brand-600 mb-2">{{ t('public.newsModal.eyebrow') }}</p>
                 <h2 :id="titleId" class="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight pr-10">
                   {{ post.title }}
                 </h2>
@@ -97,7 +97,7 @@
 
                 <dl class="mt-5 space-y-3 text-sm text-gray-700">
                   <div v-if="post.publishedDateLabel" class="flex gap-3">
-                    <dt class="w-24 shrink-0 font-semibold text-gray-500">Published</dt>
+                    <dt class="w-24 shrink-0 font-semibold text-gray-500">{{ t('public.newsModal.published') }}</dt>
                     <dd>{{ post.publishedDateLabel }}</dd>
                   </div>
                 </dl>
@@ -117,14 +117,14 @@
                     class="inline-flex items-center justify-center rounded-full border border-brand-200 bg-brand-50 px-5 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
                     @click="viewBanner"
                   >
-                    View Image
+                    {{ t('public.newsModal.viewImage') }}
                   </button>
                   <button
                     type="button"
                     class="inline-flex items-center justify-center rounded-full border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
                     @click="close"
                   >
-                    Close
+                    {{ t('public.newsModal.close') }}
                   </button>
                 </div>
               </div>
@@ -138,6 +138,7 @@
 
 <script setup>
 import { computed, ref, watch, onUnmounted, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import MediaImageGallery from './MediaImageGallery.vue';
 
 const props = defineProps({
@@ -147,6 +148,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue']);
+const { t } = useI18n();
 
 const panelRef = ref(null);
 const galleryRef = ref(null);

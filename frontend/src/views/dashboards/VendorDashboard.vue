@@ -12,9 +12,9 @@
       <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div class="min-w-0">
           <h1 class="text-2xl sm:text-3xl font-black text-ink-900 tracking-tight">
-            Hi, {{ userDisplayName }}
+            {{ t('vendor.hiUser', { name: userDisplayName }) }}
           </h1>
-          <p class="mt-1 text-sm text-ink-500">Your booth overview for today's CMart work.</p>
+          <p class="mt-1 text-sm text-ink-500">{{ t('vendor.overviewSubtitle') }}</p>
         </div>
         <div class="flex flex-wrap gap-2 shrink-0">
           <router-link
@@ -22,7 +22,7 @@
             data-testid="nav-booking-events"
             class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-3 min-h-[44px] text-[15px] font-bold text-white shadow-md shadow-brand-500/20 hover:bg-brand-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 transition"
           >
-            {{ validBookings.length ? 'Book a Space' : 'Start Vendor Booking' }}
+            {{ validBookings.length ? t('vendor.bookASpace') : t('vendor.startVendorBooking') }}
           </router-link>
           <button
             type="button"
@@ -30,7 +30,7 @@
             :disabled="loadingBookings"
             @click="refreshPrimaryData"
           >
-            {{ loadingBookings ? 'Refreshing…' : 'Refresh' }}
+            {{ loadingBookings ? t('common.refreshing') : t('common.refresh') }}
           </button>
         </div>
       </header>
@@ -38,7 +38,7 @@
       <VendorDashboardFocus
         :booking="focusBooking"
         :payment-record="null"
-        :booth-status="focusBooking ? statusLabel(focusBooking.approval_status) : null"
+        :booth-status="focusBooking ? statusLabel(focusBooking.approval_status, t) : null"
         :booth-number="focusBooking ? siteLabelsForBooking(focusBooking) : null"
         :current-event-label="focusBooking?.event_label || focusBooking?.carboot_event?.title || null"
         :loading="loadingBookings"
@@ -49,12 +49,12 @@
         v-if="announcements.length"
         class="rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-4 sm:px-5"
         data-testid="vendor-announcements"
-        aria-label="Event announcements"
+        :aria-label="t('vendor.announcementsAria')"
       >
         <div class="flex items-center justify-between gap-3 mb-3">
-          <h2 class="text-sm font-bold uppercase tracking-wider text-sky-800">Announcements</h2>
+          <h2 class="text-sm font-bold uppercase tracking-wider text-sky-800">{{ t('vendor.announcements') }}</h2>
           <router-link to="/community" class="text-sm font-semibold text-brand-700 hover:text-brand-800">
-            View more
+            {{ t('vendor.viewMore') }}
           </router-link>
         </div>
         <ul class="space-y-2">
@@ -77,15 +77,15 @@
       >
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h2 class="text-lg font-extrabold text-ink-900">Upcoming bookings</h2>
-            <p class="text-sm text-ink-500">Next two upcoming records. Full list lives under Manage.</p>
+            <h2 class="text-lg font-extrabold text-ink-900">{{ t('vendor.upcomingBookings') }}</h2>
+            <p class="text-sm text-ink-500">{{ t('vendor.upcomingBookingsHint') }}</p>
           </div>
           <router-link
             to="/vendor/manage/bookings"
             class="text-sm font-semibold text-brand-700 hover:text-brand-800 min-h-[44px] inline-flex items-center"
             data-testid="dashboard-view-all-bookings"
           >
-            View all bookings
+            {{ t('vendor.viewAllBookings') }}
           </router-link>
         </div>
 
@@ -97,9 +97,9 @@
           v-else-if="!compactBookings.length"
           class="rounded-xl border border-dashed border-ink-200 bg-ink-50/60 px-4 py-8 text-center text-sm text-ink-500"
         >
-          No booking records are currently available.
+          {{ t('vendor.noBookings') }}
           <router-link to="/vendor-booking" class="mt-2 block font-semibold text-brand-700 hover:text-brand-800">
-            Submit your first booking →
+            {{ t('vendor.submitFirstBooking') }}
           </router-link>
         </div>
 
@@ -124,7 +124,7 @@
             </div>
             <div class="flex items-center gap-2 shrink-0">
               <span :class="statusBadgeClass(booking.approval_status)" data-testid="booking-status">
-                {{ statusLabel(booking.approval_status) }}
+                {{ statusLabel(booking.approval_status, t) }}
               </span>
               <button
                 type="button"
@@ -132,7 +132,7 @@
                 data-testid="booking-view-details"
                 @click="openBookingDetails(booking.id)"
               >
-                View Details
+                {{ t('vendor.viewDetails') }}
               </button>
             </div>
           </li>
@@ -158,6 +158,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import VendorOnboardingBanner from '../../components/vendor/VendorOnboardingBanner.vue';
@@ -181,6 +182,7 @@ import {
 import { mapApiNewsToCard } from '../../utils/newsDisplay';
 import { resolveVendorOnboardingState } from '../../utils/vendorOnboarding';
 
+const { t } = useI18n();
 const toast = useToast();
 const router = useRouter();
 const auth = useAuthStore();
@@ -197,7 +199,7 @@ const paymentBookingId = ref(null);
 const paymentInvoiceAmount = ref(null);
 const announcements = ref([]);
 
-const userDisplayName = computed(() => auth.user?.name || 'Vendor');
+const userDisplayName = computed(() => auth.user?.name || t('common.vendor'));
 
 const onboardingState = computed(() => resolveVendorOnboardingState(validBookings.value));
 
@@ -252,7 +254,7 @@ const handleFocusPrimaryAction = (action) => {
 
 const openBookingDocument = async (bookingId) => {
   if (!bookingId) {
-    toast.error('No document is available yet.');
+    toast.error(t('vendor.documentUnavailable'));
     return;
   }
   try {
@@ -261,10 +263,10 @@ const openBookingDocument = async (bookingId) => {
     const fileUrl = URL.createObjectURL(file);
     window.open(fileUrl, '_blank', 'noopener,noreferrer');
     setTimeout(() => URL.revokeObjectURL(fileUrl), 60000);
-    toast.success('Booking document opened.');
+    toast.success(t('vendor.documentOpened'));
   } catch (error) {
     console.error('Unable to download booking document PDF:', error);
-    toast.error('Unable to open booking document.');
+    toast.error(t('vendor.unableOpenDocument'));
   }
 };
 
@@ -360,7 +362,7 @@ const fetchMyBookings = async () => {
     myBookings.value = Array.isArray(data) ? data : (data.data ?? []);
   } catch (e) {
     console.error('Unable to retrieve vendor bookings from the API.', e);
-    toast.error('Unable to retrieve vendor bookings.');
+    toast.error(t('vendor.unableRetrieveBookings'));
   } finally {
     loadingBookings.value = false;
   }

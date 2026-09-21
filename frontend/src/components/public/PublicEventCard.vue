@@ -3,7 +3,7 @@
     data-testid="public-event-card"
     tabindex="0"
     role="button"
-    :aria-label="`View details for ${event.title}`"
+    :aria-label="t('community.viewDetailsAria', { title: event.title })"
     class="bg-white rounded-2xl shadow-sm border border-gray-100 p-7 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 hover:border-brand-200 hover:ring-2 hover:ring-brand-500/15 transition-all duration-300 ease-out relative overflow-hidden group flex flex-col h-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
     @click="$emit('select', event)"
     @keydown.enter.prevent="$emit('select', event)"
@@ -17,7 +17,7 @@
     >
       <img
         :src="event.posterUrl"
-        :alt="`${event.title} poster preview`"
+        :alt="t('community.posterAlt', { title: event.title })"
         class="h-full w-full object-cover object-top"
       />
     </div>
@@ -26,7 +26,7 @@
       class="pointer-events-none mb-4 flex h-[140px] w-full flex-col items-center justify-center rounded-xl border border-brand-100 bg-gradient-to-br from-brand-50 via-sky-50 to-cyan-50"
       aria-hidden="true"
     >
-      <span class="text-xs font-bold uppercase tracking-[0.2em] text-brand-500">CMart Carboot</span>
+      <span class="text-xs font-bold uppercase tracking-[0.2em] text-brand-500">{{ t('calendar.cmartCarboot') }}</span>
       <span class="mt-2 text-3xl font-black text-brand-300/80">@</span>
     </div>
 
@@ -58,17 +58,17 @@
     </p>
 
     <p class="text-xs text-brand-600 font-semibold mb-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-      Click to view full poster and details
+      {{ t('calendar.clickFullPoster') }}
     </p>
 
     <div class="flex justify-between items-center mt-auto pt-5 border-t border-gray-100/80" @click.stop>
-      <span :class="['text-xs font-bold px-4 py-1.5 rounded-full pointer-events-none', event.statusClass]">{{ event.status }}</span>
+      <span :class="['text-xs font-bold px-4 py-1.5 rounded-full pointer-events-none', event.statusClass]">{{ displayStatus }}</span>
       <router-link
         :to="bookingLink"
         class="inline-flex items-center text-sm font-bold text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-4 py-1.5 rounded-full transition-colors"
         @click.stop
       >
-        Book Space <span class="ml-1">→</span>
+        {{ t('calendar.bookSpaceArrow') }}
       </router-link>
     </div>
   </article>
@@ -76,6 +76,8 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { statusLabel } from '../../i18n';
 import { vendorBookingLink } from '../../utils/vendorBooking';
 import { useAuthStore } from '../../stores/auth';
 
@@ -85,6 +87,8 @@ const props = defineProps({
 
 defineEmits(['select']);
 
+const { t } = useI18n();
 const auth = useAuthStore();
 const bookingLink = computed(() => vendorBookingLink(props.event?.id, auth));
+const displayStatus = computed(() => statusLabel(props.event?.status, t));
 </script>

@@ -1,26 +1,26 @@
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <section class="ml-card">
-      <h2 class="text-lg font-extrabold text-ink-900 mb-4">{{ editingId ? 'Edit Event' : 'Create Carboot Event' }}</h2>
+      <h2 class="text-lg font-extrabold text-ink-900 mb-4">{{ editingId ? t('staff.events.editTitle') : t('staff.events.createTitle') }}</h2>
       <form @submit.prevent="save" class="space-y-3">
         <div>
-          <label class="ml-label">Title</label>
+          <label class="ml-label">{{ t('staff.events.title') }}</label>
           <input v-model="form.title" required class="ml-input" />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="ml-label">Starts at</label>
+            <label class="ml-label">{{ t('staff.events.startsAt') }}</label>
             <input v-model="form.starts_at" type="datetime-local" required class="ml-input" />
           </div>
           <div>
-            <label class="ml-label">Ends at</label>
+            <label class="ml-label">{{ t('staff.events.endsAt') }}</label>
             <input v-model="form.ends_at" type="datetime-local" required class="ml-input" />
           </div>
         </div>
         <div>
-          <label class="ml-label">Status</label>
+          <label class="ml-label">{{ t('staff.events.status') }}</label>
           <select v-model="form.status" required class="ml-input">
-            <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+            <option v-for="s in statuses" :key="s" :value="s">{{ statusLabel(s, t) }}</option>
           </select>
         </div>
         <div
@@ -31,7 +31,7 @@
             {{ vendorBookingSitesLabel }}
           </p>
           <p class="text-xs text-ink-500">
-            Choose physical booking sites on the parking layout.
+            {{ t('staff.events.vendorBookingSitesHint') }}
           </p>
           <button
             v-if="editingId"
@@ -40,11 +40,11 @@
             data-testid="event-manage-booking-sites"
             @click="openLayout({ id: editingId })"
           >
-            Manage booking sites
+            {{ t('staff.events.manageBookingSites') }}
           </button>
         </div>
         <div>
-          <label class="ml-label">Price Per Site (RM)</label>
+          <label class="ml-label">{{ t('staff.events.pricePerSite') }}</label>
           <div class="relative">
             <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-ink-500">RM</span>
             <input
@@ -59,7 +59,7 @@
             />
           </div>
           <p class="mt-1 text-xs text-ink-500">
-            Uniform price for each parking site. Booking total = price × number of sites (not × days).
+            {{ t('staff.events.pricePerSiteHint') }}
           </p>
         </div>
         <label class="flex items-start gap-2 text-sm text-ink-700">
@@ -69,14 +69,14 @@
             class="mt-1"
             data-testid="event-save-default-site-price"
           />
-          <span>Save this price as the default for future events</span>
+          <span>{{ t('staff.events.saveAsDefaultPrice') }}</span>
         </label>
         <p
           v-if="editingId && editingHasBookings"
           class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
           data-testid="event-price-change-warning"
         >
-          Price changes apply only to new bookings. Existing bookings and payment totals will not change.
+          {{ t('staff.events.priceChangeWarning') }}
         </p>
         <div class="rounded-xl border border-ink-100 bg-ink-50/70 px-3 py-3 space-y-3">
           <label class="flex items-start gap-2 text-sm text-ink-700">
@@ -87,14 +87,14 @@
               data-testid="event-enable-item-reservations"
             />
             <span>
-              <span class="font-semibold text-ink-800">Enable item reservations</span>
+              <span class="font-semibold text-ink-800">{{ t('staff.events.enableItemReservations') }}</span>
               <span class="mt-0.5 block text-xs text-ink-500">
-                RM 0.00 enables free reservation holds. A blank or disabled setting keeps item reservations closed for this event.
+                {{ t('staff.events.enableItemReservationsHint') }}
               </span>
             </span>
           </label>
           <div v-if="form.enable_item_reservations">
-            <label class="ml-label">Reservation service fee (RM)</label>
+            <label class="ml-label">{{ t('staff.events.reservationServiceFee') }}</label>
             <div class="relative">
               <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-ink-500">RM</span>
               <input
@@ -112,12 +112,12 @@
           </div>
         </div>
         <div>
-          <label class="ml-label">Description</label>
+          <label class="ml-label">{{ t('staff.events.description') }}</label>
           <textarea v-model="form.description" rows="3" class="ml-input"></textarea>
         </div>
         <MultiImageUploadField
           ref="imageField"
-          label="Event images (optional)"
+          :label="t('staff.events.eventImages')"
           :existing="editingImages"
           :legacy-field="legacyImagePath"
           enable-preview
@@ -125,27 +125,27 @@
           @update:removeIds="removeImageIds = $event"
         />
         <div class="flex gap-2">
-          <button type="submit" class="ml-btn-primary" :disabled="saving">{{ saving ? 'Saving…' : 'Save Event' }}</button>
-          <button v-if="editingId" type="button" class="ml-btn-ghost" @click="resetForm">Cancel Edit</button>
+          <button type="submit" class="ml-btn-primary" :disabled="saving">{{ saving ? t('staff.events.saving') : t('staff.events.saveEvent') }}</button>
+          <button v-if="editingId" type="button" class="ml-btn-ghost" @click="resetForm">{{ t('staff.events.cancelEdit') }}</button>
         </div>
       </form>
       <p class="text-xs text-ink-500 mt-3">
-        Events appear on the <router-link to="/calendar" class="text-brand-600 font-semibold">public calendar</router-link>
-        and portal schedule cards.
+        {{ t('staff.events.calendarHintPrefix') }} <router-link to="/calendar" class="text-brand-600 font-semibold">{{ t('staff.events.publicCalendar') }}</router-link>
+        {{ t('staff.events.calendarHintSuffix') }}
       </p>
     </section>
 
     <section class="ml-card">
-      <h2 class="text-lg font-extrabold text-ink-900 mb-4">Scheduled Events</h2>
-      <div v-if="loading && !hasLoaded" class="text-ink-500 text-sm">Loading events…</div>
-      <div v-else-if="hasLoaded && !events.length" class="text-ink-500 text-sm">No events yet.</div>
+      <h2 class="text-lg font-extrabold text-ink-900 mb-4">{{ t('staff.events.scheduledEvents') }}</h2>
+      <div v-if="loading && !hasLoaded" class="text-ink-500 text-sm">{{ t('staff.events.loading') }}</div>
+      <div v-else-if="hasLoaded && !events.length" class="text-ink-500 text-sm">{{ t('staff.events.empty') }}</div>
       <ul v-else class="space-y-3">
         <li
           v-for="ev in events"
           :key="ev.id"
           tabindex="0"
           role="button"
-          :aria-label="`Preview full event: ${ev.title}`"
+          :aria-label="t('staff.events.previewAria', { title: ev.title })"
           class="rounded-lg border border-ink-200 p-3 cursor-pointer hover:border-brand-300 hover:bg-brand-50/30 hover:ring-2 hover:ring-brand-500/10 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 group"
           @click="openEventPreview(ev)"
           @keydown.enter.prevent="openEventPreview(ev)"
@@ -156,43 +156,43 @@
               <img
                 v-if="resolveEventImageUrl(ev)"
                 :src="resolveEventImageUrl(ev)"
-                :alt="`${ev.title} poster`"
+                :alt="t('staff.events.posterAlt', { title: ev.title })"
                 class="w-16 h-16 rounded-lg object-cover border border-ink-200 shrink-0"
               />
               <div v-else class="w-16 h-16 rounded-lg border border-dashed border-ink-200 bg-ink-50 shrink-0 flex items-center justify-center text-[10px] font-bold text-ink-400">
-                No image
+                {{ t('staff.events.noImage') }}
               </div>
               <div class="min-w-0">
                 <div class="font-bold text-ink-900">{{ ev.title }}</div>
                 <div class="text-xs text-ink-500">{{ formatEventDateTime(ev.starts_at) }} → {{ formatEventDateTime(ev.ends_at) }}</div>
-                <span class="mt-1 inline-block ml-badge bg-brand-100 text-brand-800">{{ ev.status }}</span>
+                <span class="mt-1 inline-block ml-badge bg-brand-100 text-brand-800">{{ statusLabel(ev.status, t) }}</span>
                 <p class="text-xs text-ink-500 mt-1">
-                  Price per site:
-                  {{ ev.site_price == null ? 'Not configured' : `RM ${Number(ev.site_price).toFixed(2)}` }}
+                  {{ t('staff.events.pricePerSiteLabel') }}
+                  {{ ev.site_price == null ? t('staff.events.notConfigured') : `RM ${Number(ev.site_price).toFixed(2)}` }}
                 </p>
                 <p class="text-xs text-ink-500 mt-1">
-                  Reservations:
+                  {{ t('staff.events.reservationsLabel') }}
                   {{ ev.item_reservation_service_fee == null
-                    ? 'Closed'
-                    : `Enabled · RM ${Number(ev.item_reservation_service_fee).toFixed(2)}` }}
+                    ? t('staff.events.reservationsClosed')
+                    : t('staff.events.reservationsEnabled', { amount: Number(ev.item_reservation_service_fee).toFixed(2) }) }}
                 </p>
                 <p v-if="ev.description" class="text-xs text-ink-500 mt-1 line-clamp-2">{{ ev.description }}</p>
                 <p class="text-xs text-brand-600 font-semibold mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  Click to preview full event
+                  {{ t('staff.events.clickToPreview') }}
                 </p>
               </div>
             </div>
             <div class="flex flex-col gap-1 shrink-0" @click.stop>
-              <button class="ml-btn-ghost text-sm" @click="edit(ev)">Edit</button>
+              <button class="ml-btn-ghost text-sm" @click="edit(ev)">{{ t('staff.events.edit') }}</button>
               <button
                 class="ml-btn-ghost text-sm text-cyan-800"
                 data-testid="manage-layout-button"
                 @click="openLayout(ev)"
               >
-                Layout Management
+                {{ t('staff.events.layoutManagement') }}
               </button>
               <button class="ml-btn-ghost text-sm text-rose-600" :disabled="deletingId === ev.id" @click="remove(ev)">
-                {{ deletingId === ev.id ? 'Deleting…' : 'Delete' }}
+                {{ deletingId === ev.id ? t('staff.events.deleting') : t('staff.events.delete') }}
               </button>
             </div>
           </div>
@@ -211,6 +211,7 @@
 
 <script setup>
 import { ref, reactive, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
@@ -224,7 +225,9 @@ import {
   toDatetimeLocalValue,
 } from '../../../utils/eventDisplay';
 import { useAuthStore } from '../../../stores/auth';
+import { statusLabel } from '../../../i18n';
 
+const { t } = useI18n();
 const toast = useToast();
 const router = useRouter();
 const auth = useAuthStore();
@@ -282,10 +285,10 @@ const reservationFeeError = computed(() => {
   if (raw === '' || raw == null) return '';
   const value = Number(raw);
   if (!Number.isFinite(value) || value < 0) {
-    return 'Reservation service fee must be RM 0.00 or greater.';
+    return t('staff.events.feeMustBeNonNegative');
   }
   if (value > 99999999.99) {
-    return 'Reservation service fee cannot exceed RM 99999999.99.';
+    return t('staff.events.feeExceedsMax');
   }
   return '';
 });
@@ -299,10 +302,10 @@ const reservationFeePayload = () => {
 
 const vendorBookingSitesLabel = computed(() => {
   const limit = form.vendor_site_open_limit;
-  if (limit == null || limit === '') return 'Vendor booking sites: Not configured';
+  if (limit == null || limit === '') return t('staff.events.vendorSitesNotConfigured');
   const count = Number(limit);
-  if (!Number.isFinite(count) || count < 1) return 'Vendor booking sites: Not configured';
-  return `Vendor booking sites: ${count} selected`;
+  if (!Number.isFinite(count) || count < 1) return t('staff.events.vendorSitesNotConfigured');
+  return t('staff.events.vendorSitesSelected', { count });
 });
 
 const extractApiError = (error) => {
@@ -315,19 +318,19 @@ const extractApiError = (error) => {
 
   if (data?.code === 'event_has_bookings' || data?.error === 'event_has_bookings') {
     return stripStatusPrefix(data?.message)
-      || 'This event cannot be permanently deleted because booking history already exists. Set the event status to Closed if it should no longer be available.';
+      || t('staff.events.cannotDeleteHasBookings');
   }
   if (data?.error === 'event_operating_dates_locked_by_allocations') {
-    return 'This event already has vendor bookings. Operating dates cannot be changed because existing bookings depend on them.';
+    return t('staff.events.datesLockedByAllocations');
   }
   if (data?.errors) {
     return Object.values(data.errors).flat().join(' ');
   }
-  const message = data?.message || error.message || 'Request failed.';
+  const message = data?.message || error.message || t('staff.events.requestFailed');
   const text = stripStatusPrefix(message);
   // Never surface raw SQL / integrity constraint noise in the UI.
   if (typeof text === 'string' && /SQLSTATE|Integrity constraint|1451|QueryException/i.test(text)) {
-    return 'Unable to complete this action. The event could not be permanently deleted.';
+    return t('staff.events.unableDelete');
   }
   return text;
 };
@@ -418,18 +421,18 @@ const edit = (ev) => {
 
 const save = async () => {
   if (!form.title.trim() || !form.starts_at || !form.ends_at) {
-    toast.error('Title, start time, and end time are required.');
+    toast.error(t('staff.events.titleTimesRequired'));
     return;
   }
 
   if (form.ends_at <= form.starts_at) {
-    toast.error('End time must be after start time.');
+    toast.error(t('staff.events.endAfterStart'));
     return;
   }
 
   const sitePrice = Number(form.site_price);
   if (!Number.isFinite(sitePrice) || sitePrice <= 0) {
-    toast.error('Price per site must be greater than RM0.00.');
+    toast.error(t('staff.events.priceMustBePositive'));
     return;
   }
 
@@ -460,17 +463,17 @@ const save = async () => {
       if (editingId.value) {
         fd.append('_method', 'PUT');
         await api.post(`/carboot-events/${editingId.value}`, fd);
-        toast.success('Event updated.');
+        toast.success(t('staff.events.eventUpdated'));
       } else {
         await api.post('/carboot-events', fd);
-        toast.success('Event created.');
+        toast.success(t('staff.events.eventCreated'));
       }
     } else if (editingId.value) {
       await api.put(`/carboot-events/${editingId.value}`, payload);
-      toast.success('Event updated.');
+      toast.success(t('staff.events.eventUpdated'));
     } else {
       await api.post('/carboot-events', payload);
-      toast.success('Event created.');
+      toast.success(t('staff.events.eventCreated'));
     }
 
     if (payload.save_as_default_site_price) {
@@ -493,12 +496,12 @@ const save = async () => {
 
 const remove = async (event) => {
   const id = event?.id ?? event;
-  if (!window.confirm('Permanently delete this event? This cannot be undone.')) return;
+  if (!window.confirm(t('staff.events.deleteConfirm'))) return;
 
   deletingId.value = id;
   try {
     await api.delete(`/carboot-events/${id}`);
-    toast.success('Event deleted.');
+    toast.success(t('staff.events.eventDeleted'));
     if (selectedEvent.value?.id === id) {
       showEventModal.value = false;
       selectedEvent.value = null;

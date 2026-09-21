@@ -1,15 +1,25 @@
+import { tt } from '../i18n';
+
 export const ITEM_CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'For Parts'];
 
+export const ITEM_CONDITION_LABEL_KEYS = {
+  New: 'items.conditions.new',
+  'Like New': 'items.conditions.likeNew',
+  Good: 'items.conditions.good',
+  Fair: 'items.conditions.fair',
+  'For Parts': 'items.conditions.forParts',
+};
+
 export const ITEM_PRICING_TYPES = [
-  { value: 'fixed', label: 'Fixed price' },
-  { value: 'free', label: 'Free' },
-  { value: 'donation', label: 'Donation' },
+  { value: 'fixed', labelKey: 'items.pricing.fixed' },
+  { value: 'free', labelKey: 'items.pricing.free' },
+  { value: 'donation', labelKey: 'items.pricing.donation' },
 ];
 
 export const ITEM_STATUS_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'active', label: 'Active' },
-  { id: 'inactive', label: 'Inactive' },
+  { id: 'all', labelKey: 'items.tabAll' },
+  { id: 'active', labelKey: 'items.tabActive' },
+  { id: 'inactive', labelKey: 'items.tabInactive' },
 ];
 
 export const MARKETPLACE_SORT_OPTIONS = [
@@ -19,15 +29,15 @@ export const MARKETPLACE_SORT_OPTIONS = [
   { value: 'price_desc', label: 'Price: high to low' },
 ];
 
-export const marketplaceVisibilityLabel = (status) =>
+export const marketplaceVisibilityLabel = (status, t = tt) =>
   status === 'active'
-    ? 'Active · may appear publicly after approval'
-    : 'Inactive · hidden from public preview';
+    ? t('items.visibilityActive')
+    : t('items.visibilityInactive');
 
-export const formatItemPrice = (item) => {
-  if (!item) return '—';
-  if (item.pricing_type === 'free') return 'Free';
-  if (item.pricing_type === 'donation') return 'Donation';
+export const formatItemPrice = (item, t = tt) => {
+  if (!item) return t('common.none');
+  if (item.pricing_type === 'free') return t('items.pricing.free');
+  if (item.pricing_type === 'donation') return t('items.pricing.donation');
   return `RM ${Number(item.price ?? 0).toFixed(2)}`;
 };
 

@@ -1,18 +1,18 @@
 <template>
   <div class="space-y-4" data-testid="vendor-comments-panel">
     <div class="rounded-xl border border-sky-100 bg-white p-3">
-      <h3 class="text-sm font-extrabold text-ink-900">Vendor Comments</h3>
+      <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.comments.title') }}</h3>
       <p class="mt-0.5 text-xs text-ink-500">
-        What vendors wrote, grouped by question · no sentiment scoring
+        {{ t('organizer.analytics.comments.lead') }}
         <template v-if="respondentCount != null"> · n = {{ respondentCount }}</template>
       </p>
       <div v-if="qualitative" class="mt-3 flex flex-wrap gap-3 text-xs text-ink-600">
         <span>
-          Substantive comments:
+          {{ t('organizer.analytics.comments.substantiveComments') }}
           <strong class="text-ink-900">{{ qualitative.substantive_count ?? 0 }}</strong>
         </span>
         <span>
-          Actionable suggestions:
+          {{ t('organizer.analytics.comments.actionableSuggestions') }}
           <strong class="text-ink-900">{{ qualitative.actionable_suggestion_count ?? 0 }}</strong>
         </span>
       </div>
@@ -33,7 +33,7 @@
       class="rounded-xl border border-sky-100 bg-white p-3"
     >
       <h4 class="text-sm font-extrabold text-ink-900">{{ group.label }}</h4>
-      <p class="text-xs text-ink-500">Vendor Survey CSV</p>
+      <p class="text-xs text-ink-500">{{ t('organizer.analytics.comments.vendorSurveyCsv') }}</p>
       <ul v-if="group.items.length" class="mt-3 max-h-64 space-y-2 overflow-auto">
         <li
           v-for="(item, idx) in group.items"
@@ -46,7 +46,7 @@
           </p>
         </li>
       </ul>
-      <p v-else class="mt-3 text-sm text-ink-500">No substantive responses in this group.</p>
+      <p v-else class="mt-3 text-sm text-ink-500">{{ t('organizer.analytics.comments.noSubstantiveInGroup') }}</p>
     </section>
 
     <p
@@ -61,17 +61,17 @@
       <section class="rounded-xl border border-sky-100 bg-white p-3">
         <div class="mb-2 flex items-start justify-between gap-2">
           <div>
-            <h4 class="text-sm font-extrabold text-ink-900">Community Feedback</h4>
-            <p class="text-xs text-ink-500">Event-scoped reviews only · hidden feedback excluded</p>
+            <h4 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.comments.communityFeedback') }}</h4>
+            <p class="text-xs text-ink-500">{{ t('organizer.analytics.comments.communityFeedbackHint') }}</p>
           </div>
-          <span v-if="feedbackLoading" class="text-xs text-ink-400">Loading…</span>
+          <span v-if="feedbackLoading" class="text-xs text-ink-400">{{ t('organizer.analytics.comments.loading') }}</span>
         </div>
 
         <p
           v-if="feedbackLinkReady === false"
           class="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950"
         >
-          Community feedback is not yet linked to individual events. Vendor survey comments above still apply.
+          {{ t('organizer.analytics.comments.feedbackNotLinked') }}
         </p>
 
         <p v-if="feedbackError" class="text-sm text-rose-700">{{ feedbackError }}</p>
@@ -95,8 +95,8 @@
 
       <section class="rounded-xl border border-sky-100 bg-white p-3">
         <div class="mb-2">
-          <h4 class="text-sm font-extrabold text-ink-900">Vendor Product Descriptions</h4>
-          <p class="text-xs text-ink-500">Approved booking product details for this event</p>
+          <h4 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.comments.productDescriptions') }}</h4>
+          <p class="text-xs text-ink-500">{{ t('organizer.analytics.comments.productDescriptionsHint') }}</p>
         </div>
         <p v-if="productsError" class="text-sm text-rose-700">{{ productsError }}</p>
         <template v-else-if="productTerms.length >= wordCloudThreshold">
@@ -115,8 +115,8 @@
         <p v-else class="py-6 text-center text-sm text-ink-500">
           {{
             productTerms.length
-              ? 'More written responses are needed for a meaningful word cloud.'
-              : 'No approved vendor product descriptions for this event yet.'
+              ? t('organizer.analytics.comments.needMoreResponses')
+              : t('organizer.analytics.comments.noProductDescriptions')
           }}
         </p>
       </section>
@@ -126,7 +126,10 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { getEventWordcloud } from '../../services/eventAnalyticsApi';
+
+const { t } = useI18n();
 
 const WORD_CLOUD_THRESHOLD = 5;
 
@@ -158,27 +161,27 @@ const groupsMap = computed(() => props.qualitative?.groups || {});
 const commentGroups = computed(() => [
   {
     key: 'operational_difficulties',
-    label: 'Operational difficulties',
+    label: t('organizer.analytics.comments.operationalDifficulties'),
     items: groupsMap.value.operational_difficulties || [],
   },
   {
     key: 'improvement_suggestions',
-    label: 'Improvement suggestions',
+    label: t('organizer.analytics.comments.improvementSuggestions'),
     items: groupsMap.value.improvement_suggestions || [],
   },
   {
     key: 'general_comments',
-    label: 'General comments',
+    label: t('organizer.analytics.comments.generalComments'),
     items: groupsMap.value.general_comments || [],
   },
   {
     key: 'supporting_activity_impacts',
-    label: 'Supporting-activity impacts',
+    label: t('organizer.analytics.comments.supportingActivityImpacts'),
     items: groupsMap.value.supporting_activity_impacts || [],
   },
   {
     key: 'other_responses',
-    label: 'Other responses',
+    label: t('organizer.analytics.comments.otherResponses'),
     items: groupsMap.value.other_responses || [],
   },
 ]);
@@ -189,23 +192,23 @@ const hasAnySurveyComments = computed(() =>
 
 const surveyEmptyMessage = computed(() => {
   if (props.surveyStatus === 'excluded') {
-    return 'Survey comments are hidden because the current source mode excludes Survey CSV.';
+    return t('organizer.analytics.comments.hiddenByMode');
   }
   if (props.surveyStatus === 'missing_source' || props.surveyStatus === 'empty') {
-    return 'No CSV data is connected to this event.';
+    return t('organizer.analytics.comments.noCsvConnected');
   }
-  return 'No substantive vendor survey comments for this event.';
+  return t('organizer.analytics.comments.noSubstantiveComments');
 });
 
 const feedbackWordCloudMessage = computed(() => {
   if (feedbackUnavailableReason.value) return feedbackUnavailableReason.value;
   if (props.feedbackLinkReady === false) {
-    return 'Event-linked community feedback is not available yet.';
+    return t('organizer.analytics.comments.eventLinkedUnavailable');
   }
   if (feedbackTerms.value.length) {
-    return 'More written responses are needed for a meaningful word cloud.';
+    return t('organizer.analytics.comments.needMoreResponses');
   }
-  return 'No event-linked community feedback text for this event.';
+  return t('organizer.analytics.comments.noFeedbackText');
 });
 
 const commentText = (item) => (typeof item === 'string' ? item : (item?.text || ''));
@@ -243,9 +246,9 @@ const load = async () => {
         || feedbackRes.reason?.message
         || '';
       if (/carboot_event_id|not available|event-scoped/i.test(msg)) {
-        feedbackUnavailableReason.value = 'Community feedback is not linked to events in this environment.';
+        feedbackUnavailableReason.value = t('organizer.analytics.comments.feedbackNotLinkedEnv');
       } else {
-        feedbackError.value = msg || 'Unable to load event-scoped feedback themes.';
+        feedbackError.value = msg || t('organizer.analytics.comments.unableLoadFeedback');
       }
     }
 
@@ -253,7 +256,7 @@ const load = async () => {
       productsData.value = productsRes.value.data;
     } else {
       productsError.value = productsRes.reason?.response?.data?.message
-        || 'Unable to load vendor product themes for this event.';
+        || t('organizer.analytics.comments.unableLoadProducts');
     }
   } finally {
     feedbackLoading.value = false;

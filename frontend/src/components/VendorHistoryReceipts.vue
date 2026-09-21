@@ -6,8 +6,8 @@
   >
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
       <div>
-        <h2 class="text-lg font-extrabold text-ink-900">Payment history</h2>
-        <p class="text-sm text-ink-500">Invoices and receipts for your booth bookings.</p>
+        <h2 class="text-lg font-extrabold text-ink-900">{{ t('payment.history.title') }}</h2>
+        <p class="text-sm text-ink-500">{{ t('payment.history.subtitle') }}</p>
       </div>
       <div class="flex flex-wrap gap-2 shrink-0">
         <button
@@ -16,14 +16,14 @@
           :disabled="loading"
           @click="$emit('retry')"
         >
-          {{ loading ? 'Refreshing…' : 'Refresh' }}
+          {{ loading ? t('payment.history.refreshing') : t('payment.history.refresh') }}
         </button>
         <button
           type="button"
           class="ml-btn-ghost text-sm min-h-[44px]"
           @click="$emit('close')"
         >
-          Close
+          {{ t('payment.history.close') }}
         </button>
       </div>
     </div>
@@ -37,7 +37,7 @@
               :key="column"
               scope="col"
               class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500"
-              :class="column === 'Amount' ? 'text-right' : column === 'Action' ? 'text-right' : 'text-left'"
+              :class="column === t('payment.history.colAmount') ? 'text-right' : column === t('payment.history.colAction') ? 'text-right' : 'text-left'"
             >
               {{ column }}
             </th>
@@ -46,7 +46,7 @@
         <tbody class="divide-y divide-ink-100 bg-white/60">
           <tr v-for="n in 3" :key="n" class="animate-pulse">
             <td v-for="column in columns" :key="column" class="px-4 py-4">
-              <div class="h-4 rounded bg-ink-100" :class="column === 'Action' ? 'ml-auto w-24' : 'w-28'"></div>
+              <div class="h-4 rounded bg-ink-100" :class="column === t('payment.history.colAction') ? 'ml-auto w-24' : 'w-28'"></div>
             </td>
           </tr>
         </tbody>
@@ -54,15 +54,15 @@
     </div>
 
     <div v-else-if="loadError" class="rounded-2xl border border-amber-200 bg-amber-50/70 p-8 text-center">
-      <p class="text-sm text-amber-900 font-semibold">Unable to load your payment records right now.</p>
-      <button type="button" class="mt-4 ml-btn-ghost text-sm" @click="$emit('retry')">Try Again</button>
+      <p class="text-sm text-amber-900 font-semibold">{{ t('payment.history.loadError') }}</p>
+      <button type="button" class="mt-4 ml-btn-ghost text-sm" @click="$emit('retry')">{{ t('payment.history.tryAgain') }}</button>
     </div>
 
     <div
       v-else-if="!records.length"
       class="rounded-2xl border border-dashed border-ink-300 bg-ink-50/50 p-10 text-center text-ink-500"
     >
-      No payment records yet. Your booking receipts will appear here once an invoice is issued.
+      {{ t('payment.history.empty') }}
     </div>
 
     <template v-else>
@@ -70,7 +70,7 @@
         <input
           v-model="receiptsSearchQuery"
           type="search"
-          placeholder="Search payment records…"
+          :placeholder="t('payment.history.searchPlaceholder')"
           data-testid="receipt-search"
           class="w-full sm:max-w-sm rounded-xl border border-ink-200 bg-white px-4 py-2.5 min-h-[44px] text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         />
@@ -85,7 +85,7 @@
           :class="filterTabClass(selectedReceiptStatus === tab.id)"
           @click="selectedReceiptStatus = tab.id"
         >
-          {{ tab.label }}
+          {{ t(tab.labelKey) }}
           <span class="ml-1 opacity-75">({{ receiptFilterCounts[tab.id] || 0 }})</span>
         </button>
       </div>
@@ -94,7 +94,7 @@
         v-if="!filteredRecords.length"
         class="rounded-xl border border-dashed border-ink-200 px-4 py-6 text-center text-sm text-ink-500"
       >
-        No payment records match your search.
+        {{ t('payment.history.noMatch') }}
       </div>
 
       <div v-else class="overflow-x-auto rounded-xl border border-ink-100">
@@ -106,7 +106,7 @@
                 :key="column"
                 scope="col"
                 class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-ink-500"
-                :class="column === 'Amount' || column === 'Action' ? 'text-right' : 'text-left'"
+                :class="column === t('payment.history.colAmount') || column === t('payment.history.colAction') ? 'text-right' : 'text-left'"
               >
                 {{ column }}
               </th>
@@ -136,7 +136,7 @@
                   data-testid="payment-action-button"
                   @click="$emit('submit-payment', row)"
                 >
-                  Submit Payment
+                  {{ t('payment.history.submitPayment') }}
                 </button>
                 <button
                   v-if="row.receipt_available"
@@ -145,7 +145,7 @@
                   data-testid="view-receipt-button"
                   @click="$emit('view-document', row.booking_id)"
                 >
-                  View Receipt
+                  {{ t('payment.history.viewReceipt') }}
                 </button>
                 <button
                   v-else-if="row.invoice_available"
@@ -154,7 +154,7 @@
                   data-testid="view-invoice-button"
                   @click="$emit('view-document', row.booking_id)"
                 >
-                  View Invoice
+                  {{ t('payment.history.viewInvoice') }}
                 </button>
                 <button
                   v-else
@@ -162,7 +162,7 @@
                   class="ml-btn-ghost text-sm font-semibold opacity-50 cursor-not-allowed min-h-[44px]"
                   disabled
                 >
-                  No Receipt
+                  {{ t('payment.history.noReceipt') }}
                 </button>
               </td>
             </tr>
@@ -175,23 +175,34 @@
 
 <script setup>
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
   canVendorPayBooking,
   filterTabClass,
   formatBookingReference,
+  statusLabel,
   vendorPaymentStatusLabel,
 } from '../utils/bookingDisplay';
 
-const columns = ['Event', 'Date', 'Booth', 'Amount', 'Status', 'Action'];
+const { t } = useI18n();
+
+const columns = computed(() => [
+  t('payment.history.colEvent'),
+  t('payment.history.colDate'),
+  t('payment.history.colBooth'),
+  t('payment.history.colAmount'),
+  t('payment.history.colStatus'),
+  t('payment.history.colAction'),
+]);
 
 const RECEIPT_FILTER_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'paid', label: 'Paid' },
-  { id: 'unpaid', label: 'Unpaid' },
-  { id: 'pending_verification', label: 'Pending Verification' },
-  { id: 'not_issued', label: 'Not Issued' },
-  { id: 'cancelled', label: 'Cancelled' },
-  { id: 'rejected', label: 'Rejected' },
+  { id: 'all', labelKey: 'payment.history.filterAll' },
+  { id: 'paid', labelKey: 'payment.history.filterPaid' },
+  { id: 'unpaid', labelKey: 'payment.history.filterUnpaid' },
+  { id: 'pending_verification', labelKey: 'payment.history.filterPendingVerification' },
+  { id: 'not_issued', labelKey: 'payment.history.filterNotIssued' },
+  { id: 'cancelled', labelKey: 'payment.history.filterCancelled' },
+  { id: 'rejected', labelKey: 'payment.history.filterRejected' },
 ];
 
 const props = defineProps({
@@ -224,7 +235,7 @@ const formatRecordDate = (dateStr) => {
 
 const displayStatus = (row) => {
   if (['Cancelled', 'Rejected'].includes(row.booking_status)) {
-    return row.booking_status;
+    return statusLabel(row.booking_status, t);
   }
   return vendorPaymentStatusLabel(row);
 };
@@ -283,17 +294,19 @@ const receiptFilterCounts = computed(() =>
 );
 
 const statusBadgeClass = (row) => {
-  const status = displayStatus(row);
+  if (['Cancelled', 'Rejected'].includes(row.booking_status)) {
+    return {
+      Cancelled: 'ml-badge bg-ink-100 text-ink-700',
+      Rejected: 'ml-badge bg-rose-100 text-rose-800',
+    }[row.booking_status];
+  }
+  const status = row.payment_status;
   return {
     Paid: 'ml-badge bg-emerald-100 text-emerald-800',
     Unpaid: 'ml-badge bg-amber-100 text-amber-800',
-    'Payment submitted': 'ml-badge bg-sky-100 text-sky-800',
     'Pending Verification': 'ml-badge bg-sky-100 text-sky-800',
-    'Locked until approval': 'ml-badge bg-ink-100 text-ink-700',
-    Pending: 'ml-badge bg-brand-100 text-brand-800',
     'Not Issued': 'ml-badge bg-ink-100 text-ink-700',
-    Cancelled: 'ml-badge bg-ink-100 text-ink-700',
-    Rejected: 'ml-badge bg-rose-100 text-rose-800',
+    Pending: 'ml-badge bg-brand-100 text-brand-800',
   }[status] || 'ml-badge bg-ink-100 text-ink-700';
 };
 </script>

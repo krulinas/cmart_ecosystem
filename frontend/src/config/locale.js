@@ -1,7 +1,8 @@
 /**
- * UI locale baseline. Bahasa Melayu copy is deferred — set SHOW_BM_COPY to true
- * when bilingual components should render secondary locale text again.
+ * UI locale helpers — preferred entry is `src/i18n`.
+ * Kept for existing imports.
  */
-export const UI_LOCALE = 'en';
+export { DEFAULT_LOCALE as UI_LOCALE } from '../i18n/localeStorage';
 
+/** @deprecated Prefer vue-i18n. */
 export const SHOW_BM_COPY = false;

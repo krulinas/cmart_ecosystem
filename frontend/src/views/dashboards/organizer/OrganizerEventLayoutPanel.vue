@@ -463,6 +463,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import VisualParkingLayout from '../../../components/layout/VisualParkingLayout.vue';
@@ -476,10 +477,7 @@ import OrganizerManageParkingLayoutMenu from '../../../components/organizer/layo
 import OrganizerCanonicalSiteRestoreControls from '../../../components/organizer/layout/OrganizerCanonicalSiteRestoreControls.vue';
 import StandardParkingLayoutModal from '../../../components/organizer/layout/StandardParkingLayoutModal.vue';
 import * as layoutApi from '../../../services/organizerEventLayoutApi';
-import {
-  LAYOUT_COPY,
-  layoutErrorMessage,
-} from '../../../utils/organizerEventLayoutMessages';
+import { getLayoutCopy, layoutErrorMessage } from '../../../utils/organizerEventLayoutMessages';
 import {
   CMART_CARBOOT_SITES_PER_ROW,
   isAllowedPhysicalRowLabel,
@@ -500,7 +498,8 @@ import {
 const toast = useToast();
 const route = useRoute();
 const router = useRouter();
-const copy = LAYOUT_COPY;
+const { t } = useI18n();
+const copy = computed(() => getLayoutCopy(t));
 
 const events = ref([]);
 const categories = ref([]);
@@ -646,15 +645,15 @@ const sitePopoverOpen = computed(
 const displayEventName = computed(() => {
   if (switchingEvents.value) {
     const pending = events.value.find((event) => String(event.id) === String(selectedEventId.value));
-    return pending?.title || copy.selectEventPrompt;
+    return pending?.title || copy.value.selectEventPrompt;
   }
-  return layout.value?.event?.name || copy.selectEventPrompt;
+  return layout.value?.event?.name || copy.value.selectEventPrompt;
 });
 
 const loadingMessage = computed(() => {
   const pending = events.value.find((event) => String(event.id) === String(selectedEventId.value));
-  if (pending?.title) return copy.loadingLayoutFor(pending.title);
-  return copy.loadingLayout;
+  if (pending?.title) return copy.value.loadingLayoutFor(pending.title);
+  return copy.value.loadingLayout;
 });
 
 function formatLoadedAt(value) {
@@ -668,9 +667,9 @@ function formatLoadedAt(value) {
 function rowPhysicalSiteCountLabel(row) {
   const count = (row?.sites || []).length;
   if (isAllowedPhysicalRowLabel(row?.label)) {
-    return copy.physicalSitesOfTotal(count, CMART_CARBOOT_SITES_PER_ROW);
+    return copy.value.physicalSitesOfTotal(count, CMART_CARBOOT_SITES_PER_ROW);
   }
-  return copy.sitesCountFallback(count);
+  return copy.value.sitesCountFallback(count);
 }
 
 function goToEvents() {
@@ -720,7 +719,7 @@ function openMoveSiteFromPopover(site) {
 
 function openGenerateSites(row) {
   if (!canGenerateSitesForRow(row)) {
-    toast.error(copy.generateSitesComplete);
+    toast.error(copy.value.generateSitesComplete);
     return;
   }
   activeRow.value = row;
@@ -730,7 +729,7 @@ function openGenerateSites(row) {
 
 function openStandardGenerator() {
   if (rows.value.length > 0 || unresolvedSites.value.length > 0) {
-    toast.error(copy.layoutExistsHint);
+    toast.error(copy.value.layoutExistsHint);
     return;
   }
   formError.value = '';
@@ -744,7 +743,7 @@ function enterSelectOpenMode() {
   selectedOpenSiteIds.value = [...preselected];
   baselineOpenSiteIds.value = [...preselected];
   closeSitePopover({ restoreFocus: false });
-  liveStatusMessage.value = copy.selectOpenSitesCount(preselected.length);
+  liveStatusMessage.value = copy.value.selectOpenSitesCount(preselected.length);
 }
 
 function cancelSelectOpenMode() {
@@ -755,12 +754,12 @@ function cancelSelectOpenMode() {
 
 function selectAllEligibleSites() {
   selectedOpenSiteIds.value = collectEligibleSites().map((site) => Number(site.id));
-  liveStatusMessage.value = copy.selectOpenSitesCount(selectedOpenSiteIds.value.length);
+  liveStatusMessage.value = copy.value.selectOpenSitesCount(selectedOpenSiteIds.value.length);
 }
 
 function clearAllEligibleSites() {
   selectedOpenSiteIds.value = protectedSelectedSiteIds();
-  liveStatusMessage.value = copy.selectOpenSitesCount(selectedOpenSiteIds.value.length);
+  liveStatusMessage.value = copy.value.selectOpenSitesCount(selectedOpenSiteIds.value.length);
 }
 
 function selectRowEligibleSites(row) {
@@ -769,7 +768,7 @@ function selectRowEligibleSites(row) {
     if (isEligibleBookingSite(site)) next.add(Number(site.id));
   }
   selectedOpenSiteIds.value = [...next];
-  liveStatusMessage.value = copy.selectOpenSitesCount(selectedOpenSiteIds.value.length);
+  liveStatusMessage.value = copy.value.selectOpenSitesCount(selectedOpenSiteIds.value.length);
 }
 
 function clearRowEligibleSites(row) {
@@ -781,7 +780,7 @@ function clearRowEligibleSites(row) {
   selectedOpenSiteIds.value = selectedOpenSiteIds.value
     .map(Number)
     .filter((id) => !removable.has(id));
-  liveStatusMessage.value = copy.selectOpenSitesCount(selectedOpenSiteIds.value.length);
+  liveStatusMessage.value = copy.value.selectOpenSitesCount(selectedOpenSiteIds.value.length);
 }
 
 function enterLayoutManagementMode() {
@@ -795,11 +794,11 @@ function exitLayoutManagementMode() {
 
 async function confirmDeleteParkingLayout() {
   if (!selectedEventId.value || mutating.value || !hasDeletableParkingLayout.value) return;
-  if (!window.confirm(copy.confirmDeleteParkingLayout)) return;
+  if (!window.confirm(copy.value.confirmDeleteParkingLayout)) return;
 
   await withMutation(async () => {
     await layoutApi.deleteOrganizerEventLayout(selectedEventId.value);
-    toast.success(copy.parkingLayoutDeleted);
+    toast.success(copy.value.parkingLayoutDeleted);
     setLayoutWorkspaceMode(LAYOUT_WORKSPACE_MODE.VIEW);
     selectedOpenSiteIds.value = [];
     baselineOpenSiteIds.value = [];
@@ -858,14 +857,14 @@ function onVisualSiteActivate({ site, anchorEl }) {
   if (isBookingSelectionMode.value) {
     const raw = site.raw || site;
     if (!isEligibleBookingSite(raw)) {
-      toast.error(copy.fallbackError);
+      toast.error(copy.value.fallbackError);
       return;
     }
     const id = Number(raw.id);
     const next = new Set(selectedOpenSiteIds.value.map(Number));
     if (next.has(id)) {
       if (isProtectedBookingSite(raw)) {
-        toast.error(copy.protectedSiteHint);
+        toast.error(copy.value.protectedSiteHint);
         return;
       }
       next.delete(id);
@@ -873,7 +872,7 @@ function onVisualSiteActivate({ site, anchorEl }) {
       next.add(id);
     }
     selectedOpenSiteIds.value = [...next];
-    liveStatusMessage.value = copy.selectOpenSitesCount(next.size);
+    liveStatusMessage.value = copy.value.selectOpenSitesCount(next.size);
     return;
   }
   if (!isLayoutManagementMode.value) {
@@ -950,7 +949,7 @@ async function refreshLayout({ force = false, isSwitch = false } = {}) {
   } catch (error) {
     if (token !== loadToken.value) return;
     loadError.value = layoutErrorMessage(error);
-    liveStatusMessage.value = copy.loadError;
+    liveStatusMessage.value = copy.value.loadError;
     if (isSwitch && previousSuccessfulEventId.value) {
       selectedEventId.value = previousSuccessfulEventId.value;
       const query = { ...route.query, eventId: previousSuccessfulEventId.value };
@@ -1010,10 +1009,10 @@ async function submitRowForm(payload) {
   await withMutation(async () => {
     if (activeRow.value?.id) {
       await layoutApi.updateLayoutRow(selectedEventId.value, activeRow.value.id, payload);
-      toast.success(copy.rowUpdated);
+      toast.success(copy.value.rowUpdated);
     } else {
       await layoutApi.createLayoutRow(selectedEventId.value, payload);
-      toast.success(copy.rowCreated);
+      toast.success(copy.value.rowCreated);
     }
   });
 }
@@ -1021,15 +1020,15 @@ async function submitRowForm(payload) {
 async function publishPublicLayout() {
   await withMutation(async () => {
     await layoutApi.publishOrganizerEventLayout(selectedEventId.value, entranceNote.value);
-    toast.success(copy.publicPublishedToast);
+    toast.success(copy.value.publicPublishedToast);
   });
 }
 
 async function unpublishPublicLayout() {
-  if (!window.confirm(copy.confirmUnpublish)) return;
+  if (!window.confirm(copy.value.confirmUnpublish)) return;
   await withMutation(async () => {
     await layoutApi.unpublishOrganizerEventLayout(selectedEventId.value);
-    toast.success(copy.publicUnpublishedToast);
+    toast.success(copy.value.publicUnpublishedToast);
   });
 }
 
@@ -1037,10 +1036,10 @@ async function submitSiteForm(payload) {
   await withMutation(async () => {
     if (activeSite.value?.id) {
       await layoutApi.updateLayoutSite(selectedEventId.value, activeSite.value.id, payload);
-      toast.success(copy.siteUpdated);
+      toast.success(copy.value.siteUpdated);
     } else {
       await layoutApi.createLayoutSite(selectedEventId.value, activeRow.value.id, payload);
-      toast.success(copy.siteCreated);
+      toast.success(copy.value.siteCreated);
     }
   });
 }
@@ -1048,14 +1047,14 @@ async function submitSiteForm(payload) {
 async function submitGenerate(payload) {
   await withMutation(async () => {
     await layoutApi.generateLayoutSites(selectedEventId.value, activeRow.value.id, payload);
-    toast.success(copy.sitesGenerated);
+    toast.success(copy.value.sitesGenerated);
   });
 }
 
 async function submitStandardGenerate(payload) {
   await withMutation(async () => {
     await layoutApi.generateStandardParkingLayout(selectedEventId.value, payload);
-    toast.success(copy.standardLayoutGenerated);
+    toast.success(copy.value.standardLayoutGenerated);
   });
   if (rows.value.length) {
     enterSelectOpenMode();
@@ -1066,7 +1065,7 @@ async function confirmOpenSites() {
   if (!canConfirmOpenSites.value) return;
   await withMutation(async () => {
     await layoutApi.setOpenLayoutSites(selectedEventId.value, selectedOpenSiteIds.value);
-    toast.success(copy.openSitesConfirmed);
+    toast.success(copy.value.openSitesConfirmed);
     setLayoutWorkspaceMode(LAYOUT_WORKSPACE_MODE.VIEW);
     baselineOpenSiteIds.value = [...selectedOpenSiteIds.value];
     selectedOpenSiteIds.value = [];
@@ -1080,7 +1079,7 @@ async function moveRow(row, direction) {
   if (!payload) return;
   await withMutation(async () => {
     await layoutApi.reorderLayoutRows(selectedEventId.value, payload);
-    toast.success(copy.rowsReordered);
+    toast.success(copy.value.rowsReordered);
   });
 }
 
@@ -1091,44 +1090,44 @@ async function openReorderSites(row) {
   const nextPayload = {
     sites: reversed.map((site, index) => ({ id: site.id, display_order: index + 1 })),
   };
-  if (!window.confirm(copy.confirmReorderSites(row.label))) {
+  if (!window.confirm(copy.value.confirmReorderSites(row.label))) {
     return;
   }
   await withMutation(async () => {
     await layoutApi.reorderLayoutSites(selectedEventId.value, row.id, nextPayload);
-    toast.success(copy.sitesReordered);
+    toast.success(copy.value.sitesReordered);
   });
 }
 
 async function confirmDeleteRow(row) {
-  if (!window.confirm(copy.confirmDeleteRow)) return;
+  if (!window.confirm(copy.value.confirmDeleteRow)) return;
   await withMutation(async () => {
     await layoutApi.deleteLayoutRow(selectedEventId.value, row.id);
-    toast.success(copy.rowDeleted);
+    toast.success(copy.value.rowDeleted);
   });
 }
 
 async function confirmArchiveRow(row) {
-  if (!window.confirm(copy.confirmArchiveRow)) {
+  if (!window.confirm(copy.value.confirmArchiveRow)) {
     return;
   }
   await withMutation(async () => {
     await layoutApi.archiveLayoutRow(selectedEventId.value, row.id);
-    toast.success(copy.rowArchived);
+    toast.success(copy.value.rowArchived);
   });
 }
 
 async function confirmUnarchiveRow(row) {
-  if (!window.confirm(`${copy.unarchiveHint}`)) return;
+  if (!window.confirm(`${copy.value.unarchiveHint}`)) return;
   await withMutation(async () => {
     await layoutApi.unarchiveLayoutRow(selectedEventId.value, row.id);
-    toast.success(copy.rowUnarchived);
+    toast.success(copy.value.rowUnarchived);
   });
 }
 
 async function setFocusedSiteStatus(site, nextStatus) {
   if (!canOrganizerChangeSiteStatus(site, nextStatus)) {
-    toast.error(copy.disableLockedHint);
+    toast.error(copy.value.disableLockedHint);
     return;
   }
   pendingSiteStatus.value = nextStatus;
@@ -1137,7 +1136,7 @@ async function setFocusedSiteStatus(site, nextStatus) {
       await layoutApi.updateLayoutSite(selectedEventId.value, site.id, {
         operational_status: nextStatus,
       });
-      toast.success(copy.siteUpdated);
+      toast.success(copy.value.siteUpdated);
     });
   } finally {
     pendingSiteStatus.value = '';
@@ -1146,10 +1145,10 @@ async function setFocusedSiteStatus(site, nextStatus) {
 
 async function confirmDeleteSite(site) {
   if (isCanonicalSiteLabel(site?.label)) {
-    toast.error(copy.canonicalSiteDeleteForbidden);
+    toast.error(copy.value.canonicalSiteDeleteForbidden);
     return;
   }
-  if (!window.confirm(copy.confirmDeleteSite)) {
+  if (!window.confirm(copy.value.confirmDeleteSite)) {
     return;
   }
   await withMutation(async () => {
@@ -1157,7 +1156,7 @@ async function confirmDeleteSite(site) {
     if (Number(focusedSiteId.value) === Number(site.id)) {
       closeSitePopover({ restoreFocus: false });
     }
-    toast.success(copy.siteDeleted);
+    toast.success(copy.value.siteDeleted);
   });
 }
 
@@ -1168,7 +1167,7 @@ async function restoreCanonicalSite(row, label) {
   formError.value = '';
   try {
     await layoutApi.restoreCanonicalLayoutSite(selectedEventId.value, row.id, { label });
-    toast.success(copy.siteRestoredNotOpen(label));
+    toast.success(copy.value.siteRestoredNotOpen(label));
     await refreshLayout({ force: true });
   } catch (error) {
     formError.value = layoutErrorMessage(error);
@@ -1190,7 +1189,7 @@ async function restoreAllMissingCanonicalSites(row) {
       restore_all_missing: true,
     });
     const count = Number(data?.restored_count || data?.restored_labels?.length || 0);
-    toast.success(copy.sitesRestoredNotOpen(count));
+    toast.success(copy.value.sitesRestoredNotOpen(count));
     await refreshLayout({ force: true });
   } catch (error) {
     formError.value = layoutErrorMessage(error);

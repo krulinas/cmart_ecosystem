@@ -6,13 +6,13 @@
   >
     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
       <div>
-        <h2 class="text-xl font-extrabold text-ink-900">My Event Passes</h2>
+        <h2 class="text-xl font-extrabold text-ink-900">{{ t('vendor.passes.title') }}</h2>
         <p class="mt-1 text-sm text-ink-500 max-w-xl">
-          Event-specific check-in passes tied to your approved bookings. QR codes are only valid during the event check-in window.
+          {{ t('vendor.passes.lead') }}
         </p>
       </div>
       <button type="button" class="ml-btn-ghost text-sm shrink-0" :disabled="loading" @click="loadPasses">
-        {{ loading ? 'Refreshing…' : 'Refresh' }}
+        {{ loading ? t('vendor.passes.refreshing') : t('vendor.passes.refresh') }}
       </button>
     </div>
 
@@ -22,24 +22,24 @@
     </div>
 
     <div v-else-if="loadError" class="rounded-2xl border border-amber-200 bg-amber-50/70 p-8 text-center">
-      <p class="text-sm text-amber-900 font-semibold">Unable to load your event passes.</p>
-      <button type="button" class="mt-3 ml-btn-ghost text-sm" @click="loadPasses">Try Again</button>
+      <p class="text-sm text-amber-900 font-semibold">{{ t('vendor.passes.unableLoad') }}</p>
+      <button type="button" class="mt-3 ml-btn-ghost text-sm" @click="loadPasses">{{ t('vendor.passes.tryAgain') }}</button>
     </div>
 
     <div
       v-else-if="!upcomingPasses.length && !archivedPasses.length"
       class="rounded-2xl border border-dashed border-ink-300 bg-ink-50/60 p-8 sm:p-10 text-center"
     >
-      <h3 class="text-lg font-bold text-ink-900">No active event pass yet</h3>
+      <h3 class="text-lg font-bold text-ink-900">{{ t('vendor.passes.emptyTitle') }}</h3>
       <p class="mt-2 text-sm text-ink-500 max-w-md mx-auto">
-        Book a space to generate your vendor pass.
+        {{ t('vendor.passes.emptyBody') }}
       </p>
-      <router-link to="/vendor-booking" class="mt-4 inline-flex ml-btn-primary text-sm">Book a Space</router-link>
+      <router-link to="/vendor-booking" class="mt-4 inline-flex ml-btn-primary text-sm">{{ t('vendor.passes.bookASpace') }}</router-link>
     </div>
 
     <template v-else>
       <div v-if="upcomingPasses.length > 1" class="mb-5">
-        <label class="ml-label">Select event pass</label>
+        <label class="ml-label">{{ t('vendor.passes.selectPass') }}</label>
         <select v-model="selectedPassId" class="ml-input max-w-xl">
           <option v-for="pass in upcomingPasses" :key="pass.booking_id" :value="pass.booking_id">
             {{ formatBookingReference(pass.booking_id) }} · {{ pass.event_name }} · {{ pass.event_date_label }}
@@ -56,36 +56,36 @@
 
           <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
-              <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Event</dt>
+              <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ t('vendor.passes.event') }}</dt>
               <dd class="mt-1 text-base font-semibold text-ink-900">{{ selectedPass.event_name }}</dd>
             </div>
             <div>
-              <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Event Date</dt>
+              <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ t('vendor.passes.eventDate') }}</dt>
               <dd class="mt-1 font-semibold text-ink-900">{{ selectedPass.event_date_label }}</dd>
             </div>
             <div>
-              <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Event Time</dt>
-              <dd class="mt-1 font-semibold text-ink-900">{{ formatEventTimeLabel(selectedPass) }}</dd>
+              <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ t('vendor.passes.eventTime') }}</dt>
+              <dd class="mt-1 font-semibold text-ink-900">{{ formatEventTimeLabel(selectedPass, t) }}</dd>
             </div>
             <div>
-              <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Assigned Booth</dt>
+              <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ t('vendor.passes.assignedBooth') }}</dt>
               <dd class="mt-1 font-semibold text-ink-900">
                 <template v-if="selectedPass.show_booth">{{ selectedPass.booth_label || '—' }}</template>
-                <template v-else>{{ selectedPass.pending_message || 'Booth will be assigned after approval' }}</template>
+                <template v-else>{{ selectedPass.pending_message || t('vendor.passes.boothPendingFallback') }}</template>
               </dd>
             </div>
             <div>
-              <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Booth Type</dt>
+              <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ t('vendor.passes.boothType') }}</dt>
               <dd class="mt-1 font-semibold text-ink-900">{{ selectedPass.booth_type_label }}</dd>
             </div>
             <div>
-              <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">Product / Category</dt>
+              <dt class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ t('vendor.passes.productCategory') }}</dt>
               <dd class="mt-1 font-semibold text-ink-900">{{ selectedPass.product_label }}</dd>
             </div>
           </dl>
 
           <p v-if="selectedPass.checked_in_at" class="mt-4 text-sm text-indigo-700 font-semibold">
-            Checked in at {{ formatCheckedIn(selectedPass.checked_in_at) }}
+            {{ t('vendor.passes.checkedInAt', { time: formatCheckedIn(selectedPass.checked_in_at) }) }}
           </p>
 
           <div class="mt-6 flex flex-wrap gap-3">
@@ -97,7 +97,7 @@
               :data-booking-id="selectedPass.booking_id"
               @click="openPassModal"
             >
-              View Full Pass
+              {{ t('vendor.passes.viewFullPass') }}
             </button>
             <button
               v-if="selectedPass.show_qr"
@@ -105,13 +105,13 @@
               class="ml-btn-ghost"
               @click="$emit('download-pass', selectedPass.booking_id)"
             >
-              Download Pass
+              {{ t('vendor.passes.downloadPass') }}
             </button>
           </div>
         </div>
 
         <div class="xl:col-span-2 rounded-2xl border border-ink-200 bg-white p-5 text-center shadow-sm">
-          <p class="text-xs font-bold uppercase tracking-wider text-ink-500">Verification QR</p>
+          <p class="text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('vendor.passes.verificationQr') }}</p>
 
           <template v-if="selectedPass.show_qr && isPassQrScannable(selectedPass)">
             <img
@@ -119,7 +119,7 @@
               :alt="`Verification QR for booking ${selectedPass.booking_id}`"
               class="mx-auto mt-4 h-44 w-44 rounded-xl border border-ink-100 bg-white p-2 object-contain"
             />
-            <p class="mt-3 text-xs text-ink-400">Valid during the event check-in window only.</p>
+            <p class="mt-3 text-xs text-ink-400">{{ t('vendor.passes.qrValidWindow') }}</p>
           </template>
 
           <div
@@ -132,13 +132,13 @@
           </div>
 
           <p v-if="selectedPass.show_qr && !isPassQrScannable(selectedPass)" class="mt-3 text-xs text-rose-600 font-semibold">
-            QR unavailable
+            {{ t('vendor.passes.qrUnavailable') }}
           </p>
         </div>
       </div>
 
       <div v-else-if="upcomingPasses.length" class="rounded-2xl border border-dashed border-ink-300 bg-ink-50/60 p-8 text-center text-ink-500">
-        Select an event pass to view details.
+        {{ t('vendor.passes.selectToView') }}
       </div>
 
       <div v-if="archivedPasses.length" class="mt-8 border-t border-ink-100 pt-6">
@@ -148,10 +148,10 @@
           @click="archivedExpanded = !archivedExpanded"
         >
           <div>
-            <h3 class="text-base font-extrabold text-ink-900">Past / Archived Passes</h3>
-            <p class="text-sm text-ink-500">{{ archivedPasses.length }} completed or expired pass{{ archivedPasses.length === 1 ? '' : 'es' }}</p>
+            <h3 class="text-base font-extrabold text-ink-900">{{ t('vendor.passes.archivedTitle') }}</h3>
+            <p class="text-sm text-ink-500">{{ t('vendor.passes.archivedCount', { count: archivedPasses.length }) }}</p>
           </div>
-          <span class="text-sm font-semibold text-brand-700">{{ archivedExpanded ? 'Hide' : 'Show' }}</span>
+          <span class="text-sm font-semibold text-brand-700">{{ archivedExpanded ? t('vendor.passes.hide') : t('vendor.passes.show') }}</span>
         </button>
 
         <ul v-if="archivedExpanded" class="mt-4 space-y-3">
@@ -168,7 +168,7 @@
               <p class="mt-1 text-sm text-ink-500">{{ pass.event_date_label }} · {{ pass.product_label }}</p>
             </div>
             <button type="button" class="ml-btn-ghost text-sm shrink-0" @click="viewArchivedPass(pass)">
-              View Details
+              {{ t('vendor.passes.viewDetails') }}
             </button>
           </li>
         </ul>
@@ -186,6 +186,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import VendorPassModal from './VendorPassModal.vue';
 import api from '../services/api';
 import { formatBookingReference } from '../utils/bookingDisplay';
@@ -202,6 +203,8 @@ defineProps({
 });
 
 defineEmits(['download-pass']);
+
+const { t } = useI18n();
 
 const loading = ref(false);
 const loadError = ref(false);

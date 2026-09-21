@@ -15,23 +15,23 @@
       >
         <header class="sticky top-0 z-10 flex items-center justify-between border-b border-ink-100 bg-white px-5 py-4">
           <div>
-            <p class="text-xs font-bold uppercase tracking-wider text-cyan-700">Full-Event Attendance</p>
+            <p class="text-xs font-bold uppercase tracking-wider text-cyan-700">{{ t('organizer.attendance.eyebrow') }}</p>
             <h2 id="attendance-exception-title" class="text-lg font-extrabold text-ink-900">
-              Apply Attendance Exception
+              {{ t('organizer.attendance.title') }}
             </h2>
           </div>
-          <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="close">Cancel</button>
+          <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="close">{{ t('common.cancel') }}</button>
         </header>
 
         <div class="space-y-5 p-5 sm:p-6">
           <p class="text-sm text-ink-600">
-            Select every EventDay that will remain assigned. Physical sites
-            <strong>{{ policy.site_labels?.join(', ') || 'remain unchanged' }}</strong>
-            stay the same on all retained days.
+            {{ t('organizer.attendance.introPrefix') }}
+            <strong>{{ policy.site_labels?.join(', ') || t('organizer.attendance.remainUnchanged') }}</strong>
+            {{ t('organizer.attendance.introSuffix') }}
           </p>
 
           <fieldset class="space-y-2" data-testid="attendance-event-day-list">
-            <legend class="text-sm font-bold text-ink-900">Operational EventDays</legend>
+            <legend class="text-sm font-bold text-ink-900">{{ t('organizer.attendance.operationalDays') }}</legend>
             <label
               v-for="day in allDays"
               :key="day.id"
@@ -58,29 +58,29 @@
 
           <div class="grid grid-cols-2 gap-3 text-sm">
             <div class="rounded-xl bg-emerald-50 p-3 text-emerald-900" data-testid="attendance-retained-count">
-              <span class="block text-xs font-bold uppercase">Retained</span>
-              <strong>{{ retainedDayIds.length }} days</strong>
+              <span class="block text-xs font-bold uppercase">{{ t('organizer.attendance.retained') }}</span>
+              <strong>{{ t('organizer.attendance.daysCount', { count: retainedDayIds.length }) }}</strong>
             </div>
             <div class="rounded-xl bg-rose-50 p-3 text-rose-900" data-testid="attendance-released-count">
-              <span class="block text-xs font-bold uppercase">To release</span>
-              <strong>{{ releaseCount }} days</strong>
+              <span class="block text-xs font-bold uppercase">{{ t('organizer.attendance.toRelease') }}</span>
+              <strong>{{ t('organizer.attendance.daysCount', { count: releaseCount }) }}</strong>
             </div>
           </div>
 
           <div class="rounded-xl border border-ink-200 bg-ink-50 p-4 text-sm">
-            <p><strong>Payment:</strong> {{ paymentLabel }}</p>
-            <p><strong>Invoice:</strong> RM {{ booking.invoice?.amount || '0.00' }}</p>
+            <p><strong>{{ t('organizer.attendance.payment') }}</strong> {{ paymentLabel }}</p>
+            <p><strong>{{ t('organizer.attendance.invoice') }}</strong> RM {{ booking.invoice?.amount || '0.00' }}</p>
           </div>
 
           <div>
-            <label for="attendance-reason" class="ml-label">Reason</label>
+            <label for="attendance-reason" class="ml-label">{{ t('organizer.attendance.reason') }}</label>
             <textarea
               id="attendance-reason"
               v-model="reason"
               rows="4"
               maxlength="1000"
               class="ml-input"
-              placeholder="Explain the operational reason for reducing attendance days."
+              :placeholder="t('organizer.attendance.reasonPlaceholder')"
               data-testid="attendance-exception-reason"
               :disabled="submitting"
             />
@@ -100,7 +100,7 @@
                 data-testid="attendance-no-refund-acknowledgement"
                 :disabled="submitting"
               />
-              <span>I acknowledge that the Invoice amount remains unchanged and no refund will be issued.</span>
+              <span>{{ t('organizer.attendance.acknowledgeNoRefund') }}</span>
             </label>
           </div>
 
@@ -112,7 +112,7 @@
           </p>
 
           <div class="flex justify-end gap-3 border-t border-ink-100 pt-4">
-            <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="close">Cancel</button>
+            <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="close">{{ t('common.cancel') }}</button>
             <button
               type="button"
               class="ml-btn-primary"
@@ -120,7 +120,7 @@
               :disabled="!canSubmit"
               @click="submit"
             >
-              {{ submitting ? 'Applying…' : 'Confirm Exception' }}
+              {{ submitting ? t('organizer.attendance.applying') : t('organizer.attendance.confirm') }}
             </button>
           </div>
         </div>
@@ -131,6 +131,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import api from '../../services/api';
 import {
   attendanceExceptionValidation,
@@ -138,6 +139,8 @@ import {
   attendanceRetainedDayIds,
   organizerPaymentStateLabel,
 } from '../../utils/bookingDisplay';
+
+const { t } = useI18n();
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -158,9 +161,9 @@ const allDays = computed(() => [
 ].sort((a, b) => String(a.starts_at || a.operational_date).localeCompare(String(b.starts_at || b.operational_date))));
 const requiresAcknowledgement = computed(() => Boolean(policy.value.requires_no_refund_acknowledgement));
 const releaseCount = computed(() => attendanceReleaseCount(policy.value, retainedDayIds.value));
-const paymentLabel = computed(() => organizerPaymentStateLabel(policy.value.payment_state));
+const paymentLabel = computed(() => organizerPaymentStateLabel(policy.value.payment_state, t));
 const validationError = computed(() =>
-  attendanceExceptionValidation(policy.value, retainedDayIds.value, reason.value, acknowledged.value),
+  attendanceExceptionValidation(policy.value, retainedDayIds.value, reason.value, acknowledged.value, t),
 );
 const canSubmit = computed(() => !submitting.value && !validationError.value);
 
@@ -179,9 +182,11 @@ const isDayDisabled = (day) =>
   (policy.value.released_days || []).some((released) => released.id === day.id)
   || (day.has_started && retainedDayIds.value.includes(day.id));
 const dayStateLabel = (day) => {
-  if ((policy.value.released_days || []).some((released) => released.id === day.id)) return 'Already released · cannot be re-added';
-  if (day.has_started) return 'Started or completed · must remain retained';
-  return 'Future day · may be released';
+  if ((policy.value.released_days || []).some((released) => released.id === day.id)) {
+    return t('organizer.attendance.alreadyReleased');
+  }
+  if (day.has_started) return t('organizer.attendance.startedMustRetain');
+  return t('organizer.attendance.futureMayRelease');
 };
 const formatDay = (day) => {
   const start = new Date(day.starts_at || `${day.operational_date}T00:00:00`);
@@ -209,7 +214,7 @@ const submit = async () => {
   } catch (error) {
     apiError.value = error.response?.data?.message
       || Object.values(error.response?.data?.errors || {})?.[0]?.[0]
-      || 'Unable to apply attendance exception.';
+      || t('organizer.attendance.applyFailed');
   } finally {
     submitting.value = false;
   }

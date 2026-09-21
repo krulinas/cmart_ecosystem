@@ -19,7 +19,7 @@
           <div v-if="event.posterUrl" class="h-28 w-full bg-sky-50">
             <img
               :src="event.posterUrl"
-              :alt="`${event.title} poster preview`"
+              :alt="t('calendar.posterPreviewAlt', { title: event.title })"
               class="h-full w-full object-cover"
             />
           </div>
@@ -36,7 +36,7 @@
                 v-if="event.status"
                 :class="['shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide', event.statusClass]"
               >
-                {{ event.status }}
+                {{ statusLabel(event.status) }}
               </span>
             </div>
 
@@ -46,7 +46,7 @@
             <p v-if="descriptionSnippet" class="text-xs leading-relaxed text-gray-500 line-clamp-2">
               {{ descriptionSnippet }}
             </p>
-            <p class="text-[10px] font-medium uppercase tracking-wide text-sky-500">Click to view details</p>
+            <p class="text-[10px] font-medium uppercase tracking-wide text-sky-500">{{ t('calendar.clickToViewDetails') }}</p>
           </div>
         </div>
       </div>
@@ -56,12 +56,16 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { statusLabel } from '../i18n';
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
   event: { type: Object, default: null },
   anchorRect: { type: Object, default: null },
 });
+
+const { t } = useI18n();
 
 const descriptionSnippet = computed(() => {
   const text = props.event?.description;

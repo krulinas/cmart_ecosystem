@@ -1,100 +1,123 @@
-/** English presentation labels for Post-Event Summary preview (schema v2). */
+/** Presentation labels for Post-Event Summary preview (schema v2). */
 
-const OPTION_LABELS = {
-  rm_100_299: 'RM 100 – RM 299',
-  rm_300_499: 'RM 300 – RM 499',
-  rm_500_plus: 'RM 500 and above',
-  kurang_rm50: 'Less than RM 50',
-  rm51_150: 'RM 51 – RM 150',
-  rm151_300: 'RM 151 – RM 300',
-  melebihi_rm300: 'More than RM 300',
-  puas_hati: 'Satisfied',
-  sangat_puas_hati: 'Very satisfied',
-  neutral: 'Neutral',
-  kurang_memuaskan: 'Somewhat dissatisfied',
-  sangat_tidak_memuaskan: 'Very dissatisfied',
-  pendapatan_utama: 'Primary income',
-  pendapatan_sampingan: 'Side income',
-  hobi: 'Hobby / clearing space',
-  terpakai: 'Reused / preloved',
-  baru: 'New',
-  baharu: 'New',
-  tidak_berkenaan: 'Not applicable',
-  pakaian: 'Clothing',
-  buku: 'Books',
-  barangan_elektronik: 'Electronics',
-  makanan_minuman: 'Food & beverages',
-  ya: 'Yes',
-  tidak: 'No',
-  tidak_pasti: 'Unsure',
-  separuh: 'About half (50%)',
-  kebanyakan: 'Mostly sold (75%–100%)',
-  suku: 'About a quarter (25%)',
-  tiada: 'None',
-  sumbangkan: 'Donate',
-  kitar_semula: 'Recycle',
-  simpan_acara_lain: 'Keep for another event',
-  jual_dalam_talian: 'Sell online',
-  buang: 'Dispose',
-  whatsapp: 'WhatsApp',
-  media_sosial: 'Social media',
-  rakan_kenalan: 'Friends / contacts',
-  pihak_penganjur: 'Organizer',
-  yes: 'Reported difficulty',
-  no: 'No difficulty reported',
-};
+import { tt } from '../i18n';
 
-const DISTRIBUTION_TITLES = {
-  gross_sales_band: 'Reported gross sales',
-  experience_rating: 'Overall experience',
-  sales_purpose: 'Sales purpose',
-  product_categories: 'Product categories',
-  item_conditions: 'Item condition',
-  event_info_sources: 'How vendors heard about the event',
-  improvement_areas: 'Improvement priorities',
-  supporting_activity_attracted_visitors: 'Effect of supporting activities',
-  supporting_activity_impacts: 'Supporting-activity impacts',
-  registration_difficulty: 'Registration difficulty',
-  items_sold_band: 'Used-stock sold',
-  unsold_item_actions: 'Plans for unsold items',
-};
+const OPTION_KEYS = new Set([
+  'rm_100_299',
+  'rm_300_499',
+  'rm_500_plus',
+  'kurang_rm50',
+  'rm51_150',
+  'rm151_300',
+  'melebihi_rm300',
+  'puas_hati',
+  'sangat_puas_hati',
+  'neutral',
+  'kurang_memuaskan',
+  'sangat_tidak_memuaskan',
+  'pendapatan_utama',
+  'pendapatan_sampingan',
+  'hobi',
+  'terpakai',
+  'baru',
+  'baharu',
+  'tidak_berkenaan',
+  'pakaian',
+  'buku',
+  'barangan_elektronik',
+  'makanan_minuman',
+  'ya',
+  'tidak',
+  'tidak_pasti',
+  'separuh',
+  'kebanyakan',
+  'suku',
+  'tiada',
+  'sumbangkan',
+  'kitar_semula',
+  'simpan_acara_lain',
+  'jual_dalam_talian',
+  'buang',
+  'whatsapp',
+  'media_sosial',
+  'rakan_kenalan',
+  'pihak_penganjur',
+  'yes',
+  'no',
+]);
 
-const METHODOLOGY_LABELS = {
-  single_event_scope: 'Report scope',
-  data_cut_off: 'Data cut-off',
-  timezone: 'Timezone',
-  language: 'Language',
-  provisional_or_final: 'Report status',
-  booking_versus_unique_vendors: 'Applications and unique vendors',
-  approved_not_attendance: 'Approved bookings and attendance',
-  attendance_source: 'Attendance source',
-  site_day_utilisation_formula: 'Site-day utilisation',
-  survey_respondent_base: 'Survey response base',
-  multi_select_note: 'Multi-select questions',
-  financial_inclusion_rules: 'Financial inclusion',
-  missing_data_rule: 'Missing data',
-  data_quality_warnings: 'Data-quality warnings',
-  potentially_incomplete_finances: 'Incomplete finances',
-  data_availability: 'Data availability',
-};
+const DISTRIBUTION_KEYS = new Set([
+  'gross_sales_band',
+  'experience_rating',
+  'sales_purpose',
+  'product_categories',
+  'item_conditions',
+  'event_info_sources',
+  'improvement_areas',
+  'supporting_activity_attracted_visitors',
+  'supporting_activity_impacts',
+  'registration_difficulty',
+  'items_sold_band',
+  'unsold_item_actions',
+]);
+
+const METHODOLOGY_KEYS = new Set([
+  'single_event_scope',
+  'data_cut_off',
+  'timezone',
+  'language',
+  'provisional_or_final',
+  'booking_versus_unique_vendors',
+  'approved_not_attendance',
+  'attendance_source',
+  'site_day_utilisation_formula',
+  'survey_respondent_base',
+  'multi_select_note',
+  'financial_inclusion_rules',
+  'missing_data_rule',
+  'data_quality_warnings',
+  'potentially_incomplete_finances',
+  'data_availability',
+]);
+
+function translateKnown(prefix, key) {
+  if (!key) return null;
+  const i18nKey = `${prefix}.${key}`;
+  const translated = tt(i18nKey);
+  return translated === i18nKey ? null : translated;
+}
 
 export function reportOptionLabel(value) {
   if (value == null || value === '') return '—';
   const raw = String(value).trim();
   const key = raw.toLowerCase();
-  if (OPTION_LABELS[key]) return OPTION_LABELS[key];
-  if (OPTION_LABELS[raw]) return OPTION_LABELS[raw];
+  if (OPTION_KEYS.has(key)) {
+    const translated = translateKnown('reports.options', key);
+    if (translated) return translated;
+  }
+  if (OPTION_KEYS.has(raw)) {
+    const translated = translateKnown('reports.options', raw);
+    if (translated) return translated;
+  }
   if (!raw.includes('_')) return raw;
   const spaced = raw.replaceAll('_', ' ');
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
 export function reportDistributionTitle(key) {
-  return DISTRIBUTION_TITLES[key] || String(key).replaceAll('_', ' ');
+  if (DISTRIBUTION_KEYS.has(key)) {
+    const translated = translateKnown('reports.distributions', key);
+    if (translated) return translated;
+  }
+  return String(key).replaceAll('_', ' ');
 }
 
 export function reportMethodologyLabel(key) {
-  return METHODOLOGY_LABELS[key] || String(key).replaceAll('_', ' ');
+  if (METHODOLOGY_KEYS.has(key)) {
+    const translated = translateKnown('reports.methodology', key);
+    if (translated) return translated;
+  }
+  return String(key).replaceAll('_', ' ');
 }
 
 export function formatReportMoney(value) {

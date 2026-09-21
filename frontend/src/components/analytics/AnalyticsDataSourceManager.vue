@@ -2,12 +2,12 @@
   <section class="space-y-4" data-testid="analytics-data-sources">
     <!-- Source mode -->
     <div class="rounded-xl border border-sky-100 bg-white p-4">
-      <h3 class="text-sm font-extrabold text-ink-900">Analytics source</h3>
+      <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.dataSources.analyticsSource') }}</h3>
       <p class="mt-1 text-sm text-ink-500">
-        Choose what Analytics Hub and new event reports include for this event.
+        {{ t('organizer.analytics.dataSources.analyticsSourceHint') }}
       </p>
 
-      <div class="mt-4 grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Analytics source mode">
+      <div class="mt-4 grid gap-2 sm:grid-cols-3" role="radiogroup" :aria-label="t('organizer.analytics.dataSources.sourceModeAria')">
         <button
           v-for="opt in modeOptions"
           :key="opt.value"
@@ -29,18 +29,18 @@
 
     <!-- System Data status -->
     <div class="rounded-xl border border-sky-100 bg-white p-4">
-      <h3 class="text-sm font-extrabold text-ink-900">Current System Data</h3>
+      <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.dataSources.currentSystemData') }}</h3>
       <p class="mt-1 text-sm text-ink-500">
-        Bookings, payments, event spaces and reservations recorded in the system.
+        {{ t('organizer.analytics.dataSources.currentSystemDataHint') }}
       </p>
       <p class="mt-3 text-sm font-semibold" :class="systemIncluded ? 'text-emerald-700' : 'text-ink-500'">
-        {{ systemIncluded ? 'Available' : 'Excluded by current mode' }}
+        {{ systemIncluded ? t('organizer.analytics.dataSources.available') : t('organizer.analytics.dataSources.excludedByMode') }}
       </p>
     </div>
 
     <!-- Survey CSV -->
     <div class="rounded-xl border border-sky-100 bg-white p-4" data-testid="current-csv-source">
-      <h3 class="text-sm font-extrabold text-ink-900">Current Survey CSV</h3>
+      <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.dataSources.currentSurveyCsv') }}</h3>
 
       <input
         ref="fileInput"
@@ -54,27 +54,27 @@
       <template v-if="currentCsv">
         <dl class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
           <div>
-            <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-500">Filename</dt>
+            <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-500">{{ t('organizer.analytics.dataSources.filename') }}</dt>
             <dd class="mt-0.5 truncate font-semibold text-ink-900" :title="currentCsv.original_filename">
-              {{ currentCsv.original_filename || 'Unknown file' }}
+              {{ currentCsv.original_filename || t('organizer.analytics.dataSources.unknownFile') }}
             </dd>
           </div>
           <div>
-            <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-500">Respondents</dt>
+            <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-500">{{ t('organizer.analytics.dataSources.respondents') }}</dt>
             <dd class="mt-0.5 font-semibold text-ink-900">
               n = {{ currentCsv.respondent_count ?? currentCsv.valid_row_count ?? 0 }}
             </dd>
           </div>
           <div>
-            <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-500">Imported</dt>
+            <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-500">{{ t('organizer.analytics.dataSources.imported') }}</dt>
             <dd class="mt-0.5 font-semibold text-ink-900">
               {{ formatDate(currentCsv.imported_at || currentCsv.processing_finished_at || currentCsv.created_at) }}
             </dd>
           </div>
           <div>
-            <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-500">Survey template</dt>
+            <dt class="text-[11px] font-semibold uppercase tracking-wide text-ink-500">{{ t('organizer.analytics.dataSources.surveyTemplate') }}</dt>
             <dd class="mt-0.5 font-semibold text-ink-900">
-              Vendor post-event · {{ currentCsv.schema_version || 'v1' }}
+              {{ t('organizer.analytics.dataSources.vendorPostEvent', { version: currentCsv.schema_version || 'v1' }) }}
             </dd>
           </div>
         </dl>
@@ -86,7 +86,7 @@
             :disabled="busy || !eventId"
             @click="startReplacePick"
           >
-            Replace CSV
+            {{ t('organizer.analytics.dataSources.replaceCsv') }}
           </button>
           <button
             type="button"
@@ -94,7 +94,7 @@
             :disabled="busy || !eventId"
             @click="confirmDelete"
           >
-            Delete CSV Data
+            {{ t('organizer.analytics.dataSources.deleteCsvData') }}
           </button>
         </div>
       </template>
@@ -106,12 +106,12 @@
         @dragover.prevent
         @drop.prevent="onDrop"
       >
-        <p class="text-sm font-semibold text-ink-900">No CSV data is connected to this event.</p>
+        <p class="text-sm font-semibold text-ink-900">{{ t('organizer.analytics.dataSources.noCsvConnected') }}</p>
         <p class="mt-1 text-xs text-ink-500">
-          Supported file: CSV · Expected template: Vendor post-event survey
+          {{ t('organizer.analytics.dataSources.supportedFile') }}
         </p>
         <p class="mt-2 text-xs text-ink-500">
-          Choose a file to validate first. Nothing is imported until you confirm.
+          {{ t('organizer.analytics.dataSources.chooseFileHint') }}
         </p>
         <button
           type="button"
@@ -119,7 +119,7 @@
           :disabled="busy || !eventId"
           @click="fileInput?.click()"
         >
-          Choose CSV
+          {{ t('organizer.analytics.dataSources.chooseCsv') }}
         </button>
       </div>
 
@@ -132,10 +132,10 @@
 
       <div v-if="importSuccess" class="mt-3 flex flex-wrap gap-2">
         <button type="button" class="ml-btn-primary text-sm" @click="$emit('view-survey-results')">
-          View Survey Results
+          {{ t('organizer.analytics.dataSources.viewSurveyResults') }}
         </button>
         <button type="button" class="ml-btn-ghost text-sm" @click="importSuccess = false">
-          Remain in Data Sources
+          {{ t('organizer.analytics.dataSources.remainInDataSources') }}
         </button>
       </div>
     </div>
@@ -151,7 +151,7 @@
         <p class="mt-2 whitespace-pre-line text-sm text-ink-600">{{ pending.body }}</p>
         <div class="mt-4 flex flex-wrap justify-end gap-2">
           <button type="button" class="ml-btn-ghost text-sm" :disabled="busy" @click="cancelPending">
-            Cancel
+            {{ t('organizer.analytics.dataSources.cancel') }}
           </button>
           <button
             type="button"
@@ -160,7 +160,7 @@
             :disabled="busy"
             @click="runPending"
           >
-            {{ busy ? 'Working…' : (pending.confirmLabel || 'Confirm') }}
+            {{ busy ? t('organizer.analytics.dataSources.working') : (pending.confirmLabel || t('organizer.analytics.dataSources.confirm')) }}
           </button>
         </div>
       </div>
@@ -170,6 +170,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import {
   deleteCurrentSurveyCsv,
@@ -185,6 +186,7 @@ const props = defineProps({
 
 const emit = defineEmits(['updated', 'view-survey-results']);
 
+const { t } = useI18n();
 const toast = useToast();
 const busy = ref(false);
 const error = ref('');
@@ -196,23 +198,23 @@ const pendingFile = ref(null);
 const importSuccess = ref(false);
 const uploadLocked = ref(false);
 
-const modeOptions = [
+const modeOptions = computed(() => [
   {
     value: 'system_only',
-    label: 'System Data',
-    hint: 'Bookings, payments, spaces and reservations only.',
+    label: t('organizer.analytics.dataSources.modeSystem'),
+    hint: t('organizer.analytics.dataSources.modeSystemHint'),
   },
   {
     value: 'combined',
-    label: 'System + Survey CSV',
-    hint: 'Combine operational records with the active survey CSV.',
+    label: t('organizer.analytics.dataSources.modeCombined'),
+    hint: t('organizer.analytics.dataSources.modeCombinedHint'),
   },
   {
     value: 'csv_only',
-    label: 'Survey CSV Only',
-    hint: 'Show survey results only. System Data stays stored but hidden.',
+    label: t('organizer.analytics.dataSources.modeCsvOnly'),
+    hint: t('organizer.analytics.dataSources.modeCsvOnlyHint'),
   },
-];
+]);
 
 const selectedMode = computed(() =>
   localMode.value || props.overview?.analytics_source_mode || 'system_only',
@@ -255,7 +257,7 @@ watch(
 );
 
 const formatDate = (value) => {
-  if (!value) return 'Not available';
+  if (!value) return t('organizer.analytics.dataSources.notAvailable');
   try {
     return new Date(value).toLocaleString();
   } catch {
@@ -270,10 +272,10 @@ const changeMode = async (mode) => {
   try {
     const { data } = await setAnalyticsSourceMode(props.eventId, mode);
     localMode.value = data?.analytics_source_mode || mode;
-    toast.success('Analytics source updated.');
+    toast.success(t('organizer.analytics.dataSources.sourceUpdated'));
     emit('updated', data?.overview || null);
   } catch (e) {
-    error.value = e.response?.data?.message || 'Unable to update analytics source.';
+    error.value = e.response?.data?.message || t('organizer.analytics.dataSources.unableUpdateSource');
     toast.error(error.value);
   } finally {
     busy.value = false;
@@ -290,22 +292,16 @@ const startReplacePick = () => {
 const confirmDelete = () => {
   error.value = '';
   info.value = '';
-  const filename = currentCsv.value?.original_filename || 'the current CSV';
-  const n = currentCsv.value?.respondent_count ?? currentCsv.value?.valid_row_count ?? 0;
-  const eventName = props.eventTitle || 'this event';
   pending.value = {
     action: 'delete',
     destructive: true,
-    confirmLabel: 'Delete CSV Data',
-    title: 'Delete CSV Data?',
-    body: [
-      `Event: ${eventName}`,
-      `File: ${filename}`,
-      `Respondents: ${n}`,
-      '',
-      'This permanently deletes the CSV-imported survey responses and uploaded file.',
-      'System Data is kept. This cannot be undone.',
-    ].join('\n'),
+    confirmLabel: t('organizer.analytics.dataSources.deleteCsvData'),
+    title: t('organizer.analytics.dataSources.deleteTitle'),
+    body: t('organizer.analytics.dataSources.deleteBody', {
+      event: props.eventTitle || t('organizer.analytics.dataSources.thisEvent'),
+      filename: currentCsv.value?.original_filename || t('organizer.analytics.dataSources.theCurrentCsv'),
+      n: currentCsv.value?.respondent_count ?? currentCsv.value?.valid_row_count ?? 0,
+    }),
   };
 };
 
@@ -338,7 +334,7 @@ const runPending = async () => {
       toast.success(info.value);
       emit('updated', data?.overview || null);
     } catch (e) {
-      error.value = e.response?.data?.message || 'Unable to delete CSV survey data.';
+      error.value = e.response?.data?.message || t('organizer.analytics.dataSources.unableDelete');
       toast.error(error.value);
     } finally {
       busy.value = false;
@@ -369,9 +365,9 @@ const handleSelectedFile = async (file) => {
     pending.value = {
       action: 'replace_upload',
       destructive: true,
-      confirmLabel: 'Replace CSV',
-      title: 'Replace CSV?',
-      body: 'This will permanently replace the current CSV and its responses. This cannot be undone.',
+      confirmLabel: t('organizer.analytics.dataSources.replaceCsv'),
+      title: t('organizer.analytics.dataSources.replaceTitle'),
+      body: t('organizer.analytics.dataSources.replaceBody'),
     };
     return;
   }
@@ -387,14 +383,14 @@ const uploadFile = async (file, replaceExisting) => {
   info.value = '';
   try {
     const { data } = await uploadSurveyImport(props.eventId, file, { replaceExisting });
-    info.value = replaceExisting ? 'Survey CSV replaced.' : 'Survey CSV imported.';
+    info.value = replaceExisting ? t('organizer.analytics.dataSources.csvReplaced') : t('organizer.analytics.dataSources.csvImported');
     importSuccess.value = true;
     toast.success(info.value);
     emit('updated', data?.overview || null);
   } catch (e) {
     const payload = e.response?.data || {};
     if (e.response?.status === 409 && payload.code === 'survey_import_duplicate') {
-      info.value = 'This CSV is already the active survey for this event. No duplicate responses were added.';
+      info.value = t('organizer.analytics.dataSources.duplicateCsv');
       toast.info(info.value);
       return;
     }
@@ -403,13 +399,13 @@ const uploadFile = async (file, replaceExisting) => {
       pending.value = {
         action: 'replace_upload',
         destructive: true,
-        confirmLabel: 'Replace CSV',
-        title: 'Replace CSV?',
-        body: 'This will permanently replace the current CSV and its responses. This cannot be undone.',
+        confirmLabel: t('organizer.analytics.dataSources.replaceCsv'),
+        title: t('organizer.analytics.dataSources.replaceTitle'),
+        body: t('organizer.analytics.dataSources.replaceBody'),
       };
       return;
     }
-    error.value = payload.message || 'Survey import failed. The previous dataset was left unchanged.';
+    error.value = payload.message || t('organizer.analytics.dataSources.importFailed');
     toast.error(error.value);
   } finally {
     busy.value = false;

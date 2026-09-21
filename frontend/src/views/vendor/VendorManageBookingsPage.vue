@@ -1,7 +1,7 @@
 <template>
   <VendorPageShell
-    title="My Bookings"
-    subtitle="Upcoming first. Open details when you need the full timeline."
+    :title="t('booking.manage.title')"
+    :subtitle="t('booking.manage.subtitle')"
     test-id="vendor-manage-bookings-root"
   >
     <template #actions>
@@ -9,7 +9,7 @@
         to="/vendor-booking"
         class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-3 min-h-[44px] text-[15px] font-bold text-white shadow-md shadow-brand-500/20 hover:bg-brand-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 transition"
       >
-        {{ validBookings.length ? 'Book a Space' : 'Start Vendor Booking' }}
+        {{ validBookings.length ? t('booking.manage.bookASpace') : t('booking.manage.startVendorBooking') }}
       </router-link>
       <button
         type="button"
@@ -17,7 +17,7 @@
         :disabled="loadingBookings"
         @click="fetchMyBookings"
       >
-        {{ loadingBookings ? 'Refreshing…' : 'Refresh' }}
+        {{ loadingBookings ? t('booking.manage.refreshing') : t('booking.manage.refresh') }}
       </button>
     </template>
 
@@ -26,7 +26,7 @@
         <input
           v-model="bookingSearchQuery"
           type="search"
-          placeholder="Search bookings…"
+          :placeholder="t('booking.manage.searchPlaceholder')"
           data-testid="booking-search"
           class="w-full sm:max-w-sm rounded-xl border border-ink-200 bg-white px-4 py-2.5 min-h-[44px] text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         />
@@ -41,7 +41,7 @@
           :class="filterTabClass(selectedBookingStatus === tab.id)"
           @click="selectedBookingStatus = tab.id"
         >
-          {{ tab.label }}
+          {{ filterTabLabel(tab, t) }}
           <span class="ml-1 opacity-75">({{ filterCounts[tab.id] || 0 }})</span>
         </button>
       </div>
@@ -54,9 +54,9 @@
         v-else-if="!priorityBookings.length"
         class="rounded-xl border border-dashed border-ink-200 bg-ink-50/60 px-4 py-8 text-center text-sm text-ink-500"
       >
-        No booking records are currently available.
+        {{ t('booking.manage.empty') }}
         <router-link to="/vendor-booking" class="mt-2 block font-semibold text-brand-700 hover:text-brand-800">
-          Submit your first booking →
+          {{ t('booking.manage.submitFirst') }}
         </router-link>
       </div>
 
@@ -64,19 +64,19 @@
         v-else-if="!filteredBookings.length"
         class="rounded-xl border border-dashed border-ink-200 px-4 py-6 text-center text-sm text-ink-500"
       >
-        No bookings match your search.
+        {{ t('booking.manage.noMatch') }}
       </div>
 
       <div v-else class="overflow-x-auto rounded-xl border border-ink-100">
         <table class="min-w-full divide-y divide-ink-100 text-sm">
           <thead class="bg-ink-50/80">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Booking Ref.</th>
-              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Event Date</th>
-              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Booth Type</th>
-              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Product</th>
-              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Status</th>
-              <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">Action</th>
+              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('booking.manage.colRef') }}</th>
+              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('booking.manage.colEventDate') }}</th>
+              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('booking.manage.colBoothType') }}</th>
+              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('booking.manage.colProduct') }}</th>
+              <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('booking.manage.colStatus') }}</th>
+              <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('booking.manage.colAction') }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-ink-100 bg-white">
@@ -96,7 +96,7 @@
               </td>
               <td class="px-4 py-3">
                 <span :class="statusBadgeClass(booking.approval_status)" data-testid="booking-status">
-                  {{ statusLabel(booking.approval_status) }}
+                  {{ statusLabel(booking.approval_status, t) }}
                 </span>
               </td>
               <td class="px-4 py-3 text-right">
@@ -106,7 +106,7 @@
                   data-testid="booking-view-details"
                   @click="openBookingDetails(booking.id)"
                 >
-                  View Details
+                  {{ t('booking.manage.viewDetails') }}
                 </button>
               </td>
             </tr>
@@ -125,6 +125,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import VendorPageShell from '../../components/vendor/VendorPageShell.vue';
 import VendorBookingDetailsModal from '../../components/VendorBookingDetailsModal.vue';
@@ -133,6 +134,7 @@ import {
   FILTER_TABS,
   boothTypeLabel,
   filterTabClass,
+  filterTabLabel,
   formatBookingDate,
   formatBookingReference,
   isValidBookingDate,
@@ -142,6 +144,7 @@ import {
   statusLabel,
 } from '../../utils/bookingDisplay';
 
+const { t } = useI18n();
 const toast = useToast();
 
 const myBookings = ref([]);
@@ -188,7 +191,7 @@ const bookingMatchesSearch = (booking, query) => {
     booking.product_category,
     booking.product_details,
     booking.approval_status,
-    statusLabel(booking.approval_status),
+    statusLabel(booking.approval_status, t),
     productSummary(booking),
   ]
     .filter((part) => part != null && part !== '')
@@ -225,7 +228,7 @@ const fetchMyBookings = async () => {
     myBookings.value = Array.isArray(data) ? data : (data.data ?? []);
   } catch (e) {
     console.error('Unable to retrieve vendor bookings from the API.', e);
-    toast.error('Unable to retrieve vendor bookings.');
+    toast.error(t('booking.manage.toastUnableRetrieve'));
   } finally {
     loadingBookings.value = false;
   }

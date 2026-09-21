@@ -1,326 +1,296 @@
 /**
- * Organizer event-layout operational copy (English).
- * Vendor-facing Malay lives in vendor components / eventSiteSelection / vendorCategoriesApi.
+ * Organizer event-layout operational copy (vue-i18n).
+ * Proxy re-reads tt() on each access so locale switches update labels without remounting.
  */
 
-export const LAYOUT_COPY = {
-  pageTitle: 'Site Layout',
-  navLabel: 'Layout Management',
-  manageLayoutAction: 'Layout Management',
-  manageParkingLayout: 'Manage Parking Layout',
-  manageLayout: 'Manage Layout',
-  manageLayoutExit: 'Done managing',
-  manageLayoutActive: 'Management mode',
-  manageLayoutHint: 'Select a site tile to open its actions. Use each row menu for row actions.',
-  editLayoutStructure: 'Edit Layout Structure',
-  editLayoutStructureHelp: 'Edit rows, move sites and manage the physical layout.',
-  chooseBookingSitesMenuHelp: 'Select the physical sites that vendors can book.',
-  recommendedBadge: 'Recommended',
-  advancedBadge: 'Advanced',
-  rowMenuLabel: 'Row actions',
-  moveUpDisabled: 'Already the first row.',
-  moveDownDisabled: 'Already the last row.',
-  generateSitesComplete: 'This row already has its complete set of sites.',
-  reorderSitesDisabled: 'At least two sites are required to reorder.',
-  selectEvent: 'Select event',
-  refresh: 'Refresh Layout',
-  backToEvents: 'Back to Events',
-  addRow: 'Add Row',
-  editRow: 'Edit Row',
-  saveOrder: 'Save Order',
-  moveUp: 'Move Up',
-  moveDown: 'Move Down',
-  deleteRow: 'Delete Row',
-  archiveRow: 'Archive Row',
-  unarchiveRow: 'Unarchive Row',
-  addSite: 'Add Site',
-  generateSites: 'Generate Sites',
-  editSite: 'Edit Site',
-  moveSite: 'Move Site',
-  disableSite: 'Disable',
-  enableSite: 'Enable',
-  deleteSite: 'Delete Site',
-  physicalSitesOfTotal: (present, total) =>
-    `${present} of ${total} physical sites`,
-  sitesCountFallback: (count) =>
-    `${count} site${count === 1 ? '' : 's'}`,
-  restoreSite: (label) => `Restore ${label}`,
-  restoreMissingSites: 'Restore missing sites',
-  restoreAllMissingSites: 'Restore all missing sites',
-  restoringSite: (label) => `Restoring ${label}…`,
-  restoringAllMissingSites: 'Restoring missing sites…',
-  siteRestoredNotOpen: (label) => `${label} restored as NOT OPEN.`,
-  sitesRestoredNotOpen: (count) =>
-    `${count} physical site${count === 1 ? '' : 's'} restored as NOT OPEN.`,
-  canonicalSiteDeleteForbidden:
-    'Physical parking sites cannot be deleted. Set the site to NOT OPEN or Unavailable instead.',
-  save: 'Save',
-  cancel: 'Cancel',
-  tryAgain: 'Try Again',
-  locked: 'Locked',
-  advanced: 'Advanced Settings',
-  unresolvedTitle: 'Unassigned Sites',
-  emptyTitle: 'No parking layout has been created yet.',
-  emptyBody:
-    'Generate the standard 4×16 parking layout, or add an unused physical row. Then choose booking sites from Manage Parking Layout.',
-  generateStandardLayout: 'Generate Standard Parking Layout',
-  generateStandardLayoutHelp:
-    'Creates physical rows A–D with 64 sites. Sites start as NOT OPEN until you select which ones vendors may book.',
-  generateStandardPreview: 'Preview: A01–A16, B01–B16, C01–C16, D01–D16',
-  generateStandardConfirm:
-    'This venue has 64 physical parking sites. After generation you will choose which sites open for vendor booking.',
-  generateStandardOpenCount: (n) =>
-    n == null
-      ? 'Vendor booking sites: Not configured yet. You will choose them after generation.'
-      : `Vendor booking sites currently configured: ${n}`,
-  generateStandardLimitRequired:
-    'You will choose booking sites on the layout after generation.',
-  standardLayoutGenerated: 'Standard parking layout generated. Choose the sites vendors can book.',
-  deleteParkingLayout: 'Delete Parking Layout',
-  confirmDeleteParkingLayout:
-    'Delete the entire parking layout for this event? All rows and parking sites will be removed. This cannot be undone.',
-  parkingLayoutDeleted: 'Parking layout deleted.',
-  selectOpenSitesTitle: 'Choose Booking Sites',
-  selectOpenSitesHelp:
-    'Select the physical sites vendors can book. The system counts your selection and opens booking when layout readiness passes.',
-  selectOpenSitesCount: (selected) =>
-    `${selected} site${selected === 1 ? '' : 's'} selected`,
-  selectOpenSitesMinimum: 'Select at least one site for vendor booking.',
-  confirmOpenSites: (count) =>
-    `Confirm ${count} Site${count === 1 ? '' : 's'} & Open Booking`,
-  openSitesConfirmed: 'Booking sites confirmed successfully.',
-  startSelectOpenSites: 'Choose Booking Sites',
-  selectionModeBadge: 'SELECTION MODE',
-  selectAllSites: 'Select All',
-  clearAllSites: 'Clear All',
-  selectRowSites: 'Select Row',
-  clearRowSites: 'Clear Row',
-  protectedSiteHint: 'This site is protected by an existing booking or reservation.',
-  manageBookingSites: 'Manage booking sites',
-  vendorBookingSitesConfigured: (n) => `Vendor booking sites: ${n} selected`,
-  vendorBookingSitesNotConfigured: 'Vendor booking sites: Not configured',
-  vendorBookingSetupRequired: 'Vendor booking setup required',
-  vendorBookingSetupMessage:
-    'Choose the physical sites that vendors can book from Manage Parking Layout below.',
-  vendorBookingSelectingMessage: 'Select the sites you want to offer to vendors.',
-  vendorBookingOpen: 'Vendor Booking Open',
-  vendorBookingOpenMessage: (n) =>
-    `Vendors can now book from ${n} selected site${n === 1 ? '' : 's'}.`,
-  layoutExistsHint:
-    'A layout already exists. Use site controls to update individual sites. The standard template can only run on an empty layout.',
-  missingEventDaysWarning:
-    'The physical layout is ready, but event days must be configured before vendors can book.',
-  setupNoticeTitle: 'Layout Readiness',
-  technicalDetails: 'Technical details',
-  focusedSiteTitle: 'Site management',
-  focusedRowTitle: 'Row settings',
-  rowActionsTitle: 'Row actions',
-  noSiteSelected: 'Select a site on the parking layout to manage it.',
-  closeSitePanel: 'Close',
-  setActive: 'Set Active / Open',
-  setUnavailable: 'Set Unavailable',
-  setDisabled: 'Set NOT OPEN',
-  updatingStatus: 'Updating…',
-  siteCountsTitle: 'Site counts',
-  advancedRowsTitle: 'Advanced row tools',
-  loadError: 'Unable to load the layout.',
-  loadingLayoutFor: (name) => `Loading layout for ${name}…`,
-  allPhysicalRowsInUse: 'All physical rows for this venue are already in use.',
-  outsideVenueTemplateBadge: 'Outside venue definition',
-  outsideVenueTemplateHelp:
-    'This row is outside the current venue physical definition (A–D). It was not deleted automatically.',
-  vendorSitesToOpen: 'Vendor booking sites',
-  vendorSitesToOpenHelp: 'Configured by choosing booking sites on the parking layout.',
-  physicalSitesSummary: (physical, active, limit) =>
-    `${physical} physical · ${active} open${limit != null ? ` / ${limit} allowed` : ''}`,
-  conflictRefreshHint: 'Refresh Layout',
-  operationalReady: 'Vendor Booking Open',
-  operationalNotReady: 'Vendor booking setup required',
-  publicReady: 'Ready for Public Display',
-  publicNotReady: 'Not Ready for Public Display',
-  rowCreated: 'Row added with 16 NOT OPEN sites.',
-  rowUpdated: 'Row updated successfully.',
-  rowDeleted: 'Row deleted successfully.',
-  rowArchived: 'Row archived successfully.',
-  rowUnarchived: 'Row unarchived successfully.',
-  rowsReordered: 'Row order saved successfully.',
-  siteCreated: 'Site added successfully.',
-  sitesGenerated: 'Sites generated successfully.',
-  siteUpdated: 'Site updated successfully.',
-  sitesReordered: 'Site order saved successfully.',
-  siteDeleted: 'Site deleted successfully.',
-  fallbackError: 'The action could not be completed. Refresh the layout and try again.',
-  renameLockedHint:
-    'This row name cannot be changed because sites in the row have booking history.',
-  categoryLockedHint:
-    'This row category cannot be changed because sites in the row have booking history.',
-  structureLockedHint: 'This site structure is locked because it has booking history.',
-  disableLockedHint: 'This site cannot be closed while it has an active booking.',
-  archiveBlockedHint: 'This row cannot be archived while it still has active bookings.',
-  unarchiveHint:
-    'The row will be reactivated, but sites inside it will not be enabled automatically.',
-  generateAtomicHint:
-    'All requested sites are created in one step, or none are created. Existing sites are not deleted or replaced.',
-  availabilityStatus: 'Layout Readiness',
-  availabilityStatusHelp: 'Booking readiness and public visibility are evaluated separately.',
-  publicationTitle: 'Public Map Publication',
-  publicationHelp: 'The visitor map can only be published when public readiness is complete.',
-  published: 'Published',
-  notPublished: 'Not Published',
-  publishPublicMap: 'Publish Public Map',
-  unpublishPublicMap: 'Unpublish Public Map',
-  entranceNoteLabel: 'Public entrance guidance (optional)',
-  selectEventPrompt: 'Select an event to manage its layout',
-  selectEventOption: '— Select event —',
-  loadingLayout: 'Loading layout…',
-  noSpace: 'No space type',
-  noCategory: 'No category',
-  physicalRowLabel: 'Physical row',
-  selectPhysicalRow: 'Select unused physical row',
-  siteGrid: 'Site Grid',
-  reorderSites: 'Reorder Sites',
-  noSitesInRow: 'No sites in this row yet.',
-  noReadinessBlockers: 'No readiness blockers reported at this time.',
-  selectCategory: 'Select category',
-  selectSpaceType: 'Select space type',
-  rowCategoryA: 'Row A category',
-  rowCategoryB: 'Row B category',
-  rowCategoryC: 'Row C category',
-  rowCategoryD: 'Row D category',
-  targetRow: 'Target row',
-  displayOrder: 'Display order',
-  rowLabelPrefix: 'Row',
-  noPreview: 'No preview',
-  generateSitesAction: (count) => `Generate ${count} sites`,
-  generating: 'Generating…',
-  available: 'Available',
-  reserved: 'Booked',
-  confirmed: 'Confirmed',
-  lockedLegend: 'Locked',
-  delete: 'Delete',
-  deleteLocked: 'Delete locked',
-  renameLocked: 'Rename locked',
-  categoryLocked: 'Category locked',
-  archiveLocked: 'Archive locked',
-  rowStillHasSites: 'This row still has sites.',
-  unresolvedHelp:
-    'These sites are not linked to a layout row. Automatic mapping is not performed.',
-  publicPublishedToast: 'Public layout published.',
-  publicUnpublishedToast: 'Public layout unpublished.',
-  confirmUnpublish:
-    'Unpublish this public map? Visitors will no longer be able to see it.',
-  confirmDeleteRow: 'Delete this row?\n\nThis empty row will be permanently removed.',
-  confirmArchiveRow:
-    'Archive this row?\n\nThe row will be deactivated and hidden from public display. Active sites in the row will also be disabled. Booking history is retained.',
-  confirmDeleteSite:
-    'Delete this site?\n\nA site can only be deleted if it has never had booking history.',
-  confirmReorderSites: (label) =>
-    `Reorder sites in ${label} using the current reverse order?\nYou can reorder again afterward.`,
-  confirmGenerateSites: (count, label) =>
-    `Generate ${count} sites for ${label}?\nExisting sites will not be deleted or replaced.`,
-};
+import { tt } from '../i18n';
 
-export const READINESS_BLOCKER_MESSAGES = {
-  VENDOR_SITE_OPEN_LIMIT_NOT_SET:
-    'Choose the physical sites that vendors can book.',
-  ACTIVE_SITE_COUNT_BELOW_VENDOR_LIMIT:
-    'Choose booking sites again. The open-site count no longer matches the configured selection.',
-  ACTIVE_SITE_COUNT_EXCEEDS_VENDOR_LIMIT:
-    'Choose booking sites again. The open-site count no longer matches the configured selection.',
-  ROW_OUTSIDE_VENUE_TEMPLATE:
-    'One or more rows are outside this venue’s physical definition (A–D). Resolve or archive them.',
-  NO_ACTIVE_EVENT_DAYS: 'No active event days are configured.',
-  NO_ACTIVE_LAYOUT_ROWS: 'No active layout rows are configured.',
-  ACTIVE_ROW_MISSING_CATEGORY: 'One or more rows do not have a category.',
-  ROW_CATEGORY_INACTIVE: 'One or more rows use a category that is no longer active.',
-  ACTIVE_ROW_HAS_NO_ACTIVE_SITES: 'One or more active rows have no physical sites.',
-  ACTIVE_SITE_MISSING_ROW: 'An active site is not linked to a row.',
-  SITE_EVENT_ROW_MISMATCH: 'A site does not match its row event.',
-  ACTIVE_SITE_MISSING_SPACE: 'An active site is missing a valid space type.',
-  ACTIVE_SITE_INVALID_LABEL: 'An active site has an invalid label.',
-  UNRESOLVED_ACTIVE_SITES: 'Legacy sites still need to be assigned to rows.',
-  DUPLICATE_ACTIVE_SITE_IDENTITY: 'Active sites share a duplicate identity.',
-  NO_PUBLIC_ROWS: 'No rows are configured for public display.',
-  PUBLIC_ROW_CATEGORY_NOT_PUBLIC: 'A public row category is not allowed for public display.',
-  PUBLIC_ROW_HAS_NO_VISIBLE_SITES: 'A public row has no visible sites.',
-  EMPTY_PUBLIC_LAYOUT: 'The public layout is still empty.',
-  INVALID_PUBLIC_ROW_ORDER: 'The public row order is invalid.',
-};
-
-export const LAYOUT_ERROR_MESSAGES = {
-  LAYOUT_ALREADY_EXISTS:
-    'A layout already exists for this event. The standard parking template can only be generated on an empty layout.',
-  PUBLIC_LAYOUT_PUBLISHED:
-    'Unpublish the public layout before changing the parking layout.',
-  ALLOCATION_HISTORY_PRESENT:
-    'This event has booking allocation history and cannot receive a destructive layout change.',
-  EVENT_HAS_BOOKINGS:
-    'This parking layout cannot be deleted because the event already has booking history.',
-  LAYOUT_NOT_FOUND: 'No parking layout exists for this event.',
-  INVALID_STANDARD_TEMPLATE: 'The standard parking template request is invalid.',
-  INVALID_SPACE: 'The selected space type is invalid.',
-  VENDOR_SITE_OPEN_LIMIT_NOT_SET: 'Choose booking sites before continuing.',
-  VENDOR_SITE_OPEN_LIMIT_BELOW_PROTECTED:
-    'Cannot reduce booking sites below protected reserved or booked sites.',
-  OPEN_SITE_SELECTION_COUNT_MISMATCH:
-    'The layout changed while confirming booking sites. Refresh and try again.',
-  ACTIVE_ALLOCATIONS_PRESENT:
-    'This action is not allowed while active bookings or allocations exist.',
-  INVALID_SITE: 'One or more selected sites are invalid for this event.',
-  NO_PHYSICAL_SITES: 'No physical sites exist for this event.',
-  CANONICAL_SITE_DELETE_FORBIDDEN:
-    'Physical parking sites cannot be deleted. Set the site to NOT OPEN or Unavailable instead.',
-  CANONICAL_SITE_ALREADY_EXISTS: 'That physical site already exists. Refresh the layout and try again.',
-  CANONICAL_SITE_POSITION_CONFLICT:
-    'That parking position is already occupied. Refresh the layout and try again.',
-  CANONICAL_ROW_COMPLETE: 'This row already has all 16 physical sites.',
-  VENUE_TEMPLATE_ROWS_EXHAUSTED: 'All physical rows for this venue are already in use.',
-  ROW_OUTSIDE_VENUE_TEMPLATE: 'Physical row identity must be A, B, C, or D for this venue.',
-  ACTIVE_SITE_COUNT_EXCEEDS_VENDOR_LIMIT: 'Opening this site would exceed Vendor sites to open.',
-  ROW_LABEL_LOCKED: 'This row name cannot be changed because it has booking history.',
-  ROW_CATEGORY_LOCKED: 'This row category cannot be changed because it has booking history.',
-  ROW_NOT_EMPTY: 'This row still has sites and cannot be deleted.',
-  SITE_STRUCTURE_LOCKED: 'This site structure is locked because it has booking history.',
-  SITE_HAS_ALLOCATION_HISTORY: 'This site has booking history and cannot be deleted.',
-  SITE_LABEL_CONFLICT: 'This site label is already in use.',
-  SITE_POSITION_CONFLICT: 'This site position overlaps another site.',
-  ROW_LABEL_CONFLICT: 'This row name is already used for the same event.',
-  LAYOUT_GENERATION_CONFLICT: 'Sites could not be generated because of a layout conflict.',
-  CATEGORY_INACTIVE: 'This category is inactive and cannot be used.',
-  INVALID_LAYOUT_ROW: 'The layout row is invalid.',
-  INVALID_VENDOR_CATEGORY: 'The vendor category is invalid.',
-  INVALID_SITE_COUNT: 'The site count is invalid.',
-  INVALID_SITE_LABEL: 'The site label is invalid.',
-  INVALID_DISPLAY_ORDER: 'The display order is invalid.',
-  INVALID_SITE_STATUS: 'The site status is invalid.',
-  ACTIVE_ROW_HAS_NO_ACTIVE_SITES: 'An active row cannot be saved without physical sites.',
-};
-
-export function readinessMessage(code) {
-  return READINESS_BLOCKER_MESSAGES[code] || code;
+function buildLayoutCopy(t = tt) {
+  return {
+    pageTitle: t('organizer.layout.pageTitle'),
+    navLabel: t('organizer.layout.navLabel'),
+    manageLayoutAction: t('organizer.layout.manageLayoutAction'),
+    manageParkingLayout: t('organizer.layout.manageParkingLayout'),
+    manageLayout: t('organizer.layout.manageLayout'),
+    manageLayoutExit: t('organizer.layout.manageLayoutExit'),
+    manageLayoutActive: t('organizer.layout.manageLayoutActive'),
+    manageLayoutHint: t('organizer.layout.manageLayoutHint'),
+    editLayoutStructure: t('organizer.layout.editLayoutStructure'),
+    editLayoutStructureHelp: t('organizer.layout.editLayoutStructureHelp'),
+    chooseBookingSitesMenuHelp: t('organizer.layout.chooseBookingSitesMenuHelp'),
+    recommendedBadge: t('organizer.layout.recommendedBadge'),
+    advancedBadge: t('organizer.layout.advancedBadge'),
+    rowMenuLabel: t('organizer.layout.rowMenuLabel'),
+    moveUpDisabled: t('organizer.layout.moveUpDisabled'),
+    moveDownDisabled: t('organizer.layout.moveDownDisabled'),
+    generateSitesComplete: t('organizer.layout.generateSitesComplete'),
+    reorderSitesDisabled: t('organizer.layout.reorderSitesDisabled'),
+    selectEvent: t('organizer.layout.selectEvent'),
+    refresh: t('organizer.layout.refresh'),
+    backToEvents: t('organizer.layout.backToEvents'),
+    addRow: t('organizer.layout.addRow'),
+    editRow: t('organizer.layout.editRow'),
+    saveOrder: t('organizer.layout.saveOrder'),
+    moveUp: t('organizer.layout.moveUp'),
+    moveDown: t('organizer.layout.moveDown'),
+    deleteRow: t('organizer.layout.deleteRow'),
+    archiveRow: t('organizer.layout.archiveRow'),
+    unarchiveRow: t('organizer.layout.unarchiveRow'),
+    addSite: t('organizer.layout.addSite'),
+    generateSites: t('organizer.layout.generateSites'),
+    editSite: t('organizer.layout.editSite'),
+    moveSite: t('organizer.layout.moveSite'),
+    disableSite: t('organizer.layout.disableSite'),
+    enableSite: t('organizer.layout.enableSite'),
+    deleteSite: t('organizer.layout.deleteSite'),
+    physicalSitesOfTotal: (present, total) =>
+      t('organizer.layout.physicalSitesOfTotal', { present, total }),
+    sitesCountFallback: (count) => t('organizer.layout.sitesCountFallback', { count }),
+    restoreSite: (label) => t('organizer.layout.restoreSite', { label }),
+    restoreMissingSites: t('organizer.layout.restoreMissingSites'),
+    restoreAllMissingSites: t('organizer.layout.restoreAllMissingSites'),
+    restoringSite: (label) => t('organizer.layout.restoringSite', { label }),
+    restoringAllMissingSites: t('organizer.layout.restoringAllMissingSites'),
+    siteRestoredNotOpen: (label) => t('organizer.layout.siteRestoredNotOpen', { label }),
+    sitesRestoredNotOpen: (count) => t('organizer.layout.sitesRestoredNotOpen', { count }),
+    canonicalSiteDeleteForbidden: t('organizer.layout.canonicalSiteDeleteForbidden'),
+    save: t('organizer.layout.save'),
+    cancel: t('organizer.layout.cancel'),
+    tryAgain: t('organizer.layout.tryAgain'),
+    locked: t('organizer.layout.locked'),
+    advanced: t('organizer.layout.advanced'),
+    unresolvedTitle: t('organizer.layout.unresolvedTitle'),
+    emptyTitle: t('organizer.layout.emptyTitle'),
+    emptyBody: t('organizer.layout.emptyBody'),
+    generateStandardLayout: t('organizer.layout.generateStandardLayout'),
+    generateStandardLayoutHelp: t('organizer.layout.generateStandardLayoutHelp'),
+    generateStandardPreview: t('organizer.layout.generateStandardPreview'),
+    generateStandardConfirm: t('organizer.layout.generateStandardConfirm'),
+    generateStandardOpenCount: (n) =>
+      (n == null
+        ? t('organizer.layout.generateStandardOpenCountUnset')
+        : t('organizer.layout.generateStandardOpenCountSet', { n })),
+    generateStandardLimitRequired: t('organizer.layout.generateStandardLimitRequired'),
+    standardLayoutGenerated: t('organizer.layout.standardLayoutGenerated'),
+    deleteParkingLayout: t('organizer.layout.deleteParkingLayout'),
+    confirmDeleteParkingLayout: t('organizer.layout.confirmDeleteParkingLayout'),
+    parkingLayoutDeleted: t('organizer.layout.parkingLayoutDeleted'),
+    selectOpenSitesTitle: t('organizer.layout.selectOpenSitesTitle'),
+    selectOpenSitesHelp: t('organizer.layout.selectOpenSitesHelp'),
+    selectOpenSitesCount: (selected) =>
+      t('organizer.layout.selectOpenSitesCount', { selected, n: selected, count: selected }),
+    selectOpenSitesMinimum: t('organizer.layout.selectOpenSitesMinimum'),
+    confirmOpenSites: (count) => t('organizer.layout.confirmOpenSites', { count, n: count }),
+    openSitesConfirmed: t('organizer.layout.openSitesConfirmed'),
+    startSelectOpenSites: t('organizer.layout.startSelectOpenSites'),
+    selectionModeBadge: t('organizer.layout.selectionModeBadge'),
+    selectAllSites: t('organizer.layout.selectAllSites'),
+    clearAllSites: t('organizer.layout.clearAllSites'),
+    selectRowSites: t('organizer.layout.selectRowSites'),
+    clearRowSites: t('organizer.layout.clearRowSites'),
+    protectedSiteHint: t('organizer.layout.protectedSiteHint'),
+    manageBookingSites: t('organizer.layout.manageBookingSites'),
+    vendorBookingSitesConfigured: (n) =>
+      t('organizer.layout.vendorBookingSitesConfigured', { n }),
+    vendorBookingSitesNotConfigured: t('organizer.layout.vendorBookingSitesNotConfigured'),
+    vendorBookingSetupRequired: t('organizer.layout.vendorBookingSetupRequired'),
+    vendorBookingSetupMessage: t('organizer.layout.vendorBookingSetupMessage'),
+    vendorBookingSelectingMessage: t('organizer.layout.vendorBookingSelectingMessage'),
+    vendorBookingOpen: t('organizer.layout.vendorBookingOpen'),
+    vendorBookingOpenMessage: (n) => t('organizer.layout.vendorBookingOpenMessage', { n }),
+    layoutExistsHint: t('organizer.layout.layoutExistsHint'),
+    missingEventDaysWarning: t('organizer.layout.missingEventDaysWarning'),
+    setupNoticeTitle: t('organizer.layout.setupNoticeTitle'),
+    technicalDetails: t('organizer.layout.technicalDetails'),
+    focusedSiteTitle: t('organizer.layout.focusedSiteTitle'),
+    focusedRowTitle: t('organizer.layout.focusedRowTitle'),
+    rowActionsTitle: t('organizer.layout.rowActionsTitle'),
+    noSiteSelected: t('organizer.layout.noSiteSelected'),
+    closeSitePanel: t('organizer.layout.closeSitePanel'),
+    setActive: t('organizer.layout.setActive'),
+    setUnavailable: t('organizer.layout.setUnavailable'),
+    setDisabled: t('organizer.layout.setDisabled'),
+    updatingStatus: t('organizer.layout.updatingStatus'),
+    siteCountsTitle: t('organizer.layout.siteCountsTitle'),
+    advancedRowsTitle: t('organizer.layout.advancedRowsTitle'),
+    loadError: t('organizer.layout.loadError'),
+    loadingLayoutFor: (name) => t('organizer.layout.loadingLayoutFor', { name }),
+    allPhysicalRowsInUse: t('organizer.layout.allPhysicalRowsInUse'),
+    outsideVenueTemplateBadge: t('organizer.layout.outsideVenueTemplateBadge'),
+    outsideVenueTemplateHelp: t('organizer.layout.outsideVenueTemplateHelp'),
+    vendorSitesToOpen: t('organizer.layout.vendorSitesToOpen'),
+    vendorSitesToOpenHelp: t('organizer.layout.vendorSitesToOpenHelp'),
+    physicalSitesSummary: (physical, active, limit) =>
+      (limit != null
+        ? t('organizer.layout.physicalSitesSummaryWithLimit', { physical, active, limit })
+        : t('organizer.layout.physicalSitesSummary', { physical, active })),
+    conflictRefreshHint: t('organizer.layout.conflictRefreshHint'),
+    operationalReady: t('organizer.layout.operationalReady'),
+    operationalNotReady: t('organizer.layout.operationalNotReady'),
+    publicReady: t('organizer.layout.publicReady'),
+    publicNotReady: t('organizer.layout.publicNotReady'),
+    rowCreated: t('organizer.layout.rowCreated'),
+    rowUpdated: t('organizer.layout.rowUpdated'),
+    rowDeleted: t('organizer.layout.rowDeleted'),
+    rowArchived: t('organizer.layout.rowArchived'),
+    rowUnarchived: t('organizer.layout.rowUnarchived'),
+    rowsReordered: t('organizer.layout.rowsReordered'),
+    siteCreated: t('organizer.layout.siteCreated'),
+    sitesGenerated: t('organizer.layout.sitesGenerated'),
+    siteUpdated: t('organizer.layout.siteUpdated'),
+    sitesReordered: t('organizer.layout.sitesReordered'),
+    siteDeleted: t('organizer.layout.siteDeleted'),
+    fallbackError: t('organizer.layout.fallbackError'),
+    renameLockedHint: t('organizer.layout.renameLockedHint'),
+    categoryLockedHint: t('organizer.layout.categoryLockedHint'),
+    structureLockedHint: t('organizer.layout.structureLockedHint'),
+    disableLockedHint: t('organizer.layout.disableLockedHint'),
+    archiveBlockedHint: t('organizer.layout.archiveBlockedHint'),
+    unarchiveHint: t('organizer.layout.unarchiveHint'),
+    generateAtomicHint: t('organizer.layout.generateAtomicHint'),
+    availabilityStatus: t('organizer.layout.availabilityStatus'),
+    availabilityStatusHelp: t('organizer.layout.availabilityStatusHelp'),
+    publicationTitle: t('organizer.layout.publicationTitle'),
+    publicationHelp: t('organizer.layout.publicationHelp'),
+    published: t('organizer.layout.published'),
+    notPublished: t('organizer.layout.notPublished'),
+    publishPublicMap: t('organizer.layout.publishPublicMap'),
+    unpublishPublicMap: t('organizer.layout.unpublishPublicMap'),
+    entranceNoteLabel: t('organizer.layout.entranceNoteLabel'),
+    selectEventPrompt: t('organizer.layout.selectEventPrompt'),
+    selectEventOption: t('organizer.layout.selectEventOption'),
+    loadingLayout: t('organizer.layout.loadingLayout'),
+    noSpace: t('organizer.layout.noSpace'),
+    noCategory: t('organizer.layout.noCategory'),
+    physicalRowLabel: t('organizer.layout.physicalRowLabel'),
+    selectPhysicalRow: t('organizer.layout.selectPhysicalRow'),
+    siteGrid: t('organizer.layout.siteGrid'),
+    reorderSites: t('organizer.layout.reorderSites'),
+    noSitesInRow: t('organizer.layout.noSitesInRow'),
+    noReadinessBlockers: t('organizer.layout.noReadinessBlockers'),
+    selectCategory: t('organizer.layout.selectCategory'),
+    selectSpaceType: t('organizer.layout.selectSpaceType'),
+    rowCategoryA: t('organizer.layout.rowCategoryA'),
+    rowCategoryB: t('organizer.layout.rowCategoryB'),
+    rowCategoryC: t('organizer.layout.rowCategoryC'),
+    rowCategoryD: t('organizer.layout.rowCategoryD'),
+    targetRow: t('organizer.layout.targetRow'),
+    displayOrder: t('organizer.layout.displayOrder'),
+    rowLabelPrefix: t('organizer.layout.rowLabelPrefix'),
+    noPreview: t('organizer.layout.noPreview'),
+    generateSitesAction: (count) => t('organizer.layout.generateSitesAction', { count }),
+    generating: t('organizer.layout.generating'),
+    available: t('organizer.layout.available'),
+    reserved: t('organizer.layout.reserved'),
+    confirmed: t('organizer.layout.confirmed'),
+    lockedLegend: t('organizer.layout.lockedLegend'),
+    delete: t('organizer.layout.delete'),
+    deleteLocked: t('organizer.layout.deleteLocked'),
+    renameLocked: t('organizer.layout.renameLocked'),
+    categoryLocked: t('organizer.layout.categoryLocked'),
+    archiveLocked: t('organizer.layout.archiveLocked'),
+    rowStillHasSites: t('organizer.layout.rowStillHasSites'),
+    unresolvedHelp: t('organizer.layout.unresolvedHelp'),
+    publicPublishedToast: t('organizer.layout.publicPublishedToast'),
+    publicUnpublishedToast: t('organizer.layout.publicUnpublishedToast'),
+    confirmUnpublish: t('organizer.layout.confirmUnpublish'),
+    confirmDeleteRow: t('organizer.layout.confirmDeleteRow'),
+    confirmArchiveRow: t('organizer.layout.confirmArchiveRow'),
+    confirmDeleteSite: t('organizer.layout.confirmDeleteSite'),
+    confirmReorderSites: (label) => t('organizer.layout.confirmReorderSites', { label }),
+    confirmGenerateSites: (count, label) =>
+      t('organizer.layout.confirmGenerateSites', { count, label }),
+  };
 }
 
-export function layoutErrorMessage(error) {
+/** Prefer in components: `computed(() => getLayoutCopy(t))` with useI18n(). */
+export function getLayoutCopy(t = tt) {
+  return buildLayoutCopy(t);
+}
+
+/** Proxy re-reads tt() on each access (helpers / non-setup call sites). */
+export const LAYOUT_COPY = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      if (typeof prop === 'symbol') return undefined;
+      const copy = buildLayoutCopy();
+      return copy[prop];
+    },
+  },
+);
+
+function translateCodedMap(prefix, code, t = tt) {
+  if (!code) return code;
+  const key = `${prefix}.${code}`;
+  const translated = t(key);
+  return translated === key ? code : translated;
+}
+
+export function readinessMessage(code, t = tt) {
+  return translateCodedMap('organizer.layout.readiness', code, t);
+}
+
+export function layoutErrorMessage(error, t = tt) {
   const code = error?.response?.data?.error;
-  if (code && LAYOUT_ERROR_MESSAGES[code]) {
-    return LAYOUT_ERROR_MESSAGES[code];
+  if (code) {
+    const key = `organizer.layout.errors.${code}`;
+    const translated = t(key);
+    if (translated !== key) return translated;
   }
   const message = error?.response?.data?.message;
   if (typeof message === 'string' && message.trim() !== '') {
     return message.replace(/^\d{3}\s+[A-Za-z ]+:\s*/, '');
   }
-  return LAYOUT_COPY.fallbackError;
+  return t('organizer.layout.fallbackError');
 }
 
-export const OCCUPANCY_LABELS = {
-  available: 'Available',
-  reserved: 'Booked',
-  confirmed: 'Confirmed',
-  'released-history': 'Released history',
-};
+export function occupancyLabel(status, t = tt) {
+  return translateCodedMap('organizer.layout.occupancy', status, t);
+}
 
-export const SITE_STATUS_LABELS = {
-  active: 'Open',
-  unavailable: 'Unavailable',
-  disabled: 'NOT OPEN',
-};
+export function siteStatusLabel(status, t = tt) {
+  return translateCodedMap('organizer.layout.siteStatus', status, t);
+}
+
+/** Resolves through tt on each access. */
+export const READINESS_BLOCKER_MESSAGES = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      if (typeof prop === 'symbol') return undefined;
+      return readinessMessage(prop);
+    },
+  },
+);
+
+/** Resolves through tt on each access. */
+export const LAYOUT_ERROR_MESSAGES = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      if (typeof prop === 'symbol') return undefined;
+      return translateCodedMap('organizer.layout.errors', prop);
+    },
+  },
+);
+
+export const OCCUPANCY_LABELS = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      if (typeof prop === 'symbol') return undefined;
+      return occupancyLabel(prop);
+    },
+  },
+);
+
+export const SITE_STATUS_LABELS = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      if (typeof prop === 'symbol') return undefined;
+      return siteStatusLabel(prop);
+    },
+  },
+);

@@ -1,4 +1,5 @@
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { WORKSPACE_NAV_GROUPS } from '../config/managementWorkspaceTheme';
 import { WORKSPACE_NAV_ITEMS } from '../config/workspaceNav';
 import { useManagementAccess } from './useManagementAccess';
@@ -7,6 +8,7 @@ import { useAuthStore } from '../stores/auth';
 
 export function useWorkspaceNav() {
   const auth = useAuthStore();
+  const { t } = useI18n();
   const { canSeeOrganizerAnalytics, canDeleteBookings, governanceCapabilities } = useManagementAccess();
 
   const visibleItems = computed(() =>
@@ -32,7 +34,7 @@ export function useWorkspaceNav() {
   const filteredNavItems = computed(() =>
     visibleItems.value.map((item) => ({
       to: `/admin#${item.hash}`,
-      label: item.label,
+      label: t(item.labelKey || item.label),
       shortIcon: item.shortIcon,
       icon: item.shortIcon,
       id: item.id,
@@ -46,11 +48,12 @@ export function useWorkspaceNav() {
   const groupedNavItems = computed(() =>
     WORKSPACE_NAV_GROUPS.map((group) => ({
       ...group,
+      label: t(group.labelKey || group.label),
       items: visibleItems.value
         .filter((item) => group.items.includes(item.id))
         .map((item) => ({
           to: `/admin#${item.hash}`,
-          label: item.label,
+          label: t(item.labelKey || item.label),
           shortIcon: item.shortIcon,
           id: item.id,
           hash: item.hash,

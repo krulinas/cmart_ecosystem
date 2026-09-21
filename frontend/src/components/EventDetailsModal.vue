@@ -42,7 +42,7 @@
             <button
               type="button"
               class="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-gray-500 shadow-md ring-1 ring-gray-200 transition hover:bg-gray-50 hover:text-gray-800"
-              aria-label="Close event details"
+              :aria-label="t('calendar.details.closeAria')"
               @click="close"
             >
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -56,19 +56,19 @@
                   ref="galleryRef"
                   :images="event.images || []"
                   :alt-text="`${event.title} event poster`"
-                  placeholder-text="No event poster yet"
+                  :placeholder-text="t('calendar.details.noPoster')"
                   enable-lightbox
                 />
               </div>
 
               <div class="flex flex-col min-w-0" :class="hasPoster ? '' : 'lg:col-span-2'">
                 <div class="flex flex-wrap items-center gap-2 mb-3">
-                  <p class="text-xs font-bold uppercase tracking-wider text-brand-600">Event Details</p>
+                  <p class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ t('calendar.details.eyebrow') }}</p>
                   <span
-                    v-if="urgencyLabel"
+                    v-if="urgencyDisplay"
                     class="rounded-full bg-sky-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-800"
                   >
-                    {{ urgencyLabel }}
+                    {{ urgencyDisplay }}
                   </span>
                 </div>
 
@@ -79,7 +79,7 @@
                 <dl class="mt-5 space-y-3 text-sm text-gray-700">
                   <div v-if="event.dateLabel" class="flex gap-3">
                     <dt class="w-20 shrink-0 font-semibold text-gray-500">
-                      <span class="sr-only">Date</span>
+                      <span class="sr-only">{{ t('calendar.details.date') }}</span>
                       <svg class="h-5 w-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
@@ -93,7 +93,7 @@
                   </div>
                   <div v-if="event.time" class="flex gap-3">
                     <dt class="w-20 shrink-0 font-semibold text-gray-500">
-                      <span class="sr-only">Time</span>
+                      <span class="sr-only">{{ t('calendar.details.time') }}</span>
                       <svg class="h-5 w-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
@@ -102,7 +102,7 @@
                   </div>
                   <div v-if="event.location" class="flex gap-3">
                     <dt class="w-20 shrink-0 font-semibold text-gray-500">
-                      <span class="sr-only">Location</span>
+                      <span class="sr-only">{{ t('calendar.details.location') }}</span>
                       <svg class="h-5 w-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -111,10 +111,10 @@
                     <dd>{{ event.location }}</dd>
                   </div>
                   <div v-if="event.status" class="flex gap-3 items-center">
-                    <dt class="w-20 shrink-0 font-semibold text-gray-500">Status</dt>
+                    <dt class="w-20 shrink-0 font-semibold text-gray-500">{{ t('calendar.details.status') }}</dt>
                     <dd>
                       <span :class="['text-xs font-bold px-3 py-1 rounded-full', event.statusClass]">
-                        {{ event.status }}
+                        {{ statusLabel(event.status, t) }}
                       </span>
                     </dd>
                   </div>
@@ -133,7 +133,7 @@
                     class="mt-2 text-sm font-semibold text-brand-600 hover:text-brand-700"
                     @click="descriptionExpanded = !descriptionExpanded"
                   >
-                    {{ descriptionExpanded ? 'Show less' : 'View full details' }}
+                    {{ descriptionExpanded ? t('calendar.details.showLess') : t('calendar.details.viewFullDetails') }}
                   </button>
                 </div>
 
@@ -144,7 +144,7 @@
                     class="inline-flex items-center justify-center rounded-full bg-brand-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
                     @click="close"
                   >
-                    {{ bookingLabel }}
+                    {{ resolvedBookingLabel }}
                   </router-link>
                   <button
                     v-if="hasPoster"
@@ -152,21 +152,21 @@
                     class="inline-flex items-center justify-center rounded-full border border-brand-200 bg-brand-50 px-5 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
                     @click="viewPoster"
                   >
-                    View Poster
+                    {{ t('calendar.details.viewPoster') }}
                   </button>
                   <button
                     type="button"
                     class="inline-flex items-center justify-center rounded-full border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2"
                     @click="addToCalendar"
                   >
-                    Add to Calendar
+                    {{ t('calendar.details.addToCalendar') }}
                   </button>
                   <button
                     type="button"
                     class="inline-flex items-center justify-center rounded-full border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2"
                     @click="close"
                   >
-                    Close
+                    {{ t('calendar.details.close') }}
                   </button>
                 </div>
               </div>
@@ -181,8 +181,10 @@
 
 <script setup>
 import { computed, ref, watch, onUnmounted, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import MediaImageGallery from './MediaImageGallery.vue';
 import PublicEventLayoutSection from './public/PublicEventLayoutSection.vue';
+import { statusLabel } from '../i18n';
 import {
   downloadEventIcs,
   getEventUrgencyLabel,
@@ -193,13 +195,14 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   event: { type: Object, default: null },
   bookingLink: { type: String, default: '' },
-  bookingLabel: { type: String, default: 'Book Space' },
+  bookingLabel: { type: String, default: '' },
   hideBookingWhenClosed: { type: Boolean, default: true },
   /** When false, hides the vendor/community booking CTA (Organizer preview). */
   showBookingAction: { type: Boolean, default: true },
 });
 
 const emit = defineEmits(['update:modelValue']);
+const { t } = useI18n();
 
 const panelRef = ref(null);
 const galleryRef = ref(null);
@@ -214,6 +217,22 @@ const urgencyLabel = computed(() => {
   if (!props.event) return '';
   return getEventUrgencyLabel(props.event.startsAt, props.event.endsAt);
 });
+
+const urgencyDisplay = computed(() => {
+  const raw = urgencyLabel.value;
+  if (!raw) return '';
+  if (raw === 'Event ended') return t('calendar.urgencyEnded');
+  if (raw === 'Happening now') return t('calendar.urgencyNow');
+  if (raw === 'Happening today') return t('calendar.urgencyToday');
+  if (raw === 'Tomorrow') return t('calendar.urgencyTomorrow');
+  const match = raw.match(/^Starts in (\d+) days$/);
+  if (match) return t('calendar.urgencyInDays', { n: Number(match[1]) });
+  return raw;
+});
+
+const resolvedBookingLabel = computed(
+  () => props.bookingLabel || t('calendar.details.defaultBookingLabel'),
+);
 
 const showBookingCta = computed(() => {
   if (!props.showBookingAction) return false;

@@ -6,15 +6,15 @@
   >
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
       <div>
-        <h2 class="text-2xl font-extrabold text-ink-900">My Items</h2>
+        <h2 class="text-2xl font-extrabold text-ink-900">{{ t('items.title') }}</h2>
         <p class="text-base text-ink-500 leading-relaxed">
-          Prepare items you plan to bring. Active items may appear publicly after your booking is approved.
+          {{ t('items.lead') }}
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <button type="button" class="ml-btn-primary" @click="openCreateModal">Add Item</button>
+        <button type="button" class="ml-btn-primary" @click="openCreateModal">{{ t('items.addItem') }}</button>
         <button type="button" class="ml-btn-ghost" :disabled="loading" @click="loadItems">
-          {{ loading ? 'Refreshing…' : 'Refresh' }}
+          {{ loading ? t('items.refreshing') : t('items.refresh') }}
         </button>
       </div>
     </div>
@@ -23,7 +23,7 @@
       <input
         v-model="itemsSearchQuery"
         type="search"
-        placeholder="Search items by name, category, or status…"
+        :placeholder="t('items.searchPlaceholder')"
         class="w-full sm:max-w-md rounded-xl border border-ink-200 bg-white/80 px-4 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
       />
     </div>
@@ -37,7 +37,7 @@
         :class="filterTabClass(selectedItemStatus === tab.id)"
         @click="selectedItemStatus = tab.id"
       >
-        {{ tab.label }}
+        {{ t(tab.labelKey) }}
         <span class="ml-1 opacity-75">({{ statusCounts[tab.id] || 0 }})</span>
       </button>
     </div>
@@ -51,15 +51,15 @@
     </div>
 
     <div v-else-if="loadError" class="rounded-2xl border border-amber-200 bg-amber-50/70 p-8 text-center">
-      <p class="text-sm text-amber-900 font-semibold">Unable to load your reuse items.</p>
-      <button type="button" class="mt-4 ml-btn-ghost text-sm" @click="loadItems">Try Again</button>
+      <p class="text-sm text-amber-900 font-semibold">{{ t('items.unableLoad') }}</p>
+      <button type="button" class="mt-4 ml-btn-ghost text-sm" @click="loadItems">{{ t('items.tryAgain') }}</button>
     </div>
 
     <div
       v-else-if="!items.length"
       class="rounded-2xl border border-dashed border-ink-300 bg-ink-50/50 p-10 text-center text-ink-500"
     >
-      No private items yet. Add your first preparation record for goods you plan to bring to the carboot.
+      {{ t('items.empty') }}
     </div>
 
     <template v-else>
@@ -67,7 +67,7 @@
         v-if="!filteredItems.length"
         class="rounded-2xl border border-dashed border-ink-300 bg-ink-50/50 p-10 text-center text-ink-500"
       >
-        No items match your search.
+        {{ t('items.noMatch') }}
       </div>
 
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -92,7 +92,7 @@
               />
             </button>
             <div v-else class="h-full flex items-center justify-center text-xs font-semibold uppercase tracking-wide text-ink-400">
-              No image
+              {{ t('items.noImage') }}
             </div>
           </div>
 
@@ -114,7 +114,7 @@
               class="mt-2 text-[11px] font-semibold"
               :class="item.status === 'active' ? 'text-brand-700' : 'text-ink-500'"
             >
-              {{ marketplaceVisibilityLabel(item.status) }}
+              {{ marketplaceVisibilityLabel(item.status, t) }}
             </p>
 
             <p
@@ -122,22 +122,22 @@
               class="mt-2 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200"
               data-testid="vendor-item-active-reservation-badge"
             >
-              Active reservation hold
+              {{ t('items.activeReservationHold') }}
             </p>
 
-            <p class="mt-3 text-sm font-semibold text-brand-700">{{ formatItemPrice(item) }}</p>
+            <p class="mt-3 text-sm font-semibold text-brand-700">{{ formatItemPrice(item, t) }}</p>
             <p v-if="item.description" class="mt-2 text-xs text-ink-500 line-clamp-2">{{ item.description }}</p>
 
             <div class="mt-4 flex flex-wrap gap-2">
-              <button type="button" class="ml-btn-ghost text-sm" @click="openDetails(item)">View</button>
-              <button type="button" class="ml-btn-ghost text-sm" @click="openEditModal(item)">Edit</button>
+              <button type="button" class="ml-btn-ghost text-sm" @click="openDetails(item)">{{ t('items.view') }}</button>
+              <button type="button" class="ml-btn-ghost text-sm" @click="openEditModal(item)">{{ t('items.edit') }}</button>
               <button
                 type="button"
                 class="ml-btn-ghost text-sm text-rose-600"
                 :disabled="deletingId === item.id"
                 @click="removeItem(item)"
               >
-                {{ deletingId === item.id ? 'Deleting…' : 'Delete' }}
+                {{ deletingId === item.id ? t('items.deleting') : t('items.delete') }}
               </button>
             </div>
           </div>
@@ -146,7 +146,7 @@
 
       <div v-if="filteredItems.length > VISIBLE_LIST_LIMIT" class="mt-4 flex justify-center">
         <button type="button" class="ml-btn-ghost text-sm font-semibold" @click="itemsExpanded = !itemsExpanded">
-          {{ itemsExpanded ? 'Show Less' : `View All Items (${filteredItems.length})` }}
+          {{ itemsExpanded ? t('items.showLess') : `${t('items.viewAllPrefix')}${filteredItems.length}${t('items.viewAllSuffix')}` }}
         </button>
       </div>
     </template>
@@ -170,6 +170,7 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import VendorItemFormModal from './VendorItemFormModal.vue';
 import VendorItemDetailsModal from './VendorItemDetailsModal.vue';
@@ -182,6 +183,7 @@ import { formatItemPrice, ITEM_STATUS_TABS, marketplaceVisibilityLabel } from '.
 
 const emit = defineEmits(['changed']);
 
+const { t } = useI18n();
 const toast = useToast();
 const VISIBLE_LIST_LIMIT = 5;
 
@@ -249,7 +251,7 @@ const itemMatchesSearch = (item, query) => {
     item.description,
     item.status,
     item.pricing_type,
-    formatItemPrice(item),
+    formatItemPrice(item, t),
     item.price,
   ]
     .filter((part) => part != null && part !== '')
@@ -322,12 +324,12 @@ const handleSaved = async () => {
 };
 
 const removeItem = async (item) => {
-  if (!window.confirm(`Delete "${item.name}" from your listings?`)) return;
+  if (!window.confirm(t('items.deleteConfirm', { name: item.name }))) return;
 
   deletingId.value = item.id;
   try {
     await api.delete(`/vendor/items/${item.id}`);
-    toast.success('Reuse item deleted.');
+    toast.success(t('items.toastDeleted'));
     if (selectedItem.value?.id === item.id) {
       showDetailsModal.value = false;
       selectedItem.value = null;

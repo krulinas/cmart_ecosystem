@@ -6,26 +6,26 @@
         <img src="/cmart_logo.png" alt="CMart" class="pes-cover__logo" @error="logoFailed = true" v-show="!logoFailed" />
         <span v-if="logoFailed" class="pes-cover__logo-fallback">CMart</span>
       </div>
-      <p class="pes-eyebrow">Post-Event Report</p>
+      <p class="pes-eyebrow">{{ t('reports.summary.eyebrow') }}</p>
       <h1 class="pes-cover__title">{{ eventTitle }}</h1>
       <p class="pes-cover__date">{{ dateRange }}</p>
       <dl class="pes-cover__meta">
-        <div><dt>Venue</dt><dd>{{ venue }}</dd></div>
-        <div><dt>Prepared by</dt><dd>Carboot Organizer</dd></div>
-        <div><dt>Prepared for</dt><dd>CMart</dd></div>
-        <div><dt>Report version</dt><dd>Version {{ report.version }}</dd></div>
-        <div v-if="publishedDisplay"><dt>Publication date</dt><dd>{{ publishedDisplay }}</dd></div>
+        <div><dt>{{ t('reports.summary.venue') }}</dt><dd>{{ venue }}</dd></div>
+        <div><dt>{{ t('reports.summary.preparedBy') }}</dt><dd>{{ t('reports.summary.preparedByValue') }}</dd></div>
+        <div><dt>{{ t('reports.summary.preparedFor') }}</dt><dd>{{ t('reports.summary.preparedForValue') }}</dd></div>
+        <div><dt>{{ t('reports.summary.reportVersion') }}</dt><dd>{{ t('reports.summary.versionN', { n: report.version }) }}</dd></div>
+        <div v-if="publishedDisplay"><dt>{{ t('reports.summary.publicationDate') }}</dt><dd>{{ publishedDisplay }}</dd></div>
       </dl>
-      <span v-if="coverStatus" class="pes-badge" :class="coverStatus === 'Provisional' ? 'pes-badge--amber' : 'pes-badge--green'">
-        {{ coverStatus }}
+      <span v-if="coverStatusLabel" class="pes-badge" :class="coverStatusKey === 'provisional' ? 'pes-badge--amber' : 'pes-badge--green'">
+        {{ coverStatusLabel }}
       </span>
     </header>
 
     <!-- 2. Executive Summary -->
     <section class="pes-section">
-      <h2>1. Executive Summary</h2>
-      <p v-if="coverStatus === 'Provisional'" class="pes-warn">
-        This report is Provisional. Figures reflect the available snapshot and may change if a later version is published.
+      <h2>{{ t('reports.summary.sectionExecutive') }}</h2>
+      <p v-if="coverStatusKey === 'provisional'" class="pes-warn">
+        {{ t('reports.summary.provisionalWarn') }}
       </p>
       <div class="pes-kpi-grid">
         <div v-for="kpi in executiveKpis" :key="kpi.label" class="pes-kpi">
@@ -38,22 +38,22 @@
 
     <!-- 3. Event and Participation -->
     <section class="pes-section">
-      <h2>2. Event and Participation</h2>
+      <h2>{{ t('reports.summary.sectionParticipation') }}</h2>
       <div class="pes-panel">
         <dl class="pes-kv">
-          <div><dt>Event</dt><dd>{{ eventTitle }}</dd></div>
-          <div><dt>Date &amp; time</dt><dd>{{ dateRange }}</dd></div>
-          <div><dt>Venue</dt><dd>{{ venue }}</dd></div>
+          <div><dt>{{ t('reports.summary.event') }}</dt><dd>{{ eventTitle }}</dd></div>
+          <div><dt>{{ t('reports.summary.dateTime') }}</dt><dd>{{ dateRange }}</dd></div>
+          <div><dt>{{ t('reports.summary.venue') }}</dt><dd>{{ venue }}</dd></div>
         </dl>
       </div>
 
       <template v-if="pipeline">
-        <h3>Applications and pipeline</h3>
+        <h3>{{ t('reports.summary.applicationsPipeline') }}</h3>
         <dl class="pes-kv">
-          <div><dt>Applications</dt><dd>{{ displayMetric(pipeline.total_bookings) }}</dd></div>
-          <div><dt>Unique applicants</dt><dd>{{ displayMetric(pipeline.unique_applicants) }}</dd></div>
-          <div><dt>Approved bookings</dt><dd>{{ displayMetric(firstDefined(pipeline.approved_count, pipeline.by_approval_status?.Approved)) }}</dd></div>
-          <div><dt>Approved vendors</dt><dd>{{ displayMetric(pipeline.approved_unique_vendors) }}</dd></div>
+          <div><dt>{{ t('reports.summary.applications') }}</dt><dd>{{ displayMetric(pipeline.total_bookings) }}</dd></div>
+          <div><dt>{{ t('reports.summary.uniqueApplicants') }}</dt><dd>{{ displayMetric(pipeline.unique_applicants) }}</dd></div>
+          <div><dt>{{ t('reports.summary.approvedBookings') }}</dt><dd>{{ displayMetric(firstDefined(pipeline.approved_count, pipeline.by_approval_status?.Approved)) }}</dd></div>
+          <div><dt>{{ t('reports.summary.approvedVendors') }}</dt><dd>{{ displayMetric(pipeline.approved_unique_vendors) }}</dd></div>
         </dl>
         <div v-if="statusBars.length" class="pes-bars">
           <div v-for="row in statusBars" :key="row.label" class="pes-bar">
@@ -67,24 +67,24 @@
         </p>
       </template>
 
-      <h3>Verified check-ins</h3>
+      <h3>{{ t('reports.summary.verifiedCheckIns') }}</h3>
       <template v-if="attendanceRecorded">
         <dl class="pes-kv">
-          <div><dt>Verified check-ins</dt><dd>{{ attendance.verified_check_in_count }}</dd></div>
+          <div><dt>{{ t('reports.summary.verifiedCheckIns') }}</dt><dd>{{ attendance.verified_check_in_count }}</dd></div>
         </dl>
         <p class="pes-note">A single check-in timestamp does not prove complete multi-day attendance.</p>
       </template>
       <p v-else class="pes-muted" data-testid="attendance-not-recorded">
-        {{ attendance?.message || 'Attendance verification was not recorded for this event.' }}
+        {{ attendance?.message || t('reports.summary.notRecorded') }}
       </p>
 
       <template v-if="utilisationSection">
-        <h3>Site-day utilisation</h3>
+        <h3>{{ t('reports.summary.siteDayUtilisation') }}</h3>
         <template v-if="utilisationSection.available">
           <dl class="pes-kv">
-            <div><dt>Available active site-days</dt><dd>{{ utilisationSection.available_active_site_days }}</dd></div>
-            <div><dt>Occupied site-days</dt><dd>{{ utilisationSection.occupied_site_days }}</dd></div>
-            <div><dt>Site-day utilisation</dt><dd>{{ utilisationSection.utilisation_percent }}%</dd></div>
+            <div><dt>{{ t('reports.summary.availableActiveSiteDays') }}</dt><dd>{{ utilisationSection.available_active_site_days }}</dd></div>
+            <div><dt>{{ t('reports.summary.occupiedSiteDays') }}</dt><dd>{{ utilisationSection.occupied_site_days }}</dd></div>
+            <div><dt>{{ t('reports.summary.siteDayUtilisation') }}</dt><dd>{{ utilisationSection.utilisation_percent }}%</dd></div>
           </dl>
           <div class="pes-bar">
             <div class="pes-bar__track">
@@ -100,12 +100,12 @@
           </p>
         </template>
         <p v-else class="pes-muted" data-testid="utilisation-unavailable">
-          {{ utilisationSection.message || 'Not available for this event' }}
+          {{ utilisationSection.message || t('reports.summary.notAvailableForEvent') }}
         </p>
       </template>
 
       <template v-if="categories.length">
-        <h3>Approved vendor categories</h3>
+        <h3>{{ t('reports.summary.approvedVendorCategories') }}</h3>
         <div class="pes-bars">
           <div v-for="row in categoryBars" :key="row.label" class="pes-bar">
             <div class="pes-bar__label"><span>{{ row.label }}</span><strong>{{ row.count }}</strong></div>
@@ -117,17 +117,17 @@
 
     <!-- 4. Financial Summary -->
     <section v-if="payments" class="pes-section">
-      <h2>3. Financial Summary</h2>
+      <h2>{{ t('reports.summary.sectionFinancial') }}</h2>
       <p class="pes-note">Site booking revenue from frozen booking price snapshots and invoices. Vendor survey sales are not organizer revenue.</p>
       <dl class="pes-kv">
-        <div><dt>Expected booking revenue</dt><dd>{{ moneyOrMissing(paymentExpected) }}</dd></div>
-        <div><dt>Invoiced amount</dt><dd>{{ moneyOrMissing(payments.invoiced_amount) }}</dd></div>
-        <div><dt>Collected revenue</dt><dd class="pes-pos">{{ moneyOrMissing(paymentCollected) }}</dd></div>
-        <div><dt>Outstanding invoice balance</dt><dd class="pes-amber">{{ hasInvoices ? moneyOrMissing(payments.outstanding_invoice_balance ?? paymentUnpaid) : 'Not available' }}</dd></div>
-        <div><dt>Unbilled booking value</dt><dd>{{ moneyOrMissing(payments.unbilled_booking_value) }}</dd></div>
-        <div><dt>Collection rate</dt><dd>{{ collectionRateDisplay }}</dd></div>
+        <div><dt>{{ t('reports.summary.expectedBookingRevenue') }}</dt><dd>{{ moneyOrMissing(paymentExpected) }}</dd></div>
+        <div><dt>{{ t('reports.summary.invoicedAmount') }}</dt><dd>{{ moneyOrMissing(payments.invoiced_amount) }}</dd></div>
+        <div><dt>{{ t('reports.summary.collectedRevenue') }}</dt><dd class="pes-pos">{{ moneyOrMissing(paymentCollected) }}</dd></div>
+        <div><dt>{{ t('reports.summary.outstandingInvoiceBalance') }}</dt><dd class="pes-amber">{{ hasInvoices ? moneyOrMissing(payments.outstanding_invoice_balance ?? paymentUnpaid) : t('reports.summary.notAvailable') }}</dd></div>
+        <div><dt>{{ t('reports.summary.unbilledBookingValue') }}</dt><dd>{{ moneyOrMissing(payments.unbilled_booking_value) }}</dd></div>
+        <div><dt>{{ t('reports.summary.collectionRate') }}</dt><dd>{{ collectionRateDisplay }}</dd></div>
         <div v-if="withoutInvoice != null">
-          <dt>Approved bookings without invoices</dt><dd>{{ withoutInvoice }}</dd>
+          <dt>{{ t('reports.summary.approvedWithoutInvoices') }}</dt><dd>{{ withoutInvoice }}</dd>
         </div>
       </dl>
       <p v-if="paidWithdrawalDisclosure" class="pes-note" data-testid="paid-withdrawal-disclosure">
@@ -140,44 +140,44 @@
     </section>
 
     <section v-if="eventPerformance" class="pes-section" data-testid="event-performance-section">
-      <h2>Event Performance</h2>
+      <h2>{{ t('reports.summary.sectionEventPerformance') }}</h2>
       <dl class="pes-kv">
-        <div><dt>Unique approved vendors</dt><dd>{{ eventPerformance.unique_approved_vendors ?? '—' }}</dd></div>
-        <div><dt>Approved bookings</dt><dd>{{ eventPerformance.approved_bookings ?? '—' }}</dd></div>
-        <div><dt>Open booking sites</dt><dd>{{ eventPerformance.open_booking_sites ?? '—' }}</dd></div>
-        <div><dt>Sites sold</dt><dd>{{ eventPerformance.sites_sold ?? '—' }}</dd></div>
-        <div><dt>Available sites</dt><dd>{{ eventPerformance.available_sites ?? '—' }}</dd></div>
+        <div><dt>{{ t('reports.summary.uniqueApprovedVendors') }}</dt><dd>{{ eventPerformance.unique_approved_vendors ?? '—' }}</dd></div>
+        <div><dt>{{ t('reports.summary.approvedBookings') }}</dt><dd>{{ eventPerformance.approved_bookings ?? '—' }}</dd></div>
+        <div><dt>{{ t('reports.summary.openBookingSites') }}</dt><dd>{{ eventPerformance.open_booking_sites ?? '—' }}</dd></div>
+        <div><dt>{{ t('reports.summary.sitesSold') }}</dt><dd>{{ eventPerformance.sites_sold ?? '—' }}</dd></div>
+        <div><dt>{{ t('reports.summary.availableSites') }}</dt><dd>{{ eventPerformance.available_sites ?? '—' }}</dd></div>
         <div>
-          <dt>Site utilisation</dt>
+          <dt>{{ t('reports.summary.siteUtilisation') }}</dt>
           <dd>{{ eventPerformance.site_utilisation_percent != null ? `${eventPerformance.site_utilisation_percent}%` : '—' }}</dd>
         </div>
       </dl>
     </section>
 
     <section v-if="feedbackSection" class="pes-section" data-testid="feedback-summary-section">
-      <h2>User Feedback Summary</h2>
+      <h2>{{ t('reports.summary.sectionFeedback') }}</h2>
       <p class="pes-note">Aggregate In-app Feedback only. Raw comments are excluded from published reports.</p>
       <template v-if="Number(feedbackSection.response_count) > 0">
         <dl class="pes-kv">
-          <div><dt>Total feedback responses</dt><dd>{{ feedbackSection.response_count }}</dd></div>
-          <div><dt>Vendor responses</dt><dd>{{ feedbackSection.vendor_response_count ?? 0 }}</dd></div>
-          <div><dt>Non-vendor responses</dt><dd>{{ feedbackSection.non_vendor_response_count ?? 0 }}</dd></div>
-          <div><dt>Average overall rating</dt><dd>{{ feedbackSection.average_rating ?? '—' }}</dd></div>
+          <div><dt>{{ t('reports.summary.totalFeedbackResponses') }}</dt><dd>{{ feedbackSection.response_count }}</dd></div>
+          <div><dt>{{ t('reports.summary.vendorResponses') }}</dt><dd>{{ feedbackSection.vendor_response_count ?? 0 }}</dd></div>
+          <div><dt>{{ t('reports.summary.nonVendorResponses') }}</dt><dd>{{ feedbackSection.non_vendor_response_count ?? 0 }}</dd></div>
+          <div><dt>{{ t('reports.summary.averageOverallRating') }}</dt><dd>{{ feedbackSection.average_rating ?? '—' }}</dd></div>
           <div>
-            <dt>Vendor response rate</dt>
+            <dt>{{ t('reports.summary.vendorResponseRate') }}</dt>
             <dd>{{ feedbackSection.vendor_response_rate_percent != null ? `${feedbackSection.vendor_response_rate_percent}%` : '—' }}</dd>
           </div>
         </dl>
       </template>
-      <p v-else class="pes-muted">{{ feedbackSection.message || 'No feedback has been submitted for this event yet.' }}</p>
+      <p v-else class="pes-muted">{{ feedbackSection.message || t('reports.summary.notRecorded') }}</p>
     </section>
 
     <!-- 5. Vendor and Sales Insights -->
     <section v-if="showVendorInsights" class="pes-section" data-testid="survey-section">
-      <h2>4. Vendor and Sales Insights</h2>
+      <h2>{{ t('reports.summary.sectionVendorInsights') }}</h2>
       <template v-if="surveyAvailable">
         <p class="pes-note">
-          {{ surveySection.base_display || `n = ${surveySection.respondent_count} responses` }}.
+          {{ surveySection.base_display || t('reports.summary.surveyBaseFallback', { count: surveySection.respondent_count }) }}.
           Categorical survey aggregates only; exact total vendor revenue is not calculated.
         </p>
         <div v-for="block in surveyBlocks" :key="block.key" class="pes-dist">
@@ -187,7 +187,7 @@
             <p class="pes-note">
               {{ block.base }}
               <template v-if="block.denominatorNote"> · {{ block.denominatorNote }}</template>
-              <template v-if="block.multiSelect"> · Multiple responses allowed; percentages may exceed 100%.</template>
+              <template v-if="block.multiSelect"> · {{ t('reports.summary.multiSelectNote') }}</template>
             </p>
             <div class="pes-bars">
               <div v-for="row in block.rows" :key="`${block.key}-${row.key}`" class="pes-bar">
@@ -208,29 +208,29 @@
 
     <!-- 6. Environmental and Social -->
     <section v-if="environmentalAvailable" class="pes-section">
-      <h2>5. Environmental and Social Insights</h2>
+      <h2>{{ t('reports.summary.sectionEnvironmental') }}</h2>
       <p class="pes-note">
         <strong>Vendor-reported survey indicators.</strong>
         These indicators are based on vendor responses and are not direct measurements of waste, carbon emissions or total items sold.
       </p>
       <dl class="pes-kv">
         <div>
-          <dt>Vendors reporting reused / preloved goods</dt>
+          <dt>{{ t('reports.summary.vendorsReportingReused') }}</dt>
           <dd>{{ environmentalSection.vendors_reporting_reused_goods ?? 0 }}</dd>
         </div>
-        <div><dt>Plans to donate</dt><dd>{{ environmentalSection.plans_to_donate ?? 0 }}</dd></div>
-        <div><dt>Plans to recycle</dt><dd>{{ environmentalSection.plans_to_recycle ?? 0 }}</dd></div>
-        <div><dt>Plans to relist / store</dt><dd>{{ environmentalSection.plans_to_relist_or_store ?? 0 }}</dd></div>
-        <div><dt>Plans to dispose</dt><dd>{{ environmentalSection.plans_to_dispose ?? 0 }}</dd></div>
+        <div><dt>{{ t('reports.summary.plansToDonate') }}</dt><dd>{{ environmentalSection.plans_to_donate ?? 0 }}</dd></div>
+        <div><dt>{{ t('reports.summary.plansToRecycle') }}</dt><dd>{{ environmentalSection.plans_to_recycle ?? 0 }}</dd></div>
+        <div><dt>{{ t('reports.summary.plansToRelist') }}</dt><dd>{{ environmentalSection.plans_to_relist_or_store ?? 0 }}</dd></div>
+        <div><dt>{{ t('reports.summary.plansToDispose') }}</dt><dd>{{ environmentalSection.plans_to_dispose ?? 0 }}</dd></div>
       </dl>
       <template v-if="usedStockBars.length">
-        <h3>Used-stock sold bands</h3>
+        <h3>{{ t('reports.summary.usedStockBands') }}</h3>
         <div class="pes-chips">
           <span v-for="row in usedStockBars" :key="row.label" class="pes-chip">{{ row.label }}: {{ row.count }}</span>
         </div>
       </template>
       <template v-if="supportEffectBars.length">
-        <h3>Perceived effect of supporting activities</h3>
+        <h3>{{ t('reports.summary.supportEffect') }}</h3>
         <div class="pes-chips">
           <span v-for="row in supportEffectBars" :key="row.label" class="pes-chip">{{ row.label }}: {{ row.count }}</span>
         </div>
@@ -239,64 +239,64 @@
 
     <!-- 7. Organizer Assessment -->
     <section v-if="report.organizer_observations || report.organizer_recommendations" class="pes-section">
-      <h2>6. Organizer Assessment</h2>
+      <h2>{{ t('reports.summary.sectionOrganizerAssessment') }}</h2>
       <template v-if="report.organizer_observations">
-        <h3>Organizer observations</h3>
+        <h3>{{ t('reports.summary.organizerObservations') }}</h3>
         <div class="pes-narrative">{{ report.organizer_observations }}</div>
       </template>
       <template v-if="report.organizer_recommendations">
-        <h3>Recommendations</h3>
+        <h3>{{ t('reports.summary.recommendations') }}</h3>
         <div class="pes-narrative">{{ report.organizer_recommendations }}</div>
       </template>
     </section>
 
     <!-- 8. Methodology -->
     <section class="pes-section">
-      <h2>7. Methodology and Data Notes</h2>
+      <h2>{{ t('reports.summary.sectionMethodology') }}</h2>
       <dl class="pes-kv pes-kv--method">
-        <div><dt>Report scope</dt><dd>This report covers one carboot event only.</dd></div>
+        <div><dt>{{ t('reports.summary.reportScope') }}</dt><dd>This report covers one carboot event only.</dd></div>
         <div>
-          <dt>Report version</dt>
-          <dd>Version {{ report.version }}<template v-if="coverStatus"> ({{ coverStatus }})</template></dd>
+          <dt>{{ t('reports.summary.reportVersion') }}</dt>
+          <dd>{{ t('reports.summary.versionN', { n: report.version }) }}<template v-if="coverStatusLabel"> ({{ coverStatusLabel }})</template></dd>
         </div>
-        <div v-if="dataCutOff"><dt>Data cut-off</dt><dd>{{ dataCutOff }}</dd></div>
+        <div v-if="dataCutOff"><dt>{{ t('reports.summary.dataCutOff') }}</dt><dd>{{ dataCutOff }}</dd></div>
         <div>
-          <dt>Applications vs unique vendors</dt>
+          <dt>{{ t('reports.summary.applicationsVsUnique') }}</dt>
           <dd>Application counts and unique applicant/vendor counts are separate.</dd>
         </div>
         <div>
-          <dt>Approved bookings vs attendance</dt>
+          <dt>{{ t('reports.summary.approvedVsAttendance') }}</dt>
           <dd>Approved bookings are not labelled as attendance unless verified check-ins are recorded.</dd>
         </div>
         <div>
-          <dt>Site-day utilisation</dt>
+          <dt>{{ t('reports.summary.siteDayUtilisation') }}</dt>
           <dd>Occupied active site-days ÷ available active site-days × 100.</dd>
         </div>
         <div v-if="surveyAvailable">
-          <dt>Survey response base</dt>
-          <dd>{{ surveySection.base_display || `n = ${surveySection.respondent_count} responses` }}</dd>
+          <dt>{{ t('reports.summary.surveyResponseBase') }}</dt>
+          <dd>{{ surveySection.base_display || t('reports.summary.surveyBaseFallback', { count: surveySection.respondent_count }) }}</dd>
         </div>
         <div v-if="surveyAvailable">
-          <dt>Multi-select questions</dt>
-          <dd>Multiple responses allowed; percentages may exceed 100%.</dd>
+          <dt>{{ t('reports.summary.multiSelectQuestions') }}</dt>
+          <dd>{{ t('reports.summary.multiSelectNote') }}</dd>
         </div>
         <div>
-          <dt>Financial inclusion</dt>
+          <dt>{{ t('reports.summary.financialInclusion') }}</dt>
           <dd>
             Collected booth fees include paid approved invoices and paid withdrawn bookings under the
             non-refundable withdrawal policy. Pending verification and refunds are shown separately when present.
           </dd>
         </div>
         <div>
-          <dt>Missing data</dt>
+          <dt>{{ t('reports.summary.missingData') }}</dt>
           <dd>Missing or unavailable metrics are omitted or shown as Not recorded / Not available — never invented as zero.</dd>
         </div>
         <div v-if="dataQualityWarnings.length">
-          <dt>Data-quality warnings</dt>
+          <dt>{{ t('reports.summary.dataQualityWarnings') }}</dt>
           <dd>{{ dataQualityWarnings.join('; ') }}</dd>
         </div>
         <div>
-          <dt>Provisional / Final</dt>
+          <dt>{{ t('reports.summary.provisionalOrFinal') }}</dt>
           <dd>Provisional means the snapshot may still change. Final means the published snapshot for this version is frozen.</dd>
         </div>
       </dl>
@@ -306,6 +306,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
   collectionRate,
   formatReportMoney,
@@ -317,15 +318,14 @@ const props = defineProps({
   report: { type: Object, required: true },
 });
 
-const NOT_RECORDED = 'Not recorded';
-const NOT_AVAILABLE = 'Not available for this event';
+const { t } = useI18n();
 const logoFailed = ref(false);
 
 const snapshot = computed(() => props.report?.snapshot || {});
 const eventTitle = computed(
-  () => props.report.event_title_snapshot || snapshot.value?.event?.title || 'Carboot Event',
+  () => props.report.event_title_snapshot || snapshot.value?.event?.title || t('reports.summary.eventFallback'),
 );
-const venue = computed(() => snapshot.value?.event?.venue || snapshot.value?.venue || 'CMart');
+const venue = computed(() => snapshot.value?.event?.venue || snapshot.value?.venue || t('reports.summary.venueFallback'));
 
 const pipeline = computed(() => {
   const section = snapshot.value?.sections?.booking_pipeline;
@@ -366,11 +366,22 @@ const attendanceRecorded = computed(
 const surveyAvailable = computed(() => Boolean(surveySection.value?.available));
 const environmentalAvailable = computed(() => Boolean(environmentalSection.value?.available));
 
-const coverStatus = computed(() => {
-  if (props.report?.cover_status) return props.report.cover_status;
-  if (snapshot.value?.provisional) return 'Provisional';
-  if (props.report?.status === 'published' || props.report?.status === 'superseded') return 'Final';
+const coverStatusKey = computed(() => {
+  if (props.report?.cover_status) {
+    const raw = String(props.report.cover_status);
+    if (/provisional/i.test(raw)) return 'provisional';
+    if (/final/i.test(raw)) return 'final';
+    return raw.toLowerCase();
+  }
+  if (snapshot.value?.provisional) return 'provisional';
+  if (props.report?.status === 'published' || props.report?.status === 'superseded') return 'final';
   return null;
+});
+
+const coverStatusLabel = computed(() => {
+  if (coverStatusKey.value === 'provisional') return t('reports.summary.provisional');
+  if (coverStatusKey.value === 'final') return t('reports.summary.final');
+  return props.report?.cover_status || null;
 });
 
 const dateRange = computed(() => {
@@ -378,7 +389,7 @@ const dateRange = computed(() => {
   if (display) return display;
   const start = props.report.event_starts_at_snapshot || snapshot.value?.event?.starts_at;
   const end = props.report.event_ends_at_snapshot || snapshot.value?.event?.ends_at;
-  if (!start && !end) return 'Not recorded';
+  if (!start && !end) return t('reports.summary.notRecorded');
   return `${formatEnglishDate(start)} – ${formatEnglishDate(end)}`;
 });
 
@@ -406,7 +417,7 @@ const collectionRateDisplay = computed(() => {
   if (payments.value?.collection_rate_percent != null) {
     return `${payments.value.collection_rate_percent}%`;
   }
-  if (!hasInvoices.value) return 'Not available';
+  if (!hasInvoices.value) return t('reports.summary.notAvailable');
   const legacy = collectionRate(paymentCollected.value, paymentExpected.value);
   return legacy != null ? `${legacy}%` : '—';
 });
@@ -431,12 +442,12 @@ const statusBars = computed(() => {
   if (!p) return [];
   const by = p.by_approval_status || {};
   const entries = [
-    ['Pending', firstDefined(p.pending_count, sumStatus(by, ['Pending_Organizer', 'Pending_Staff', 'Pending_Boss']))],
-    ['Needs revision', firstDefined(p.needs_revision_count, by.Needs_Revision)],
-    ['Approved', firstDefined(p.approved_count, by.Approved)],
-    ['Rejected', firstDefined(p.rejected_count, by.Rejected)],
-    ['Cancelled', firstDefined(p.cancelled_count, by.Cancelled)],
-    ['Withdrawn', firstDefined(p.withdrawn_count, by.Withdrawn)],
+    [t('reports.summary.statusPending'), firstDefined(p.pending_count, sumStatus(by, ['Pending_Organizer', 'Pending_Staff', 'Pending_Boss']))],
+    [t('reports.summary.statusNeedsRevision'), firstDefined(p.needs_revision_count, by.Needs_Revision)],
+    [t('reports.summary.statusApproved'), firstDefined(p.approved_count, by.Approved)],
+    [t('reports.summary.statusRejected'), firstDefined(p.rejected_count, by.Rejected)],
+    [t('reports.summary.statusCancelled'), firstDefined(p.cancelled_count, by.Cancelled)],
+    [t('reports.summary.statusWithdrawn'), firstDefined(p.withdrawn_count, by.Withdrawn)],
   ]
     .map(([label, count]) => ({ label, count: Number(count) || 0 }))
     .filter((row) => row.count > 0);
@@ -499,26 +510,26 @@ const supportEffectBars = computed(() =>
 const executiveKpis = computed(() => {
   const cards = [];
   if (pipeline.value?.total_bookings != null) {
-    cards.push({ label: 'Applications', value: pipeline.value.total_bookings });
+    cards.push({ label: t('reports.summary.kpiApplications'), value: pipeline.value.total_bookings });
   }
   if (pipeline.value) {
     const approved = firstDefined(pipeline.value.approved_count, pipeline.value.by_approval_status?.Approved);
-    if (approved != null) cards.push({ label: 'Approved bookings', value: approved });
+    if (approved != null) cards.push({ label: t('reports.summary.kpiApprovedBookings'), value: approved });
     if (pipeline.value.approved_unique_vendors != null) {
-      cards.push({ label: 'Approved vendors', value: pipeline.value.approved_unique_vendors });
+      cards.push({ label: t('reports.summary.kpiApprovedVendors'), value: pipeline.value.approved_unique_vendors });
     }
   }
   if (attendanceRecorded.value) {
-    cards.push({ label: 'Verified check-ins', value: attendance.value.verified_check_in_count });
+    cards.push({ label: t('reports.summary.kpiVerifiedCheckIns'), value: attendance.value.verified_check_in_count });
   }
   if (utilisationSection.value?.available && utilisationSection.value.utilisation_percent != null) {
-    cards.push({ label: 'Site-day utilisation', value: `${utilisationSection.value.utilisation_percent}%` });
+    cards.push({ label: t('reports.summary.kpiSiteDayUtilisation'), value: `${utilisationSection.value.utilisation_percent}%` });
   }
   if (paymentCollected.value != null) {
-    cards.push({ label: 'Collected booth fees', value: formatReportMoney(paymentCollected.value) });
+    cards.push({ label: t('reports.summary.kpiCollectedBoothFees'), value: formatReportMoney(paymentCollected.value) });
   }
   if (surveyAvailable.value && surveySection.value.respondent_count != null) {
-    cards.push({ label: 'Survey respondents', value: surveySection.value.respondent_count });
+    cards.push({ label: t('reports.summary.kpiSurveyRespondents'), value: surveySection.value.respondent_count });
   }
   return cards;
 });
@@ -578,20 +589,20 @@ function sumStatus(by, keys) {
 }
 
 function displayMetric(value) {
-  if (value === undefined || value === null) return NOT_RECORDED;
+  if (value === undefined || value === null) return t('reports.summary.notRecorded');
   return value;
 }
 
 function moneyOrMissing(value) {
   const formatted = formatReportMoney(value);
-  return formatted ?? NOT_AVAILABLE;
+  return formatted ?? t('reports.summary.notAvailableForEvent');
 }
 
 function formatEnglishDate(value) {
   if (!value) return '—';
   try {
     const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return NOT_RECORDED;
+    if (Number.isNaN(date.getTime())) return t('reports.summary.notRecorded');
     return new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Asia/Kuala_Lumpur',
       day: 'numeric',
@@ -602,7 +613,7 @@ function formatEnglishDate(value) {
       hour12: true,
     }).format(date);
   } catch {
-    return NOT_RECORDED;
+    return t('reports.summary.notRecorded');
   }
 }
 </script>

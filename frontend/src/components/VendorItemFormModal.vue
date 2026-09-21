@@ -20,24 +20,24 @@
 
         <div class="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 p-6 max-h-[90vh] overflow-y-auto" @click.stop>
           <h2 :id="titleId" class="text-xl font-extrabold text-ink-900">
-            {{ item ? 'Edit Item' : 'Add Item' }}
+            {{ item ? t('items.form.editTitle') : t('items.form.addTitle') }}
           </h2>
           <p class="mt-1 text-sm text-ink-500">
-            Private preparation record — not publicly listed. Public previews require a future event-day confirmation flow.
+            {{ t('items.form.subtitle') }}
           </p>
 
           <form class="mt-6 space-y-4" @submit.prevent="save">
             <div>
-              <label class="ml-label">Item name</label>
+              <label class="ml-label">{{ t('items.form.itemName') }}</label>
               <input v-model="form.name" class="ml-input" required />
               <p v-if="errors.name" class="mt-1 text-xs text-rose-600">{{ errors.name }}</p>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="ml-label">Category</label>
+                <label class="ml-label">{{ t('items.form.category') }}</label>
                 <select v-model="form.vendor_category_id" class="ml-input" required :disabled="categoriesLoading">
-                  <option value="">{{ categoriesLoading ? 'Loading categories…' : 'Select category' }}</option>
+                  <option value="">{{ categoriesLoading ? t('items.form.loadingCategories') : t('items.form.selectCategory') }}</option>
                   <option v-for="category in categories" :key="category.id" :value="String(category.id)">
                     {{ category.label }}
                   </option>
@@ -48,10 +48,10 @@
                 </p>
               </div>
               <div>
-                <label class="ml-label">Condition</label>
+                <label class="ml-label">{{ t('items.form.condition') }}</label>
                 <select v-model="form.condition" class="ml-input" required>
                   <option v-for="condition in ITEM_CONDITIONS" :key="condition" :value="condition">
-                    {{ condition }}
+                    {{ t(ITEM_CONDITION_LABEL_KEYS[condition] || condition) }}
                   </option>
                 </select>
                 <p v-if="errors.condition" class="mt-1 text-xs text-rose-600">{{ errors.condition }}</p>
@@ -60,36 +60,36 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="ml-label">Pricing</label>
+                <label class="ml-label">{{ t('items.form.pricing') }}</label>
                 <select v-model="form.pricing_type" class="ml-input" required>
                   <option v-for="option in ITEM_PRICING_TYPES" :key="option.value" :value="option.value">
-                    {{ option.label }}
+                    {{ t(option.labelKey) }}
                   </option>
                 </select>
               </div>
               <div v-if="form.pricing_type === 'fixed'">
-                <label class="ml-label">Price (RM)</label>
+                <label class="ml-label">{{ t('items.form.priceRm') }}</label>
                 <input v-model="form.price" type="number" min="0" step="0.01" class="ml-input" required />
                 <p v-if="errors.price" class="mt-1 text-xs text-rose-600">{{ errors.price }}</p>
               </div>
             </div>
 
             <div>
-              <label class="ml-label">Status</label>
+              <label class="ml-label">{{ t('items.form.status') }}</label>
               <select v-model="form.status" class="ml-input" required>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="active">{{ t('items.form.active') }}</option>
+                <option value="inactive">{{ t('items.form.inactive') }}</option>
               </select>
             </div>
 
             <div>
-              <label class="ml-label">Description</label>
-              <textarea v-model="form.description" rows="3" class="ml-input" placeholder="Optional item details…"></textarea>
+              <label class="ml-label">{{ t('items.form.description') }}</label>
+              <textarea v-model="form.description" rows="3" class="ml-input" :placeholder="t('items.form.descriptionPlaceholder')"></textarea>
               <p v-if="errors.description" class="mt-1 text-xs text-rose-600">{{ errors.description }}</p>
             </div>
 
             <div>
-              <label class="ml-label">Item images (optional, up to 5)</label>
+              <label class="ml-label">{{ t('items.form.imagesLabel') }}</label>
               <input
                 ref="imageInput"
                 type="file"
@@ -100,7 +100,7 @@
                 @change="onImagesSelected"
               />
               <p class="text-xs text-ink-500 mt-1">
-                JPG, PNG, or WEBP up to 5 MB each. {{ imageCountLabel }}.
+                {{ t('items.form.imagesHint', { countLabel: imageCountLabel }) }}
               </p>
 
               <div v-if="visibleExistingImages.length" class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -119,13 +119,13 @@
                     class="absolute right-1 top-1 rounded-md bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-rose-700 shadow-sm"
                     @click="markExistingImageRemoved(image.id)"
                   >
-                    Remove
+                    {{ t('items.form.remove') }}
                   </button>
                   <span
                     v-if="image.is_primary"
                     class="absolute bottom-1 left-1 rounded-md bg-cyan-600/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
                   >
-                    Primary
+                    {{ t('items.form.primary') }}
                   </span>
                 </div>
               </div>
@@ -142,7 +142,7 @@
                     class="absolute right-1 top-1 rounded-md bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-rose-700 shadow-sm"
                     @click="removeNewImage(preview.key)"
                   >
-                    Remove
+                    {{ t('items.form.remove') }}
                   </button>
                 </div>
               </div>
@@ -150,9 +150,9 @@
 
             <div class="flex gap-2 pt-2">
               <button type="submit" class="ml-btn-primary" :disabled="saving">
-                {{ saving ? 'Saving…' : item ? 'Save Changes' : 'Add Item' }}
+                {{ saving ? t('items.form.saving') : item ? t('items.form.saveChanges') : t('items.form.addItem') }}
               </button>
-              <button type="button" class="ml-btn-ghost" :disabled="saving" @click="close">Cancel</button>
+              <button type="button" class="ml-btn-ghost" :disabled="saving" @click="close">{{ t('items.form.cancel') }}</button>
             </div>
           </form>
         </div>
@@ -163,12 +163,13 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import api from '../services/api';
 import { fetchVendorCategories } from '../services/vendorCategoriesApi';
 import { extractApiError } from '../utils/apiErrors';
 import { resolveReuseItemGallery } from '../utils/imageUrl';
-import { ITEM_CONDITIONS, ITEM_PRICING_TYPES } from '../utils/vendorCatalog';
+import { ITEM_CONDITIONS, ITEM_CONDITION_LABEL_KEYS, ITEM_PRICING_TYPES } from '../utils/vendorCatalog';
 
 const MAX_IMAGES = 5;
 
@@ -179,6 +180,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'saved']);
 
+const { t } = useI18n();
 const toast = useToast();
 const titleId = computed(() => (props.item ? 'vendor-item-edit-title' : 'vendor-item-create-title'));
 
@@ -243,7 +245,7 @@ const visibleExistingImages = computed(() =>
 
 const imageCountLabel = computed(() => {
   const total = keptExistingCount.value + newImageFiles.value.length;
-  return `${total} of ${MAX_IMAGES} images selected`;
+  return t('items.form.imagesSelectedCount', { current: total, max: MAX_IMAGES });
 });
 
 const clearErrors = () => {
@@ -303,7 +305,7 @@ const onImagesSelected = (event) => {
 
   const allowed = files.slice(0, remainingImageSlots.value);
   if (allowed.length < files.length) {
-    toast.info(`Only ${MAX_IMAGES} images are allowed per item.`);
+    toast.info(`${t('items.toastMaxImages', { n: MAX_IMAGES })}`);
   }
 
   for (const file of allowed) {
@@ -382,10 +384,10 @@ const save = async () => {
           status: form.status,
         });
       }
-      toast.success('Reuse item updated.');
+      toast.success(t('items.toastUpdated'));
     } else if (usesMultipart || newImageFiles.value.length) {
       await api.post('/vendor/items', buildFormData());
-      toast.success('Reuse item added.');
+      toast.success(t('items.toastAdded'));
     } else {
       await api.post('/vendor/items', {
         name: form.name.trim(),
@@ -396,7 +398,7 @@ const save = async () => {
         description: form.description?.trim() || null,
         status: form.status,
       });
-      toast.success('Reuse item added.');
+      toast.success(t('items.toastAdded'));
     }
 
     emit('saved');

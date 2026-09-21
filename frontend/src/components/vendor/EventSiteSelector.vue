@@ -5,13 +5,13 @@
     :aria-labelledby="headingId"
   >
     <div class="space-y-2">
-      <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Step 2</p>
-      <h2 :id="headingId" class="text-base font-extrabold text-ink-900">Select Physical Sites</h2>
+      <p class="text-xs font-bold uppercase tracking-wider text-brand-700">{{ t('booking.sites.step') }}</p>
+      <h2 :id="headingId" class="text-base font-extrabold text-ink-900">{{ t('booking.sites.title') }}</h2>
       <p class="text-sm text-ink-600">
-        Select one or more adjacent sites within the same row. Final confirmation is made by the server when your booking is submitted.
+        {{ t('booking.sites.lead') }}
       </p>
       <p v-if="selectedCategory" class="text-sm font-semibold text-brand-700" data-testid="event-site-selected-category">
-        Selected category: {{ selectedCategory.label }}
+        {{ t('booking.sites.selectedCategoryPrefix') }} {{ selectedCategory.label }}
       </p>
       <p v-if="operationalDays.length" class="text-xs text-brand-700 font-medium" data-testid="event-site-days-summary">
         {{ daysSummary }}
@@ -27,15 +27,15 @@
       <p>{{ readinessMessage }}</p>
       <div v-if="selectedCategory && !layoutNotReady" class="mt-3 flex flex-wrap gap-2">
         <button type="button" class="ml-btn-ghost text-sm" @click="$emit('choose-category')">
-          Choose another category
+          {{ t('booking.sites.chooseAnotherCategory') }}
         </button>
         <button type="button" class="ml-btn-ghost text-sm" @click="$emit('retry')">
-          Refresh
+          {{ t('booking.sites.refresh') }}
         </button>
       </div>
       <div v-else-if="layoutNotReady" class="mt-3">
         <button type="button" class="ml-btn-ghost text-sm" @click="$emit('retry')">
-          Refresh
+          {{ t('booking.sites.refresh') }}
         </button>
       </div>
     </div>
@@ -55,7 +55,7 @@
       data-testid="event-site-removed-stale"
       role="status"
     >
-      Removed sites: {{ removedStaleSiteLabels.join(', ') }}. Please review your selection before resubmitting.
+      {{ t('booking.sites.removedStalePrefix') }} {{ removedStaleSiteLabels.join(', ') }}{{ t('booking.sites.removedStaleSuffix') }}
     </div>
 
     <div
@@ -71,7 +71,7 @@
       v-if="!readinessMessage && !layoutNotReady"
       class="flex flex-wrap gap-2 text-xs"
       data-testid="event-site-legend"
-      aria-label="Site status legend"
+      :aria-label="t('booking.sites.legendAria')"
     >
       <span
         v-for="item in legendItems"
@@ -85,7 +85,7 @@
     </div>
 
     <div v-if="loading" class="py-10 text-center text-sm text-ink-500" data-testid="event-site-selector-loading">
-      Loading available sites…
+      {{ t('booking.sites.loading') }}
     </div>
 
     <div
@@ -94,7 +94,7 @@
       data-testid="event-site-selector-error"
     >
       <p>{{ loadError }}</p>
-      <button type="button" class="ml-btn-ghost text-sm" @click="$emit('retry')">Try Again</button>
+      <button type="button" class="ml-btn-ghost text-sm" @click="$emit('retry')">{{ t('booking.sites.tryAgain') }}</button>
     </div>
 
     <div
@@ -103,7 +103,7 @@
       data-testid="event-site-category-required"
       role="status"
     >
-      Select a selling category to continue.
+      {{ t('booking.sites.categoryRequired') }}
     </div>
 
     <div
@@ -111,7 +111,7 @@
       class="rounded-lg border border-ink-200 bg-ink-50 px-4 py-4 text-sm text-ink-700"
       data-testid="event-site-no-compatible-rows"
     >
-      No layout rows are available for this category.
+      {{ t('booking.sites.noRows') }}
     </div>
 
     <div
@@ -119,7 +119,7 @@
       class="rounded-lg border border-ink-200 bg-ink-50 px-4 py-4 text-sm text-ink-700"
       data-testid="event-site-all-occupied"
     >
-      All sites for this category are booked or unavailable.
+      {{ t('booking.sites.allOccupied') }}
     </div>
 
     <div
@@ -145,31 +145,31 @@
     >
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0 flex-1">
-          <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Booking Summary</p>
+          <p class="text-xs font-bold uppercase tracking-wider text-brand-700">{{ t('booking.sites.summary') }}</p>
           <dl class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-            <div><dt class="text-xs text-ink-500">Selling Category</dt><dd class="font-semibold">{{ selectedCategory?.label }}</dd></div>
-            <div><dt class="text-xs text-ink-500">Row</dt><dd class="font-semibold">{{ selectedRowLabel }}</dd></div>
-            <div><dt class="text-xs text-ink-500">Selected Sites</dt><dd class="font-semibold" data-testid="event-site-selected-labels">{{ selectedLabels }}</dd></div>
-            <div><dt class="text-xs text-ink-500">Site Count</dt><dd class="font-semibold" data-testid="event-site-selected-count">{{ selectedSites.length }}</dd></div>
-            <div><dt class="text-xs text-ink-500">Price Per Site</dt><dd class="font-semibold" data-testid="event-site-unit-price">RM {{ unitPriceFormatted }}</dd></div>
+            <div><dt class="text-xs text-ink-500">{{ t('booking.sites.sellingCategory') }}</dt><dd class="font-semibold">{{ selectedCategory?.label }}</dd></div>
+            <div><dt class="text-xs text-ink-500">{{ t('booking.sites.row') }}</dt><dd class="font-semibold">{{ selectedRowLabel }}</dd></div>
+            <div><dt class="text-xs text-ink-500">{{ t('booking.sites.selectedSites') }}</dt><dd class="font-semibold" data-testid="event-site-selected-labels">{{ selectedLabels }}</dd></div>
+            <div><dt class="text-xs text-ink-500">{{ t('booking.sites.siteCount') }}</dt><dd class="font-semibold" data-testid="event-site-selected-count">{{ selectedSites.length }}</dd></div>
+            <div><dt class="text-xs text-ink-500">{{ t('booking.sites.pricePerSite') }}</dt><dd class="font-semibold" data-testid="event-site-unit-price">RM {{ unitPriceFormatted }}</dd></div>
             <div>
-              <dt class="text-xs text-ink-500">Calculation</dt>
+              <dt class="text-xs text-ink-500">{{ t('booking.sites.calculation') }}</dt>
               <dd class="font-semibold" data-testid="event-site-calculation">
                 RM {{ unitPriceFormatted }} × {{ selectedSites.length }} site{{ selectedSites.length === 1 ? '' : 's' }}
               </dd>
             </div>
-            <div><dt class="text-xs text-ink-500">Event Days</dt><dd class="font-semibold">{{ operationalDays.length }}</dd></div>
+            <div><dt class="text-xs text-ink-500">{{ t('booking.sites.eventDays') }}</dt><dd class="font-semibold">{{ operationalDays.length }}</dd></div>
           </dl>
         </div>
         <button type="button" class="ml-btn-ghost text-sm shrink-0" data-testid="event-site-clear-selection" @click="clearSelection">
-          Clear selection
+          {{ t('booking.sites.clearSelection') }}
         </button>
       </div>
       <p class="text-lg font-extrabold text-brand-800" data-testid="event-site-preview-amount">
-        Total: RM {{ previewAmountFormatted }}
+        {{ t('booking.sites.totalPrefix') }} {{ previewAmountFormatted }}
       </p>
       <p class="text-xs text-ink-600" data-testid="event-site-day-note">
-        This total covers the full event period and is not multiplied by the number of days.
+        {{ t('booking.sites.dayNote') }}
       </p>
     </div>
   </section>
@@ -177,6 +177,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import VisualParkingLayout from '../layout/VisualParkingLayout.vue';
 import {
   computePreviewAmount,
@@ -206,16 +207,18 @@ const props = defineProps({
 
 const emit = defineEmits(['update:selectedSiteIds', 'retry', 'choose-category']);
 
+const { t } = useI18n();
+
 const headingId = `event-site-selector-heading-${Math.random().toString(36).slice(2, 8)}`;
 const blockedMessage = ref('');
 
-const legendItems = [
-  { key: 'available', label: 'Available', chipClass: 'border-emerald-200 bg-emerald-50 text-emerald-800', swatchClass: 'bg-emerald-400 border-emerald-500' },
-  { key: 'selected', label: 'Selected', chipClass: 'border-brand-300 bg-brand-100 text-brand-800', swatchClass: 'bg-brand-500 border-brand-600' },
-  { key: 'occupied', label: 'Booked', chipClass: 'border-rose-200 bg-rose-50 text-rose-800', swatchClass: 'bg-rose-300 border-rose-400' },
-  { key: 'unavailable', label: 'Unavailable', chipClass: 'border-ink-200 bg-ink-50 text-ink-700', swatchClass: 'bg-ink-200 border-ink-300' },
-  { key: 'disabled', label: 'Disabled', chipClass: 'border-slate-200 bg-slate-50 text-slate-700', swatchClass: 'bg-slate-300 border-slate-400' },
-];
+const legendItems = computed(() => [
+  { key: 'available', label: t('booking.sites.legendAvailable'), chipClass: 'border-emerald-200 bg-emerald-50 text-emerald-800', swatchClass: 'bg-emerald-400 border-emerald-500' },
+  { key: 'selected', label: t('booking.sites.legendSelected'), chipClass: 'border-brand-300 bg-brand-100 text-brand-800', swatchClass: 'bg-brand-500 border-brand-600' },
+  { key: 'occupied', label: t('booking.sites.legendBooked'), chipClass: 'border-rose-200 bg-rose-50 text-rose-800', swatchClass: 'bg-rose-300 border-rose-400' },
+  { key: 'unavailable', label: t('booking.sites.legendUnavailable'), chipClass: 'border-ink-200 bg-ink-50 text-ink-700', swatchClass: 'bg-ink-200 border-ink-300' },
+  { key: 'disabled', label: t('booking.sites.legendDisabled'), chipClass: 'border-slate-200 bg-slate-50 text-slate-700', swatchClass: 'bg-slate-300 border-slate-400' },
+]);
 
 const groupedRows = computed(() => prepareAvailabilityRows(props.rows));
 const visualRows = computed(() => adaptVendorRows(props.rows, props.selectedSiteIds));
@@ -226,7 +229,7 @@ const selectedLabels = computed(() => selectedSites.value.map((site) => site.lab
 const unitPriceFormatted = computed(() => Number(unitPrice.value || 0).toFixed(2));
 const selectedRowLabel = computed(() => {
   const rowId = Number(selectedSites.value[0]?.event_layout_row_id);
-  return groupedRows.value.find((row) => row.rowId === rowId)?.rowLabel || '—';
+  return groupedRows.value.find((row) => row.rowId === rowId)?.rowLabel || t('common.none');
 });
 const daysSummary = computed(() => formatOperationalDaysSummary(props.operationalDays));
 

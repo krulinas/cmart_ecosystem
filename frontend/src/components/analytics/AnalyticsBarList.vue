@@ -32,7 +32,7 @@ const props = defineProps({
   title: { type: String, required: true },
   rows: { type: Array, default: () => [] },
   denominator: { type: Number, default: null },
-  emptyText: { type: String, default: 'No data for this distribution.' },
+  emptyText: { type: String, default: '' },
   /** Prefer bar list only; set true for an optional chart detail view. */
   showChart: { type: Boolean, default: false },
 });

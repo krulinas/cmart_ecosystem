@@ -9,22 +9,24 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import VendorPageShell from '../../components/vendor/VendorPageShell.vue';
 import VendorEventPassesPanel from '../../components/VendorEventPassesPanel.vue';
 import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 
+const { t } = useI18n();
 const toast = useToast();
 const auth = useAuthStore();
 
 const vendorName = computed(
-  () => auth.vendorBusinessProfile?.business_name || auth.user?.name || 'Vendor',
+  () => auth.vendorBusinessProfile?.business_name || auth.user?.name || t('common.vendor'),
 );
 
 const downloadPassPdf = async (bookingId) => {
   if (!bookingId) {
-    toast.error('No approved booking pass is available to download yet.');
+    toast.error(t('vendor.noApprovedPassDownload'));
     return;
   }
 
@@ -34,10 +36,10 @@ const downloadPassPdf = async (bookingId) => {
     const fileUrl = URL.createObjectURL(file);
     window.open(fileUrl, '_blank', 'noopener,noreferrer');
     setTimeout(() => URL.revokeObjectURL(fileUrl), 60000);
-    toast.success('Booking document opened.');
+    toast.success(t('vendor.documentOpened'));
   } catch (error) {
     console.error('Unable to download booking document PDF:', error);
-    toast.error('Unable to open booking document.');
+    toast.error(t('vendor.unableOpenDocument'));
   }
 };
 </script>

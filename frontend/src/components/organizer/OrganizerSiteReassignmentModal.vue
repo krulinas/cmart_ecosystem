@@ -15,28 +15,28 @@
       >
         <header class="sticky top-0 z-10 flex items-center justify-between border-b border-ink-100 bg-white px-5 py-4">
           <div>
-            <p class="text-xs font-bold uppercase tracking-wider text-cyan-700">Site Placement</p>
-            <h2 id="site-reassignment-title" class="text-lg font-extrabold text-ink-900">Reassign Sites</h2>
+            <p class="text-xs font-bold uppercase tracking-wider text-cyan-700">{{ t('organizer.reassignment.eyebrow') }}</p>
+            <h2 id="site-reassignment-title" class="text-lg font-extrabold text-ink-900">{{ t('organizer.reassignment.title') }}</h2>
           </div>
-          <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="requestClose">Cancel</button>
+          <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="requestClose">{{ t('common.cancel') }}</button>
         </header>
 
         <div v-if="optionsLoading" class="p-10 text-center text-sm text-ink-500" data-testid="reassignment-options-loading">
-          Loading site options…
+          {{ t('organizer.reassignment.loading') }}
         </div>
         <div v-else-if="optionsError" class="p-8 text-center text-sm text-rose-700" data-testid="reassignment-options-error">
           {{ optionsError }}
         </div>
         <div v-else-if="options" class="space-y-5 p-5 sm:p-6">
           <div class="rounded-xl border border-ink-200 bg-ink-50 p-4 text-sm">
-            <p><strong>Booking Category:</strong> {{ options.booking_category?.label }}</p>
-            <p><strong>Sites required:</strong> {{ options.requirements.site_count }}</p>
-            <p><strong>Space type:</strong> {{ options.requirements.space_label }} · RM {{ options.requirements.unit_price }}</p>
-            <p><strong>Current sites:</strong> {{ currentSiteLabels }}</p>
+            <p><strong>{{ t('organizer.reassignment.bookingCategory') }}</strong> {{ options.booking_category?.label }}</p>
+            <p><strong>{{ t('organizer.reassignment.sitesRequired') }}</strong> {{ options.requirements.site_count }}</p>
+            <p><strong>{{ t('organizer.reassignment.spaceType') }}</strong> {{ options.requirements.space_label }} · RM {{ options.requirements.unit_price }}</p>
+            <p><strong>{{ t('organizer.reassignment.currentSites') }}</strong> {{ currentSiteLabels }}</p>
           </div>
 
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <p class="text-sm font-bold text-ink-900">Available rows</p>
+            <p class="text-sm font-bold text-ink-900">{{ t('organizer.reassignment.availableRows') }}</p>
             <button
               v-if="hasHiddenMismatchRows"
               type="button"
@@ -44,7 +44,7 @@
               data-testid="reveal-mismatched-rows"
               @click="showMismatchRows = true"
             >
-              Show other category rows
+              {{ t('organizer.reassignment.showOtherRows') }}
             </button>
           </div>
 
@@ -67,7 +67,7 @@
                   :class="row.category_compatible ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'"
                   data-testid="reassignment-row-badge"
                 >
-                  {{ row.category_compatible ? 'Matches booking category' : 'Different category — exception required' }}
+                  {{ row.category_compatible ? t('organizer.reassignment.matchesCategory') : t('organizer.reassignment.differentCategory') }}
                 </span>
               </div>
 
@@ -95,10 +95,10 @@
             data-testid="reassignment-override-warning"
           >
             <p class="text-sm font-bold text-amber-900">
-              The selected row category does not match the vendor booking category.
+              {{ t('organizer.reassignment.overrideWarning') }}
             </p>
             <p class="mt-2 text-sm text-amber-900">
-              This exception can only proceed with acknowledgement and a clear reason. The vendor booking's original category will not be changed.
+              {{ t('organizer.reassignment.overrideHint') }}
             </p>
             <label class="mt-4 flex items-start gap-3 text-sm text-amber-900">
               <input
@@ -108,17 +108,17 @@
                 data-testid="reassignment-override-acknowledgement"
                 :disabled="submitting"
               />
-              <span>I understand and approve this category exception.</span>
+              <span>{{ t('organizer.reassignment.acknowledge') }}</span>
             </label>
             <div class="mt-4">
-              <label for="override-reason" class="ml-label">Exception Reason</label>
+              <label for="override-reason" class="ml-label">{{ t('organizer.reassignment.exceptionReason') }}</label>
               <textarea
                 id="override-reason"
                 v-model="overrideReason"
                 rows="3"
                 maxlength="1000"
                 class="ml-input"
-                placeholder="Explain why a different category placement is needed."
+                :placeholder="t('organizer.reassignment.exceptionPlaceholder')"
                 data-testid="reassignment-override-reason"
                 :disabled="submitting"
               />
@@ -133,7 +133,7 @@
           </p>
 
           <div class="flex justify-end gap-3 border-t border-ink-100 pt-4">
-            <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="requestClose">Cancel</button>
+            <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="requestClose">{{ t('common.cancel') }}</button>
             <button
               type="button"
               class="ml-btn-primary"
@@ -141,7 +141,7 @@
               :disabled="!canSubmit"
               @click="confirmSubmit"
             >
-              {{ submitting ? 'Saving…' : 'Confirm' }}
+              {{ submitting ? t('organizer.reassignment.saving') : t('organizer.reassignment.confirmLabel') }}
             </button>
           </div>
         </div>
@@ -156,8 +156,8 @@
         <div class="relative z-10 max-w-md rounded-2xl bg-white p-6 shadow-2xl">
           <p class="text-sm text-ink-800">{{ confirmMessage }}</p>
           <div class="mt-6 flex justify-end gap-3">
-            <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="showConfirmDialog = false">Cancel</button>
-            <button type="button" class="ml-btn-primary" :disabled="submitting" @click="submit">Confirm</button>
+            <button type="button" class="ml-btn-ghost" :disabled="submitting" @click="showConfirmDialog = false">{{ t('common.cancel') }}</button>
+            <button type="button" class="ml-btn-primary" :disabled="submitting" @click="submit">{{ t('organizer.reassignment.confirmLabel') }}</button>
           </div>
         </div>
       </div>
@@ -167,11 +167,14 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
   fetchReassignmentOptions,
   submitSiteReassignment,
   reassignmentErrorMessage,
 } from '../../services/organizerSiteReassignmentApi';
+
+const { t } = useI18n();
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -198,7 +201,7 @@ const assignmentFingerprint = ref('');
 const placement = computed(() => props.placement || props.booking?.category_placement || null);
 const currentSiteLabels = computed(() => {
   const sites = placement.value?.current_assignment?.sites || [];
-  return sites.map((site) => site.label).join(', ') || 'None';
+  return sites.map((site) => site.label).join(', ') || t('organizer.reassignment.none');
 });
 
 const hasHiddenMismatchRows = computed(() => {
@@ -223,9 +226,9 @@ const overrideRequired = computed(() => selectedRow.value?.override_required ===
 
 const confirmMessage = computed(() => {
   if (overrideRequired.value) {
-    return 'Approve the category exception and reassign sites? The vendor booking\'s original category will be preserved. This different-category placement will be recorded in the audit trail.';
+    return t('organizer.reassignment.confirmOverride');
   }
-  return 'Reassign sites for this booking? Previously assigned sites that are no longer used will be released. The site count and booking price will not change.';
+  return t('organizer.reassignment.confirmNormal');
 });
 
 const canSubmit = computed(() => {
@@ -328,7 +331,7 @@ const toggleSite = (site) => {
   }
 
   if (selectedSiteIds.value.length >= options.value.requirements.site_count) {
-    validationError.value = `Select exactly ${options.value.requirements.site_count} sites.`;
+    validationError.value = t('organizer.reassignment.selectExact', { count: options.value.requirements.site_count });
     return;
   }
 
@@ -340,7 +343,7 @@ const toggleSite = (site) => {
     }
   });
   if (nextRowIds.size > 1) {
-    validationError.value = 'All sites must be selected from the same row.';
+    validationError.value = t('organizer.reassignment.sameRow');
     return;
   }
 
@@ -350,7 +353,7 @@ const toggleSite = (site) => {
 const requestClose = () => {
   if (submitting.value) return;
   if (selectedSiteIds.value.length > 0 || overrideReason.value.trim()) {
-    if (!window.confirm('Close without saving site changes?')) return;
+    if (!window.confirm(t('organizer.reassignment.closeConfirm'))) return;
   }
   emit('update:modelValue', false);
 };
@@ -360,11 +363,13 @@ const confirmSubmit = () => {
   apiError.value = '';
   if (!canSubmit.value) {
     if (overrideRequired.value && !acknowledged.value) {
-      validationError.value = 'Please confirm that you understand this category exception.';
+      validationError.value = t('organizer.reassignment.ackRequired');
     } else if (overrideRequired.value && overrideReason.value.trim().length < 10) {
-      validationError.value = 'Exception reason is too short.';
+      validationError.value = t('organizer.reassignment.reasonTooShort');
     } else {
-      validationError.value = `Select exactly ${options.value?.requirements?.site_count || 0} sites.`;
+      validationError.value = t('organizer.reassignment.selectExact', {
+        count: options.value?.requirements?.site_count || 0,
+      });
     }
     return;
   }

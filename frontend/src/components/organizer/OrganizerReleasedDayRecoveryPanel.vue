@@ -6,15 +6,14 @@
     <div class="px-5 py-4 text-white sm:px-6" :class="theme.recoveryHeader">
       <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">Operational queue</p>
-          <h2 class="text-lg font-extrabold tracking-tight">Released-Day Recovery</h2>
+          <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">{{ t('organizer.recovery.operationalQueue') }}</p>
+          <h2 class="text-lg font-extrabold tracking-tight">{{ t('organizer.recovery.title') }}</h2>
           <p class="mt-1 max-w-3xl text-sm text-white/80">
-            Partial EventDay site slices released through Organizer attendance exceptions. This queue is read-only and
-            does not assign replacement vendors.
+            {{ t('organizer.recovery.description') }}
           </p>
         </div>
         <span class="mt-2 inline-flex w-fit items-center rounded-full bg-white/15 px-3 py-1 text-xs font-bold ring-1 ring-white/25 sm:mt-0">
-          {{ pagination.total }} slice{{ pagination.total === 1 ? '' : 's' }}
+          {{ t('organizer.recovery.sliceCount', { count: pagination.total }) }}
         </span>
       </div>
     </div>
@@ -22,10 +21,10 @@
     <div class="border-b border-ink-100 bg-white px-4 py-3 sm:px-6">
       <details>
         <summary class="cursor-pointer text-sm font-semibold text-ink-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded">
-          What is Released-Day Recovery?
+          {{ t('organizer.recovery.whatTitle') }}
         </summary>
         <p class="mt-2 text-sm leading-relaxed text-ink-600">
-          This read-only list shows individual event-day sites released after an Organizer records an attendance exception for part of a multi-day booking. The booking may remain active on its other event days. This view does not assign replacement vendors.
+          {{ t('organizer.recovery.whatBody') }}
         </p>
       </details>
     </div>
@@ -36,27 +35,27 @@
           v-model="searchQuery"
           type="search"
           class="ml-input text-sm lg:col-span-2"
-          placeholder="Search booking, event, site, or vendor…"
+          :placeholder="t('organizer.recovery.searchPlaceholder')"
           data-testid="recovery-search-input"
         />
         <select v-model="recoveryStateFilter" class="ml-input text-sm" data-testid="recovery-state-filter">
-          <option value="all">All recovery states</option>
+          <option value="all">{{ t('organizer.recovery.allRecoveryStates') }}</option>
           <option v-for="state in recoveryStateOptions" :key="state" :value="state">
-            {{ recoveryStateLabel(state) }}
+            {{ recoveryStateLabel(state, t) }}
           </option>
         </select>
         <select v-model="paymentStateFilter" class="ml-input text-sm" data-testid="recovery-payment-filter">
-          <option value="all">All payment states</option>
-          <option value="paid">Paid</option>
-          <option value="payment_submitted">Payment Submitted</option>
-          <option value="unpaid">Unpaid</option>
+          <option value="all">{{ t('organizer.recovery.allPaymentStates') }}</option>
+          <option value="paid">{{ statusLabel('Paid', t) }}</option>
+          <option value="payment_submitted">{{ statusLabel('payment_submitted', t) }}</option>
+          <option value="unpaid">{{ statusLabel('Unpaid', t) }}</option>
         </select>
       </div>
     </div>
 
     <div v-if="loading && !hasLoaded" class="px-6 py-16 text-center" data-testid="recovery-loading">
       <div class="mx-auto h-10 w-10 animate-pulse rounded-full bg-gradient-to-br from-cyan-100 to-sky-100" />
-      <p class="mt-4 text-sm font-medium text-ink-500">Loading released-day recovery queue…</p>
+      <p class="mt-4 text-sm font-medium text-ink-500">{{ t('organizer.recovery.loading') }}</p>
     </div>
 
     <div v-else-if="loadError" class="px-6 py-12 text-center text-sm text-rose-700">
@@ -69,8 +68,8 @@
       data-testid="recovery-empty-state"
     >
       <ManagementEmptyState
-        title="No released slices"
-        description="No released EventDay site slices currently require Organizer recovery review."
+        :title="t('organizer.recovery.emptyTitle')"
+        :description="t('organizer.recovery.emptyDescription')"
         icon="↺"
         accent="cyan"
       />
@@ -86,14 +85,14 @@
       <table class="min-w-full text-sm" data-testid="recovery-queue-table">
         <thead class="bg-ink-50/60">
           <tr class="text-left text-[11px] uppercase tracking-wider text-ink-500">
-            <th class="px-4 py-3 font-semibold">Event</th>
-            <th class="px-4 py-3 font-semibold">Released day</th>
-            <th class="px-4 py-3 font-semibold">Source booking</th>
-            <th class="px-4 py-3 font-semibold">Vendor</th>
-            <th class="px-4 py-3 font-semibold">Released sites</th>
-            <th class="px-4 py-3 font-semibold">Payment</th>
-            <th class="px-4 py-3 font-semibold">Recovery</th>
-            <th class="px-4 py-3 text-right font-semibold">Actions</th>
+            <th class="px-4 py-3 font-semibold">{{ t('organizer.recovery.colEvent') }}</th>
+            <th class="px-4 py-3 font-semibold">{{ t('organizer.recovery.colReleasedDay') }}</th>
+            <th class="px-4 py-3 font-semibold">{{ t('organizer.recovery.colSourceBooking') }}</th>
+            <th class="px-4 py-3 font-semibold">{{ t('organizer.recovery.colVendor') }}</th>
+            <th class="px-4 py-3 font-semibold">{{ t('organizer.recovery.colReleasedSites') }}</th>
+            <th class="px-4 py-3 font-semibold">{{ t('organizer.recovery.colPayment') }}</th>
+            <th class="px-4 py-3 font-semibold">{{ t('organizer.recovery.colRecovery') }}</th>
+            <th class="px-4 py-3 text-right font-semibold">{{ t('organizer.recovery.colActions') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-ink-100">
@@ -105,18 +104,18 @@
             :data-recovery-id="row.id"
             :data-recovery-state="row.recovery_state"
           >
-            <td class="px-4 py-3.5 font-semibold text-ink-900">{{ row.event?.title || '—' }}</td>
+            <td class="px-4 py-3.5 font-semibold text-ink-900">{{ row.event?.title || t('common.none') }}</td>
             <td class="px-4 py-3.5 whitespace-nowrap text-ink-700">
               {{ formatOperationalDate(row.event_day?.operational_date) }}
             </td>
             <td class="px-4 py-3.5">
               <div class="font-bold text-ink-900" data-testid="recovery-source-booking-reference">
-                {{ formatBookingReference(row.source_booking?.id) || row.source_booking?.reference || '—' }}
+                {{ formatBookingReference(row.source_booking?.id) || row.source_booking?.reference || t('common.none') }}
               </div>
-              <div class="text-xs text-ink-500">{{ statusLabel(row.source_booking?.status) }}</div>
+              <div class="text-xs text-ink-500">{{ statusLabel(row.source_booking?.status, t) }}</div>
             </td>
             <td class="px-4 py-3.5 text-ink-700">
-              {{ row.source_booking?.business_name || row.source_booking?.vendor_name || '—' }}
+              {{ row.source_booking?.business_name || row.source_booking?.vendor_name || t('common.none') }}
             </td>
             <td class="px-4 py-3.5 text-ink-700" data-testid="recovery-site-labels">
               {{ releasedSiteLabels(row) }}
@@ -128,14 +127,14 @@
             </td>
             <td class="px-4 py-3.5">
               <span :class="recoveryStateBadgeClass(row.recovery_state)" data-testid="recovery-state-chip">
-                {{ recoveryStateLabel(row.recovery_state) }}
+                {{ recoveryStateLabel(row.recovery_state, t) }}
               </span>
-              <p v-if="recoveryBlockerSummary(row)" class="mt-1 text-xs text-ink-500" data-testid="recovery-blocker-summary">
-                {{ recoveryBlockerSummary(row) }}
+              <p v-if="recoveryBlockerSummary(row, t)" class="mt-1 text-xs text-ink-500" data-testid="recovery-blocker-summary">
+                {{ recoveryBlockerSummary(row, t) }}
               </p>
               <p class="mt-1 text-xs text-ink-400" data-testid="recovery-full-event-availability">
-                Standard full-event:
-                {{ row.standard_full_event_available ? 'Available' : 'Unavailable' }}
+                {{ t('organizer.recovery.standardFullEvent') }}
+                {{ row.standard_full_event_available ? statusLabel('Available', t) : statusLabel('Unavailable', t) }}
               </p>
             </td>
             <td class="px-4 py-3.5 text-right">
@@ -145,7 +144,7 @@
                 data-testid="recovery-view-detail"
                 @click="openDetail(row)"
               >
-                Detail
+                {{ t('organizer.recovery.detail') }}
               </button>
             </td>
           </tr>
@@ -159,20 +158,20 @@
       data-testid="recovery-pagination"
     >
       <span class="text-sm text-ink-500">
-        Showing {{ pagination.from ?? 0 }}–{{ pagination.to ?? 0 }} of {{ pagination.total }}
+        {{ t('organizer.recovery.showingRange', { from: pagination.from ?? 0, to: pagination.to ?? 0, total: pagination.total }) }}
       </span>
       <div class="flex items-center gap-2">
         <button type="button" class="ml-btn-ghost text-xs" :disabled="pagination.current_page <= 1" @click="goToPage(pagination.current_page - 1)">
-          Previous
+          {{ t('common.previous') }}
         </button>
-        <span class="text-xs font-semibold text-ink-600">Page {{ pagination.current_page }} / {{ pagination.last_page }}</span>
+        <span class="text-xs font-semibold text-ink-600">{{ t('organizer.recovery.pageOf', { current: pagination.current_page, last: pagination.last_page }) }}</span>
         <button
           type="button"
           class="ml-btn-ghost text-xs"
           :disabled="pagination.current_page >= pagination.last_page"
           @click="goToPage(pagination.current_page + 1)"
         >
-          Next
+          {{ t('common.next') }}
         </button>
       </div>
     </div>
@@ -183,6 +182,7 @@
 
 <script setup>
 import { ref, watch, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import api from '../../services/api';
 import ManagementEmptyState from '../management/ManagementEmptyState.vue';
@@ -201,6 +201,7 @@ import {
   statusLabel,
 } from '../../utils/bookingDisplay';
 
+const { t } = useI18n();
 const toast = useToast();
 const { workspaceTheme } = useManagementAccess();
 
@@ -264,7 +265,7 @@ const fetchQueue = async ({ initial = false } = {}) => {
     };
     hasLoaded.value = true;
   } catch (error) {
-    loadError.value = error.forbiddenMessage || error.response?.data?.message || 'Unable to load recovery queue.';
+    loadError.value = error.forbiddenMessage || error.response?.data?.message || t('organizer.recovery.loadFailed');
     if (!error.forbiddenMessage) toast.error(loadError.value);
     throw error;
   } finally {

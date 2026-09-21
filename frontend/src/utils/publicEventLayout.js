@@ -1,3 +1,5 @@
+import { tt } from '../i18n';
+
 function numberOrZero(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -69,9 +71,10 @@ export function filterPublicLayoutRows(rows = [], categoryId = 'all') {
   return rows.filter((row) => String(row.category?.id) === String(categoryId));
 }
 
-export function publicLayoutFilterAnnouncement(categoryLabel, rowCount) {
-  if (categoryLabel === 'All Categories') {
-    return `${rowCount} layout rows shown for all categories.`;
+export function publicLayoutFilterAnnouncement(categoryLabel, rowCount, t = tt) {
+  const allLabel = t('calendar.details.allCategories');
+  if (categoryLabel === allLabel || categoryLabel === 'All Categories') {
+    return t('calendar.details.layoutRowsAll', { n: rowCount });
   }
-  return `${rowCount} layout rows shown for ${categoryLabel}.`;
+  return t('calendar.details.layoutRowsFor', { n: rowCount, category: categoryLabel });
 }

@@ -1,4 +1,6 @@
 import { resolveEventImageUrl, normalizeEvent } from './imageUrl';
+import { tt, getAppLocale } from '../i18n';
+import { bcp47ForLocale } from '../i18n/localeStorage';
 
 /**
  * Shared venue label for site branding (About / ICS when event has no location field).
@@ -72,7 +74,7 @@ export const formatEventDateTime = (value) => {
   const parsed = parseEventInstant(value);
   if (!parsed) return '';
 
-  return parsed.toLocaleString('en-GB', {
+  return parsed.toLocaleString(bcp47ForLocale(getAppLocale()), {
     timeZone: EVENT_TZ,
     day: 'numeric',
     month: 'short',
@@ -157,18 +159,18 @@ export const getEventUrgencyLabel = (startsAt, endsAt) => {
   if (!start) return '';
 
   const now = new Date();
-  if (end && end < now) return 'Event ended';
-  if (start <= now && end && end >= now) return 'Happening now';
-  if (start <= now && !end) return 'Happening now';
+  if (end && end < now) return tt('calendar.urgencyEnded');
+  if (start <= now && end && end >= now) return tt('calendar.urgencyNow');
+  if (start <= now && !end) return tt('calendar.urgencyNow');
 
   const todayStart = startOfEventDay(now.toISOString());
   const eventStart = startOfEventDay(startsAt);
   if (!todayStart || !eventStart) return '';
 
   const diffDays = Math.round((eventStart - todayStart) / (24 * 60 * 60 * 1000));
-  if (diffDays === 0) return 'Happening today';
-  if (diffDays === 1) return 'Tomorrow';
-  if (diffDays > 1) return `Starts in ${diffDays} days`;
+  if (diffDays === 0) return tt('calendar.urgencyToday');
+  if (diffDays === 1) return tt('calendar.urgencyTomorrow');
+  if (diffDays > 1) return tt('calendar.urgencyInDays', { n: diffDays });
   return '';
 };
 

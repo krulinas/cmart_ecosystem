@@ -15,32 +15,31 @@
           />
         </svg>
       </div>
-      <h3 class="text-2xl font-extrabold text-gray-800 mb-2">Members Only</h3>
+      <h3 class="text-2xl font-extrabold text-gray-800 mb-2">{{ t('community.feedback.membersOnly') }}</h3>
       <p class="text-gray-600 max-w-md mx-auto mb-8 leading-relaxed">
-        Share your experience with the Carboot@CMart community. Log in or join as a member to submit
-        ratings and detailed feedback.
+        {{ t('community.feedback.guestBody') }}
       </p>
       <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
         <router-link
           :to="loginPath"
           class="w-full sm:w-auto bg-brand-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:bg-brand-600 transition transform hover:-translate-y-0.5"
         >
-          Leave a Review
+          {{ t('community.feedback.leaveReview') }}
         </router-link>
         <router-link
           :to="registerPath"
           class="w-full sm:w-auto bg-white text-brand-600 font-bold py-3 px-8 rounded-xl border-2 border-brand-500 hover:bg-brand-50 transition"
         >
-          Join Community
+          {{ t('community.feedback.joinCommunity') }}
         </router-link>
       </div>
-      <p class="text-xs text-ink-500 mt-6">Anyone can read reviews below — writing requires a free member account.</p>
+      <p class="text-xs text-ink-500 mt-6">{{ t('community.feedback.guestFootnote') }}</p>
     </div>
 
     <!-- Members: feedback form -->
     <form v-else-if="auth.isAuthenticated" @submit.prevent="submitFeedback" class="space-y-6">
       <div>
-        <label class="block text-gray-700 font-bold mb-3">Overall Rating</label>
+        <label class="block text-gray-700 font-bold mb-3">{{ t('community.feedback.overallRating') }}</label>
         <div class="flex justify-center sm:justify-start gap-2">
           <button
             v-for="star in 5"
@@ -49,7 +48,7 @@
             @click="overallRating = star"
             class="text-4xl focus:outline-none transition-transform hover:scale-110"
             :class="star <= overallRating ? 'text-brand-500' : 'text-gray-300 hover:text-brand-200'"
-            :aria-label="`Overall rating ${star} star`"
+            :aria-label="t('community.feedback.overallRatingAria', { n: star })"
           >
             ★
           </button>
@@ -58,7 +57,7 @@
 
       <div>
         <label for="participation-type" class="block text-gray-700 font-bold mb-2">
-          How did you participate in Carboot@CMart?
+          {{ t('community.feedback.participationLabel') }}
         </label>
         <select
           id="participation-type"
@@ -66,9 +65,9 @@
           required
           class="w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-800 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition cursor-pointer"
         >
-          <option value="" disabled>Select your participation type</option>
+          <option value="" disabled>{{ t('community.feedback.selectParticipation') }}</option>
           <option
-            v-for="option in PARTICIPATION_TYPE_OPTIONS"
+            v-for="option in participationOptions"
             :key="option.value"
             :value="option.value"
           >
@@ -80,7 +79,7 @@
       <!-- Vendor event selection -->
       <div v-if="isVendorParticipation" class="space-y-2">
         <label for="vendor-event" class="block text-gray-700 font-bold mb-2">
-          Which event did you join as a vendor?
+          {{ t('community.feedback.vendorEventLabel') }}
         </label>
         <p
           v-if="!vendorEligible"
@@ -97,7 +96,7 @@
             class="w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-800 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition cursor-pointer"
             :disabled="vendorEvents.length === 1 && Boolean(preselectedEventId)"
           >
-            <option value="" disabled>Select an event</option>
+            <option value="" disabled>{{ t('community.feedback.selectEvent') }}</option>
             <option
               v-for="event in vendorEvents"
               :key="event.id"
@@ -107,7 +106,7 @@
             </option>
           </select>
           <p v-if="selectedEventDisplay" class="text-sm text-ink-600">
-            Reviewing: <span class="font-semibold text-ink-900">{{ selectedEventDisplay }}</span>
+            {{ t('community.feedback.reviewingPrefix') }} <span class="font-semibold text-ink-900">{{ selectedEventDisplay }}</span>
           </p>
         </template>
       </div>
@@ -115,7 +114,7 @@
       <!-- Non-vendor event selection -->
       <div v-else-if="participationType" class="space-y-2">
         <label for="feedback-event" class="block text-gray-700 font-bold mb-2">
-          Which Carboot event are you reviewing?
+          {{ t('community.feedback.nonVendorEventLabel') }}
         </label>
         <div
           v-if="lockedEvent"
@@ -131,7 +130,7 @@
           required
           class="w-full border border-gray-300 rounded-lg p-3 bg-white text-gray-800 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition cursor-pointer"
         >
-          <option value="" disabled>Select an event</option>
+          <option value="" disabled>{{ t('community.feedback.selectEvent') }}</option>
           <option
             v-for="event in visibleEvents"
             :key="event.id"
@@ -144,12 +143,12 @@
 
       <fieldset>
         <legend class="block text-gray-700 font-bold mb-1">
-          Tell us about your background (optional)
+          {{ t('community.feedback.backgroundLegend') }}
         </legend>
-        <p class="text-sm text-gray-500 mb-3">Select all that apply.</p>
+        <p class="text-sm text-gray-500 mb-3">{{ t('community.feedback.selectAll') }}</p>
         <div class="space-y-2 rounded-xl border border-gray-200 bg-gray-50/60 p-4">
           <label
-            v-for="option in COMMUNITY_BACKGROUND_OPTIONS"
+            v-for="option in backgroundOptions"
             :key="option.value"
             class="flex items-start gap-3 cursor-pointer rounded-lg px-2 py-1.5 hover:bg-white transition"
           >
@@ -166,29 +165,29 @@
       </fieldset>
 
       <div>
-        <label class="block text-gray-700 font-bold mb-2">Your Feedback (5–100 words)</label>
+        <label class="block text-gray-700 font-bold mb-2">{{ t('community.feedback.yourFeedback') }}</label>
         <textarea
           v-model="comments"
           rows="6"
           class="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition resize-none"
-          placeholder="Share your experience at Carboot@CMart — what went well, what could improve, and any suggestions for the community..."
+          :placeholder="t('community.feedback.placeholder')"
         ></textarea>
         <p
           class="mt-2 text-sm font-medium transition-colors"
           :class="wordCountClass"
         >
-          <span class="tabular-nums">{{ wordCount }}</span> / {{ MAX_WORDS }} words
+          <span class="tabular-nums">{{ wordCount }}</span> / {{ MAX_WORDS }} {{ t('community.feedback.wordsSuffix') }}
           <span v-if="wordCount > 0 && wordCount < MIN_WORDS" class="text-amber-600">
-            — at least {{ MIN_WORDS - wordCount }} more word{{ MIN_WORDS - wordCount === 1 ? '' : 's' }} needed
+            — {{ t('community.feedback.moreWordsHint') }}
           </span>
           <span v-else-if="wordCount > MAX_WORDS" class="text-rose-600 font-bold">
-            — {{ wordCount - MAX_WORDS }} word{{ wordCount - MAX_WORDS === 1 ? '' : 's' }} over the limit
+            — {{ t('community.feedback.overWordsHint') }}
           </span>
         </p>
       </div>
 
       <div>
-        <label class="block text-gray-700 font-bold mb-2">Photo Proof (Optional)</label>
+        <label class="block text-gray-700 font-bold mb-2">{{ t('community.feedback.photoProof') }}</label>
         <input
           ref="mediaInput"
           type="file"
@@ -197,20 +196,20 @@
           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 cursor-pointer"
           @change="handleFileUpload"
         />
-        <p class="text-xs text-ink-500 mt-1">Up to 3 photos. Max 5MB each. JPEG, PNG, JPG, or WebP.</p>
+        <p class="text-xs text-ink-500 mt-1">{{ t('community.feedback.photoHint') }}</p>
         <div v-if="mediaPreviews.length" class="mt-3 grid grid-cols-3 gap-3">
           <div
             v-for="preview in mediaPreviews"
             :key="preview.key"
             class="relative overflow-hidden rounded-lg border border-gray-200"
           >
-            <img :src="preview.url" :alt="preview.name || 'Feedback image preview'" class="h-24 w-full object-cover" />
+            <img :src="preview.url" :alt="preview.name || t('community.feedback.imagePreviewAlt')" class="h-24 w-full object-cover" />
             <button
               type="button"
               class="absolute top-1 right-1 rounded-full bg-white/90 px-2 py-0.5 text-xs font-semibold text-rose-600 shadow"
               @click="removeMediaPreview(preview.key)"
             >
-              Remove
+              {{ t('community.feedback.remove') }}
             </button>
           </div>
         </div>
@@ -221,7 +220,7 @@
         :disabled="!canSubmit"
         class="w-full bg-brand-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:bg-brand-600 transition transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
       >
-        {{ isSubmitting ? 'Submitting...' : 'Submit Feedback' }}
+        {{ isSubmitting ? t('community.feedback.submitting') : t('community.feedback.submit') }}
       </button>
 
       <p
@@ -237,6 +236,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../stores/auth';
 import { loginPathWithRedirect, registerPathWithRedirect, COMMUNITY_REVIEW_INTENT_PATH } from '../utils/postAuthRedirect';
 import {
@@ -247,6 +247,7 @@ import {
 import api from '../services/api';
 
 const emit = defineEmits(['submitted']);
+const { t } = useI18n();
 
 const props = defineProps({
   hideGuestGate: { type: Boolean, default: false },
@@ -260,14 +261,41 @@ const reviewIntentPath = COMMUNITY_REVIEW_INTENT_PATH;
 const loginPath = loginPathWithRedirect(reviewIntentPath);
 const registerPath = registerPathWithRedirect(reviewIntentPath);
 
+const PARTICIPATION_LABEL_KEYS = {
+  visitor_shopper: 'community.feedback.participation.visitorShopper',
+  vendor: 'community.feedback.participation.vendor',
+  organizer_event_crew: 'community.feedback.participation.organizerCrew',
+  other: 'community.feedback.participation.other',
+};
+
+const BACKGROUND_LABEL_KEYS = {
+  uum_student: 'community.feedback.background.uumStudent',
+  uum_staff: 'community.feedback.background.uumStaff',
+  other_institution: 'community.feedback.background.otherInstitution',
+  changlun_resident: 'community.feedback.background.changlunResident',
+  outside_changlun: 'community.feedback.background.outsideChanglun',
+  prefer_not_to_say: 'community.feedback.background.preferNot',
+};
+
+const participationOptions = computed(() =>
+  PARTICIPATION_TYPE_OPTIONS.map((option) => ({
+    value: option.value,
+    label: t(PARTICIPATION_LABEL_KEYS[option.value] || option.label),
+  })),
+);
+
+const backgroundOptions = computed(() =>
+  COMMUNITY_BACKGROUND_OPTIONS.map((option) => ({
+    value: option.value,
+    label: t(BACKGROUND_LABEL_KEYS[option.value] || option.label),
+  })),
+);
+
 const MIN_WORDS = 5;
 const MAX_WORDS = 100;
 const MAX_IMAGES = 3;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-const DEFAULT_VENDOR_MESSAGE =
-  'You can review an event as a vendor after receiving an approved booking for that event.';
-
 const overallRating = ref(0);
 const participationType = ref('');
 const communityBackgrounds = ref([]);
@@ -282,7 +310,7 @@ const selectedEventId = ref('');
 const visibleEvents = ref([]);
 const vendorEvents = ref([]);
 const vendorEligible = ref(false);
-const vendorIneligibleMessage = ref(DEFAULT_VENDOR_MESSAGE);
+const vendorIneligibleMessage = ref('');
 const optionsLoaded = ref(false);
 
 const preselectedEventId = computed(() => (
@@ -355,7 +383,7 @@ const handleFileUpload = (event) => {
   if (!files.length) return;
 
   if (mediaFiles.value.length + files.length > MAX_IMAGES) {
-    message.value = 'You can attach up to 3 images.';
+    message.value = t('community.feedback.toastMaxImages');
     isSuccess.value = false;
     return;
   }
@@ -363,12 +391,12 @@ const handleFileUpload = (event) => {
   for (const file of files) {
     const typeOk = ALLOWED_IMAGE_TYPES.includes(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name);
     if (!typeOk) {
-      message.value = 'Only JPEG, PNG, JPG, or WebP images are allowed.';
+      message.value = t('community.feedback.toastImageType');
       isSuccess.value = false;
       return;
     }
     if (file.size > MAX_IMAGE_BYTES) {
-      message.value = 'Each image must be 5 MB or smaller.';
+      message.value = t('community.feedback.toastImageSize');
       isSuccess.value = false;
       return;
     }
@@ -445,7 +473,7 @@ const loadOptions = async () => {
     visibleEvents.value = Array.isArray(data.visible_events) ? data.visible_events : [];
     vendorEvents.value = Array.isArray(data.vendor_eligible_events) ? data.vendor_eligible_events : [];
     vendorEligible.value = Boolean(data.vendor_eligible);
-    vendorIneligibleMessage.value = data.vendor_ineligible_message || DEFAULT_VENDOR_MESSAGE;
+    vendorIneligibleMessage.value = data.vendor_ineligible_message || t('community.feedback.vendorIneligibleDefault');
     optionsLoaded.value = true;
     applyEventDefaults();
   } catch {
@@ -474,7 +502,7 @@ const submitFeedback = async () => {
     : String(selectedEventId.value || '');
 
   if (!eventId) {
-    message.value = 'Please select the event you are reviewing.';
+    message.value = t('community.feedback.toastSelectEvent');
     isSuccess.value = false;
     return;
   }
@@ -506,7 +534,7 @@ const submitFeedback = async () => {
     const response = await api.post('/feedback/submit', formData);
 
     isSuccess.value = true;
-    message.value = response.data.message || 'Feedback submitted successfully!';
+    message.value = response.data.message || t('community.feedbackSubmittedToast');
     resetForm();
     emit('submitted');
   } catch (error) {
@@ -517,9 +545,9 @@ const submitFeedback = async () => {
       const validationMsg = data.errors
         ? Object.values(data.errors).flat().join(' ')
         : null;
-      message.value = validationMsg || data.message || 'Could not submit feedback. Please try again.';
+      message.value = validationMsg || data.message || t('community.feedback.toastUnableSubmit');
     } else {
-      message.value = 'Failed to connect to the server. Is the backend running?';
+      message.value = t('community.feedback.toastUnableSubmit');
     }
   } finally {
     isSubmitting.value = false;

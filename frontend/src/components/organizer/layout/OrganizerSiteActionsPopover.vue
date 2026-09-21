@@ -120,8 +120,9 @@ import {
   ref,
   watch,
 } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
-  LAYOUT_COPY,
+  getLayoutCopy,
   OCCUPANCY_LABELS,
   SITE_STATUS_LABELS,
 } from '../../../utils/organizerEventLayoutMessages';
@@ -151,7 +152,8 @@ const emit = defineEmits([
   'close',
 ]);
 
-const copy = LAYOUT_COPY;
+const { t } = useI18n();
+const copy = computed(() => getLayoutCopy(t));
 const panelRef = ref(null);
 const placement = ref('bottom');
 const coords = ref({ top: 0, left: 0 });
@@ -161,15 +163,15 @@ const disableLocked = computed(() => Boolean(props.site?.locks?.disable_locked))
 const isCanonicalPhysicalSite = computed(() => isCanonicalSiteLabel(props.site?.label));
 const canDeleteSite = computed(() => !isCanonicalPhysicalSite.value);
 const occupancyLabel = computed(
-  () => OCCUPANCY_LABELS[props.site?.occupancy] || props.site?.occupancy || copy.available,
+  () => OCCUPANCY_LABELS[props.site?.occupancy] || props.site?.occupancy || copy.value.available,
 );
 const statusLabel = computed(
   () => SITE_STATUS_LABELS[props.site?.operational_status] || props.site?.operational_status,
 );
 const dialogLabel = computed(() => (
   props.site
-    ? `${copy.focusedSiteTitle}: ${props.site.label}`
-    : copy.focusedSiteTitle
+    ? `${copy.value.focusedSiteTitle}: ${props.site.label}`
+    : copy.value.focusedSiteTitle
 ));
 
 const panelStyle = computed(() => ({

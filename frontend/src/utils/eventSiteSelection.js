@@ -2,6 +2,8 @@
  * Phase 2A.8 — client-side EventSite selection helpers (UX only; backend is authoritative).
  */
 
+import { tt } from '../i18n';
+
 export const AVAILABILITY_AVAILABLE = 'available';
 
 export function prepareAvailabilityRows(rows = []) {
@@ -106,21 +108,21 @@ export function arePositionsContiguous(sites = []) {
   return true;
 }
 
-export function selectionValidationMessage(selectedSites = []) {
+export function selectionValidationMessage(selectedSites = [], t = tt) {
   if (selectedSites.length === 0) return null;
 
   const rowIds = new Set(selectedSites.map((site) => Number(site.event_layout_row_id)));
   if (rowIds.size > 1) {
-    return 'Select sites within the same row.';
+    return t('booking.sites.errorSameRow');
   }
 
   const spaceIds = new Set(selectedSites.map((site) => site.space_id));
   if (spaceIds.size > 1) {
-    return 'All selected sites must be from the same space type.';
+    return t('booking.sites.errorSameSpaceType');
   }
 
   if (!arePositionsContiguous(selectedSites)) {
-    return 'Select adjacent sites.';
+    return t('booking.sites.errorAdjacent');
   }
 
   return null;

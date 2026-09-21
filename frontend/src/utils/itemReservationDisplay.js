@@ -1,44 +1,60 @@
+import { tt } from '../i18n';
+
 /**
  * Phase 4.4 — centralized reservation status / charge / action helpers.
  * Keep exact backend values in API payloads; use these labels in templates.
  */
 
-export const RESERVATION_STATUS_LABELS = {
-  pending_charge: 'Pending Charge',
-  confirmed: 'Confirmed',
-  cancelled: 'Cancelled',
-  expired: 'Expired',
-  completed: 'Completed',
+export const RESERVATION_STATUS_KEYS = {
+  pending_charge: 'status.pending_charge',
+  confirmed: 'status.confirmed',
+  cancelled: 'status.Cancelled',
+  expired: 'status.expired',
+  completed: 'status.completed',
 };
 
-export const CHARGE_STATUS_LABELS = {
-  required: 'Charge Required',
-  confirmed: 'Charge Confirmed',
-  waived: 'Waived',
-  not_required: 'No Charge Required',
-  cancelled: 'Charge Cancelled',
+export const CHARGE_STATUS_KEYS = {
+  required: 'status.required',
+  confirmed: 'status.charge_confirmed',
+  waived: 'status.waived',
+  not_required: 'status.not_required',
+  cancelled: 'status.charge_cancelled',
 };
 
-export const AUDIT_ACTION_LABELS = {
-  reservation_created: 'Reservation created',
-  charge_confirmation_recorded: 'Manual charge confirmation recorded',
-  charge_waived: 'Service fee waived',
-  reservation_confirmed: 'Reservation confirmed',
-  reservation_cancelled: 'Reservation cancelled',
-  reservation_expired: 'Reservation manually expired',
-  reservation_completed: 'Item collected / completed',
+export const AUDIT_ACTION_KEYS = {
+  reservation_created: 'reservation.auditCreated',
+  charge_confirmation_recorded: 'reservation.auditChargeConfirmed',
+  charge_waived: 'reservation.auditChargeWaived',
+  reservation_confirmed: 'reservation.auditConfirmed',
+  reservation_cancelled: 'reservation.auditCancelled',
+  reservation_expired: 'reservation.auditExpired',
+  reservation_completed: 'reservation.auditCompleted',
 };
 
-export function reservationStatusLabel(status) {
-  return RESERVATION_STATUS_LABELS[status] || status || 'Unknown';
+/** @deprecated Prefer reservationStatusLabel(); kept for callers reading maps. */
+export const RESERVATION_STATUS_LABELS = RESERVATION_STATUS_KEYS;
+export const CHARGE_STATUS_LABELS = CHARGE_STATUS_KEYS;
+export const AUDIT_ACTION_LABELS = AUDIT_ACTION_KEYS;
+
+export function reservationStatusLabel(status, t = tt) {
+  const key = RESERVATION_STATUS_KEYS[status];
+  if (!key) return status || t('common.unknown');
+  const translated = t(key);
+  return translated === key ? status : translated;
 }
 
-export function chargeStatusLabel(status) {
-  return CHARGE_STATUS_LABELS[status] || status || 'Unknown';
+export function chargeStatusLabel(status, t = tt) {
+  const key = CHARGE_STATUS_KEYS[status];
+  if (!key) return status || t('common.unknown');
+  const translated = t(key);
+  return translated === key ? status : translated;
 }
 
-export function auditActionLabel(action) {
-  return AUDIT_ACTION_LABELS[action] || action || 'Activity';
+export function auditActionLabel(action, t = tt) {
+  const key = AUDIT_ACTION_KEYS[action];
+  if (!key) return action || t('reservation.activity');
+  const translated = t(key);
+  return translated === key ? action : translated;
 }
 
 export function formatReservationFee(amount, currency = 'MYR') {
@@ -55,9 +71,9 @@ export function isZeroFee(amount) {
 
 export function feeExplanation(amount) {
   if (isZeroFee(amount)) {
-    return 'No reservation service fee is required for this item.';
+    return tt('reservation.confirm.feeZero');
   }
-  return 'The system records the reservation and required service fee. Payment is handled manually outside the platform and confirmed by the Organizer.';
+  return tt('reservation.confirm.feeExplain');
 }
 
 export function requiresNoRefundAcknowledgement(reservation) {

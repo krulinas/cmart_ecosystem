@@ -6,10 +6,10 @@
       <header class="rounded-3xl border border-white/60 bg-white/70 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <span class="ml-badge bg-brand-100 text-brand-700">Vendor Profile</span>
-            <h1 class="mt-2 text-3xl font-black text-ink-900 tracking-tight">Account Settings</h1>
+            <span class="ml-badge bg-brand-100 text-brand-700">{{ t('profile.badge') }}</span>
+            <h1 class="mt-2 text-3xl font-black text-ink-900 tracking-tight">{{ t('profile.title') }}</h1>
             <p class="mt-1 text-sm text-ink-500">
-              Manage your vendor identity and business details on Carboot@CMart.
+              {{ t('profile.subtitle') }}
             </p>
           </div>
           <button
@@ -18,7 +18,7 @@
             :disabled="loading"
             @click="showEditModal = true"
           >
-            Edit Profile
+            {{ t('profile.editProfile') }}
           </button>
         </div>
       </header>
@@ -30,28 +30,28 @@
       </div>
 
       <div v-else-if="loadError" class="rounded-3xl border border-amber-200 bg-amber-50/70 p-8 text-center">
-        <p class="text-sm text-amber-900 font-semibold">Unable to load your profile.</p>
-        <button type="button" class="mt-4 ml-btn-ghost text-sm" @click="loadProfile">Try Again</button>
+        <p class="text-sm text-amber-900 font-semibold">{{ t('profile.unableLoad') }}</p>
+        <button type="button" class="mt-4 ml-btn-ghost text-sm" @click="loadProfile">{{ t('profile.tryAgain') }}</button>
       </div>
 
       <template v-else>
         <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
-          <h2 class="text-xl font-extrabold text-ink-900 mb-6">Personal Information</h2>
+          <h2 class="text-xl font-extrabold text-ink-900 mb-6">{{ t('profile.personalInfo') }}</h2>
           <dl class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Full Name</dt>
+              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('profile.fullName') }}</dt>
               <dd class="mt-1 text-base font-semibold text-ink-900">{{ profile?.name || '—' }}</dd>
             </div>
             <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Email</dt>
+              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('profile.email') }}</dt>
               <dd class="mt-1 text-base font-semibold text-ink-900">{{ profile?.email || '—' }}</dd>
             </div>
             <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Phone</dt>
+              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('profile.phone') }}</dt>
               <dd class="mt-1 text-base font-semibold text-ink-900">{{ profile?.phone_number || '—' }}</dd>
             </div>
             <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Vendor Status</dt>
+              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('profile.vendorStatus') }}</dt>
               <dd class="mt-1">
                 <span :class="vendorStatusClass">{{ vendorStatusLabel }}</span>
               </dd>
@@ -60,7 +60,7 @@
         </section>
 
         <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
-          <h2 class="text-xl font-extrabold text-ink-900 mb-6">Business Profile</h2>
+          <h2 class="text-xl font-extrabold text-ink-900 mb-6">{{ t('profile.businessProfile') }}</h2>
           <div class="flex items-start gap-4 mb-6">
             <div class="h-16 w-16 rounded-2xl border border-ink-200 bg-ink-50 overflow-hidden flex items-center justify-center shrink-0">
               <img
@@ -69,7 +69,7 @@
                 :alt="`${profile.business_name} logo`"
                 class="h-full w-full object-cover"
               />
-              <span v-else class="text-[10px] font-bold uppercase tracking-wide text-ink-400 text-center px-1">Logo</span>
+              <span v-else class="text-[10px] font-bold uppercase tracking-wide text-ink-400 text-center px-1">{{ t('profile.logo') }}</span>
             </div>
             <div class="min-w-0">
               <p class="text-lg font-bold text-ink-900 truncate">{{ profile?.business_name || '—' }}</p>
@@ -80,19 +80,19 @@
           </div>
           <dl class="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Business Phone</dt>
+              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('profile.businessPhone') }}</dt>
               <dd class="mt-1 text-base font-semibold text-ink-900">{{ profile?.business_phone || '—' }}</dd>
             </div>
             <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Marketplace WhatsApp</dt>
+              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('profile.marketplaceWhatsApp') }}</dt>
               <dd class="mt-1 text-base font-semibold text-ink-900">
-                {{ profile?.marketplace_whatsapp_enabled ? 'Enabled on public listings' : 'Hidden from public listings' }}
+                {{ profile?.marketplace_whatsapp_enabled ? t('profile.whatsappEnabled') : t('profile.whatsappHidden') }}
               </dd>
             </div>
             <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4 sm:col-span-2">
-              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Business Description</dt>
+              <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('profile.businessDescription') }}</dt>
               <dd class="mt-1 text-sm text-ink-700 whitespace-pre-line">
-                {{ profile?.description || 'No description added yet.' }}
+                {{ profile?.description || t('profile.noDescription') }}
               </dd>
             </div>
           </dl>
@@ -100,12 +100,12 @@
       </template>
 
       <section class="rounded-3xl border border-white/60 bg-white/80 backdrop-blur-xl p-6 sm:p-8 shadow-xl shadow-brand-900/5">
-        <h2 class="text-xl font-extrabold text-ink-900 mb-2">Quick Actions</h2>
-        <p class="text-sm text-ink-500 mb-6">Common vendor tasks from your profile.</p>
+        <h2 class="text-xl font-extrabold text-ink-900 mb-2">{{ t('profile.quickActions') }}</h2>
+        <p class="text-sm text-ink-500 mb-6">{{ t('profile.quickActionsLead') }}</p>
         <div class="flex flex-col sm:flex-row flex-wrap gap-3">
-          <router-link to="/dashboard" class="ml-btn-ghost">View Dashboard</router-link>
-          <router-link to="/vendor-booking" class="ml-btn-primary">Book a Space</router-link>
-          <button type="button" class="ml-btn-ghost text-red-600 hover:bg-red-50" @click="logout">Logout</button>
+          <router-link to="/dashboard" class="ml-btn-ghost">{{ t('profile.viewDashboard') }}</router-link>
+          <router-link to="/vendor-booking" class="ml-btn-primary">{{ t('profile.bookASpace') }}</router-link>
+          <button type="button" class="ml-btn-ghost text-red-600 hover:bg-red-50" @click="logout">{{ t('profile.logout') }}</button>
         </div>
       </section>
     </div>
@@ -121,12 +121,14 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import VendorProfileEditModal from '../../components/VendorProfileEditModal.vue';
 import { useAuthStore } from '../../stores/auth';
 import { useLogout } from '../../composables/useLogout';
 import api from '../../services/api';
 
+const { t } = useI18n();
 const auth = useAuthStore();
 const { logout } = useLogout();
 
@@ -137,10 +139,10 @@ const showEditModal = ref(false);
 
 const vendorStatusLabel = computed(() => {
   const status = auth.vendorStatus;
-  if (status === 'approved') return 'Approved Vendor';
-  if (status === 'pending') return 'Pending Approval';
-  if (status === 'rejected') return 'Not Approved';
-  return 'Community Member';
+  if (status === 'approved') return t('profile.statusApproved');
+  if (status === 'pending') return t('profile.statusPending');
+  if (status === 'rejected') return t('profile.statusRejected');
+  return t('profile.statusCommunity');
 });
 
 const vendorStatusClass = computed(() => {

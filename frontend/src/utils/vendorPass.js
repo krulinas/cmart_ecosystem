@@ -1,3 +1,5 @@
+import { tt } from '../i18n';
+
 const MY_TZ = 'Asia/Kuala_Lumpur';
 
 export const PASS_STATUS_LABELS = {
@@ -54,9 +56,9 @@ export const formatBookingDateShort = (dateStr) => {
   });
 };
 
-export const formatEventTimeLabel = (pass) => {
+export const formatEventTimeLabel = (pass, t = tt) => {
   if (pass?.event_time_label) return pass.event_time_label;
-  return 'All day event';
+  return t('vendor.passes.allDayEvent');
 };
 
 export const buildVerifyUrl = (bookingId, origin = typeof window !== 'undefined' ? window.location.origin : '') => {
@@ -95,12 +97,12 @@ export const passFromApi = (pass) => pass;
 
 export const isPassQrScannable = (pass) => Boolean(pass?.show_qr && pass?.qr_active);
 
-export const passQrDisabledMessage = (pass) => {
-  if (!pass) return 'No pass selected.';
-  if (!pass.show_qr) return pass.pending_message || 'QR will be available after approval.';
-  if (pass.qr_expired || pass.pass_status === 'expired') return 'This QR code has expired.';
-  if (pass.pass_status === 'completed') return 'This event pass is completed. QR is no longer active.';
-  if (pass.pass_status === 'cancelled') return 'This pass has been cancelled.';
-  if (!pass.qr_active) return 'QR check-in opens 3 hours before the event starts.';
+export const passQrDisabledMessage = (pass, t = tt) => {
+  if (!pass) return t('vendor.passes.qrNoPassSelected');
+  if (!pass.show_qr) return pass.pending_message || t('vendor.passes.qrAfterApproval');
+  if (pass.qr_expired || pass.pass_status === 'expired') return t('vendor.passes.qrExpired');
+  if (pass.pass_status === 'completed') return t('vendor.passes.qrCompleted');
+  if (pass.pass_status === 'cancelled') return t('vendor.passes.qrCancelled');
+  if (!pass.qr_active) return t('vendor.passes.qrOpensBefore');
   return null;
 };

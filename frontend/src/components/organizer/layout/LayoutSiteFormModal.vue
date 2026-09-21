@@ -86,7 +86,8 @@
 
 <script setup>
 import { computed, reactive, watch } from 'vue';
-import { LAYOUT_COPY } from '../../../utils/organizerEventLayoutMessages';
+import { useI18n } from 'vue-i18n';
+import { getLayoutCopy } from '../../../utils/organizerEventLayoutMessages';
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -98,7 +99,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue', 'submit']);
-const copy = LAYOUT_COPY;
+const { t } = useI18n();
+const copy = computed(() => getLayoutCopy(t));
 const isEdit = computed(() => Boolean(props.site?.id));
 const structureLocked = computed(() => Boolean(props.site?.locks?.structure_locked));
 const rowLabel = computed(() => props.row?.label || props.site?.row_label || '');

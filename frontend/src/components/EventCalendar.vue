@@ -7,10 +7,10 @@
         <!-- Page header -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <p class="text-xs font-bold uppercase tracking-wider text-brand-600 mb-1">Discover Events</p>
-            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900">Events &amp; Calendar</h1>
+            <p class="text-xs font-bold uppercase tracking-wider text-brand-600 mb-1">{{ t('calendar.discoverEvents') }}</p>
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900">{{ t('calendar.title') }}</h1>
             <p class="mt-2 text-sm text-gray-600 max-w-xl">
-              Browse upcoming carboot sales, preview event details, and book your vendor space.
+              {{ t('calendar.subtitle') }}
             </p>
           </div>
           <router-link
@@ -27,28 +27,28 @@
         <!-- Summary stats -->
         <div v-if="hasLoaded" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="rounded-xl border border-sky-100 bg-white px-4 py-3 shadow-sm">
-            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Events this month</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('calendar.eventsThisMonth') }}</p>
             <p class="mt-1 text-xl font-extrabold text-gray-900">
               {{ monthEventCount }}
-              <span class="text-sm font-medium text-gray-500">{{ monthEventCount === 1 ? 'event' : 'events' }}</span>
+              <span class="text-sm font-medium text-gray-500">{{ monthEventCount === 1 ? t('calendar.eventSingular') : t('calendar.eventPlural') }}</span>
             </p>
           </div>
           <div class="rounded-xl border border-sky-100 bg-white px-4 py-3 shadow-sm">
-            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Next event</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('calendar.nextEvent') }}</p>
             <p v-if="nextEventSummary" class="mt-1 text-sm font-bold text-gray-900 leading-snug">{{ nextEventSummary }}</p>
-            <p v-else class="mt-1 text-sm text-gray-500">No upcoming events</p>
+            <p v-else class="mt-1 text-sm text-gray-500">{{ t('calendar.noUpcoming') }}</p>
           </div>
           <div class="rounded-xl border border-emerald-100 bg-white px-4 py-3 shadow-sm">
-            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Available for booking</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ t('calendar.availableForBooking') }}</p>
             <p class="mt-1 text-xl font-extrabold text-emerald-700">
               {{ availableCount }}
-              <span class="text-sm font-medium text-gray-500">{{ availableCount === 1 ? 'event' : 'events' }}</span>
+              <span class="text-sm font-medium text-gray-500">{{ availableCount === 1 ? t('calendar.eventSingular') : t('calendar.eventPlural') }}</span>
             </p>
           </div>
         </div>
 
         <!-- Filter chips -->
-        <div class="flex flex-wrap gap-2" role="group" aria-label="Filter events">
+        <div class="flex flex-wrap gap-2" role="group" :aria-label="t('calendar.filterAria')">
           <button
             v-for="chip in filterChips"
             :key="chip.id"
@@ -60,18 +60,18 @@
             :aria-pressed="activeFilter === chip.id"
             @click="setFilter(chip.id)"
           >
-            {{ chip.label }}
+            {{ t(chip.labelKey) }}
           </button>
         </div>
 
         <p v-if="auth.isCmartWorker" class="text-sm text-brand-700 font-medium rounded-lg bg-brand-50 border border-brand-100 px-4 py-2">
-          Staff mode: select a date range on the calendar to create a new carboot event.
+          {{ t('calendar.staffModeHint') }}
         </p>
 
         <!-- Calendar card -->
         <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-lg border border-gray-100 relative">
           <div v-if="loading" class="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/80 backdrop-blur-sm">
-            <p class="text-sm font-medium text-gray-500">Loading events…</p>
+            <p class="text-sm font-medium text-gray-500">{{ t('calendar.loading') }}</p>
           </div>
 
           <div
@@ -106,9 +106,9 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              <p class="text-base font-bold text-gray-800">No carboot events scheduled for this month.</p>
+              <p class="text-base font-bold text-gray-800">{{ t('calendar.emptyMonth') }}</p>
               <p class="mt-1 text-sm text-gray-500">
-                {{ activeFilter === 'all' ? 'Try another month or check back soon.' : 'No events match this filter in the current month.' }}
+                {{ activeFilter === 'all' ? t('calendar.emptyMonthHint') : t('calendar.emptyFilterHint') }}
               </p>
               <div class="mt-4 flex flex-wrap justify-center gap-2">
                 <button
@@ -116,14 +116,14 @@
                   class="rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
                   @click="goToToday"
                 >
-                  Go to today
+                  {{ t('calendar.goToToday') }}
                 </button>
                 <button
                   type="button"
                   class="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2"
                   @click="goNextMonth"
                 >
-                  Check next month
+                  {{ t('calendar.checkNextMonth') }}
                 </button>
               </div>
             </div>
@@ -144,7 +144,7 @@
       v-model="showEventModal"
       :event="selectedEvent"
       :booking-link="vendorBookingLink(selectedEvent?.id, auth)"
-      booking-label="Book a Space"
+      :booking-label="t('calendar.bookASpace')"
     />
 
     <!-- Staff create-event modal -->
@@ -167,11 +167,11 @@
         >
           <div class="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden" @click.stop>
             <div class="flex items-center justify-between px-5 py-4 bg-gray-900">
-              <h3 id="staff-create-title" class="text-lg font-bold text-white">Create Carboot Event</h3>
+              <h3 id="staff-create-title" class="text-lg font-bold text-white">{{ t('calendar.staffCreateTitle') }}</h3>
               <button
                 type="button"
                 class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                aria-label="Close"
+                :aria-label="t('calendar.staffCloseAria')"
                 @click="closeStaffModal"
               >
                 ×
@@ -179,20 +179,20 @@
             </div>
             <div class="p-6 space-y-4">
               <div class="rounded-xl bg-sky-50 border border-sky-100 p-4 text-sm text-gray-700 space-y-1">
-                <div><strong>Start:</strong> {{ formatDateTime(staffModal.start) }}</div>
-                <div v-if="staffModal.end"><strong>End:</strong> {{ formatDateTime(staffModal.end) }}</div>
+                <div><strong>{{ t('calendar.staffStart') }}</strong> {{ formatDateTime(staffModal.start) }}</div>
+                <div v-if="staffModal.end"><strong>{{ t('calendar.staffEnd') }}</strong> {{ formatDateTime(staffModal.end) }}</div>
               </div>
               <div>
-                <label for="staff-event-title" class="block text-sm font-semibold mb-1">Event title</label>
+                <label for="staff-event-title" class="block text-sm font-semibold mb-1">{{ t('calendar.staffEventTitle') }}</label>
                 <input
                   id="staff-event-title"
                   v-model="newEventTitle"
                   class="w-full border rounded-lg p-3 border-gray-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-                  placeholder="Event title"
+                  :placeholder="t('calendar.staffEventTitlePlaceholder')"
                 />
               </div>
               <div>
-                <label for="staff-event-status" class="block text-sm font-semibold mb-1">Status</label>
+                <label for="staff-event-status" class="block text-sm font-semibold mb-1">{{ t('calendar.staffStatus') }}</label>
                 <select
                   id="staff-event-status"
                   v-model="newEventStatus"
@@ -209,14 +209,14 @@
                   class="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
                   @click="closeStaffModal"
                 >
-                  Cancel
+                  {{ t('calendar.staffCancel') }}
                 </button>
                 <button
                   type="button"
                   class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700"
                   @click="createEvent"
                 >
-                  Create Event
+                  {{ t('calendar.staffCreateEvent') }}
                 </button>
               </div>
             </div>
@@ -229,6 +229,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import AppNavbar from './navigation/AppNavbar.vue';
 import FullCalendar from '@fullcalendar/vue3';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -253,6 +254,7 @@ import {
   parseEventInstant,
 } from '../utils/eventDisplay';
 
+const { t } = useI18n();
 const labeledOtherMonths = new Set();
 
 const CHIP_DOT_CLASS = {
@@ -266,8 +268,8 @@ const calendarRef = ref(null);
 
 const backLink = computed(() => (auth.isAuthenticated ? auth.homeForUser() : '/'));
 const backLabel = computed(() => {
-  if (!auth.isAuthenticated) return 'Back to Home';
-  return auth.isVendorUser ? 'Back to Dashboard' : 'Back to Community';
+  if (!auth.isAuthenticated) return t('calendar.backHome');
+  return auth.isVendorUser ? t('calendar.backDashboard') : t('calendar.backCommunity');
 });
 
 const loading = ref(true);
@@ -295,11 +297,11 @@ const staffModal = reactive({
 });
 
 const filterChips = [
-  { id: 'all', label: 'All' },
-  { id: 'available', label: 'Available' },
-  { id: 'closed', label: 'Full / Closed' },
-  { id: 'this-month', label: 'This month' },
-  { id: 'upcoming', label: 'Upcoming' },
+  { id: 'all', labelKey: 'calendar.filterAll' },
+  { id: 'available', labelKey: 'calendar.filterAvailable' },
+  { id: 'closed', labelKey: 'calendar.filterFullClosed' },
+  { id: 'this-month', labelKey: 'calendar.filterThisMonth' },
+  { id: 'upcoming', labelKey: 'calendar.filterUpcoming' },
 ];
 
 const formatDateTime = (dateStr) => formatEventDateTime(dateStr);
@@ -416,7 +418,7 @@ const createEvent = async () => {
     await loadEvents();
   } catch (e) {
     console.error('Failed to create event:', e);
-    alert('Could not create event. Ensure you are logged in as a Carboot Organizer.');
+    alert(t('calendar.staffCreateFailed'));
   }
 };
 
@@ -530,7 +532,7 @@ const decorateDayCell = (info) => {
         const label = document.createElement('span');
         label.className = 'ec-other-month-label';
         label.textContent = `${key.slice(5, 7)}/${key.slice(0, 4)}`;
-        label.title = 'Dates from another month';
+        label.title = t('calendar.otherMonthDates');
         top.appendChild(label);
       }
     }

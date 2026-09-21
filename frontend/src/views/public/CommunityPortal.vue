@@ -8,10 +8,10 @@
         style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 24px 24px;"
       ></div>
       <div class="max-w-7xl mx-auto relative z-10 text-center text-white">
-        <p class="text-brand-200 font-bold uppercase tracking-wider text-sm mb-3">Carboot@CMart Community</p>
-        <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4">Explore Our Community</h1>
+        <p class="text-brand-200 font-bold uppercase tracking-wider text-sm mb-3">{{ t('community.eyebrow') }}</p>
+        <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4">{{ t('community.title') }}</h1>
         <p class="text-lg text-brand-100 max-w-2xl mx-auto mb-8">
-          Discover local vendors, share your experience, and stay connected with Malaysia's favourite carboot marketplace.
+          {{ t('community.subtitle') }}
         </p>
         <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
           <router-link
@@ -19,12 +19,12 @@
             to="/register"
             class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl shadow-lg hover:-translate-y-0.5 transition"
           >
-            Join the Community
+            {{ t('community.joinCommunity') }}
           </router-link>
         </div>
         <p class="mt-6">
           <router-link to="/calendar" class="text-brand-100 hover:text-white font-semibold text-sm underline underline-offset-4 transition">
-            See upcoming dates →
+            {{ t('community.seeUpcomingDates') }}
           </router-link>
         </p>
       </div>
@@ -38,8 +38,8 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
-          <h2 class="text-lg font-black text-gray-900 mb-2">Vibrant Community</h2>
-          <p class="text-base text-gray-600 leading-relaxed">Shoppers, vendors, and locals united at CMart Kompleks Changlun every weekend.</p>
+          <h2 class="text-lg font-black text-gray-900 mb-2">{{ t('community.vibrantTitle') }}</h2>
+          <p class="text-base text-gray-600 leading-relaxed">{{ t('community.vibrantDesc') }}</p>
         </div>
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
           <div class="bg-emerald-50 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
@@ -47,10 +47,10 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
           </div>
-          <h2 class="text-lg font-black text-gray-900 mb-2">Vendor Marketplace</h2>
-          <p class="text-base text-gray-600 leading-relaxed">Browse unique finds from approved micro-businesses and weekend traders.</p>
+          <h2 class="text-lg font-black text-gray-900 mb-2">{{ t('community.marketplaceTitle') }}</h2>
+          <p class="text-base text-gray-600 leading-relaxed">{{ t('community.marketplaceDesc') }}</p>
           <router-link to="/marketplace" class="inline-block mt-4 text-base font-bold text-brand-600 hover:underline">
-            Browse Reuse Marketplace →
+            {{ t('community.browseReuse') }}
           </router-link>
         </div>
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-center">
@@ -59,24 +59,24 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
             </svg>
           </div>
-          <h2 class="text-lg font-black text-gray-900 mb-2">Community Reviews</h2>
-          <p class="text-base text-gray-600 leading-relaxed">Real feedback from visitors shaping a better carboot experience for everyone.</p>
+          <h2 class="text-lg font-black text-gray-900 mb-2">{{ t('community.reviewsCardTitle') }}</h2>
+          <p class="text-base text-gray-600 leading-relaxed">{{ t('community.reviewsCardDesc') }}</p>
         </div>
       </section>
 
       <section class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
         <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
           <div>
-            <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">Happening Soon</span>
-            <h2 class="text-2xl font-black text-gray-900">Next market dates</h2>
-            <p class="mt-1 text-sm text-gray-500">Plan your visit — see the full schedule on Events.</p>
+            <span class="text-brand-600 font-bold uppercase tracking-wider text-sm mb-1 block">{{ t('community.happeningSoon') }}</span>
+            <h2 class="text-2xl font-black text-gray-900">{{ t('community.nextMarketDates') }}</h2>
+            <p class="mt-1 text-sm text-gray-500">{{ t('community.planVisitHint') }}</p>
           </div>
-          <router-link to="/calendar" class="text-sm font-bold text-brand-600 hover:underline shrink-0">See all events →</router-link>
+          <router-link to="/calendar" class="text-sm font-bold text-brand-600 hover:underline shrink-0">{{ t('community.seeAllEvents') }}</router-link>
         </div>
 
-        <div v-if="loadingEvents" class="text-center py-10 text-gray-500">Loading events…</div>
+        <div v-if="loadingEvents" class="text-center py-10 text-gray-500">{{ t('community.loadingEvents') }}</div>
         <div v-else-if="!upcomingEvents.length" class="text-center py-10 text-gray-500 italic">
-          No upcoming events scheduled. Check back soon!
+          {{ t('community.noEventsScheduled') }}
         </div>
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <article
@@ -84,7 +84,7 @@
             :key="event.id"
             tabindex="0"
             role="button"
-            :aria-label="`View details for ${event.title}`"
+            :aria-label="t('community.viewDetailsAria', { title: event.title })"
             class="rounded-xl border border-gray-100 overflow-hidden hover:border-brand-200 hover:shadow-md hover:ring-2 hover:ring-brand-500/10 transition group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 bg-white"
             @click="openEventDetails(event)"
             @keydown.enter.prevent="openEventDetails(event)"
@@ -93,7 +93,7 @@
             <img
               v-if="event.posterUrl"
               :src="event.posterUrl"
-              :alt="`${event.title} poster preview`"
+              :alt="t('community.posterAlt', { title: event.title })"
               class="w-full h-[120px] object-cover object-top border-b border-gray-100 pointer-events-none"
             />
             <div class="flex items-center justify-between p-4 gap-3">
@@ -107,7 +107,7 @@
                   <p class="text-xs text-gray-500">{{ event.time }}</p>
                 </div>
               </div>
-              <span class="text-xs font-bold text-brand-600 shrink-0 pointer-events-none">View details →</span>
+              <span class="text-xs font-bold text-brand-600 shrink-0 pointer-events-none">{{ t('community.viewDetails') }}</span>
             </div>
           </article>
         </div>
@@ -125,12 +125,12 @@
         class="scroll-mt-24 sm:scroll-mt-28"
       >
         <section class="bg-brand-600 rounded-3xl p-10 text-center text-white">
-          <h2 class="text-2xl font-black mb-3">Ready to become a vendor?</h2>
+          <h2 class="text-2xl font-black mb-3">{{ t('community.readyVendorTitle') }}</h2>
           <p class="text-brand-100 mb-6 max-w-lg mx-auto">
             {{
               auth.isAuthenticated
-                ? 'Apply for a vendor booth at our next carboot event and unlock your vendor dashboard.'
-                : 'Create your free community account, then apply for a vendor booth at our next carboot event.'
+                ? t('community.readyVendorAuthed')
+                : t('community.readyVendorGuest')
             }}
           </p>
           <div class="flex flex-col sm:flex-row justify-center gap-4">
@@ -140,19 +140,19 @@
                 data-testid="start-vendor-booking-cta"
                 class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
               >
-                Start Vendor Booking
+                {{ t('community.startVendorBooking') }}
               </router-link>
               <router-link
                 to="/calendar"
                 class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
               >
-                Explore Events
+                {{ t('community.exploreEvents') }}
               </router-link>
               <router-link
                 to="/community#share-feedback"
                 class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
               >
-                Read Reviews
+                {{ t('community.readReviews') }}
               </router-link>
             </template>
             <template v-else>
@@ -161,19 +161,19 @@
                 data-testid="start-vendor-booking-cta"
                 class="bg-white text-brand-600 font-black py-3 px-8 rounded-xl hover:bg-brand-50 transition"
               >
-                Start Vendor Booking
+                {{ t('community.startVendorBooking') }}
               </router-link>
               <router-link
                 to="/calendar"
                 class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
               >
-                Explore Events
+                {{ t('community.exploreEvents') }}
               </router-link>
               <router-link
                 :to="loginPathWithRedirect('/community#share-feedback')"
                 class="border border-white/40 text-white font-bold py-3 px-8 rounded-xl hover:bg-white/10 transition"
               >
-                Sign in to Leave a Review
+                {{ t('community.signInToReview') }}
               </router-link>
             </template>
           </div>
@@ -183,9 +183,9 @@
       <section class="max-w-6xl mx-auto">
         <div class="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
           <div class="relative pt-12 pb-8 px-8 text-center text-white z-10 bg-gradient-to-br from-brand-600 to-brand-400">
-            <h2 class="text-3xl font-extrabold mb-3 tracking-tight">Share Your Voice</h2>
+            <h2 class="text-3xl font-extrabold mb-3 tracking-tight">{{ t('community.shareYourVoice') }}</h2>
             <p class="text-lg opacity-90 font-medium max-w-2xl mx-auto">
-              Help us improve the Carboot@CMart experience for shoppers and vendors alike.
+              {{ t('community.shareYourVoiceLead') }}
             </p>
           </div>
           <div id="share-feedback" class="relative bg-white z-20 rounded-t-[2.5rem] -mt-6 p-8 border-b border-gray-100">
@@ -193,7 +193,7 @@
           </div>
           <div ref="reviewsSection" class="p-8 md:p-12 bg-gray-50/50">
             <div class="mb-6">
-              <h3 class="text-2xl font-bold text-gray-900">Community Reviews</h3>
+              <h3 class="text-2xl font-bold text-gray-900">{{ t('community.communityReviews') }}</h3>
               <p v-if="resultCountLabel" class="text-sm text-gray-500 mt-1">{{ resultCountLabel }}</p>
             </div>
 
@@ -203,13 +203,13 @@
             >
               <div class="flex flex-col sm:flex-row sm:items-center gap-6">
                 <div class="shrink-0 text-center sm:text-left sm:min-w-[120px]">
-                  <p class="text-xs font-bold uppercase tracking-wider text-brand-600 mb-1">Community rating</p>
+                  <p class="text-xs font-bold uppercase tracking-wider text-brand-600 mb-1">{{ t('community.communityRating') }}</p>
                   <p class="text-4xl font-black text-gray-900 tabular-nums">
                     {{ reviewSummary.average_rating.toFixed(1) }}
-                    <span class="text-lg font-bold text-gray-400">/ 5</span>
+                    <span class="text-lg font-bold text-gray-400">{{ t('community.outOfFive') }}</span>
                   </p>
-                  <p class="text-sm text-gray-500 mt-1">{{ reviewSummary.total_reviews }} reviews</p>
-                  <p class="text-xs text-gray-400 mt-1">Based on visible public reviews.</p>
+                  <p class="text-sm text-gray-500 mt-1">{{ t('community.reviewsCount', { n: reviewSummary.total_reviews }) }}</p>
+                  <p class="text-xs text-gray-400 mt-1">{{ t('community.basedOnVisible') }}</p>
                 </div>
                 <div class="flex-1 space-y-2">
                   <div
@@ -233,49 +233,49 @@
             </div>
 
             <div class="mb-8 space-y-3">
-              <label class="sr-only" for="review-search">Search reviews</label>
+              <label class="sr-only" for="review-search">{{ t('community.searchReviews') }}</label>
               <input
                 id="review-search"
                 v-model="reviewSearch"
                 type="search"
-                placeholder="Search reviews…"
+                :placeholder="t('community.searchReviewsPlaceholder')"
                 class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 @input="debouncedFetchReviews"
               />
 
               <div class="flex flex-wrap items-center gap-3">
-                <label class="sr-only" for="review-sort">Sort reviews</label>
+                <label class="sr-only" for="review-sort">{{ t('community.searchReviews') }}</label>
                 <select
                   id="review-sort"
                   v-model="reviewSort"
                   class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                   @change="fetchReviews(1)"
                 >
-                  <option v-for="option in SORT_OPTIONS" :key="option.value" :value="option.value">
+                  <option v-for="option in sortOptions" :key="option.value" :value="option.value">
                     {{ option.label }}
                   </option>
                 </select>
 
-                <label class="sr-only" for="review-rating">Filter by rating</label>
+                <label class="sr-only" for="review-rating">{{ t('community.allRatings') }}</label>
                 <select
                   id="review-rating"
                   v-model="reviewRatingFilter"
                   class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                   @change="fetchReviews(1)"
                 >
-                  <option v-for="option in RATING_FILTERS" :key="option.value" :value="option.value">
+                  <option v-for="option in ratingFilters" :key="option.value" :value="option.value">
                     {{ option.label }}
                   </option>
                 </select>
 
-                <label class="sr-only" for="review-type">Filter by reviewer type</label>
+                <label class="sr-only" for="review-type">{{ t('community.allParticipants') }}</label>
                 <select
                   id="review-type"
                   v-model="reviewTypeFilter"
                   class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                   @change="fetchReviews(1)"
                 >
-                  <option v-for="option in REVIEWER_TYPE_FILTERS" :key="option.value" :value="option.value">
+                  <option v-for="option in reviewerTypeFilters" :key="option.value" :value="option.value">
                     {{ option.label }}
                   </option>
                 </select>
@@ -287,7 +287,7 @@
                     class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                     @change="fetchReviews(1)"
                   />
-                  <span class="text-sm font-semibold text-gray-700">With photos</span>
+                  <span class="text-sm font-semibold text-gray-700">{{ t('community.withPhotos') }}</span>
                 </label>
 
                 <button
@@ -296,24 +296,24 @@
                   class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-50 transition"
                   @click="clearReviewFilters"
                 >
-                  Clear filters
+                  {{ t('community.clearFilters') }}
                 </button>
               </div>
             </div>
 
-            <div v-if="loadingReviews" class="text-center py-8 text-gray-500">Loading reviews…</div>
+            <div v-if="loadingReviews" class="text-center py-8 text-gray-500">{{ t('community.loadingReviews') }}</div>
             <div v-else-if="!reviewSummary.total_reviews && !hasActiveReviewFilters" class="text-center text-gray-500 italic py-8">
-              No reviews yet. Be the first to share your experience!
+              {{ t('community.noReviewsYet') }}
             </div>
             <div v-else-if="!communityReviews.length" class="text-center py-10 rounded-2xl border border-dashed border-gray-200 bg-white">
-              <p class="text-base font-semibold text-gray-700">No reviews match your filters.</p>
-              <p class="text-sm text-gray-500 mt-2">Try clearing filters or choosing another rating.</p>
+              <p class="text-base font-semibold text-gray-700">{{ t('community.noReviewsMatch') }}</p>
+              <p class="text-sm text-gray-500 mt-2">{{ t('community.tryClearingFilters') }}</p>
               <button
                 type="button"
                 class="mt-4 rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-600 transition"
                 @click="clearReviewFilters"
               >
-                Clear filters
+                {{ t('community.clearFilters') }}
               </button>
             </div>
             <div v-else>
@@ -348,7 +348,7 @@
                     <div
                       v-if="reviewRating(review)"
                       class="shrink-0 text-sm text-brand-500"
-                      :aria-label="`${reviewRating(review)} out of 5 stars`"
+                      :aria-label="t('community.starsAria', { n: reviewRating(review) })"
                     >
                       <span v-for="star in 5" :key="`${review.id}-star-${star}`">
                         {{ star <= reviewRating(review) ? '★' : '☆' }}
@@ -364,7 +364,7 @@
                     v-if="reviewOfficialReply(review)"
                     class="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 px-3 py-2.5"
                   >
-                    <p class="text-xs font-bold uppercase tracking-wide text-brand-700 mb-1">CMart Official Reply</p>
+                    <p class="text-xs font-bold uppercase tracking-wide text-brand-700 mb-1">{{ t('community.officialReply') }}</p>
                     <p class="text-base text-gray-700 leading-relaxed">{{ reviewOfficialReply(review) }}</p>
                   </div>
                 </article>
@@ -373,7 +373,7 @@
               <nav
                 v-if="reviewMeta.last_page > 1"
                 class="mt-8 flex flex-wrap items-center justify-center gap-2"
-                aria-label="Review pagination"
+                :aria-label="t('community.reviewPagination')"
               >
                 <button
                   type="button"
@@ -382,10 +382,10 @@
                   :disabled="reviewMeta.current_page <= 1 || loadingReviews"
                   @click="goToReviewPage(reviewMeta.current_page - 1)"
                 >
-                  Previous
+                  {{ t('community.previous') }}
                 </button>
                 <span class="text-sm text-gray-600 px-2">
-                  Page {{ reviewMeta.current_page }} of {{ reviewMeta.last_page }}
+                  {{ t('community.pageOf', { current: reviewMeta.current_page, last: reviewMeta.last_page }) }}
                 </span>
                 <button
                   type="button"
@@ -394,7 +394,7 @@
                   :disabled="reviewMeta.current_page >= reviewMeta.last_page || loadingReviews"
                   @click="goToReviewPage(reviewMeta.current_page + 1)"
                 >
-                  Next
+                  {{ t('community.next') }}
                 </button>
               </nav>
             </div>
@@ -407,13 +407,14 @@
       v-model="showEventModal"
       :event="selectedEvent"
       booking-link="/calendar"
-      booking-label="See full schedule →"
+      :booking-label="t('community.seeFullSchedule')"
     />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import CommunityFeedback from '../../components/CommunityFeedback.vue';
@@ -424,28 +425,30 @@ import api from '../../services/api';
 import { filterEventsByChip, mapApiEventToCard } from '../../utils/eventDisplay';
 import { loginPathWithRedirect, registerPathWithRedirect } from '../../utils/postAuthRedirect';
 
-const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest first' },
-  { value: 'oldest', label: 'Oldest first' },
-  { value: 'highest_rating', label: 'Highest rating' },
-  { value: 'lowest_rating', label: 'Lowest rating' },
-];
+const { t } = useI18n();
 
-const RATING_FILTERS = [
-  { value: 'all', label: 'All ratings' },
-  { value: '5', label: '5 stars' },
-  { value: '4', label: '4 stars' },
-  { value: '3', label: '3 stars' },
-  { value: '2_or_below', label: '2 stars & below' },
-];
+const sortOptions = computed(() => [
+  { value: 'newest', label: t('community.sortNewest') },
+  { value: 'oldest', label: t('community.sortOldest') },
+  { value: 'highest_rating', label: t('community.sortHighest') },
+  { value: 'lowest_rating', label: t('community.sortLowest') },
+]);
 
-const REVIEWER_TYPE_FILTERS = [
-  { value: 'all', label: 'All participants' },
-  { value: 'visitor_shopper', label: 'Visitor / Shopper' },
-  { value: 'vendor', label: 'Vendor' },
-  { value: 'organizer_event_crew', label: 'Organizer / Event Crew' },
-  { value: 'other', label: 'Other' },
-];
+const ratingFilters = computed(() => [
+  { value: 'all', label: t('community.allRatings') },
+  { value: '5', label: t('community.stars5') },
+  { value: '4', label: t('community.stars4') },
+  { value: '3', label: t('community.stars3') },
+  { value: '2_or_below', label: t('community.stars2orBelow') },
+]);
+
+const reviewerTypeFilters = computed(() => [
+  { value: 'all', label: t('community.allParticipants') },
+  { value: 'visitor_shopper', label: t('community.visitorShopper') },
+  { value: 'vendor', label: t('community.vendor') },
+  { value: 'organizer_event_crew', label: t('community.organizerCrew') },
+  { value: 'other', label: t('community.other') },
+]);
 
 const auth = useAuthStore();
 const toast = useToast();
@@ -488,9 +491,9 @@ const hasActiveReviewFilters = computed(() =>
 
 const resultCountLabel = computed(() => {
   const { total, from, to } = reviewMeta.value;
-  if (!total) return hasActiveReviewFilters.value ? 'Showing 0 reviews' : '';
-  if (from && to) return `Showing ${from}–${to} of ${total} reviews`;
-  return `Showing ${total} of ${total} reviews`;
+  if (!total) return hasActiveReviewFilters.value ? t('community.showing0') : '';
+  if (from && to) return t('community.showingRange', { from, to, total });
+  return t('community.showingTotal', { total });
 });
 
 const distributionPercent = (star) => {
@@ -578,7 +581,7 @@ const goToReviewPage = async (page) => {
   reviewsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
-const reviewUserName = (review) => review.user_name || review.user?.name || 'Community Member';
+const reviewUserName = (review) => review.user_name || review.user?.name || t('community.communityMember');
 const reviewRole = (review) =>
   review.participation_type_label
   || review.role
@@ -597,7 +600,7 @@ const reviewOfficialReply = (review) => review.official_reply?.text || null;
 const reviewInitial = (review) => reviewUserName(review).charAt(0).toUpperCase();
 
 const onFeedbackSubmitted = async () => {
-  toast.success('Feedback submitted successfully!');
+  toast.success(t('community.feedbackSubmittedToast'));
   await clearReviewFilters();
 };
 

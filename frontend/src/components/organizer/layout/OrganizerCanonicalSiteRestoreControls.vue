@@ -78,12 +78,13 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
   CMART_CARBOOT_SITES_PER_ROW,
   isAllowedPhysicalRowLabel,
   missingCanonicalSiteLabels,
 } from '../../../config/cmartCarbootPhysicalLayout';
-import { LAYOUT_COPY } from '../../../utils/organizerEventLayoutMessages';
+import { getLayoutCopy } from '../../../utils/organizerEventLayoutMessages';
 
 const props = defineProps({
   row: { type: Object, required: true },
@@ -93,7 +94,8 @@ const props = defineProps({
 
 const emit = defineEmits(['restore-label', 'restore-all']);
 
-const copy = LAYOUT_COPY;
+const { t } = useI18n();
+const copy = computed(() => getLayoutCopy(t));
 const rootEl = ref(null);
 const menuOpen = ref(false);
 
@@ -110,13 +112,13 @@ const presentCount = computed(() => (props.row?.sites || []).length);
 
 const countLabel = computed(() => {
   if (!isAllowedPhysicalRowLabel(props.row?.label)) {
-    return copy.sitesCountFallback((props.row?.sites || []).length);
+    return copy.value.sitesCountFallback((props.row?.sites || []).length);
   }
-  return copy.physicalSitesOfTotal(presentCount.value, CMART_CARBOOT_SITES_PER_ROW);
+  return copy.value.physicalSitesOfTotal(presentCount.value, CMART_CARBOOT_SITES_PER_ROW);
 });
 
 function restoreLabelAria(label) {
-  return copy.restoreSite(label);
+  return copy.value.restoreSite(label);
 }
 
 function toggleMenu() {

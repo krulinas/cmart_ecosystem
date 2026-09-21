@@ -1,6 +1,6 @@
 <template>
   <section class="space-y-6" data-testid="cmart-report-centre">
-    <div class="flex flex-wrap gap-2" role="tablist" aria-label="CMart reports">
+    <div class="flex flex-wrap gap-2" role="tablist" :aria-label="t('reports.cmart.tablistAria')">
       <button
         v-for="tab in tabs"
         :key="tab.id"
@@ -20,45 +20,44 @@
     </div>
 
     <div v-if="loading" class="rounded-2xl border border-ink-200 bg-white py-16 text-center text-sm text-ink-500">
-      Loading reports workspace…
+      {{ t('reports.cmart.loading') }}
     </div>
 
     <template v-else>
       <!-- Request form -->
       <section v-show="activeTab === 'request'" class="ml-card space-y-4" data-testid="cmart-request-report">
         <div>
-          <h2 class="text-lg font-extrabold text-ink-900">Request a report</h2>
+          <h2 class="text-lg font-extrabold text-ink-900">{{ t('reports.cmart.requestTitle') }}</h2>
           <p class="mt-1 text-sm text-ink-500">
-            Submit a Post-Event Summary request to the Organizer. This creates an in-app request for the Organizer workspace.
-            It does not send email or WhatsApp.
+            {{ t('reports.cmart.requestLead') }}
           </p>
         </div>
         <form class="space-y-4" @submit.prevent="submitRequest">
           <label class="block text-sm font-semibold text-ink-700">
-            Event
+            {{ t('reports.cmart.eventLabel') }}
             <select v-model="form.carboot_event_id" required class="ml-input mt-1 w-full">
-              <option disabled value="">Select an event</option>
+              <option disabled value="">{{ t('reports.cmart.selectEvent') }}</option>
               <option v-for="event in events" :key="event.id" :value="event.id">
                 {{ event.title }} ({{ formatDate(event.starts_at) }})
               </option>
             </select>
           </label>
           <label class="block text-sm font-semibold text-ink-700">
-            Report type
+            {{ t('reports.cmart.reportTypeLabel') }}
             <select v-model="form.report_type" class="ml-input mt-1 w-full">
-              <option value="post_event_summary">Post-Event Summary</option>
+              <option value="post_event_summary">{{ t('reports.cmart.reportTypePostEvent') }}</option>
             </select>
           </label>
           <label class="block text-sm font-semibold text-ink-700">
-            Message
-            <textarea v-model="form.message" rows="4" maxlength="5000" class="ml-input mt-1 w-full" placeholder="Optional context for the Organizer" />
+            {{ t('reports.cmart.messageLabel') }}
+            <textarea v-model="form.message" rows="4" maxlength="5000" class="ml-input mt-1 w-full" :placeholder="t('reports.cmart.messagePlaceholder')" />
           </label>
           <label class="block text-sm font-semibold text-ink-700">
-            Preferred due date (optional)
+            {{ t('reports.cmart.preferredDueLabel') }}
             <input v-model="form.preferred_due_date" type="date" class="ml-input mt-1 w-full" />
           </label>
           <button type="submit" class="ml-btn-primary" :disabled="submitting">
-            {{ submitting ? 'Submitting…' : 'Submit request to Organizer' }}
+            {{ submitting ? t('reports.cmart.submitting') : t('reports.cmart.submit') }}
           </button>
         </form>
       </section>
@@ -66,7 +65,7 @@
       <!-- My requests -->
       <section v-show="activeTab === 'requests'" class="space-y-3" data-testid="cmart-my-requests">
         <div v-if="!requests.length" class="rounded-2xl border border-dashed border-ink-200 bg-white px-5 py-12 text-center text-sm text-ink-500">
-          No report requests yet.
+          {{ t('reports.cmart.emptyRequests') }}
         </div>
         <article
           v-for="item in requests"
@@ -75,25 +74,25 @@
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 class="font-bold text-ink-900">{{ item.event?.title || 'Event' }}</h3>
+              <h3 class="font-bold text-ink-900">{{ item.event?.title || t('reports.cmart.eventFallback') }}</h3>
               <p class="text-xs text-ink-500">{{ item.report_type_label || item.report_type }} · {{ formatDate(item.created_at) }}</p>
-              <p class="mt-2 text-sm text-ink-700">{{ item.message || 'No message provided.' }}</p>
-              <p v-if="item.preferred_due_date" class="mt-1 text-xs text-ink-500">Preferred due: {{ item.preferred_due_date }}</p>
-              <p v-if="item.decline_reason" class="mt-2 text-sm text-rose-700">Declined: {{ item.decline_reason }}</p>
-              <p v-if="item.response_message" class="mt-1 text-sm text-ink-600">Organizer response: {{ item.response_message }}</p>
+              <p class="mt-2 text-sm text-ink-700">{{ item.message || t('reports.cmart.noMessage') }}</p>
+              <p v-if="item.preferred_due_date" class="mt-1 text-xs text-ink-500">{{ t('reports.cmart.preferredDue', { date: item.preferred_due_date }) }}</p>
+              <p v-if="item.decline_reason" class="mt-2 text-sm text-rose-700">{{ t('reports.cmart.declinedPrefix', { reason: item.decline_reason }) }}</p>
+              <p v-if="item.response_message" class="mt-1 text-sm text-ink-600">{{ t('reports.cmart.organizerResponsePrefix', { message: item.response_message }) }}</p>
               <button type="button" class="mt-2 text-xs font-semibold text-cyan-800 underline" @click="openRequestDetail(item.id)">
-                View timeline & notification activity
+                {{ t('reports.cmart.viewTimeline') }}
               </button>
             </div>
             <div class="flex flex-col items-end gap-2">
-              <span class="rounded-full bg-ink-100 px-2.5 py-0.5 text-xs font-bold uppercase text-ink-700">{{ item.status }}</span>
+              <span class="rounded-full bg-ink-100 px-2.5 py-0.5 text-xs font-bold uppercase text-ink-700">{{ statusLabel(item.status, t) }}</span>
               <button
                 v-if="item.status === 'requested'"
                 type="button"
                 class="ml-btn-ghost text-sm"
                 @click="cancelRequest(item.id)"
               >
-                Cancel request
+                {{ t('reports.cmart.cancelRequest') }}
               </button>
             </div>
           </div>
@@ -103,7 +102,7 @@
       <!-- Published -->
       <section v-show="activeTab === 'published'" class="space-y-3" data-testid="cmart-published-reports">
         <div v-if="!published.length" class="rounded-2xl border border-dashed border-ink-200 bg-white px-5 py-12 text-center text-sm text-ink-500">
-          No published reports are available yet.
+          {{ t('reports.cmart.emptyPublished') }}
         </div>
         <article
           v-for="item in published"
@@ -112,14 +111,14 @@
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 class="font-bold text-ink-900">{{ item.event_title_snapshot || 'Post-Event Summary' }}</h3>
+              <h3 class="font-bold text-ink-900">{{ item.event_title_snapshot || t('reports.cmart.reportFallback') }}</h3>
               <p class="text-xs text-ink-500">
-                Version {{ item.version }} · {{ item.status }} · {{ formatDate(item.published_at) }}
+                {{ t('reports.cmart.version', { n: item.version }) }} · {{ statusLabel(item.status, t) }} · {{ formatDate(item.published_at) }}
               </p>
             </div>
             <div class="flex flex-wrap gap-2">
-              <button type="button" class="ml-btn-primary text-sm" @click="openReport(item.id)">View</button>
-              <button type="button" class="ml-btn-ghost text-sm" @click="downloadPdf(item.id)">Download PDF</button>
+              <button type="button" class="ml-btn-primary text-sm" @click="openReport(item.id)">{{ t('reports.cmart.view') }}</button>
+              <button type="button" class="ml-btn-ghost text-sm" @click="downloadPdf(item.id)">{{ t('reports.cmart.downloadPdf') }}</button>
             </div>
           </div>
         </article>
@@ -127,8 +126,8 @@
 
       <div v-if="requestDetail" class="rounded-2xl border border-ink-200 bg-white p-4 shadow-sm">
         <div class="mb-2 flex items-center justify-between gap-2">
-          <h3 class="font-bold text-ink-900">Request timeline</h3>
-          <button type="button" class="ml-btn-ghost text-sm" @click="requestDetail = null">Close</button>
+          <h3 class="font-bold text-ink-900">{{ t('reports.cmart.requestTimeline') }}</h3>
+          <button type="button" class="ml-btn-ghost text-sm" @click="requestDetail = null">{{ t('reports.cmart.close') }}</button>
         </div>
         <ul class="space-y-1 text-sm text-ink-700">
           <li v-for="row in (requestDetail.timeline || [])" :key="row.id">
@@ -141,8 +140,8 @@
 
       <div v-if="activeReport" class="rounded-2xl border border-ink-200 bg-white p-5 shadow-sm">
         <div class="mb-4 flex flex-wrap gap-2">
-          <button type="button" class="ml-btn-ghost text-sm" @click="activeReport = null">Back</button>
-          <button type="button" class="ml-btn-ghost text-sm" @click="downloadPdf(activeReport.id)">Download PDF</button>
+          <button type="button" class="ml-btn-ghost text-sm" @click="activeReport = null">{{ t('reports.cmart.back') }}</button>
+          <button type="button" class="ml-btn-ghost text-sm" @click="downloadPdf(activeReport.id)">{{ t('reports.cmart.downloadPdf') }}</button>
         </div>
         <PostEventSummaryView :report="activeReport" />
       </div>
@@ -151,8 +150,10 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
+import { statusLabel } from '../../../i18n';
 import PostEventSummaryView from '../../../components/reports/PostEventSummaryView.vue';
 import ReportNotificationActivity from '../../../components/reports/ReportNotificationActivity.vue';
 import {
@@ -169,12 +170,13 @@ import {
   openAuthorizedPdf,
 } from '../../../services/reportWorkflowApi';
 
+const { t } = useI18n();
 const toast = useToast();
-const tabs = [
-  { id: 'request', label: 'Request Report' },
-  { id: 'requests', label: 'My Requests' },
-  { id: 'published', label: 'Published Reports' },
-];
+const tabs = computed(() => [
+  { id: 'request', label: t('reports.cmart.tabs.request') },
+  { id: 'requests', label: t('reports.cmart.tabs.requests') },
+  { id: 'published', label: t('reports.cmart.tabs.published') },
+]);
 
 const activeTab = ref('request');
 const loading = ref(false);
@@ -223,7 +225,7 @@ const load = async () => {
     unreadPublishedHint.value = published.value.some((row) => row.status === 'published');
   } catch (error) {
     if (!error.forbiddenMessage) {
-      toast.error(error.response?.data?.message || 'Unable to load reports workspace.');
+      toast.error(error.response?.data?.message || t('reports.cmart.toastLoadError'));
     }
   } finally {
     loading.value = false;
@@ -239,13 +241,13 @@ const submitRequest = async () => {
       message: form.value.message || null,
       preferred_due_date: form.value.preferred_due_date || null,
     });
-    toast.success('Report request submitted to the Organizer.');
+    toast.success(t('reports.cmart.toastSubmitted'));
     form.value.message = '';
     form.value.preferred_due_date = '';
     activeTab.value = 'requests';
     await load();
   } catch (error) {
-    toast.error(error.response?.data?.message || error.response?.data?.errors?.carboot_event_id?.[0] || 'Unable to submit request.');
+    toast.error(error.response?.data?.message || error.response?.data?.errors?.carboot_event_id?.[0] || t('reports.cmart.toastSubmitError'));
   } finally {
     submitting.value = false;
   }
@@ -254,10 +256,10 @@ const submitRequest = async () => {
 const cancelRequest = async (id) => {
   try {
     await cancelCmartReportRequest(id);
-    toast.success('Request cancelled.');
+    toast.success(t('reports.cmart.toastCancelled'));
     await load();
   } catch (error) {
-    toast.error(error.response?.data?.message || 'Unable to cancel request.');
+    toast.error(error.response?.data?.message || t('reports.cmart.toastCancelError'));
   }
 };
 
@@ -266,7 +268,7 @@ const openRequestDetail = async (id) => {
     const { data } = await getCmartReportRequest(id);
     requestDetail.value = data.data || data.report_request || data;
   } catch (error) {
-    toast.error(error.response?.data?.message || 'Unable to load request detail.');
+    toast.error(error.response?.data?.message || t('reports.cmart.toastRequestDetailError'));
   }
 };
 
@@ -277,7 +279,7 @@ const openReport = async (id) => {
     await markCmartGeneratedReportViewed(id);
     activeTab.value = 'published';
   } catch (error) {
-    toast.error(error.response?.data?.message || 'Unable to open report.');
+    toast.error(error.response?.data?.message || t('reports.cmart.toastOpenError'));
   }
 };
 
@@ -285,7 +287,7 @@ const downloadPdf = async (id) => {
   try {
     await openAuthorizedPdf(cmartGeneratedReportPdfUrl(id));
   } catch {
-    toast.error('Unable to download PDF.');
+    toast.error(t('reports.cmart.toastPdfError'));
   }
 };
 

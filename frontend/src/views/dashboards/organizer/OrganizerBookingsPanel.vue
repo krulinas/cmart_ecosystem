@@ -2,11 +2,11 @@
   <div class="space-y-6 pb-10" data-testid="organizer-bookings-root">
     <div v-if="loading && !hasLoaded" class="rounded-2xl border border-ink-200 bg-white py-16 text-center shadow-sm">
       <div class="mx-auto h-10 w-10 animate-pulse rounded-full bg-gradient-to-br" :class="theme.loaderPulse || 'from-blue-100 to-indigo-100'" />
-      <p class="mt-4 text-sm font-medium text-ink-500">Loading bookings…</p>
+      <p class="mt-4 text-sm font-medium text-ink-500">{{ t('organizer.bookings.loading') }}</p>
     </div>
 
     <div v-else-if="loadError && !hasLoaded" class="rounded-2xl border border-rose-200 bg-rose-50/60 px-6 py-12 text-center">
-      <p class="text-sm font-semibold text-rose-800">Unable to load bookings</p>
+      <p class="text-sm font-semibold text-rose-800">{{ t('organizer.bookings.loadErrorTitle') }}</p>
       <p class="mt-1 text-sm text-rose-700/80">{{ loadError }}</p>
     </div>
 
@@ -14,7 +14,7 @@
       <!-- KPI overview -->
       <section>
         <div class="mb-4">
-          <h2 class="text-sm font-bold uppercase tracking-wider text-ink-500">Operations overview</h2>
+          <h2 class="text-sm font-bold uppercase tracking-wider text-ink-500">{{ t('organizer.bookings.overviewTitle') }}</h2>
           <p class="text-xs text-ink-400 mt-0.5">{{ overviewHint }}</p>
         </div>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -38,7 +38,7 @@
           data-testid="organizer-tab-bookings"
           @click="activeWorkspaceTab = 'bookings'"
         >
-          Bookings Registry
+          {{ t('organizer.bookings.tabBookings') }}
         </button>
         <button
           type="button"
@@ -47,7 +47,7 @@
           data-testid="organizer-tab-released-recovery"
           @click="switchToRecoveryTab"
         >
-          Released-Day Recovery
+          {{ t('organizer.bookings.tabRecovery') }}
         </button>
       </div>
 
@@ -56,12 +56,12 @@
         <div class="px-5 py-4 text-white sm:px-6" :class="theme.queueHeader">
           <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">Active queue</p>
+              <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">{{ t('organizer.bookings.activeQueue') }}</p>
               <h2 class="text-lg font-extrabold tracking-tight">{{ queueTitle }}</h2>
               <p class="mt-1 text-sm text-white/80 max-w-2xl">{{ queueDescription }}</p>
             </div>
             <span class="mt-2 inline-flex w-fit items-center rounded-full bg-white/15 px-3 py-1 text-xs font-bold ring-1 ring-white/25 sm:mt-0">
-              {{ queueBookings.length }} pending
+              {{ t('organizer.bookings.pendingCount', { count: queueBookings.length }) }}
             </span>
           </div>
         </div>
@@ -79,12 +79,12 @@
             <table class="min-w-full text-sm">
               <thead class="bg-ink-50/80">
                 <tr class="text-left text-[11px] uppercase tracking-wider text-ink-500">
-                  <th class="px-4 py-3 font-semibold">Booking</th>
-                  <th class="px-4 py-3 font-semibold">Vendor product</th>
-                  <th class="px-4 py-3 font-semibold">Space / Sites</th>
-                  <th class="px-4 py-3 font-semibold">Event date</th>
-                  <th class="px-4 py-3 font-semibold">Status</th>
-                  <th class="px-4 py-3 text-right font-semibold">Actions</th>
+                  <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colBooking') }}</th>
+                  <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colVendorProduct') }}</th>
+                  <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colSpaceSites') }}</th>
+                  <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colEventDate') }}</th>
+                  <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colStatus') }}</th>
+                  <th class="px-4 py-3 text-right font-semibold">{{ t('organizer.bookings.colActions') }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-ink-100">
@@ -102,13 +102,13 @@
                     <div class="text-xs text-ink-500">{{ vendorLabel(b) }}</div>
                   </td>
                   <td class="px-4 py-3.5">
-                    <div class="font-medium text-ink-800">{{ b.product_category || 'Others' }}</div>
-                    <div class="max-w-xs truncate text-xs text-ink-500">{{ b.product_details || '—' }}</div>
+                    <div class="font-medium text-ink-800">{{ b.product_category || t('organizer.bookings.othersCategory') }}</div>
+                    <div class="max-w-xs truncate text-xs text-ink-500">{{ b.product_details || t('common.none') }}</div>
                   </td>
                   <td class="px-4 py-3.5 text-ink-700">
                     <div>{{ physicalSiteSummary(b) }}</div>
                     <div v-if="b.site_selection?.allocation_status" class="text-xs text-ink-500">
-                      {{ allocationStatusLabel(b.site_selection.allocation_status) }}
+                      {{ allocationStatusLabel(b.site_selection.allocation_status, t) }}
                     </div>
                     <div
                       v-if="withdrawalSummaryLine(b)"
@@ -130,9 +130,9 @@
                         :data-booking-id="b.id"
                         @click="openBookingDetails(b.id)"
                       >
-                        Details
+                        {{ t('common.details') }}
                       </button>
-                      <button class="ml-btn-ghost text-xs px-3 py-1.5" @click="viewPdf(b.id)">PDF</button>
+                      <button class="ml-btn-ghost text-xs px-3 py-1.5" @click="viewPdf(b.id)">{{ t('organizer.bookings.pdf') }}</button>
                       <template v-if="canApproveBookings && !isTerminalBookingStatus(b.approval_status)">
                         <button
                           class="ml-btn-success text-xs px-3 py-1.5"
@@ -140,7 +140,7 @@
                           :data-booking-id="b.id"
                           @click="updateStatus(b.id, 'Approved')"
                         >
-                          Approve
+                          {{ t('organizer.bookings.approve') }}
                         </button>
                         <button
                           class="ml-btn-danger text-xs px-3 py-1.5"
@@ -148,7 +148,7 @@
                           :data-booking-id="b.id"
                           @click="updateStatus(b.id, 'Rejected')"
                         >
-                          Reject
+                          {{ t('organizer.bookings.reject') }}
                         </button>
                         <button
                           class="inline-flex items-center rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
@@ -156,7 +156,7 @@
                           :data-booking-id="b.id"
                           @click="requestRevision(b.id)"
                         >
-                          Revision
+                          {{ t('organizer.bookings.revision') }}
                         </button>
                       </template>
                     </div>
@@ -178,7 +178,7 @@
             <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div class="flex flex-wrap items-center gap-2">
-                  <h2 class="text-lg font-extrabold text-ink-900">All Bookings Registry</h2>
+                  <h2 class="text-lg font-extrabold text-ink-900">{{ t('organizer.bookings.registryTitle') }}</h2>
                   <span
                     class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1"
                     :class="registryBadgeClass"
@@ -194,7 +194,7 @@
                 :disabled="registryLoading || !hasActiveFilters"
                 @click="resetFilters"
               >
-                Clear filters
+                {{ t('organizer.bookings.clearFilters') }}
               </button>
             </div>
 
@@ -204,44 +204,44 @@
                 <input
                   v-model="searchQuery"
                   type="search"
-                  placeholder="Search vendor, booth, ID, status…"
+                  :placeholder="t('organizer.bookings.searchPlaceholder')"
                   data-testid="organizer-bookings-search"
                   class="ml-input w-full pl-8 text-sm"
                 />
               </div>
               <select v-model="statusFilter" class="ml-input text-sm" data-testid="organizer-status-filter">
-                <option value="all">All statuses</option>
-                <option value="Pending_Organizer">Organizer queue</option>
-                <option value="Needs_Revision">Needs revision</option>
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
-                <option value="Cancelled">Cancelled</option>
-                <option value="Withdrawn">Withdrawn</option>
+                <option value="all">{{ t('organizer.bookings.allStatuses') }}</option>
+                <option value="Pending_Organizer">{{ t('organizer.bookings.organizerQueue') }}</option>
+                <option value="Needs_Revision">{{ statusLabel('Needs_Revision', t) }}</option>
+                <option value="Approved">{{ statusLabel('Approved', t) }}</option>
+                <option value="Rejected">{{ statusLabel('Rejected', t) }}</option>
+                <option value="Cancelled">{{ statusLabel('Cancelled', t) }}</option>
+                <option value="Withdrawn">{{ statusLabel('Withdrawn', t) }}</option>
               </select>
               <select v-model="paymentFilter" class="ml-input text-sm" data-testid="organizer-payment-filter">
-                <option value="all">All payments</option>
-                <option value="Paid">Paid</option>
-                <option value="Unpaid">Unpaid</option>
-                <option value="Pending Verification">Payment Submitted</option>
+                <option value="all">{{ t('organizer.bookings.allPayments') }}</option>
+                <option value="Paid">{{ statusLabel('Paid', t) }}</option>
+                <option value="Unpaid">{{ statusLabel('Unpaid', t) }}</option>
+                <option value="Pending Verification">{{ t('organizer.bookings.paymentSubmitted') }}</option>
               </select>
               <select v-model="noRefundFilter" class="ml-input text-sm" data-testid="organizer-no-refund-filter">
-                <option value="all">All refund policies</option>
-                <option value="yes">No-refund applied</option>
-                <option value="no">No-refund not applicable</option>
+                <option value="all">{{ t('organizer.bookings.allRefundPolicies') }}</option>
+                <option value="yes">{{ t('organizer.bookings.noRefundApplied') }}</option>
+                <option value="no">{{ t('organizer.bookings.noRefundNotApplicable') }}</option>
               </select>
               <select v-model="eventFilter" class="ml-input text-sm">
-                <option value="all">All events</option>
+                <option value="all">{{ t('organizer.bookings.allEvents') }}</option>
                 <option v-for="ev in eventOptions" :key="ev.id" :value="String(ev.id)">
                   {{ ev.title }}
                 </option>
               </select>
               <select v-model="sortBy" class="ml-input text-sm">
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-                <option value="status">Status</option>
-                <option value="event">Event date</option>
-                <option value="vendor">Vendor name</option>
-                <option value="amount">Amount</option>
+                <option value="newest">{{ t('organizer.bookings.sortNewest') }}</option>
+                <option value="oldest">{{ t('organizer.bookings.sortOldest') }}</option>
+                <option value="status">{{ t('organizer.bookings.sortStatus') }}</option>
+                <option value="event">{{ t('organizer.bookings.sortEvent') }}</option>
+                <option value="vendor">{{ t('organizer.bookings.sortVendor') }}</option>
+                <option value="amount">{{ t('organizer.bookings.sortAmount') }}</option>
               </select>
             </div>
           </div>
@@ -254,27 +254,27 @@
           >
             <div class="flex items-center gap-2 rounded-xl border border-ink-200 bg-white px-4 py-2 text-sm text-ink-600 shadow-sm">
               <span class="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-700" />
-              Updating registry…
+              {{ t('organizer.bookings.updatingRegistry') }}
             </div>
           </div>
 
           <div v-if="registryError" class="px-5 py-10 text-center">
-            <p class="text-sm font-semibold text-rose-800">Unable to load registry results</p>
+            <p class="text-sm font-semibold text-rose-800">{{ t('organizer.bookings.registryErrorTitle') }}</p>
             <p class="mt-1 text-sm text-rose-700/80">{{ registryError }}</p>
           </div>
 
           <table v-else class="min-w-full text-sm">
             <thead class="bg-ink-50/60">
               <tr class="text-left text-[11px] uppercase tracking-wider text-ink-500">
-                <th class="px-4 py-3 font-semibold">Booking Ref.</th>
-                <th class="px-4 py-3 font-semibold">Vendor</th>
-                <th class="px-4 py-3 font-semibold">Category</th>
-                <th class="px-4 py-3 font-semibold">Details</th>
-                <th class="px-4 py-3 font-semibold">Space / Sites</th>
-                <th class="px-4 py-3 font-semibold">Date</th>
-                <th class="px-4 py-3 font-semibold">Status</th>
-                <th class="px-4 py-3 font-semibold">Payment</th>
-                <th class="px-4 py-3 text-right font-semibold">Actions</th>
+                <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colBookingRef') }}</th>
+                <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colVendor') }}</th>
+                <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colCategory') }}</th>
+                <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colDetails') }}</th>
+                <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colSpaceSites') }}</th>
+                <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colDate') }}</th>
+                <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colStatus') }}</th>
+                <th class="px-4 py-3 font-semibold">{{ t('organizer.bookings.colPayment') }}</th>
+                <th class="px-4 py-3 text-right font-semibold">{{ t('organizer.bookings.colActions') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-ink-100">
@@ -290,12 +290,12 @@
               >
                 <td class="px-4 py-3.5 font-bold text-ink-900">{{ formatBookingReference(b.id) }}</td>
                 <td class="px-4 py-3.5 text-ink-800">{{ vendorLabel(b) }}</td>
-                <td class="px-4 py-3.5 text-ink-700">{{ b.product_category || 'Others' }}</td>
-                <td class="px-4 py-3.5 max-w-[200px] truncate text-ink-600">{{ b.product_details || '—' }}</td>
+                <td class="px-4 py-3.5 text-ink-700">{{ b.product_category || t('organizer.bookings.othersCategory') }}</td>
+                <td class="px-4 py-3.5 max-w-[200px] truncate text-ink-600">{{ b.product_details || t('common.none') }}</td>
                 <td class="px-4 py-3.5 text-ink-700">
                   <div>{{ physicalSiteSummary(b) }}</div>
                   <div v-if="b.site_selection?.allocation_status" class="text-xs text-ink-500">
-                    {{ allocationStatusLabel(b.site_selection.allocation_status) }}
+                    {{ allocationStatusLabel(b.site_selection.allocation_status, t) }}
                   </div>
                   <div
                     v-if="withdrawalSummaryLine(b)"
@@ -317,9 +317,9 @@
                       class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
                       :class="paymentStatusBadgeClass(b.invoice.payment_status)"
                     >
-                      {{ b.invoice.payment_status }}
+                      {{ statusLabel(b.invoice.payment_status, t) }}
                     </span>
-                    <span v-else class="text-ink-400">—</span>
+                    <span v-else class="text-ink-400">{{ t('common.none') }}</span>
                     <button
                       v-if="b.invoice?.payment_proof_present"
                       type="button"
@@ -327,7 +327,7 @@
                       class="inline-flex items-center rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-800 transition hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
                       @click="openPaymentProofReview(b, { allowVerify: canVerifyPayment(b) })"
                     >
-                      View payment proof
+                      {{ t('organizer.bookings.viewPaymentProof') }}
                     </button>
                     <button
                       v-if="canVerifyPayment(b)"
@@ -337,7 +337,7 @@
                       :data-booking-id="b.id"
                       @click="openPaymentProofReview(b, { allowVerify: true })"
                     >
-                      Verify Paid
+                      {{ t('organizer.bookings.verifyPaid') }}
                     </button>
                   </div>
                 </td>
@@ -349,7 +349,7 @@
                       :data-booking-id="b.id"
                       @click="openBookingDetails(b.id)"
                     >
-                      Details
+                      {{ t('common.details') }}
                     </button>
                     <button
                       v-if="canDeleteBookings"
@@ -358,7 +358,7 @@
                       :data-booking-id="b.id"
                       @click="deleteBooking(b.id)"
                     >
-                      Delete
+                      {{ t('common.delete') }}
                     </button>
                   </div>
                 </td>
@@ -367,7 +367,7 @@
                 <td colspan="9" class="px-4 py-0">
                   <div class="py-12">
                     <ManagementEmptyState
-                      title="No bookings found"
+                      :title="t('organizer.bookings.noBookingsFound')"
                       :description="registryEmptyDescription"
                       icon="⌕"
                       accent="cyan"
@@ -382,11 +382,11 @@
         <div class="flex flex-col gap-3 border-t border-ink-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex flex-wrap items-center gap-3 text-sm text-ink-500">
             <span v-if="pagination.total">
-              Showing {{ pagination.from ?? 0 }}–{{ pagination.to ?? 0 }} of {{ pagination.total }}
+              {{ t('organizer.bookings.showingRange', { from: pagination.from ?? 0, to: pagination.to ?? 0, total: pagination.total }) }}
             </span>
-            <span v-else>No results</span>
+            <span v-else>{{ t('organizer.bookings.noResults') }}</span>
             <label class="inline-flex items-center gap-2">
-              <span class="text-xs font-medium uppercase tracking-wide text-ink-400">Per page</span>
+              <span class="text-xs font-medium uppercase tracking-wide text-ink-400">{{ t('organizer.bookings.perPage') }}</span>
               <select v-model.number="perPage" class="ml-input w-20 py-1.5 text-sm">
                 <option :value="10">10</option>
                 <option :value="15">15</option>
@@ -403,10 +403,10 @@
               :disabled="registryLoading || pagination.current_page <= 1"
               @click="goToPage(pagination.current_page - 1)"
             >
-              Previous
+              {{ t('common.previous') }}
             </button>
             <span class="text-sm font-medium text-ink-600">
-              Page {{ pagination.current_page }} of {{ pagination.last_page || 1 }}
+              {{ t('organizer.bookings.pageOf', { current: pagination.current_page, last: pagination.last_page || 1 }) }}
             </span>
             <button
               type="button"
@@ -414,7 +414,7 @@
               :disabled="registryLoading || pagination.current_page >= pagination.last_page"
               @click="goToPage(pagination.current_page + 1)"
             >
-              Next
+              {{ t('common.next') }}
             </button>
           </div>
         </div>
@@ -439,16 +439,16 @@
           <div class="flex items-start justify-between gap-3 border-b border-ink-100 px-5 py-4">
             <div>
               <h3 id="payment-proof-review-title" class="text-lg font-extrabold text-ink-900">
-                Review payment proof
+                {{ t('organizer.bookings.proofTitle') }}
               </h3>
               <p class="mt-1 text-sm text-ink-500">
-                Booking {{ formatBookingReference(paymentVerifyTarget.id) }}
+                {{ t('organizer.bookings.proofBooking', { ref: formatBookingReference(paymentVerifyTarget.id) }) }}
               </p>
             </div>
             <button
               type="button"
               class="ml-btn-ghost px-2 py-1 text-sm"
-              aria-label="Close payment proof review"
+              :aria-label="t('organizer.bookings.proofCloseAria')"
               @click="closePaymentVerifyModal"
             >
               ×
@@ -458,27 +458,27 @@
           <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-4">
             <dl class="grid gap-3 text-sm sm:grid-cols-2">
               <div>
-                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-400">Vendor / business</dt>
+                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-400">{{ t('organizer.bookings.proofVendor') }}</dt>
                 <dd class="mt-0.5 font-semibold text-ink-900">{{ vendorLabel(paymentVerifyTarget) }}</dd>
               </div>
               <div>
-                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-400">Invoice amount</dt>
+                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-400">{{ t('organizer.bookings.proofInvoiceAmount') }}</dt>
                 <dd class="mt-0.5 font-semibold text-ink-900">{{ formatInvoiceAmount(paymentVerifyTarget.invoice?.amount) }}</dd>
               </div>
               <div>
-                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-400">Submitted</dt>
+                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-400">{{ t('organizer.bookings.proofSubmitted') }}</dt>
                 <dd class="mt-0.5 font-semibold text-ink-900">
                   {{ formatSubmittedAt(paymentVerifyTarget.invoice?.payment_submitted_at) }}
                 </dd>
               </div>
               <div>
-                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-400">Payment status</dt>
+                <dt class="text-xs font-semibold uppercase tracking-wide text-ink-400">{{ t('organizer.bookings.proofPaymentStatus') }}</dt>
                 <dd class="mt-0.5">
                   <span
                     class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
                     :class="paymentStatusBadgeClass(paymentVerifyTarget.invoice?.payment_status)"
                   >
-                    {{ paymentVerifyTarget.invoice?.payment_status || '—' }}
+                    {{ paymentVerifyTarget.invoice?.payment_status ? statusLabel(paymentVerifyTarget.invoice.payment_status, t) : t('common.none') }}
                   </span>
                 </dd>
               </div>
@@ -489,7 +489,7 @@
               data-testid="payment-proof-preview"
             >
               <div v-if="proofLoading" class="flex min-h-[12rem] items-center justify-center px-4 py-10 text-sm text-ink-500">
-                Loading payment proof…
+                {{ t('organizer.bookings.proofLoading') }}
               </div>
               <div
                 v-else-if="proofError"
@@ -502,13 +502,13 @@
                   data-testid="payment-proof-retry"
                   @click="loadPaymentProof(paymentVerifyTarget.id)"
                 >
-                  Retry
+                  {{ t('common.retry') }}
                 </button>
               </div>
               <img
                 v-else-if="proofObjectUrl"
                 :src="proofObjectUrl"
-                :alt="`Payment proof for booking ${formatBookingReference(paymentVerifyTarget.id)}`"
+                :alt="t('organizer.bookings.proofAlt', { ref: formatBookingReference(paymentVerifyTarget.id) })"
                 class="mx-auto max-h-[min(55vh,28rem)] w-full object-contain"
                 data-testid="payment-proof-image"
                 @load="onProofImageLoad"
@@ -517,14 +517,13 @@
             </div>
 
             <p v-if="paymentReviewAllowVerify" class="text-sm text-ink-600">
-              Confirm that you have reviewed this payment proof and verified the payment as received.
-              The vendor receipt and event pass will be unlocked.
+              {{ t('organizer.bookings.proofConfirmHint') }}
             </p>
           </div>
 
           <div class="flex flex-wrap justify-end gap-3 border-t border-ink-100 px-5 py-4">
             <button type="button" class="ml-btn-ghost text-sm" @click="closePaymentVerifyModal">
-              {{ paymentReviewAllowVerify ? 'Cancel' : 'Close' }}
+              {{ paymentReviewAllowVerify ? t('common.cancel') : t('common.close') }}
             </button>
             <button
               v-if="paymentReviewAllowVerify"
@@ -534,7 +533,7 @@
               :disabled="!canConfirmPaid"
               @click="confirmVerifyPayment"
             >
-              {{ verifyingPayment ? 'Verifying…' : 'Confirm Paid' }}
+              {{ verifyingPayment ? t('organizer.bookings.proofVerifying') : t('organizer.bookings.proofConfirmPaid') }}
             </button>
           </div>
         </div>
@@ -554,6 +553,7 @@
 
 <script setup>
 import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
 import ManagementKpiCard from '../../../components/management/ManagementKpiCard.vue';
@@ -566,6 +566,7 @@ import { formatBookingDate, formatBookingReference, isTerminalBookingStatus, sit
 
 const emit = defineEmits(['refreshed']);
 
+const { t } = useI18n();
 const toast = useToast();
 const {
   canApproveBookings,
@@ -621,24 +622,28 @@ const vendorLabel = (booking) =>
   booking.user?.business_profile?.business_name
   || booking.user?.businessProfile?.business_name
   || booking.user?.name
-  || '—';
+  || t('common.none');
 
 const physicalSiteSummary = (booking) => {
   const labels = siteLabelsForBooking(booking);
   if (labels) return labels;
-  return booking.site_quantity != null
-    ? `${booking.site_quantity} parking site${Number(booking.site_quantity) === 1 ? '' : 's'}`
-    : (booking.booth_type_label || 'Parking site');
+  if (booking.site_quantity != null) {
+    const count = Number(booking.site_quantity);
+    return count === 1
+      ? t('organizer.bookings.parkingSiteOne', { count })
+      : t('organizer.bookings.parkingSites', { count });
+  }
+  return booking.booth_type_label || t('organizer.bookings.parkingSite');
 };
 
 const withdrawalSummaryLine = (booking) => {
-  const summary = organizerWithdrawalSummary(booking);
-  if (!summary) return '';
-  const parts = ['Withdrawn'];
-  if (summary.paymentState === 'paid' || summary.paymentState === 'payment_submitted') {
-    parts.push('No refund');
+  const summaryLine = organizerWithdrawalSummary(booking);
+  if (!summaryLine) return '';
+  const parts = [t('organizer.bookings.withdrawalWithdrawn')];
+  if (summaryLine.paymentState === 'paid' || summaryLine.paymentState === 'payment_submitted') {
+    parts.push(t('organizer.bookings.withdrawalNoRefund'));
   }
-  if (summary.sitesReleased) parts.push('Sites released');
+  if (summaryLine.sitesReleased) parts.push(t('organizer.bookings.withdrawalSitesReleased'));
   return parts.join(' · ');
 };
 
@@ -676,12 +681,12 @@ const canConfirmPaid = computed(() =>
 
 const formatInvoiceAmount = (amount) => {
   const numeric = Number(amount);
-  if (!Number.isFinite(numeric)) return 'RM —';
+  if (!Number.isFinite(numeric)) return t('organizer.bookings.amountFallback');
   return `RM ${numeric.toFixed(2)}`;
 };
 
 const formatSubmittedAt = (value) => {
-  if (!value) return '—';
+  if (!value) return t('common.none');
   try {
     return new Date(value).toLocaleString();
   } catch {
@@ -700,7 +705,7 @@ const revokeProofObjectUrl = () => {
 const extractProofErrorMessage = async (error) => {
   if (error?.forbiddenMessage) return error.forbiddenMessage;
   const data = error?.response?.data;
-  if (!data) return 'Unable to load payment proof.';
+  if (!data) return t('organizer.bookings.proofLoadError');
   if (typeof data === 'string') {
     try {
       const parsed = JSON.parse(data);
@@ -721,7 +726,7 @@ const extractProofErrorMessage = async (error) => {
   if (typeof data?.message === 'string' && data.message.trim()) {
     return data.message;
   }
-  return 'Unable to load payment proof.';
+  return t('organizer.bookings.proofLoadError');
 };
 
 const loadPaymentProof = async (bookingId) => {
@@ -741,7 +746,7 @@ const loadPaymentProof = async (bookingId) => {
     const contentType = String(response.headers?.['content-type'] || '');
     if (contentType.includes('application/json')) {
       const text = await response.data.text();
-      let message = 'Unable to load payment proof.';
+      let message = t('organizer.bookings.proofLoadError');
       try {
         message = JSON.parse(text)?.message || message;
       } catch {
@@ -770,7 +775,7 @@ const onProofImageLoad = () => {
 const onProofImageError = () => {
   proofImageReady.value = false;
   revokeProofObjectUrl();
-  proofError.value = 'The payment proof image could not be displayed.';
+  proofError.value = t('organizer.bookings.proofImageError');
 };
 
 const openPaymentProofReview = (booking, { allowVerify = false } = {}) => {
@@ -798,12 +803,12 @@ const confirmVerifyPayment = async () => {
   verifyingPayment.value = true;
   try {
     await api.patch(`/bookings/${booking.id}/verify-payment`);
-    toast.success(`Payment for booking ${formatBookingReference(booking.id)} marked as Paid.`);
+    toast.success(t('organizer.bookings.toastPaymentVerified', { ref: formatBookingReference(booking.id) }));
     closePaymentVerifyModal();
     await fetchBookings();
   } catch (e) {
     if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to verify payment.');
+      toast.error(e.response?.data?.message || t('organizer.bookings.toastVerifyFailed'));
     }
   } finally {
     verifyingPayment.value = false;
@@ -830,7 +835,7 @@ const openBookingDetails = async (bookingId) => {
     selectedBooking.value = data;
   } catch (error) {
     bookingDetailsError.value =
-      error.forbiddenMessage || error.response?.data?.message || 'Unable to load booking reconciliation.';
+      error.forbiddenMessage || error.response?.data?.message || t('organizer.bookings.loadReconciliationFailed');
   } finally {
     bookingDetailsLoading.value = false;
   }
@@ -838,7 +843,7 @@ const openBookingDetails = async (bookingId) => {
 
 const handleBookingDetailsUpdated = async (booking) => {
   selectedBooking.value = booking;
-  toast.success('Attendance exception applied.');
+  toast.success(t('organizer.bookings.toastAttendanceApplied'));
   await fetchBookings();
   emit('refreshed');
 };
@@ -865,61 +870,58 @@ const kpi = computed(() => ({
 const kpiCards = computed(() => [
   {
     key: 'organizer',
-    title: 'Awaiting Organizer Review',
-    description: 'New vendor requests in your direct review queue.',
+    title: t('organizer.bookings.kpiAwaitingTitle'),
+    description: t('organizer.bookings.kpiAwaitingDesc'),
     value: kpi.value.pendingOrganizer,
     icon: 'O1',
     accent: themeAccent.value,
   },
   {
     key: 'revision',
-    title: 'Needs Vendor Revision',
-    description: 'Returned to vendors for corrections.',
+    title: t('organizer.bookings.kpiRevisionTitle'),
+    description: t('organizer.bookings.kpiRevisionDesc'),
     value: kpi.value.needsRevision,
     icon: 'Rv',
     accent: 'amber',
   },
   {
     key: 'approved',
-    title: 'Approved Bookings',
-    description: 'Confirmed vendor slots in the registry.',
+    title: t('organizer.bookings.kpiApprovedTitle'),
+    description: t('organizer.bookings.kpiApprovedDesc'),
     value: kpi.value.approved,
     icon: 'Ok',
     accent: 'emerald',
   },
   {
     key: 'rejected',
-    title: 'Rejected Bookings',
-    description: 'Declined vendor slot requests.',
+    title: t('organizer.bookings.kpiRejectedTitle'),
+    description: t('organizer.bookings.kpiRejectedDesc'),
     value: kpi.value.rejected,
     icon: 'X',
     accent: 'rose',
   },
 ]);
 
-const overviewHint = 'Direct organizer operations — review submissions and verify payments.';
-
-const queueTitle = 'Organizer Review Queue';
-
-const queueDescription =
-  'Review new vendor submissions directly — approve, reject, or request revisions without staff escalation.';
-
-const emptyQueueTitle = 'Queue clear — no organizer reviews pending';
-
-const emptyQueueDescription =
-  'No bookings awaiting organizer review. New vendor requests will appear here.';
-
+const overviewHint = computed(() => t('organizer.bookings.overviewHint'));
+const queueTitle = computed(() => t('organizer.bookings.queueTitle'));
+const queueDescription = computed(() => t('organizer.bookings.queueDescription'));
+const emptyQueueTitle = computed(() => t('organizer.bookings.emptyQueueTitle'));
+const emptyQueueDescription = computed(() => t('organizer.bookings.emptyQueueDescription'));
 const emptyQueueIcon = '✓';
 
-const registryLabel = computed(() => theme.value.registryLabel);
-const registryDescription = computed(() => theme.value.registryDescription);
+const registryLabel = computed(() =>
+  theme.value.registryLabelKey ? t(theme.value.registryLabelKey) : (theme.value.registryLabel || ''),
+);
+const registryDescription = computed(() =>
+  theme.value.registryDescriptionKey ? t(theme.value.registryDescriptionKey) : (theme.value.registryDescription || ''),
+);
 const registryBadgeClass = computed(() => theme.value.accentSoft || 'bg-blue-50 text-blue-900 ring-blue-200');
 
 const registryEmptyDescription = computed(() => {
   if (hasActiveFilters.value) {
-    return 'No bookings match your current search or filters. Try clearing filters to see more results.';
+    return t('organizer.bookings.registryEmptyFiltered');
   }
-  return 'Bookings will appear here once vendors submit slot requests through the portal.';
+  return t('organizer.bookings.registryEmptyDefault');
 });
 
 const buildQueryParams = () => {
@@ -981,7 +983,7 @@ const fetchRegistry = async () => {
     const { data } = await api.get(bookingsListEndpoint, { params: buildQueryParams() });
     applyResponse(data);
   } catch (e) {
-    registryError.value = e.forbiddenMessage || e.response?.data?.message || 'Unable to load registry results.';
+    registryError.value = e.forbiddenMessage || e.response?.data?.message || t('organizer.bookings.registryErrorFallback');
     if (!e.forbiddenMessage) {
       toast.error(registryError.value);
     }
@@ -1022,7 +1024,7 @@ const fetchBookings = async () => {
       await loadEventOptions();
     }
   } catch (e) {
-    loadError.value = e.forbiddenMessage || e.response?.data?.message || 'Unable to load bookings.';
+    loadError.value = e.forbiddenMessage || e.response?.data?.message || t('organizer.bookings.loadErrorFallback');
     if (!e.forbiddenMessage) {
       toast.error(loadError.value);
     }
@@ -1077,19 +1079,22 @@ const updateStatus = async (id, status, revisionComment = null) => {
   if (revisionComment) payload.revision_comment = revisionComment;
   try {
     await api.put(`/bookings/${id}`, payload);
-    toast.success(`Booking ${formatBookingReference(id)} updated to ${statusLabel(status)}.`);
+    toast.success(t('organizer.bookings.toastStatusUpdated', {
+      ref: formatBookingReference(id),
+      status: statusLabel(status, t),
+    }));
     await fetchBookings();
   } catch (e) {
     if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to update booking.');
+      toast.error(e.response?.data?.message || t('organizer.bookings.toastUpdateFailed'));
     }
   }
 };
 
 const requestRevision = async (id) => {
-  const comment = window.prompt('Enter formal revision instructions for the vendor.');
+  const comment = window.prompt(t('organizer.bookings.revisionPrompt'));
   if (!comment?.trim()) {
-    toast.error('Revision instructions are required.');
+    toast.error(t('organizer.bookings.revisionRequired'));
     return;
   }
   await updateStatus(id, 'Needs_Revision', comment.trim());
@@ -1097,14 +1102,14 @@ const requestRevision = async (id) => {
 
 const deleteBooking = async (id) => {
   if (!canDeleteBookings.value) return;
-  if (!window.confirm(`Delete booking ${formatBookingReference(id)}? This cannot be undone.`)) return;
+  if (!window.confirm(t('organizer.bookings.deleteConfirm', { ref: formatBookingReference(id) }))) return;
   try {
     await api.delete(`/bookings/${id}`);
-    toast.success(`Booking ${formatBookingReference(id)} deleted.`);
+    toast.success(t('organizer.bookings.toastDeleted', { ref: formatBookingReference(id) }));
     await fetchBookings();
   } catch (e) {
     if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to delete booking.');
+      toast.error(e.response?.data?.message || t('organizer.bookings.toastDeleteFailed'));
     }
   }
 };
@@ -1117,7 +1122,7 @@ const viewPdf = async (bookingId) => {
     setTimeout(() => URL.revokeObjectURL(fileUrl), 60000);
   } catch (e) {
     if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to open booking PDF.');
+      toast.error(e.response?.data?.message || t('organizer.bookings.toastPdfFailed'));
     }
   }
 };

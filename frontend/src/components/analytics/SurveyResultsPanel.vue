@@ -4,7 +4,7 @@
       <div class="min-w-0">
         <AnalyticsDataSourceBadge :sources="sources" filter="csv" />
         <p class="mt-1.5 text-sm text-ink-600">
-          Quantitative vendor survey results (Q1–Q13)
+          {{ t('organizer.analytics.survey.quantitativeLead') }}
           <template v-if="respondentCount != null"> · <strong>n = {{ respondentCount }}</strong></template>
         </p>
       </div>
@@ -13,7 +13,7 @@
         v-if="!surveyEmpty"
         class="flex rounded-lg border border-ink-200 bg-white p-0.5 text-xs font-semibold"
         role="group"
-        aria-label="Chart metric"
+        :aria-label="t('organizer.analytics.survey.chartMetricAria')"
       >
         <button
           type="button"
@@ -21,7 +21,7 @@
           :class="metricMode === 'count' ? 'bg-brand-600 text-white' : 'text-ink-600 hover:bg-ink-50'"
           @click="metricMode = 'count'"
         >
-          Count
+          {{ t('organizer.analytics.survey.count') }}
         </button>
         <button
           type="button"
@@ -29,7 +29,7 @@
           :class="metricMode === 'percent' ? 'bg-brand-600 text-white' : 'text-ink-600 hover:bg-ink-50'"
           @click="metricMode = 'percent'"
         >
-          Percentage
+          {{ t('organizer.analytics.survey.percentage') }}
         </button>
       </div>
     </div>
@@ -45,20 +45,20 @@
         class="ml-btn-primary mt-4 text-sm"
         @click="$emit('open-data-sources')"
       >
-        Upload Survey CSV
+        {{ t('organizer.analytics.survey.uploadSurveyCsv') }}
       </button>
     </div>
 
     <template v-else>
       <section class="space-y-3">
         <header>
-          <h3 class="text-sm font-extrabold text-ink-900">Vendor and selling profile</h3>
-          <p class="text-xs text-ink-500">Product categories, sales purpose, and information sources</p>
+          <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.survey.sectionVendorProfile') }}</h3>
+          <p class="text-xs text-ink-500">{{ t('organizer.analytics.survey.sectionVendorProfileHint') }}</p>
         </header>
         <div class="grid gap-3 lg:grid-cols-2">
           <SurveyDistributionChart
-            title="Product categories"
-            subtitle="Multi-select · ranked by frequency"
+            :title="t('organizer.analytics.survey.productCategories')"
+            :subtitle="t('organizer.analytics.survey.productCategoriesSub')"
             chart-type="lollipop-h"
             test-id="chart-product-categories"
             :rows="productCategories"
@@ -66,11 +66,11 @@
             :denominator="respondentCount"
             :metric-mode="metricMode"
             sort-by-count
-            empty-text="No product category selections yet."
+            :empty-text="t('organizer.analytics.survey.productCategoriesEmpty')"
           />
           <SurveyDistributionChart
-            title="Sales purpose"
-            subtitle="Single choice · composition of answered responses"
+            :title="t('organizer.analytics.survey.salesPurpose')"
+            :subtitle="t('organizer.analytics.survey.salesPurposeSub')"
             chart-type="stacked-h"
             test-id="chart-sales-purpose"
             :rows="salesPurpose"
@@ -80,12 +80,12 @@
             :answered-count="salesPurposeAnswered"
             :unanswered-count="salesPurposeUnanswered"
             include-zeros
-            empty-text="No sales purpose responses yet."
+            :empty-text="t('organizer.analytics.survey.salesPurposeEmpty')"
           />
           <SurveyDistributionChart
             class="lg:col-span-2"
-            title="Event information sources"
-            subtitle="Multi-select · totals may exceed 100%"
+            :title="t('organizer.analytics.survey.eventInfoSources')"
+            :subtitle="t('organizer.analytics.survey.eventInfoSourcesSub')"
             chart-type="lollipop-h"
             test-id="chart-event-info"
             :rows="eventInfoSources"
@@ -93,20 +93,20 @@
             :denominator="respondentCount"
             :metric-mode="metricMode"
             sort-by-count
-            empty-text="No event information source selections yet."
+            :empty-text="t('organizer.analytics.survey.eventInfoSourcesEmpty')"
           />
         </div>
       </section>
 
       <section class="space-y-3">
         <header>
-          <h3 class="text-sm font-extrabold text-ink-900">Sales outcomes</h3>
-          <p class="text-xs text-ink-500">Self-reported bands only — not exact RM totals</p>
+          <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.survey.sectionSalesOutcomes') }}</h3>
+          <p class="text-xs text-ink-500">{{ t('organizer.analytics.survey.sectionSalesOutcomesHint') }}</p>
         </header>
         <div class="grid gap-3 lg:grid-cols-2">
           <SurveyDistributionChart
-            title="Gross sales bands"
-            subtitle="Self-reported categorical bands · not exact RM"
+            :title="t('organizer.analytics.survey.grossSalesBands')"
+            :subtitle="t('organizer.analytics.survey.grossSalesBandsSub')"
             chart-type="column-v"
             test-id="chart-gross-sales"
             :rows="grossSales"
@@ -115,11 +115,11 @@
             :metric-mode="metricMode"
             :unanswered-count="grossSalesUnanswered"
             include-zeros
-            empty-text="No gross sales band responses yet."
+            :empty-text="t('organizer.analytics.survey.grossSalesBandsEmpty')"
           />
           <SurveyDistributionChart
-            title="Used-item sell-through"
-            subtitle="Ordered questionnaire bands for used goods"
+            :title="t('organizer.analytics.survey.usedItemSellThrough')"
+            :subtitle="t('organizer.analytics.survey.usedItemSellThroughSub')"
             chart-type="segmented-h"
             test-id="chart-items-sold"
             :rows="itemsSold"
@@ -129,51 +129,51 @@
             :answered-count="itemsSoldAnswered"
             :unanswered-count="itemsSoldUnanswered"
             include-zeros
-            empty-text="No sell-through responses yet."
+            :empty-text="t('organizer.analytics.survey.usedItemSellThroughEmpty')"
           />
         </div>
       </section>
 
       <section class="space-y-3">
         <header>
-          <h3 class="text-sm font-extrabold text-ink-900">Items and reuse</h3>
-          <p class="text-xs text-ink-500">Item conditions, unsold actions, and reuse proxies</p>
+          <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.survey.sectionItemsReuse') }}</h3>
+          <p class="text-xs text-ink-500">{{ t('organizer.analytics.survey.sectionItemsReuseHint') }}</p>
         </header>
         <div class="grid gap-3 lg:grid-cols-2">
           <SurveyDistributionChart
-            title="Item conditions"
-            subtitle="Multi-select · ranked by frequency"
+            :title="t('organizer.analytics.survey.itemConditions')"
+            :subtitle="t('organizer.analytics.survey.itemConditionsSub')"
             chart-type="lollipop-h"
             test-id="chart-item-conditions"
             :rows="itemConditions"
             :denominator="respondentCount"
             :metric-mode="metricMode"
             sort-by-count
-            empty-text="No item condition selections yet."
+            :empty-text="t('organizer.analytics.survey.itemConditionsEmpty')"
           />
           <SurveyDistributionChart
-            title="Unsold-item actions"
-            subtitle="Multi-select · reuse and discard proxies"
+            :title="t('organizer.analytics.survey.unsoldActions')"
+            :subtitle="t('organizer.analytics.survey.unsoldActionsSub')"
             chart-type="lollipop-h"
             test-id="chart-unsold-actions"
             :rows="unsoldActions"
             :denominator="respondentCount"
             :metric-mode="metricMode"
             sort-by-count
-            empty-text="No unsold-item action selections yet."
+            :empty-text="t('organizer.analytics.survey.unsoldActionsEmpty')"
           />
         </div>
         <div
           v-if="circularity"
           class="rounded-xl border border-sky-100 bg-white p-3 text-sm text-ink-700"
         >
-          <p class="font-bold text-ink-900">Reuse / circularity proxies</p>
+          <p class="font-bold text-ink-900">{{ t('organizer.analytics.survey.circularityProxies') }}</p>
           <p class="mt-1">
-            Positive reuse actions:
+            {{ t('organizer.analytics.survey.positiveReuseActions') }}
             <strong>{{ circularity.positive_action_display }}</strong>
           </p>
           <p>
-            Discarded:
+            {{ t('organizer.analytics.survey.discarded') }}
             <strong>{{ circularity.discard_action_display }}</strong>
           </p>
           <p class="mt-1 text-xs text-ink-500">{{ circularity.note }}</p>
@@ -182,61 +182,60 @@
 
       <section class="space-y-3">
         <header>
-          <h3 class="text-sm font-extrabold text-ink-900">Experience and improvements</h3>
-          <p class="text-xs text-ink-500">Ratings, difficulties, and improvement priorities</p>
+          <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.survey.sectionExperience') }}</h3>
+          <p class="text-xs text-ink-500">{{ t('organizer.analytics.survey.sectionExperienceHint') }}</p>
         </header>
         <div class="grid gap-3 lg:grid-cols-2">
           <SurveyDistributionChart
-            title="Experience rating"
-            subtitle="Ordered rating responses"
+            :title="t('organizer.analytics.survey.experienceRating')"
+            :subtitle="t('organizer.analytics.survey.experienceRatingSub')"
             chart-type="column-v"
             test-id="chart-experience-rating"
             :rows="experienceRating"
             :denominator="respondentCount"
             :metric-mode="metricMode"
-            empty-text="No experience rating responses yet."
+            :empty-text="t('organizer.analytics.survey.experienceRatingEmpty')"
           />
           <SurveyDistributionChart
-            title="Improvement priorities"
-            subtitle="Multi-select · ranked by frequency"
+            :title="t('organizer.analytics.survey.improvementPriorities')"
+            :subtitle="t('organizer.analytics.survey.improvementPrioritiesSub')"
             chart-type="lollipop-h"
             test-id="chart-improvements"
             :rows="improvementAreas"
             :denominator="respondentCount"
             :metric-mode="metricMode"
             sort-by-count
-            empty-text="No improvement priority selections yet."
+            :empty-text="t('organizer.analytics.survey.improvementPrioritiesEmpty')"
           />
           <SurveyDistributionChart
-            title="Supporting activity attracted visitors"
-            subtitle="Single choice"
+            :title="t('organizer.analytics.survey.supportingAttracted')"
+            :subtitle="t('organizer.analytics.survey.supportingAttractedSub')"
             chart-type="stacked-h"
             test-id="chart-supporting-attracted"
             :rows="supportingAttracted"
             :denominator="respondentCount"
             :metric-mode="metricMode"
-            empty-text="No supporting-activity responses yet."
+            :empty-text="t('organizer.analytics.survey.supportingAttractedEmpty')"
           />
           <SurveyDistributionChart
-            title="Supporting activity impacts"
-            subtitle="Multi-select · ranked by frequency"
+            :title="t('organizer.analytics.survey.supportingImpacts')"
+            :subtitle="t('organizer.analytics.survey.supportingImpactsSub')"
             chart-type="lollipop-h"
             test-id="chart-supporting-impacts"
             :rows="supportingImpacts"
             :denominator="respondentCount"
             :metric-mode="metricMode"
             sort-by-count
-            empty-text="No supporting-activity impact selections yet."
+            :empty-text="t('organizer.analytics.survey.supportingImpactsEmpty')"
           />
         </div>
         <div
           v-if="hasDifficulty"
           class="rounded-xl border border-sky-100 bg-white p-3 text-sm text-ink-700"
         >
-          <p class="font-bold text-ink-900">Vendor difficulties (registration / info)</p>
+          <p class="font-bold text-ink-900">{{ t('organizer.analytics.survey.vendorDifficulties') }}</p>
           <p class="mt-1">
-            Yes: <strong>{{ hasDifficulty.yes_display }}</strong>
-            · No: <strong>{{ hasDifficulty.no_display }}</strong>
+{{ t('organizer.analytics.survey.yesNo', { yes: hasDifficulty.yes_display, no: hasDifficulty.no_display }) }}
           </p>
         </div>
       </section>
@@ -246,6 +245,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import AnalyticsDataSourceBadge from './AnalyticsDataSourceBadge.vue';
 import SurveyDistributionChart from './SurveyDistributionChart.vue';
 import {
@@ -266,6 +266,7 @@ const props = defineProps({
 
 defineEmits(['open-data-sources']);
 
+const { t } = useI18n();
 const metricMode = ref('count');
 
 const vendors = computed(() => props.overview?.survey?.sections?.vendors || {});
@@ -315,6 +316,6 @@ const itemsSoldUnanswered = computed(() => {
 });
 
 const emptyMessage = computed(() =>
-  props.overview?.survey?.message || 'No CSV data is connected to this event.',
+  props.overview?.survey?.message || t('organizer.analytics.survey.noCsvConnected'),
 );
 </script>

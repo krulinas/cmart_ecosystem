@@ -2,25 +2,25 @@
   <section class="ml-card">
     <div class="flex items-center justify-between mb-4">
       <div>
-        <h2 class="text-lg font-extrabold text-ink-900">Staff Audit Log</h2>
-        <p class="text-sm text-ink-500">Approval and rejection actions performed by the Carboot Organizer and admin.</p>
+        <h2 class="text-lg font-extrabold text-ink-900">{{ t('audit.title') }}</h2>
+        <p class="text-sm text-ink-500">{{ t('audit.lead') }}</p>
       </div>
-      <button class="ml-btn-ghost" @click="load" :disabled="loading">{{ loading ? 'Loading…' : 'Refresh' }}</button>
+      <button class="ml-btn-ghost" @click="load" :disabled="loading">{{ loading ? t('audit.loading') : t('audit.refresh') }}</button>
     </div>
 
-    <div v-if="loading && !logs.length" class="text-center text-ink-500 py-10">Loading audit entries…</div>
-    <div v-else-if="!logs.length" class="text-center text-ink-500 py-10">No audit records yet.</div>
+    <div v-if="loading && !logs.length" class="text-center text-ink-500 py-10">{{ t('audit.loadingEntries') }}</div>
+    <div v-else-if="!logs.length" class="text-center text-ink-500 py-10">{{ t('audit.empty') }}</div>
 
     <div v-else class="overflow-x-auto">
       <table class="min-w-full text-sm">
         <thead>
           <tr class="text-left text-xs uppercase tracking-wider text-ink-500 border-b border-ink-200">
-            <th class="px-3 py-2">When</th>
-            <th class="px-3 py-2">Actor</th>
-            <th class="px-3 py-2">Booking</th>
-            <th class="px-3 py-2">Vendor</th>
-            <th class="px-3 py-2">Transition</th>
-            <th class="px-3 py-2">Comment</th>
+            <th class="px-3 py-2">{{ t('audit.colWhen') }}</th>
+            <th class="px-3 py-2">{{ t('audit.colActor') }}</th>
+            <th class="px-3 py-2">{{ t('audit.colBooking') }}</th>
+            <th class="px-3 py-2">{{ t('audit.colVendor') }}</th>
+            <th class="px-3 py-2">{{ t('audit.colTransition') }}</th>
+            <th class="px-3 py-2">{{ t('audit.colComment') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-ink-100">
@@ -33,9 +33,9 @@
             <td class="px-3 py-3 font-semibold">{{ formatBookingReference(entry.booking_id) }}</td>
             <td class="px-3 py-3">{{ entry.booking?.user?.name || '—' }}</td>
             <td class="px-3 py-3">
-              <span class="text-ink-500">{{ entry.from_status }}</span>
+              <span class="text-ink-500">{{ statusLabel(entry.from_status, t) }}</span>
               →
-              <span class="font-semibold">{{ entry.to_status }}</span>
+              <span class="font-semibold">{{ statusLabel(entry.to_status, t) }}</span>
             </td>
             <td class="px-3 py-3 text-ink-600 max-w-xs truncate" :title="entry.revision_comment || ''">
               {{ entry.revision_comment || '—' }}
@@ -50,23 +50,26 @@
         class="ml-btn-ghost text-sm"
         :disabled="pagination.current_page <= 1"
         @click="goPage(pagination.current_page - 1)"
-      >Previous</button>
-      <span class="text-sm text-ink-500 self-center">Page {{ pagination.current_page }} of {{ pagination.last_page }}</span>
+      >{{ t('audit.previous') }}</button>
+      <span class="text-sm text-ink-500 self-center">{{ t('audit.pageOf', { current: pagination.current_page, last: pagination.last_page }) }}</span>
       <button
         class="ml-btn-ghost text-sm"
         :disabled="pagination.current_page >= pagination.last_page"
         @click="goPage(pagination.current_page + 1)"
-      >Next</button>
+      >{{ t('audit.next') }}</button>
     </div>
   </section>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
+import { statusLabel } from '../../../i18n';
 import api from '../../../services/api';
 import { formatBookingReference } from '../../../utils/bookingDisplay';
 
+const { t } = useI18n();
 const toast = useToast();
 const loading = ref(false);
 const logs = ref([]);
@@ -95,7 +98,7 @@ const load = async (page = 1) => {
     pagination.last_page = data.last_page ?? 1;
   } catch (e) {
     if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to load audit logs.');
+      toast.error(e.response?.data?.message || t('audit.toastLoadError'));
     }
   } finally {
     loading.value = false;

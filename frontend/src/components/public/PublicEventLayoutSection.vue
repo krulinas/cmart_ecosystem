@@ -5,11 +5,11 @@
     data-testid="public-event-layout-section"
   >
     <div class="max-w-4xl">
-      <p class="text-xs font-bold uppercase tracking-wider text-brand-600">Visitor Guide</p>
+      <p class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ t('calendar.details.visitorGuide') }}</p>
       <h3 id="public-layout-heading" class="mt-1 text-xl font-extrabold text-gray-900">
-        Event Layout Map
+        {{ t('calendar.details.layoutMapTitle') }}
       </h3>
-      <p class="mt-1 text-sm text-gray-600">Find rows and areas by sales category.</p>
+      <p class="mt-1 text-sm text-gray-600">{{ t('calendar.details.layoutMapLead') }}</p>
     </div>
 
     <p class="sr-only" aria-live="polite" data-testid="public-layout-live-announcement">
@@ -22,7 +22,7 @@
       role="status"
       data-testid="public-layout-loading"
     >
-      Loading event layout…
+      {{ t('calendar.details.loadingLayout') }}
     </div>
 
     <div
@@ -31,14 +31,14 @@
       role="alert"
       data-testid="public-layout-error"
     >
-      <p class="text-sm font-semibold text-rose-900">The event layout could not be loaded.</p>
+      <p class="text-sm font-semibold text-rose-900">{{ t('calendar.details.layoutLoadError') }}</p>
       <button
         type="button"
         class="mt-3 min-h-11 rounded-lg bg-rose-700 px-4 py-2 text-sm font-bold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
         data-testid="public-layout-retry"
         @click="loadLayout"
       >
-        Try Again
+        {{ t('calendar.details.tryAgain') }}
       </button>
     </div>
 
@@ -48,7 +48,7 @@
       role="status"
       data-testid="public-layout-unavailable"
     >
-      The event layout has not been published yet.
+      {{ t('calendar.details.layoutNotPublished') }}
     </div>
 
     <div
@@ -57,7 +57,7 @@
       role="status"
       data-testid="public-layout-empty"
     >
-      No public layout is available at this time.
+      {{ t('calendar.details.noPublicLayout') }}
     </div>
 
     <template v-else-if="layout">
@@ -67,7 +67,7 @@
         role="note"
         data-testid="public-layout-historical"
       >
-        This is a historical layout map for an event that has ended or closed.
+        {{ t('calendar.details.historicalLayoutNote') }}
       </div>
 
       <p
@@ -75,16 +75,16 @@
         class="mt-5 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-900"
         data-testid="public-layout-entrance-note"
       >
-        <strong>Entrance guidance:</strong> {{ layout.entrance_note }}
+        <strong>{{ t('calendar.details.entranceGuidance') }}</strong> {{ layout.entrance_note }}
       </p>
 
       <div class="mt-6">
-        <h4 class="text-sm font-extrabold text-gray-900">Browse by Category</h4>
-        <p class="mt-1 text-xs text-gray-600">Select a category to find related areas.</p>
+        <h4 class="text-sm font-extrabold text-gray-900">{{ t('calendar.details.browseByCategory') }}</h4>
+        <p class="mt-1 text-xs text-gray-600">{{ t('calendar.details.selectCategoryHint') }}</p>
         <div
           class="mt-3 flex flex-wrap gap-2"
           role="group"
-          aria-label="Filter map by sales category"
+          :aria-label="t('calendar.details.categoryFilterAria')"
           data-testid="public-layout-category-filter"
         >
           <button
@@ -111,7 +111,7 @@
         role="status"
         data-testid="public-layout-category-empty"
       >
-        No rows are available for this category.
+        {{ t('calendar.details.noRowsForCategory') }}
       </div>
 
       <div v-else class="mt-5 space-y-4" data-testid="public-layout-map">
@@ -125,7 +125,7 @@
       </div>
 
       <p class="mt-5 text-xs leading-relaxed text-gray-600">
-        Site labels help you locate vendor positions during the event.
+        {{ t('calendar.details.siteLabelsHelp') }}
       </p>
     </template>
   </section>
@@ -133,6 +133,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import VisualParkingLayout from '../layout/VisualParkingLayout.vue';
 import {
   getPublicEventLayout,
@@ -152,6 +153,8 @@ const props = defineProps({
   eventId: { type: [Number, String], required: true },
 });
 
+const { t } = useI18n();
+
 const loading = ref(false);
 const loadError = ref(false);
 const unavailable = ref(false);
@@ -160,8 +163,10 @@ const activeCategoryId = ref('all');
 const liveAnnouncement = ref('');
 let loadToken = 0;
 
+const allCategoriesLabel = computed(() => t('calendar.details.allCategories'));
+
 const filterCategories = computed(() => [
-  { id: 'all', label: 'All Categories' },
+  { id: 'all', label: allCategoriesLabel.value },
   ...(layout.value?.categories || []),
 ]);
 
@@ -182,18 +187,19 @@ async function loadLayout() {
     layout.value = normalizePublicLayout(data);
     activeCategoryId.value = 'all';
     liveAnnouncement.value = publicLayoutFilterAnnouncement(
-      'All Categories',
+      allCategoriesLabel.value,
       layout.value.rows.length,
+      t,
     );
   } catch (error) {
     if (token !== loadToken) return;
     layout.value = null;
     if (isPublicLayoutUnavailable(error)) {
       unavailable.value = true;
-      liveAnnouncement.value = 'The event layout has not been published yet.';
+      liveAnnouncement.value = t('calendar.details.layoutNotPublished');
     } else {
       loadError.value = true;
-      liveAnnouncement.value = 'The event layout could not be loaded.';
+      liveAnnouncement.value = t('calendar.details.layoutLoadError');
     }
   } finally {
     if (token === loadToken) loading.value = false;
@@ -205,6 +211,7 @@ function selectCategory(category) {
   liveAnnouncement.value = publicLayoutFilterAnnouncement(
     category.label,
     visibleRows.value.length,
+    t,
   );
 }
 

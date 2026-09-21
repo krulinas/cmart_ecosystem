@@ -1,4 +1,5 @@
 /** Codebook order + display helpers for Vendors & Sales charts (mirrors Python schema). */
+import { tt } from '../i18n';
 
 export const PRODUCT_CATEGORY_ORDER = [
   'makanan_minuman',
@@ -116,5 +117,5 @@ export function formatTooltip(row, mode) {
   const n = row.denominator || 0;
   const count = row.count || 0;
   const pct = row.percent != null ? row.percent : (n ? Math.round((count / n) * 1000) / 10 : 0);
-  return `${count} of ${n} respondents (${pct}%)`;
+  return tt('organizer.analytics.chart.tooltipRespondents', { count, n, pct });
 }

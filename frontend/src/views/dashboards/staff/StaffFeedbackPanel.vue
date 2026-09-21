@@ -2,15 +2,15 @@
   <section class="ml-card">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
       <div>
-        <h2 class="text-lg font-extrabold text-ink-900">Community Feedback Moderation</h2>
-        <p class="text-sm text-ink-500">Includes hidden reviews. Public portal only shows visible entries.</p>
+        <h2 class="text-lg font-extrabold text-ink-900">{{ t('staff.feedback.title') }}</h2>
+        <p class="text-sm text-ink-500">{{ t('staff.feedback.subtitle') }}</p>
       </div>
       <button class="ml-btn-ghost shrink-0" @click="load" :disabled="loading">
-        {{ loading ? 'Loading…' : 'Refresh' }}
+        {{ loading ? t('staff.feedback.loading') : t('staff.feedback.refresh') }}
       </button>
     </div>
 
-    <div class="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="Feedback filters">
+    <div class="mb-4 flex flex-wrap gap-2" role="tablist" :aria-label="t('staff.feedback.filtersAria')">
       <button
         v-for="filter in FILTERS"
         :key="filter.value"
@@ -27,11 +27,11 @@
       </button>
     </div>
 
-    <div v-if="loading && !hasLoaded" class="text-center text-ink-500 py-10">Loading feedback…</div>
+    <div v-if="loading && !hasLoaded" class="text-center text-ink-500 py-10">{{ t('staff.feedback.loadingList') }}</div>
     <div v-else-if="loadError" class="rounded-xl border border-rose-200 bg-rose-50/60 px-4 py-8 text-center text-sm text-rose-800">
       {{ loadError }}
     </div>
-    <div v-else-if="!items.length" class="text-center text-ink-500 py-10">No feedback records match this filter.</div>
+    <div v-else-if="!items.length" class="text-center text-ink-500 py-10">{{ t('staff.feedback.empty') }}</div>
 
     <div v-else class="space-y-4">
       <article
@@ -41,14 +41,14 @@
         :class="item.is_hidden ? 'border-rose-200 bg-rose-50/40' : 'border-ink-200 bg-white'"
         role="button"
         tabindex="0"
-        :aria-label="`View feedback from ${item.user_name || 'community member'}`"
+        :aria-label="t('staff.feedback.viewAria', { name: item.user_name || t('staff.feedback.communityMember') })"
         @click="openDetail(item)"
         @keydown.enter="openDetail(item)"
         @keydown.space.prevent="openDetail(item)"
       >
         <div class="flex flex-wrap justify-between gap-2 mb-2">
           <div class="flex flex-wrap items-center gap-1.5">
-            <span class="font-bold text-ink-900">{{ item.user_name || 'Community Member' }}</span>
+            <span class="font-bold text-ink-900">{{ item.user_name || t('staff.feedback.communityMember') }}</span>
             <span v-if="item.participation_type_label || item.role" class="text-xs font-semibold text-brand-700">
               {{ item.participation_type_label || item.role }}
             </span>
@@ -68,16 +68,16 @@
 
         <div class="flex flex-wrap gap-1.5 mb-2">
           <span class="ml-badge text-[10px]" :class="item.is_hidden ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'">
-            {{ item.is_hidden ? 'Hidden' : 'Visible' }}
+            {{ item.is_hidden ? t('staff.feedback.hidden') : t('staff.feedback.visible') }}
           </span>
           <span class="ml-badge text-[10px]" :class="item.reviewed_at ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'">
-            {{ item.reviewed_at ? 'Reviewed' : 'Unreviewed' }}
+            {{ item.reviewed_at ? t('staff.feedback.reviewed') : t('staff.feedback.unreviewed') }}
           </span>
           <span v-if="imageCount(item)" class="ml-badge text-[10px] bg-violet-100 text-violet-800">
-            {{ imageCount(item) }} photo{{ imageCount(item) === 1 ? '' : 's' }}
+            {{ t('staff.feedback.photoCount', { n: imageCount(item) }) }}
           </span>
-          <span v-if="item.official_reply?.status === 'draft'" class="ml-badge text-[10px] bg-orange-100 text-orange-800">Reply Draft</span>
-          <span v-if="item.official_reply?.status === 'published'" class="ml-badge text-[10px] bg-emerald-100 text-emerald-800">Reply Published</span>
+          <span v-if="item.official_reply?.status === 'draft'" class="ml-badge text-[10px] bg-orange-100 text-orange-800">{{ t('staff.feedback.replyDraft') }}</span>
+          <span v-if="item.official_reply?.status === 'published'" class="ml-badge text-[10px] bg-emerald-100 text-emerald-800">{{ t('staff.feedback.replyPublished') }}</span>
         </div>
 
         <p class="text-sm text-ink-700 italic mb-3 line-clamp-2">"{{ item.comment || item.comments }}"</p>
@@ -86,12 +86,12 @@
           v-if="feedbackImages(item).length"
           type="button"
           class="rounded-lg overflow-hidden border border-ink-200 mb-3 hover:border-brand-300 hover:ring-2 hover:ring-brand-500/20 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-          :aria-label="`View ${imageCount(item)} attached photo${imageCount(item) === 1 ? '' : 's'} from ${item.user_name}`"
+          :aria-label="t('staff.feedback.viewPhotosAria', { n: imageCount(item), name: item.user_name || t('staff.feedback.communityMember') })"
           @click.stop="openImagePreview(feedbackImageUrls(item), item.user_name)"
         >
           <img
             :src="feedbackImages(item)[0].image_url"
-            :alt="`Photo attachment from ${item.user_name || 'community member'}`"
+            :alt="t('staff.feedback.photoAlt', { name: item.user_name || t('staff.feedback.communityMember') })"
             class="h-16 w-16 object-cover"
             loading="lazy"
           />
@@ -99,7 +99,7 @@
 
         <div class="flex flex-wrap gap-2" @click.stop>
           <button type="button" class="ml-btn-ghost text-sm" @click="toggleHidden(item)">
-            {{ item.is_hidden ? 'Unhide' : 'Hide' }}
+            {{ item.is_hidden ? t('staff.feedback.unhide') : t('staff.feedback.hide') }}
           </button>
           <button
             v-if="!item.reviewed_at"
@@ -107,7 +107,7 @@
             class="ml-btn-primary text-sm !bg-sky-600 hover:!bg-sky-700 focus:!ring-sky-500"
             @click="markReviewed(item)"
           >
-            Mark Reviewed
+            {{ t('staff.feedback.markReviewed') }}
           </button>
           <button
             v-if="canDeleteFeedback"
@@ -115,7 +115,7 @@
             class="ml-btn-danger text-sm"
             @click="requestDelete(item)"
           >
-            Delete
+            {{ t('staff.feedback.delete') }}
           </button>
         </div>
       </article>
@@ -164,14 +164,14 @@
         >
           <div class="absolute inset-0 bg-black/50" aria-hidden="true" @click="cancelDelete" />
           <div class="relative z-10 w-full max-w-md rounded-2xl border border-ink-200 bg-white p-6 shadow-2xl">
-            <h3 id="delete-feedback-title" class="text-lg font-bold text-ink-900">Delete feedback?</h3>
+            <h3 id="delete-feedback-title" class="text-lg font-bold text-ink-900">{{ t('staff.feedback.deleteTitle') }}</h3>
             <p class="mt-2 text-sm text-ink-600">
-              Permanently delete feedback #{{ deleteConfirm.item?.id }}? This cannot be undone.
+              {{ t('staff.feedback.deleteBody', { id: deleteConfirm.item?.id }) }}
             </p>
             <div class="mt-6 flex justify-end gap-2">
-              <button type="button" class="ml-btn-ghost" @click="cancelDelete">Cancel</button>
+              <button type="button" class="ml-btn-ghost" @click="cancelDelete">{{ t('staff.feedback.cancel') }}</button>
               <button type="button" class="ml-btn-danger" :disabled="deleting" @click="confirmDelete">
-                {{ deleting ? 'Deleting…' : 'Delete' }}
+                {{ deleting ? t('staff.feedback.deleting') : t('staff.feedback.delete') }}
               </button>
             </div>
           </div>
@@ -182,7 +182,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import api from '../../../services/api';
 import { resolveStorageUrl } from '../../../utils/imageUrl';
@@ -190,15 +191,17 @@ import { useManagementAccess } from '../../../composables/useManagementAccess';
 import FeedbackDetailModal from '../../../components/management/FeedbackDetailModal.vue';
 import ImageLightbox from '../../../components/management/ImageLightbox.vue';
 
-const FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'visible', label: 'Visible' },
-  { value: 'hidden', label: 'Hidden' },
-  { value: 'unreviewed', label: 'Unreviewed' },
-  { value: 'reviewed', label: 'Reviewed' },
-  { value: 'with_photo', label: 'With Photo' },
-  { value: 'low_rating', label: 'Low Rating' },
-];
+const { t } = useI18n();
+
+const FILTERS = computed(() => [
+  { value: 'all', label: t('staff.feedback.filterAll') },
+  { value: 'visible', label: t('staff.feedback.filterVisible') },
+  { value: 'hidden', label: t('staff.feedback.filterHidden') },
+  { value: 'unreviewed', label: t('staff.feedback.filterUnreviewed') },
+  { value: 'reviewed', label: t('staff.feedback.filterReviewed') },
+  { value: 'with_photo', label: t('staff.feedback.filterWithPhoto') },
+  { value: 'low_rating', label: t('staff.feedback.filterLowRating') },
+]);
 
 const toast = useToast();
 const { canDeleteFeedback, canPublishOfficialReply } = useManagementAccess();
@@ -210,7 +213,7 @@ const loadError = ref(null);
 const activeFilter = ref('all');
 const detailOpen = ref(false);
 const selectedItem = ref(null);
-const lightbox = ref({ open: false, url: null, images: [], startIndex: 0, alt: 'Photo attachment', caption: '' });
+const lightbox = ref({ open: false, url: null, images: [], startIndex: 0, alt: '', caption: '' });
 const deleteConfirm = ref({ open: false, item: null });
 const deleting = ref(false);
 
@@ -251,7 +254,7 @@ const load = async () => {
       if (updated) selectedItem.value = updated;
     }
   } catch (e) {
-    loadError.value = e.forbiddenMessage || e.response?.data?.message || 'Unable to load feedback for moderation.';
+    loadError.value = e.forbiddenMessage || e.response?.data?.message || t('staff.feedback.loadError');
     if (!e.forbiddenMessage) {
       toast.error(loadError.value);
     }
@@ -273,8 +276,8 @@ const openImagePreview = (urlOrImages, caption = '', startIndex = 0) => {
     url: urls[0] || null,
     images: urls,
     startIndex,
-    alt: `Photo attachment from ${caption || 'community member'}`,
-    caption: caption ? `Photo attachment from ${caption}` : '',
+    alt: t('staff.feedback.photoAlt', { name: caption || t('staff.feedback.communityMember') }),
+    caption: caption ? t('staff.feedback.photoAttachmentCaption', { name: caption }) : '',
   };
 };
 
@@ -283,11 +286,11 @@ const removeAttachment = async (item, image) => {
   const token = image?.is_legacy || !image?.id ? 'legacy' : image.id;
   try {
     await api.delete(`/feedbacks/${item.id}/images/${token}`);
-    toast.success('Attachment removed.');
+    toast.success(t('staff.feedback.attachmentRemoved'));
     await load();
   } catch (e) {
     if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to remove attachment.');
+      toast.error(e.response?.data?.message || t('staff.feedback.unableRemoveAttachment'));
     }
   }
 };
@@ -295,11 +298,11 @@ const removeAttachment = async (item, image) => {
 const toggleHidden = async (item) => {
   try {
     await api.put(`/feedbacks/${item.id}`, { is_hidden: !item.is_hidden });
-    toast.success(item.is_hidden ? 'Review unhidden.' : 'Review hidden from public portal.');
+    toast.success(item.is_hidden ? t('staff.feedback.reviewUnhidden') : t('staff.feedback.reviewHidden'));
     await load();
   } catch (e) {
     if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to update visibility.');
+      toast.error(e.response?.data?.message || t('staff.feedback.unableUpdateVisibility'));
     }
   }
 };
@@ -307,11 +310,11 @@ const toggleHidden = async (item) => {
 const markReviewed = async (item) => {
   try {
     await api.post(`/feedbacks/${item.id}/reviewed`);
-    toast.success('Feedback marked as reviewed.');
+    toast.success(t('staff.feedback.markedReviewed'));
     await load();
   } catch (e) {
     if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to mark as reviewed.');
+      toast.error(e.response?.data?.message || t('staff.feedback.unableMarkReviewed'));
     }
   }
 };
@@ -319,11 +322,11 @@ const markReviewed = async (item) => {
 const saveReplyDraft = async (item, text) => {
   try {
     await api.put(`/feedbacks/${item.id}/official-reply`, { official_reply_text: text });
-    toast.success(text ? 'Official reply draft saved.' : 'Official reply removed.');
+    toast.success(text ? t('staff.feedback.replyDraftSaved') : t('staff.feedback.replyRemoved'));
     await load();
   } catch (e) {
     if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to save reply draft.');
+      toast.error(e.response?.data?.message || t('staff.feedback.unableSaveReply'));
     }
   }
 };
@@ -331,11 +334,11 @@ const saveReplyDraft = async (item, text) => {
 const publishReply = async (item, text) => {
   try {
     await api.post(`/feedbacks/${item.id}/official-reply/publish`, { official_reply_text: text });
-    toast.success('Official reply published.');
+    toast.success(t('staff.feedback.replyPublishedToast'));
     await load();
   } catch (e) {
     if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to publish reply.');
+      toast.error(e.response?.data?.message || t('staff.feedback.unablePublishReply'));
     }
   }
 };
@@ -356,14 +359,14 @@ const confirmDelete = async () => {
   deleting.value = true;
   try {
     await api.delete(`/feedbacks/${id}`);
-    toast.success('Review deleted.');
+    toast.success(t('staff.feedback.reviewDeleted'));
     detailOpen.value = false;
     selectedItem.value = null;
     cancelDelete();
     await load();
   } catch (e) {
     if (!e.forbiddenMessage) {
-      toast.error(e.response?.data?.message || 'Unable to delete feedback.');
+      toast.error(e.response?.data?.message || t('staff.feedback.unableDelete'));
     }
   } finally {
     deleting.value = false;

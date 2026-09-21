@@ -8,10 +8,10 @@
         style="background-image: radial-gradient(circle at 2px 2px, white 1px, transparent 0); background-size: 24px 24px;"
       ></div>
       <div class="max-w-7xl mx-auto relative z-10 text-center text-white">
-        <p class="text-brand-200 font-bold uppercase tracking-wider text-sm mb-3">Carboot@CMart</p>
-        <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4">Carboot Preview</h1>
+        <p class="text-brand-200 font-bold uppercase tracking-wider text-sm mb-3">{{ t('marketplace.eyebrow') }}</p>
+        <h1 class="text-4xl md:text-5xl font-black tracking-tight mb-4">{{ t('marketplace.title') }}</h1>
         <p class="text-lg text-brand-100 max-w-3xl mx-auto leading-relaxed">
-          Browse items from approved vendors, reserve eligible holds, and collect in person at CMart Carboot.
+          {{ t('marketplace.subtitle') }}
         </p>
       </div>
     </header>
@@ -20,7 +20,7 @@
       <section
         class="rounded-2xl border border-amber-400 bg-[#FFFBEB] px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm"
         role="note"
-        aria-label="Carboot preview policy"
+        :aria-label="t('marketplace.policyAria')"
         data-testid="marketplace-preview-notice"
       >
         <div class="flex gap-3 sm:items-start">
@@ -30,10 +30,9 @@
             </svg>
           </div>
           <div class="min-w-0 space-y-1">
-            <p class="text-sm font-extrabold text-[#78350F]">Browse online, collect in person</p>
+            <p class="text-sm font-extrabold text-[#78350F]">{{ t('marketplace.policyTitle') }}</p>
             <p class="text-sm text-[#92400E]/95 leading-relaxed">
-              Eligible items can be reserved as a hold before the event. Item payment, inspection and collection
-              still take place directly at the vendor booth. There is no online checkout, delivery, or postage.
+              {{ t('marketplace.policyBody') }}
             </p>
           </div>
         </div>
@@ -42,35 +41,36 @@
       <section class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8 space-y-5">
         <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
           <div>
-            <h2 class="text-xl font-extrabold text-gray-900">Browse items</h2>
+            <h2 class="text-xl font-extrabold text-gray-900">{{ t('marketplace.browseItems') }}</h2>
             <p class="mt-1 text-sm text-gray-600">
-              A reservation is a temporary hold, not an online purchase. Availability and final item condition
-              are confirmed with the vendor at the booth.
+              {{ t('marketplace.browseLead') }}
             </p>
           </div>
           <p v-if="!loading" class="text-sm font-semibold text-gray-500">
-            {{ totalItems }} item{{ totalItems === 1 ? '' : 's' }} available
+            {{ t('marketplace.itemsAvailable', { n: totalItems }) }}
           </p>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           <div class="md:col-span-2">
-            <label for="marketplace-search" class="sr-only">Search items</label>
+            <label for="marketplace-search" class="sr-only">{{ t('marketplace.searchLabel') }}</label>
             <input
               id="marketplace-search"
               v-model="searchQuery"
               type="search"
-              placeholder="Search by item name, category, or vendor…"
+              :placeholder="t('marketplace.searchPlaceholder')"
               class="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
               data-testid="marketplace-search"
             />
           </div>
           <select v-model="selectedCategory" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm">
-            <option value="">All categories</option>
-            <option v-for="category in PRODUCT_CATEGORIES" :key="category" :value="category">{{ category }}</option>
+            <option value="">{{ t('marketplace.allCategories') }}</option>
+            <option v-for="category in PRODUCT_CATEGORIES" :key="category" :value="category">
+              {{ categoryLabel(category) }}
+            </option>
           </select>
           <select v-model="selectedSort" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm">
-            <option v-for="option in MARKETPLACE_SORT_OPTIONS" :key="option.value" :value="option.value">
+            <option v-for="option in sortOptions" :key="option.value" :value="option.value">
               {{ option.label }}
             </option>
           </select>
@@ -86,10 +86,10 @@
           data-testid="marketplace-empty-state"
         >
           <p class="text-lg font-semibold text-gray-700">
-            No public item previews are available yet. Please check again closer to the next CMart Carboot.
+            {{ t('marketplace.emptyTitle') }}
           </p>
           <p class="mt-2 text-sm text-gray-500">
-            Vendors can publish previews after their booking is approved for an upcoming event.
+            {{ t('marketplace.emptyHint') }}
           </p>
         </div>
 
@@ -104,16 +104,16 @@
       </section>
 
       <section class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8">
-        <h2 class="text-lg font-extrabold text-gray-900">Plan your carboot visit</h2>
+        <h2 class="text-lg font-extrabold text-gray-900">{{ t('marketplace.planVisitTitle') }}</h2>
         <p class="mt-2 text-sm text-gray-600 max-w-2xl">
-          Check upcoming event dates, news, and community updates before you head to CMart.
+          {{ t('marketplace.planVisitLead') }}
         </p>
         <div class="mt-5 flex flex-wrap gap-3">
           <router-link to="/calendar" class="ml-btn-primary text-sm no-underline">
-            View events calendar
+            {{ t('marketplace.viewEventsCalendar') }}
           </router-link>
           <router-link to="/community" class="ml-btn-ghost text-sm no-underline">
-            Community portal
+            {{ t('marketplace.communityPortal') }}
           </router-link>
         </div>
       </section>
@@ -128,7 +128,8 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import AppNavbar from '../../components/navigation/AppNavbar.vue';
 import MarketplaceItemCard from '../../components/public/MarketplaceItemCard.vue';
@@ -139,9 +140,26 @@ import { PRODUCT_CATEGORIES } from '../../utils/bookingDisplay';
 import { MARKETPLACE_SORT_OPTIONS } from '../../utils/vendorCatalog';
 import { normalizeReuseItem } from '../../utils/imageUrl';
 
+const { t } = useI18n();
 const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
+
+const CATEGORY_KEYS = {
+  'Pre-loved / Thrift': 'marketplace.categories.preloved',
+  'Food & Beverages': 'marketplace.categories.food',
+  'Clothing & Apparel': 'marketplace.categories.clothing',
+  'Handicrafts & Art': 'marketplace.categories.handicrafts',
+  'Electronics & Gadgets': 'marketplace.categories.electronics',
+  Others: 'marketplace.categories.others',
+};
+
+const SORT_LABEL_KEYS = {
+  newest: 'marketplace.sortNewest',
+  oldest: 'marketplace.sortOldest',
+  price_asc: 'marketplace.sortPriceAsc',
+  price_desc: 'marketplace.sortPriceDesc',
+};
 
 const items = ref([]);
 const loading = ref(true);
@@ -153,6 +171,18 @@ const showDetailsModal = ref(false);
 const selectedItemId = ref(null);
 
 let searchTimer = null;
+
+const sortOptions = computed(() =>
+  MARKETPLACE_SORT_OPTIONS.map((option) => ({
+    value: option.value,
+    label: t(SORT_LABEL_KEYS[option.value] || option.label),
+  })),
+);
+
+const categoryLabel = (category) => {
+  const key = CATEGORY_KEYS[category];
+  return key ? t(key) : category;
+};
 
 const fetchItems = async ({ quiet = false } = {}) => {
   if (!quiet) loading.value = true;
@@ -187,7 +217,7 @@ const onItemReserved = async () => {
       reservation_availability: {
         available: false,
         code: 'already_reserved',
-        message: 'This item already has an active reservation.',
+        message: t('marketplace.details.alreadyReserved'),
       },
     };
   });
