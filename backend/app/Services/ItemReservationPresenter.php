@@ -121,6 +121,11 @@ class ItemReservationPresenter
 
     private static function common(ItemReservation $reservation): array
     {
+        $reservation->loadMissing(['carbootEvent', 'vendorItem', 'vendorBooking']);
+        $booth = $reservation->vendorBooking
+            ? VendorBookingPresenter::boothNumber($reservation->vendorBooking)
+            : null;
+
         return [
             'public_reference' => $reservation->public_reference,
             'reservation_status' => $reservation->reservation_status,
@@ -128,12 +133,24 @@ class ItemReservationPresenter
             'service_fee_amount' => $reservation->service_fee_amount,
             'service_fee_currency' => $reservation->service_fee_currency,
             'item' => [
+                'id' => $reservation->vendor_item_id,
                 'name' => $reservation->item_name_snapshot,
+                'image_url' => $reservation->vendorItem?->image_url,
+                'asking_price' => $reservation->vendorItem?->pricing_type === 'fixed'
+                    ? round((float) $reservation->vendorItem->price, 2)
+                    : null,
             ],
             'event' => [
+                'id' => $reservation->carboot_event_id,
                 'title' => $reservation->carbootEvent?->title,
                 'starts_at' => $reservation->carbootEvent?->starts_at?->toIso8601String(),
                 'ends_at' => $reservation->carbootEvent?->ends_at?->toIso8601String(),
+                'venue' => 'CMart Kompleks Changlun',
+            ],
+            'collection' => [
+                'booth_number' => $booth,
+                'site_labels' => $booth ? [$booth] : [],
+                'guidance' => __('api.collect_in_person_at_the_vendor_booth_during_the_event'),
             ],
             'cancellation_reason' => $reservation->cancellation_reason,
             'created_at' => $reservation->created_at?->toIso8601String(),
@@ -155,10 +172,11 @@ class ItemReservationPresenter
         $vendorName = $profile?->business_name ?: ($reservation->vendorUser?->name ?? 'CMart Vendor');
         $itemName = (string) ($reservation->item_name_snapshot ?: 'this item');
         $reference = (string) $reservation->public_reference;
+        $eventName = (string) ($reservation->carbootEvent?->title ?: 'CMart Carboot');
 
         return WhatsAppContact::publicContact(
             $profile,
-            WhatsAppContact::reservationMessage($vendorName, $itemName, $reference),
+            WhatsAppContact::reservationMessage($vendorName, $itemName, $reference, $eventName),
         );
     }
 }

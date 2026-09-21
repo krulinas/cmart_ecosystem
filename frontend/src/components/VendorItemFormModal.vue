@@ -75,11 +75,13 @@
             </div>
 
             <div>
-              <label class="ml-label">{{ t('items.form.status') }}</label>
-              <select v-model="form.status" class="ml-input" required>
-                <option value="active">{{ t('items.form.active') }}</option>
-                <option value="inactive">{{ t('items.form.inactive') }}</option>
+              <label class="ml-label">{{ t('items.form.visibility') }}</label>
+              <select v-model="form.status" class="ml-input" required data-testid="vendor-item-visibility">
+                <option v-for="option in ITEM_VISIBILITY_OPTIONS" :key="option.value" :value="option.value">
+                  {{ t(option.labelKey) }}
+                </option>
               </select>
+              <p class="mt-1 text-xs text-ink-500">{{ t('items.form.visibilityHint') }}</p>
             </div>
 
             <div>
@@ -169,7 +171,12 @@ import api from '../services/api';
 import { fetchVendorCategories } from '../services/vendorCategoriesApi';
 import { extractApiError } from '../utils/apiErrors';
 import { resolveReuseItemGallery } from '../utils/imageUrl';
-import { ITEM_CONDITIONS, ITEM_CONDITION_LABEL_KEYS, ITEM_PRICING_TYPES } from '../utils/vendorCatalog';
+import {
+  ITEM_CONDITIONS,
+  ITEM_CONDITION_LABEL_KEYS,
+  ITEM_PRICING_TYPES,
+  ITEM_VISIBILITY_OPTIONS,
+} from '../utils/vendorCatalog';
 
 const MAX_IMAGES = 5;
 

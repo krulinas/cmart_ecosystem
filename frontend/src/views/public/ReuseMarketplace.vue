@@ -18,6 +18,25 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 py-10 -mt-8 space-y-6">
       <section
+        v-if="carbootEventId"
+        class="rounded-2xl border border-brand-200 bg-brand-50/60 px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm"
+        data-testid="marketplace-event-scope"
+      >
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p class="text-sm font-semibold text-brand-900">
+            {{ t('marketplace.eventScopeLabel', { title: scopedEventTitle }) }}
+          </p>
+          <router-link
+            to="/marketplace"
+            class="text-sm font-bold text-brand-700 hover:text-brand-900 no-underline"
+            data-testid="marketplace-event-scope-clear"
+          >
+            {{ t('marketplace.eventScopeClear') }}
+          </router-link>
+        </div>
+      </section>
+
+      <section
         class="rounded-2xl border border-amber-400 bg-[#FFFBEB] px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm"
         role="note"
         :aria-label="t('marketplace.policyAria')"
@@ -122,6 +141,7 @@
     <MarketplaceItemDetailsModal
       v-model="showDetailsModal"
       :item-id="selectedItemId"
+      :carboot-event-id="carbootEventId"
       @reserved="onItemReserved"
     />
   </div>
@@ -172,6 +192,17 @@ const selectedItemId = ref(null);
 
 let searchTimer = null;
 
+const carbootEventId = computed(() => {
+  const raw = route.query.event;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value ? String(value) : '';
+});
+
+const scopedEventTitle = computed(() => {
+  const titled = items.value.find((item) => item.event?.title);
+  return titled?.event?.title || t('marketplace.eventScopeFallback');
+});
+
 const sortOptions = computed(() =>
   MARKETPLACE_SORT_OPTIONS.map((option) => ({
     value: option.value,
@@ -192,6 +223,7 @@ const fetchItems = async ({ quiet = false } = {}) => {
         search: searchQuery.value.trim() || undefined,
         category: selectedCategory.value || undefined,
         sort: selectedSort.value,
+        carboot_event_id: carbootEventId.value || undefined,
         per_page: 24,
       },
     });
@@ -229,7 +261,7 @@ const openItemDetails = (item) => {
   showDetailsModal.value = true;
 };
 
-watch([selectedCategory, selectedSort], fetchItems);
+watch([selectedCategory, selectedSort, carbootEventId], () => fetchItems());
 
 watch(searchQuery, () => {
   clearTimeout(searchTimer);

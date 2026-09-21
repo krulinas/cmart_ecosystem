@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\Space;
 use App\Models\User;
 use App\Models\VendorItem;
+use App\Models\VendorItemEventListing;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -119,8 +120,9 @@ class MarketplacePublicAccessTest extends TestCase
     {
         $vendor = $this->createVendor();
         $event = $this->createUpcomingEvent();
-        $this->createBooking($vendor, $event, 'Approved');
+        $booking = $this->createBooking($vendor, $event, 'Approved');
         $item = $this->createItem($vendor, 'liverpool home 25/26');
+        $this->selectItemForEvent($item, $vendor, $event, $booking);
 
         $response = $this->getJson('/api/marketplace/items');
 
@@ -202,7 +204,8 @@ class MarketplacePublicAccessTest extends TestCase
         $event = $this->createUpcomingEvent();
         $booking = $this->createBooking($vendor, $event, 'Approved');
         $booking->invoice->update(['payment_status' => 'Unpaid']);
-        $this->createItem($vendor, 'Unpaid Approved Preview Item');
+        $item = $this->createItem($vendor, 'Unpaid Approved Preview Item');
+        $this->selectItemForEvent($item, $vendor, $event, $booking);
 
         $names = collect($this->getJson('/api/marketplace/items')->json('data'))->pluck('name');
         $this->assertTrue($names->contains('Unpaid Approved Preview Item'));
@@ -231,5 +234,21 @@ class MarketplacePublicAccessTest extends TestCase
 
         $names = collect($response->json('items'))->pluck('name');
         $this->assertTrue($names->contains('Vendor Private Prep Item'));
+    }
+
+    private function selectItemForEvent(
+        VendorItem $item,
+        User $vendor,
+        CarbootEvent $event,
+        Booking $booking,
+    ): void {
+        VendorItemEventListing::query()->create([
+            'vendor_item_id' => $item->id,
+            'carboot_event_id' => $event->id,
+            'vendor_booking_id' => $booking->id,
+            'vendor_user_id' => $vendor->id,
+            'selected_by' => $vendor->id,
+            'selected_at' => now(),
+        ]);
     }
 }

@@ -205,4 +205,10 @@ return [
     'you_do_not_have_permission_to_access_this_item' => '403 Forbidden: You do not have permission to access this item.',
     'you_do_not_own_this_booking_pass' => '403 Forbidden: You do not own this booking pass.',
     'you_have_successfully_registered_for_this_event' => '201 Created: You have successfully registered for this event.',
+    'collect_in_person_at_the_vendor_booth_during_the_event' => 'Collect in person at the vendor booth during the event.',
+    'collection_confirmed_and_item_marked_sold' => '200 OK: Collection confirmed and item marked as sold.',
+    'event_item_removed_successfully' => '200 OK: Item removed from the event successfully.',
+    'event_items_selected_successfully' => '201 Created: Items selected for the event successfully.',
+    'this_item_has_sale_history_and_cannot_be_deleted' => 'This item has sale history and cannot be deleted.',
+    'walk_in_sale_recorded_successfully' => '201 Created: Walk-in sale recorded successfully.',
 ];

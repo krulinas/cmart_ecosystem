@@ -29,8 +29,17 @@ class Phase44CompletionAndPublicationGuardTest extends TestCase
     /** @var list<int> */
     private array $reservationIds = [];
 
+    /** @var array<int, int> */
+    private array $vendorEventIds = [];
+
     protected function tearDown(): void
     {
+        if (\Illuminate\Support\Facades\Schema::hasTable('vendor_item_sales')) {
+            DB::table('vendor_item_sales')->whereIn('vendor_item_id', $this->itemIds)->delete();
+        }
+        if (\Illuminate\Support\Facades\Schema::hasTable('vendor_item_event_selections')) {
+            DB::table('vendor_item_event_selections')->whereIn('vendor_item_id', $this->itemIds)->delete();
+        }
         DB::table('item_reservation_audits')
             ->whereIn('item_reservation_id', $this->reservationIds)
             ->delete();
@@ -63,7 +72,7 @@ class Phase44CompletionAndPublicationGuardTest extends TestCase
         $auditCountBefore = $confirmed->audits()->count();
 
         Sanctum::actingAs($vendor);
-        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete")
+        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete", ['final_sale_price' => 25.00])
             ->assertOk()
             ->assertJsonPath('reservation.reservation_status', 'completed')
             ->assertJsonPath('reservation.charge_status', 'confirmed');
@@ -83,9 +92,9 @@ class Phase44CompletionAndPublicationGuardTest extends TestCase
         );
         $this->assertSame($auditCountBefore + 1, $fresh->audits()->count());
 
-        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete")
-            ->assertConflict()
-            ->assertJsonPath('error', 'reservation_not_confirmed');
+        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete", ['final_sale_price' => 25.00])
+            ->assertOk();
+        $this->assertSame(1, \App\Models\VendorItemSale::query()->where('vendor_item_id', $item->id)->count());
         $this->assertSame($auditCountBefore + 1, $fresh->audits()->count());
     }
 
@@ -97,7 +106,7 @@ class Phase44CompletionAndPublicationGuardTest extends TestCase
         $reservation = $this->confirmedReservation($vendor);
 
         Sanctum::actingAs($otherVendor);
-        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete")
+        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete", ['final_sale_price' => 25.00])
             ->assertNotFound();
 
         $this->assertSame('confirmed', $reservation->fresh()->reservation_status);
@@ -144,11 +153,11 @@ class Phase44CompletionAndPublicationGuardTest extends TestCase
         Sanctum::actingAs($this->user('cmart_management'));
         $this->postJson("/api/organizer/item-reservations/{$reservation->public_reference}/complete")
             ->assertForbidden();
-        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete")
+        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete", ['final_sale_price' => 25.00])
             ->assertForbidden();
 
         Sanctum::actingAs($reserver);
-        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete")
+        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete", ['final_sale_price' => 25.00])
             ->assertNotFound();
         $this->postJson("/api/organizer/item-reservations/{$reservation->public_reference}/complete")
             ->assertForbidden();
@@ -165,7 +174,7 @@ class Phase44CompletionAndPublicationGuardTest extends TestCase
 
         $pending = $this->reserve($this->user('community'), $this->item($vendor, 'Phase44 Pending Complete'));
         Sanctum::actingAs($vendor);
-        $this->postJson("/api/vendor/item-reservations/{$pending->public_reference}/complete")
+        $this->postJson("/api/vendor/item-reservations/{$pending->public_reference}/complete", ['final_sale_price' => 25.00])
             ->assertConflict()
             ->assertJsonPath('error', 'reservation_not_confirmed');
 
@@ -200,7 +209,7 @@ class Phase44CompletionAndPublicationGuardTest extends TestCase
         );
 
         Sanctum::actingAs($vendor);
-        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete")
+        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete", ['final_sale_price' => 25.00])
             ->assertOk()
             ->assertJsonPath('reservation.charge_status', 'not_required');
 
@@ -249,7 +258,7 @@ class Phase44CompletionAndPublicationGuardTest extends TestCase
         $reservation = $this->confirmedReservation($vendor, $item);
 
         Sanctum::actingAs($vendor);
-        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete")
+        $this->postJson("/api/vendor/item-reservations/{$reservation->public_reference}/complete", ['final_sale_price' => 25.00])
             ->assertOk();
 
         $this->assertSame('inactive', $item->fresh()->status);
@@ -362,6 +371,7 @@ class Phase44CompletionAndPublicationGuardTest extends TestCase
             'approval_status' => 'Approved',
         ]);
         $this->bookingIds[] = $booking->id;
+        $this->vendorEventIds[$vendor->id] = $event->id;
 
         return [$event, $booking];
     }
@@ -383,6 +393,29 @@ class Phase44CompletionAndPublicationGuardTest extends TestCase
         ]);
         $this->itemIds[] = $item->id;
 
+        $eventId = $this->vendorEventIds[$vendor->id] ?? null;
+        if ($eventId) {
+            $booking = Booking::query()
+                ->where('user_id', $vendor->id)
+                ->where('carboot_event_id', $eventId)
+                ->where('approval_status', 'Approved')
+                ->first();
+            if ($booking) {
+                \App\Models\VendorItemEventListing::query()->updateOrCreate(
+                    [
+                        'vendor_item_id' => $item->id,
+                        'carboot_event_id' => $eventId,
+                    ],
+                    [
+                        'vendor_booking_id' => $booking->id,
+                        'vendor_user_id' => $vendor->id,
+                        'selected_by' => $vendor->id,
+                        'selected_at' => now(),
+                    ],
+                );
+            }
+        }
+
         return $item;
     }
 
@@ -392,7 +425,10 @@ class Phase44CompletionAndPublicationGuardTest extends TestCase
         string $expectedStatus = 'pending_charge',
     ): ItemReservation {
         Sanctum::actingAs($reserver);
-        $response = $this->postJson('/api/reservations', ['vendor_item_id' => $item->id])
+        $response = $this->postJson('/api/reservations', [
+            'vendor_item_id' => $item->id,
+            'carboot_event_id' => (int) ($this->vendorEventIds[$item->user_id] ?? 0),
+        ])
             ->assertCreated()
             ->assertJsonPath('reservation.reservation_status', $expectedStatus);
 

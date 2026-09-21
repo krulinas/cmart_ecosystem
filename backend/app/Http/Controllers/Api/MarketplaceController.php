@@ -19,29 +19,29 @@ class MarketplaceController extends Controller
             'condition' => 'nullable|in:New,Like New,Good,Fair,For Parts',
             'pricing_type' => 'nullable|in:fixed,free,donation',
             'sort' => 'nullable|in:newest,oldest,price_asc,price_desc',
+            'carboot_event_id' => 'nullable|integer',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:48',
         ]);
 
         $perPage = min((int) ($validated['per_page'] ?? 12), 48);
+        $eventId = isset($validated['carboot_event_id']) ? (int) $validated['carboot_event_id'] : null;
 
         $query = MarketplaceEligibility::applyToVendorItemQuery(
             VendorItem::query()
                 ->with([
                     'user.businessProfile',
                     'images',
-                    'user.bookings' => fn ($bookingQuery) => $bookingQuery
-                        ->where('approval_status', 'Approved')
-                        ->whereHas(
-                            'carbootEvent',
-                            fn (Builder $eventQuery) => $eventQuery->where('ends_at', '>=', now()),
-                        )
-                        ->with('carbootEvent'),
+                    'eventListings' => fn ($listingQuery) => $listingQuery
+                        ->when($eventId, fn ($q) => $q->where('carboot_event_id', $eventId))
+                        ->with(['carbootEvent', 'vendorBooking']),
                 ])
                 ->withExists([
                     'reservations as has_active_reservation' => fn (Builder $reservationQuery) => $reservationQuery
                         ->where('active_lock', 1),
+                    'sale as has_sale',
                 ]),
+            $eventId,
         );
 
         if ($search = trim((string) ($validated['search'] ?? ''))) {
@@ -82,6 +82,7 @@ class MarketplaceController extends Controller
                 ->map(fn (VendorItem $item) => MarketplaceItemPresenter::fromItem(
                     $item,
                     viewerUserId: $viewerUserId,
+                    eventId: $eventId,
                 ))
                 ->values(),
             'meta' => [
@@ -89,6 +90,7 @@ class MarketplaceController extends Controller
                 'last_page' => $paginator->lastPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
+                'carboot_event_id' => $eventId,
             ],
             'public_listing_enabled' => true,
         ]);
@@ -96,7 +98,9 @@ class MarketplaceController extends Controller
 
     public function show(Request $request, VendorItem $vendor_item)
     {
-        if (! MarketplaceEligibility::isItemPubliclyPreviewable($vendor_item)) {
+        $eventId = $request->integer('carboot_event_id') ?: null;
+
+        if (! MarketplaceEligibility::isItemPubliclyPreviewable($vendor_item, $eventId)) {
             return response()->json([
                 'message' => __('api.public_item_preview_is_unavailable'),
             ], 404);
@@ -105,16 +109,13 @@ class MarketplaceController extends Controller
         $vendor_item->load([
             'user.businessProfile',
             'images',
-            'user.bookings' => fn ($bookingQuery) => $bookingQuery
-                ->where('approval_status', 'Approved')
-                ->whereHas(
-                    'carbootEvent',
-                    fn (Builder $eventQuery) => $eventQuery->where('ends_at', '>=', now()),
-                )
-                ->with('carbootEvent'),
+            'eventListings' => fn ($listingQuery) => $listingQuery
+                ->when($eventId, fn ($q) => $q->where('carboot_event_id', $eventId))
+                ->with(['carbootEvent', 'vendorBooking']),
         ])->loadExists([
             'reservations as has_active_reservation' => fn (Builder $reservationQuery) => $reservationQuery
                 ->where('active_lock', 1),
+            'sale as has_sale',
         ]);
 
         return response()->json([
@@ -122,6 +123,7 @@ class MarketplaceController extends Controller
                 $vendor_item,
                 detailed: true,
                 viewerUserId: $request->user('sanctum')?->id,
+                eventId: $eventId,
             ),
         ]);
     }

@@ -39,7 +39,9 @@ use App\Http\Controllers\Api\VendorEventPassController;
 use App\Http\Controllers\Api\VendorEventSiteAvailabilityController;
 use App\Http\Controllers\Api\VendorHistoryController;
 use App\Http\Controllers\Api\VendorItemController;
+use App\Http\Controllers\Api\VendorItemEventListingController;
 use App\Http\Controllers\Api\VendorItemReservationController;
+use App\Http\Controllers\Api\VendorItemSaleController;
 use App\Http\Controllers\Api\VendorProfileController;
 use App\Support\ManagementCapability;
 use App\Support\ManagementRole;
@@ -110,6 +112,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/vendor/items/{vendor_item}', [VendorItemController::class, 'show']);
         Route::put('/vendor/items/{vendor_item}', [VendorItemController::class, 'update']);
         Route::delete('/vendor/items/{vendor_item}', [VendorItemController::class, 'destroy']);
+        Route::post('/vendor/items/{vendor_item}/walk-in-sale', [VendorItemSaleController::class, 'storeWalkIn']);
+
+        Route::get('/vendor/item-event-listings/eligible-events', [VendorItemEventListingController::class, 'eligibleEvents']);
+        Route::get('/vendor/events/{carboot_event}/item-listings', [VendorItemEventListingController::class, 'index']);
+        Route::post('/vendor/events/{carboot_event}/item-listings', [VendorItemEventListingController::class, 'store']);
+        Route::delete('/vendor/events/{carboot_event}/item-listings/{vendor_item}', [VendorItemEventListingController::class, 'destroy']);
 
         Route::post('/reservations', [ItemReservationController::class, 'store']);
         Route::get('/reservations/me', [ItemReservationController::class, 'mine']);

@@ -221,6 +221,7 @@ import { useAuthStore } from '../stores/auth';
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   itemId: { type: [Number, String], default: null },
+  carbootEventId: { type: [Number, String], default: null },
 });
 
 const emit = defineEmits(['update:modelValue', 'reserved']);
@@ -301,10 +302,11 @@ const policyTitleClass = computed(() => (
 ));
 
 const loginHref = computed(() => {
-  const redirect = props.itemId
-    ? `/marketplace?item=${encodeURIComponent(props.itemId)}`
-    : '/marketplace';
-  return loginPathWithRedirect(redirect);
+  const params = new URLSearchParams();
+  if (props.itemId) params.set('item', String(props.itemId));
+  if (props.carbootEventId) params.set('event', String(props.carbootEventId));
+  const query = params.toString();
+  return loginPathWithRedirect(query ? `/marketplace?${query}` : '/marketplace');
 });
 
 const loadItem = async () => {
@@ -312,7 +314,9 @@ const loadItem = async () => {
   loading.value = true;
   loadError.value = false;
   try {
-    const { data } = await api.get(`/marketplace/items/${props.itemId}`);
+    const { data } = await api.get(`/marketplace/items/${props.itemId}`, {
+      params: { carboot_event_id: props.carbootEventId || undefined },
+    });
     item.value = normalizeReuseItem(data.item);
   } catch (error) {
     console.error('Unable to load preview item:', error);
@@ -334,7 +338,7 @@ const onReserveConflict = async () => {
 };
 
 watch(
-  () => [props.modelValue, props.itemId],
+  () => [props.modelValue, props.itemId, props.carbootEventId],
   ([open, id]) => {
     if (open && id) loadItem();
     if (!open) {

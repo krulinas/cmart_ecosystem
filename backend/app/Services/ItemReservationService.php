@@ -21,19 +21,19 @@ class ItemReservationService
         private readonly ItemReservationDuplicateKeyDetector $duplicateKeyDetector,
     ) {}
 
-    public function create(User $actor, int $vendorItemId): ItemReservation
+    public function create(User $actor, int $vendorItemId, int $carbootEventId): ItemReservation
     {
         if ($actor->role !== 'community') {
             throw new AuthorizationException('Only community users may reserve items.');
         }
 
-        return DB::transaction(function () use ($actor, $vendorItemId) {
+        return DB::transaction(function () use ($actor, $vendorItemId, $carbootEventId) {
             $item = VendorItem::query()
                 ->whereKey($vendorItemId)
                 ->lockForUpdate()
                 ->first();
 
-            if (! $item || $item->status !== 'active') {
+            if (! $item || $item->status !== 'active' || $item->hasSale()) {
                 throw (new ModelNotFoundException)->setModel(VendorItem::class, [$vendorItemId]);
             }
 
@@ -41,16 +41,25 @@ class ItemReservationService
                 throw new AuthorizationException('You cannot reserve your own item.');
             }
 
-            $booking = MarketplaceEligibility::upcomingApprovedBookingForUser(
-                (int) $item->user_id,
-                lockForUpdate: true,
+            $listing = MarketplaceEligibility::listingForItemEvent(
+                (int) $item->id,
+                $carbootEventId,
+                lock: true,
             );
 
-            if (! $booking || ! $booking->carbootEvent) {
-                throw (new ModelNotFoundException)->setModel(VendorItem::class, [$vendorItemId]);
+            if (! $listing
+                || $listing->vendorBooking?->approval_status !== 'Approved'
+                || ! $listing->carbootEvent
+                || $listing->carbootEvent->ends_at < now()) {
+                throw new DomainConflictException(
+                    'This item is not available for reservation at the selected event.',
+                    'item_not_listed_for_event',
+                );
             }
 
-            $event = $booking->carbootEvent;
+            $booking = $listing->vendorBooking;
+            $event = $listing->carbootEvent;
+
             if ($event->item_reservation_service_fee === null) {
                 throw new DomainConflictException(
                     'Item reservations are not configured for the eligible event.',
@@ -101,6 +110,7 @@ class ItemReservationService
                     'service_fee_amount' => $fee,
                     'service_fee_currency' => 'MYR',
                     'carboot_event_id' => $event->id,
+                    'vendor_item_event_listing_id' => $listing->id,
                 ],
             ]);
 
@@ -108,6 +118,8 @@ class ItemReservationService
                 'carbootEvent',
                 'vendorUser.businessProfile',
                 'reservingUser',
+                'vendorBooking',
+                'vendorItem',
             ]);
         });
     }

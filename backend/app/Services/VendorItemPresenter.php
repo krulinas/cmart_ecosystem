@@ -15,10 +15,21 @@ class VendorItemPresenter
 
         $images = $item->galleryImagesForApi();
         $primaryPath = $item->primaryImagePath();
-        $booking = MarketplaceEligibility::upcomingApprovedBookingForItem($item);
-        $hasActiveReservation = array_key_exists('has_active_reservation', $item->getAttributes())
-            ? (bool) $item->getAttribute('has_active_reservation')
-            : $item->reservations()->active()->exists();
+        $hasActiveReservation = $item->hasActiveReservationFlag();
+        $hasSale = $item->hasSale();
+        $displayStatus = $item->displayStatus();
+
+        $selectedEventIds = [];
+        if (Schema::hasTable('vendor_item_event_selections')) {
+            $item->loadMissing(['eventListings.carbootEvent']);
+            $selectedEventIds = $item->eventListings
+                ->filter(fn ($listing) => $listing->carbootEvent
+                    && $listing->carbootEvent->ends_at >= now())
+                ->pluck('carboot_event_id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+        }
 
         return [
             'id' => $item->id,
@@ -33,13 +44,17 @@ class VendorItemPresenter
             'price' => $item->price !== null ? round((float) $item->price, 2) : null,
             'description' => $item->description,
             'status' => $item->status,
+            'visibility' => $item->status === 'active' ? 'visible' : 'hidden',
+            'display_status' => $displayStatus,
             'image_path' => $primaryPath,
             'image_url' => $primaryPath ? asset('storage/'.$primaryPath) : null,
             'images' => is_array($images) ? $images : [],
-            'is_reservable' => $item->status === 'active'
-                && $booking?->carbootEvent?->item_reservation_service_fee !== null
-                && ! $hasActiveReservation,
+            'is_reservable' => $displayStatus === 'available' && $selectedEventIds !== [],
             'has_active_reservation' => $hasActiveReservation,
+            'has_sale' => $hasSale,
+            'selected_event_ids' => $selectedEventIds,
+            'can_delete' => ! $hasSale && ! $item->reservations()->exists(),
+            'can_mark_sold_walk_in' => $displayStatus === 'available' && $selectedEventIds !== [],
             'created_at' => $item->created_at,
             'updated_at' => $item->updated_at,
         ];

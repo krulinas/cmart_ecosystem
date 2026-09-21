@@ -68,6 +68,7 @@ class PostEventSummaryAggregator
         }
 
         $reservationCounts = $this->itemReservationCounts($event->id, $dataAvailability);
+        $vendorReportedItemSales = $this->vendorReportedItemSales($event->id, $dataAvailability);
         $feedbackSummary = $this->feedbackSummary(
             $event->id,
             $dataAvailability,
@@ -113,6 +114,7 @@ class PostEventSummaryAggregator
                 'event_sites' => $includeSystem ? $siteSummary : ['excluded' => true],
                 'site_day_utilisation' => $includeSystem ? $siteDayUtilisation : ['excluded' => true],
                 'item_reservations' => $includeSystem ? $reservationCounts : ['excluded' => true],
+                'vendor_reported_item_sales' => $includeSystem ? $vendorReportedItemSales : ['excluded' => true],
                 'vendor_categories' => $includeSystem ? [
                     'available' => true,
                     'primary_metric' => 'unique_vendors',
@@ -720,6 +722,74 @@ class PostEventSummaryAggregator
             'total' => array_sum($counts),
             'by_reservation_status' => $counts,
             'note' => 'Marketplace holds for this event only; not vendor lifetime listings.',
+        ];
+    }
+
+    /**
+     * Privacy-safe vendor-reported CMart item sales for this event only.
+     *
+     * @param  array<string, mixed>  $dataAvailability
+     * @return array<string, mixed>
+     */
+    private function vendorReportedItemSales(int $eventId, array &$dataAvailability): array
+    {
+        if (! Schema::hasTable('vendor_item_sales')) {
+            $dataAvailability['vendor_reported_item_sales'] = 'omitted';
+
+            return [
+                'available' => false,
+                'message' => 'Vendor-reported item sales data is not available for this database.',
+            ];
+        }
+
+        if (! Schema::hasTable('vendor_item_event_selections')) {
+            $dataAvailability['vendor_reported_item_sales'] = 'partial';
+        }
+
+        $sales = DB::table('vendor_item_sales')
+            ->where('carboot_event_id', $eventId)
+            ->selectRaw('sale_source, COUNT(*) as items_sold, COALESCE(SUM(final_sale_price), 0) as recorded_sales_total')
+            ->groupBy('sale_source')
+            ->get();
+
+        $listedItems = null;
+        if (Schema::hasTable('vendor_item_event_selections')) {
+            $listedItems = (int) DB::table('vendor_item_event_selections')
+                ->where('carboot_event_id', $eventId)
+                ->distinct()
+                ->count('vendor_item_id');
+        } else {
+            $dataAvailability['vendor_reported_item_sales_listed_items'] = 'unavailable';
+        }
+
+        $bySource = [];
+        $itemsSold = 0;
+        $recordedTotal = 0.0;
+        foreach ($sales as $row) {
+            $count = (int) $row->items_sold;
+            $total = round((float) $row->recorded_sales_total, 2);
+            $bySource[(string) $row->sale_source] = [
+                'items_sold' => $count,
+                'recorded_sales_total' => $total,
+            ];
+            $itemsSold += $count;
+            $recordedTotal += $total;
+        }
+
+        $dataAvailability['vendor_reported_item_sales'] = 'available';
+
+        return [
+            'available' => true,
+            'label' => 'Vendor-reported / system-recorded CMart item sales',
+            'listed_items' => $listedItems,
+            'completed_item_sales' => $itemsSold,
+            'recorded_sales_total' => round($recordedTotal, 2),
+            'currency' => 'MYR',
+            'by_source' => [
+                'reserved' => $bySource['reserved'] ?? ['items_sold' => 0, 'recorded_sales_total' => 0.0],
+                'walk_in' => $bySource['walk_in'] ?? ['items_sold' => 0, 'recorded_sales_total' => 0.0],
+            ],
+            'note' => 'Aggregates vendor-confirmed CMart item sales only. Not audited net income or profit. No customer contact or vendor-level private income is included.',
         ];
     }
 

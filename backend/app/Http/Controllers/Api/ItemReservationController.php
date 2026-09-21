@@ -18,15 +18,20 @@ class ItemReservationController extends Controller
     {
         $validated = $request->validate([
             'vendor_item_id' => 'required|integer',
+            'carboot_event_id' => 'required|integer',
         ]);
 
         try {
             $reservation = $service->create(
                 $request->user(),
                 (int) $validated['vendor_item_id'],
+                (int) $validated['carboot_event_id'],
             );
         } catch (DomainConflictException $exception) {
-            $status = $exception->error === 'item_reservation_fee_not_configured' ? 422 : 409;
+            $status = in_array($exception->error, [
+                'item_reservation_fee_not_configured',
+                'item_not_listed_for_event',
+            ], true) ? 422 : 409;
 
             return $this->conflictResponse($exception, $status);
         }

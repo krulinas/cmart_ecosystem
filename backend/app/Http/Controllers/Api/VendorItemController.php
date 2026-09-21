@@ -28,7 +28,9 @@ class VendorItemController extends Controller
             ->withExists([
                 'reservations as has_active_reservation' => fn ($reservationQuery) => $reservationQuery
                     ->where('active_lock', 1),
+                'sale as has_sale',
             ])
+            ->with(['eventListings.carbootEvent'])
             ->latest();
 
         if (Schema::hasTable('reuse_item_images')) {
@@ -142,6 +144,13 @@ class VendorItemController extends Controller
             return response()->json([
                 'message' => __('api.this_item_has_reservation_history_and_cannot_be_deleted'),
                 'error' => 'item_has_reservation_history',
+            ], 409);
+        }
+
+        if ($vendor_item->hasSale()) {
+            return response()->json([
+                'message' => __('api.this_item_has_sale_history_and_cannot_be_deleted'),
+                'error' => 'item_has_sale_history',
             ], 409);
         }
 

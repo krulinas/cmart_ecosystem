@@ -126,7 +126,7 @@
               type="button"
               class="ml-btn-primary"
               data-testid="item-reservation-confirm-submit"
-              :disabled="submitting"
+              :disabled="submitting || !carbootEventId"
               @click="submit"
             >
               {{ submitting ? t('reservation.confirm.reserving') : t('reservation.confirm.submit') }}
@@ -170,6 +170,8 @@ const successReservation = ref(null);
 
 const myReservationsHref = computed(() => myReservationsPath(auth));
 
+const carbootEventId = computed(() => props.item?.carboot_event_id ?? props.item?.event?.id ?? null);
+
 const close = () => {
   if (submitting.value) return;
   emit('update:modelValue', false);
@@ -177,10 +179,14 @@ const close = () => {
 
 const submit = async () => {
   if (!props.item?.id || submitting.value) return;
+  if (!carbootEventId.value) {
+    errorMessage.value = t('reservation.confirm.missingEvent');
+    return;
+  }
   submitting.value = true;
   errorMessage.value = '';
   try {
-    const { data } = await createItemReservation(props.item.id);
+    const { data } = await createItemReservation(props.item.id, carbootEventId.value);
     successReservation.value = data.reservation;
     toast.success(t('reservation.confirm.toastSuccess'));
     emit('reserved', data.reservation);

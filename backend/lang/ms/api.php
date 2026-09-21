@@ -205,4 +205,10 @@ return [
     'you_do_not_have_permission_to_access_this_item' => 'Anda tidak mempunyai kebenaran untuk mengakses item ini.',
     'you_do_not_own_this_booking_pass' => 'Anda tidak memiliki pas tempahan ini.',
     'you_have_successfully_registered_for_this_event' => 'Anda berjaya mendaftar untuk acara ini.',
+    'collect_in_person_at_the_vendor_booth_during_the_event' => 'Ambil sendiri di gerai vendor semasa event.',
+    'collection_confirmed_and_item_marked_sold' => 'Pengambilan disahkan dan barang ditandakan sebagai terjual.',
+    'event_item_removed_successfully' => 'Barang berjaya dikeluarkan daripada event.',
+    'event_items_selected_successfully' => 'Barang berjaya dipilih untuk event.',
+    'this_item_has_sale_history_and_cannot_be_deleted' => 'Item ini mempunyai sejarah jualan dan tidak boleh dipadam.',
+    'walk_in_sale_recorded_successfully' => 'Jualan walk-in berjaya direkodkan.',
 ];

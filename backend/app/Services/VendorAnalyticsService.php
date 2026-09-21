@@ -7,7 +7,9 @@ use App\Models\Invoice;
 use App\Models\User;
 use App\Models\VendorBusinessProfile;
 use App\Models\VendorItem;
+use App\Models\VendorItemSale;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 class VendorAnalyticsService
 {
@@ -95,12 +97,92 @@ class VendorAnalyticsService
                     'inactive' => $inactiveItems,
                 ],
             ],
+            'item_sales' => $this->itemSalesInsights($user),
             'recent_activity' => $this->recentActivity($bookings, $paidInvoices, $items, $profile),
             'latest' => [
                 'booking' => $this->formatLatestBooking($bookings),
                 'receipt' => $this->formatLatestReceipt($paidInvoices),
                 'reuse_item' => $this->formatLatestItem($items),
             ],
+        ];
+    }
+
+    /**
+     * Vendor-reported CMart item sales only (not booth fees / profit).
+     *
+     * @return array{
+     *   available: bool,
+     *   clarification_key: string,
+     *   items_sold: int|null,
+     *   recorded_sales_total: float|null,
+     *   currency: string,
+     *   reserved_sales_count: int|null,
+     *   reserved_sales_total: float|null,
+     *   walk_in_sales_count: int|null,
+     *   walk_in_sales_total: float|null,
+     *   sales_by_event: list<array<string, mixed>>|null
+     * }
+     */
+    private function itemSalesInsights(User $user): array
+    {
+        $base = [
+            'available' => false,
+            'clarification_key' => 'vendor_item_sales_cmart_only',
+            'items_sold' => null,
+            'recorded_sales_total' => null,
+            'currency' => 'MYR',
+            'reserved_sales_count' => null,
+            'reserved_sales_total' => null,
+            'walk_in_sales_count' => null,
+            'walk_in_sales_total' => null,
+            'sales_by_event' => null,
+        ];
+
+        if (! Schema::hasTable('vendor_item_sales')) {
+            return $base;
+        }
+
+        $sales = VendorItemSale::query()
+            ->with('carbootEvent:id,title,starts_at')
+            ->where('vendor_user_id', $user->id)
+            ->orderByDesc('sold_at')
+            ->get();
+
+        $reserved = $sales->where('sale_source', VendorItemSale::SOURCE_RESERVED);
+        $walkIn = $sales->where('sale_source', VendorItemSale::SOURCE_WALK_IN);
+
+        $byEvent = $sales
+            ->groupBy('carboot_event_id')
+            ->map(function (Collection $group) {
+                /** @var VendorItemSale $first */
+                $first = $group->first();
+                $event = $first->carbootEvent;
+
+                return [
+                    'carboot_event_id' => (int) $first->carboot_event_id,
+                    'event_title' => $event?->title,
+                    'event_starts_at' => $event?->starts_at?->toIso8601String(),
+                    'items_sold' => $group->count(),
+                    'recorded_sales_total' => round((float) $group->sum('final_sale_price'), 2),
+                    'reserved_count' => $group->where('sale_source', VendorItemSale::SOURCE_RESERVED)->count(),
+                    'walk_in_count' => $group->where('sale_source', VendorItemSale::SOURCE_WALK_IN)->count(),
+                ];
+            })
+            ->sortByDesc('event_starts_at')
+            ->values()
+            ->all();
+
+        return [
+            'available' => true,
+            'clarification_key' => 'vendor_item_sales_cmart_only',
+            'items_sold' => $sales->count(),
+            'recorded_sales_total' => round((float) $sales->sum('final_sale_price'), 2),
+            'currency' => 'MYR',
+            'reserved_sales_count' => $reserved->count(),
+            'reserved_sales_total' => round((float) $reserved->sum('final_sale_price'), 2),
+            'walk_in_sales_count' => $walkIn->count(),
+            'walk_in_sales_total' => round((float) $walkIn->sum('final_sale_price'), 2),
+            'sales_by_event' => $byEvent,
         ];
     }
 
@@ -146,6 +228,7 @@ class VendorAnalyticsService
                 'inactive_listings' => $analytics['summary']['inactive_reuse_listings'],
                 'status_distribution' => $analytics['distributions']['reuse_listing_status'],
             ],
+            'item_sales_summary' => $analytics['item_sales'],
             'recent_activity' => $analytics['recent_activity'],
         ];
     }

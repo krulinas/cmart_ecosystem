@@ -203,17 +203,32 @@
           <p class="mt-2 text-sm text-ink-600">
             {{ t('customerReservations.completeBody') }}
           </p>
+          <label class="mt-4 block">
+            <span class="ml-label">{{ t('customerReservations.finalSalePriceLabel') }}</span>
+            <input
+              v-model="finalSalePrice"
+              type="number"
+              min="0"
+              step="0.01"
+              class="ml-input"
+              data-testid="vendor-reservation-final-price"
+              :disabled="mutating"
+            />
+            <span class="mt-1 block text-xs text-ink-500">
+              {{ askingPriceHint }}
+            </span>
+          </label>
           <p v-if="actionError" class="mt-3 text-sm text-rose-700">{{ actionError }}</p>
-          <div class="mt-5 flex justify-end gap-2">
+          <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" class="ml-btn-ghost" :disabled="mutating" @click="closeComplete">{{ t('customerReservations.notYet') }}</button>
             <button
               type="button"
               class="ml-btn-primary"
               data-testid="vendor-reservation-complete-confirm"
-              :disabled="mutating"
+              :disabled="mutating || !canSubmitComplete"
               @click="confirmComplete"
             >
-              {{ mutating ? t('customerReservations.saving') : t('customerReservations.yesMarkCollected') }}
+              {{ mutating ? t('customerReservations.saving') : t('customerReservations.confirmCollectionAndMarkSold') }}
             </button>
           </div>
         </div>
@@ -255,8 +270,22 @@ const cancelTarget = ref(null);
 const completeTarget = ref(null);
 const cancelReason = ref('');
 const acknowledgeNoRefund = ref(false);
+const finalSalePrice = ref('');
 const actionError = ref('');
 const mutating = ref(false);
+
+const askingPriceHint = computed(() => {
+  const asking = completeTarget.value?.item?.asking_price;
+  return asking != null
+    ? t('customerReservations.finalSalePriceHintWithAsking', {
+      price: formatReservationFee(asking, 'MYR'),
+    })
+    : t('customerReservations.finalSalePriceHint');
+});
+
+const canSubmitComplete = computed(
+  () => finalSalePrice.value !== '' && Number(finalSalePrice.value) >= 0,
+);
 
 const requiresAck = computed(() => requiresNoRefundAcknowledgement(cancelTarget.value));
 const canSubmitCancel = computed(() => {
@@ -316,6 +345,9 @@ const confirmCancel = async () => {
 
 const openComplete = (reservation) => {
   completeTarget.value = reservation;
+  finalSalePrice.value = reservation?.item?.asking_price != null
+    ? String(reservation.item.asking_price)
+    : '';
   actionError.value = '';
 };
 
@@ -325,11 +357,14 @@ const closeComplete = () => {
 };
 
 const confirmComplete = async () => {
-  if (!completeTarget.value || mutating.value) return;
+  if (!completeTarget.value || mutating.value || !canSubmitComplete.value) return;
   mutating.value = true;
   actionError.value = '';
   try {
-    await completeVendorItemReservation(completeTarget.value.public_reference);
+    await completeVendorItemReservation(
+      completeTarget.value.public_reference,
+      Number(finalSalePrice.value),
+    );
     toast.success(t('customerReservations.toastCompleted'));
     completeTarget.value = null;
     await load();

@@ -82,6 +82,91 @@
         </div>
       </div>
 
+      <section
+        class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7 space-y-5"
+        data-testid="vendor-item-sales-insights"
+      >
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h3 class="text-xl font-bold text-ink-900">{{ t('insights.itemSales.title') }}</h3>
+            <InfoHelpTip
+              :aria-label="t('insights.itemSales.title')"
+              :text="itemSalesClarification"
+            />
+          </div>
+          <p class="mt-1 text-[15px] leading-7 text-ink-600">{{ t('insights.itemSales.lead') }}</p>
+          <p
+            class="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900"
+            data-testid="vendor-item-sales-clarification"
+          >
+            {{ itemSalesClarification }}
+          </p>
+        </div>
+
+        <p
+          v-if="!itemSales.available"
+          class="rounded-xl border border-dashed border-ink-300 bg-ink-50/50 p-6 text-center text-sm text-ink-500"
+          data-testid="vendor-item-sales-unavailable"
+        >
+          {{ t('insights.itemSales.unavailable') }}
+        </p>
+
+        <template v-else>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div
+              v-for="card in itemSalesCards"
+              :key="card.key"
+              class="rounded-2xl border border-ink-100 bg-white p-5 shadow-sm"
+              :data-testid="`vendor-item-sales-card-${card.key}`"
+            >
+              <p class="text-2xl font-black text-ink-900 tabular-nums leading-none">{{ card.displayValue }}</p>
+              <div class="mt-3 flex items-center gap-1.5">
+                <p class="text-sm font-bold text-ink-500 uppercase tracking-wide">{{ card.label }}</p>
+                <InfoHelpTip :aria-label="t('insights.aboutCard', { label: card.label })" :text="card.help" />
+              </div>
+              <p v-if="card.subtext" class="mt-2 text-sm text-ink-400">{{ card.subtext }}</p>
+            </div>
+          </div>
+
+          <div>
+            <h4 class="text-base font-bold text-ink-900">{{ t('insights.itemSales.byEventTitle') }}</h4>
+            <p
+              v-if="!itemSalesByEvent.length"
+              class="mt-2 rounded-xl border border-dashed border-ink-300 bg-ink-50/50 p-6 text-center text-sm text-ink-500"
+            >
+              {{ t('insights.itemSales.byEventEmpty') }}
+            </p>
+            <div v-else class="mt-2 overflow-x-auto rounded-xl border border-ink-100">
+              <table class="min-w-full divide-y divide-ink-100 text-sm">
+                <thead class="bg-ink-50/80">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('insights.itemSales.colEvent') }}</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('insights.itemSales.colItemsSold') }}</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('insights.itemSales.colRecordedTotal') }}</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('insights.itemSales.colReserved') }}</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('insights.itemSales.colWalkIn') }}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-ink-100 bg-white">
+                  <tr v-for="row in itemSalesByEvent" :key="row.carboot_event_id" data-testid="vendor-item-sales-event-row">
+                    <td class="px-4 py-3 text-ink-800">
+                      <span class="font-semibold">{{ row.event_title || t('insights.itemSales.untitledEvent') }}</span>
+                      <span v-if="eventDateLabel(row.event_starts_at)" class="block text-xs text-ink-500">
+                        {{ eventDateLabel(row.event_starts_at) }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(row.items_sold) }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums">{{ formatCurrency(row.recorded_sales_total) }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(row.reserved_count) }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(row.walk_in_count) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+      </section>
+
       <div class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
@@ -186,7 +271,7 @@
 <script setup>
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { formatLocaleNumber, formatLocaleCurrencyMyr } from '../utils/localeFormat';
+import { formatLocaleDate, formatLocaleNumber, formatLocaleCurrencyMyr } from '../utils/localeFormat';
 import Chart from 'chart.js/auto';
 import InfoHelpTip from './InfoHelpTip.vue';
 
@@ -299,6 +384,58 @@ const insightCards = computed(() => [
     help: t('insights.cards.profileCompletionHelp'),
     icon: icon('M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'),
     iconClass: 'bg-ink-50 text-ink-700 border-ink-100',
+  },
+]);
+
+const itemSales = computed(() => props.analytics?.item_sales || { available: false });
+
+const itemSalesByEvent = computed(() =>
+  Array.isArray(itemSales.value.sales_by_event) ? itemSales.value.sales_by_event : [],
+);
+
+const itemSalesClarification = computed(() => {
+  const key = `insights.itemSales.clarification.${itemSales.value.clarification_key || 'vendor_item_sales_cmart_only'}`;
+  const translated = t(key);
+  return translated === key
+    ? t('insights.itemSales.clarification.vendor_item_sales_cmart_only')
+    : translated;
+});
+
+const eventDateLabel = (value) =>
+  formatLocaleDate(value, { day: 'numeric', month: 'short', year: 'numeric' });
+
+const itemSalesCards = computed(() => [
+  {
+    key: 'items-sold',
+    label: t('insights.itemSales.cards.itemsSold'),
+    displayValue: formatCount(itemSales.value.items_sold),
+    subtext: t('insights.itemSales.cards.itemsSoldSubtext'),
+    help: t('insights.itemSales.cards.itemsSoldHelp'),
+  },
+  {
+    key: 'recorded-total',
+    label: t('insights.itemSales.cards.recordedTotal'),
+    displayValue: formatCurrency(itemSales.value.recorded_sales_total),
+    subtext: t('insights.itemSales.cards.recordedTotalSubtext'),
+    help: t('insights.itemSales.cards.recordedTotalHelp'),
+  },
+  {
+    key: 'reserved-sales',
+    label: t('insights.itemSales.cards.reservedSales'),
+    displayValue: formatCount(itemSales.value.reserved_sales_count),
+    subtext: t('insights.itemSales.cards.reservedSalesSubtext', {
+      amount: formatCurrency(itemSales.value.reserved_sales_total),
+    }),
+    help: t('insights.itemSales.cards.reservedSalesHelp'),
+  },
+  {
+    key: 'walk-in-sales',
+    label: t('insights.itemSales.cards.walkInSales'),
+    displayValue: formatCount(itemSales.value.walk_in_sales_count),
+    subtext: t('insights.itemSales.cards.walkInSalesSubtext', {
+      amount: formatCurrency(itemSales.value.walk_in_sales_total),
+    }),
+    help: t('insights.itemSales.cards.walkInSalesHelp'),
   },
 ]);
 

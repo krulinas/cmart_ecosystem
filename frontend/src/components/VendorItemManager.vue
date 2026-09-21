@@ -13,6 +13,14 @@
       </div>
       <div class="flex flex-wrap gap-2">
         <button type="button" class="ml-btn-primary" @click="openCreateModal">{{ t('items.addItem') }}</button>
+        <button
+          type="button"
+          class="ml-btn-ghost"
+          data-testid="vendor-open-select-event-items"
+          @click="showEventSelectModal = true"
+        >
+          {{ t('items.selectItemsForEvent') }}
+        </button>
         <button type="button" class="ml-btn-ghost" :disabled="loading" @click="loadItems">
           {{ loading ? t('items.refreshing') : t('items.refresh') }}
         </button>
@@ -103,18 +111,28 @@
                 <p class="text-xs text-ink-500 mt-0.5">{{ item.category }} · {{ item.condition }}</p>
               </div>
               <span
-                class="ml-badge capitalize shrink-0"
-                :class="item.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-ink-100 text-ink-700'"
+                class="ml-badge shrink-0"
+                :class="itemDisplayStatusBadgeClass(item)"
+                data-testid="vendor-item-display-status-badge"
+                :data-display-status="itemDisplayStatus(item)"
               >
-                {{ item.status }}
+                {{ itemDisplayStatusLabel(item, t) }}
               </span>
             </div>
 
             <p
               class="mt-2 text-[11px] font-semibold"
-              :class="item.status === 'active' ? 'text-brand-700' : 'text-ink-500'"
+              :class="itemVisibility(item) === 'visible' ? 'text-brand-700' : 'text-ink-500'"
             >
-              {{ marketplaceVisibilityLabel(item.status, t) }}
+              {{ itemVisibilityLabel(item, t) }}
+            </p>
+
+            <p
+              v-if="selectedEventCount(item)"
+              class="mt-2 text-[11px] font-semibold text-ink-500"
+              data-testid="vendor-item-selected-events"
+            >
+              {{ t('items.selectedForEvents', { count: selectedEventCount(item) }) }}
             </p>
 
             <p
@@ -132,9 +150,19 @@
               <button type="button" class="ml-btn-ghost text-sm" @click="openDetails(item)">{{ t('items.view') }}</button>
               <button type="button" class="ml-btn-ghost text-sm" @click="openEditModal(item)">{{ t('items.edit') }}</button>
               <button
+                v-if="item.can_mark_sold_walk_in"
+                type="button"
+                class="ml-btn-ghost text-sm text-emerald-700"
+                data-testid="vendor-item-mark-sold"
+                @click="openWalkInSale(item)"
+              >
+                {{ t('items.markSoldWalkIn') }}
+              </button>
+              <button
                 type="button"
                 class="ml-btn-ghost text-sm text-rose-600"
-                :disabled="deletingId === item.id"
+                :disabled="deletingId === item.id || item.can_delete === false"
+                :title="item.can_delete === false ? t('items.deleteBlocked') : undefined"
                 @click="removeItem(item)"
               >
                 {{ deletingId === item.id ? t('items.deleting') : t('items.delete') }}
@@ -157,6 +185,79 @@
       :item="selectedItem"
       @edit="openEditFromDetails"
     />
+    <VendorSelectEventItemsModal
+      v-model="showEventSelectModal"
+      :items="items"
+      @changed="loadItems"
+    />
+
+    <Teleport to="body">
+      <div
+        v-if="walkInItem"
+        class="fixed inset-0 z-[110] flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vendor-walk-in-sale-title"
+        data-testid="vendor-walk-in-sale-modal"
+        @keydown.esc="closeWalkInSale"
+      >
+        <div class="absolute inset-0 bg-[rgba(15,23,42,0.65)] backdrop-blur-[6px]" @click="closeWalkInSale" />
+        <div class="relative z-10 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" @click.stop>
+          <h3 id="vendor-walk-in-sale-title" class="text-lg font-extrabold text-ink-900">
+            {{ t('items.walkIn.title') }}
+          </h3>
+          <p class="mt-2 text-sm text-ink-600">{{ t('items.walkIn.body', { name: walkInItem.name }) }}</p>
+
+          <label class="mt-4 block">
+            <span class="ml-label">{{ t('items.walkIn.eventLabel') }}</span>
+            <select
+              v-model="walkInEventId"
+              class="ml-input"
+              :disabled="walkInSubmitting || walkInEventsLoading"
+              data-testid="vendor-walk-in-event"
+            >
+              <option value="">
+                {{ walkInEventsLoading ? t('items.walkIn.loadingEvents') : t('items.walkIn.selectEvent') }}
+              </option>
+              <option v-for="event in walkInEventOptions" :key="event.carboot_event_id" :value="String(event.carboot_event_id)">
+                {{ walkInEventLabel(event) }}
+              </option>
+            </select>
+          </label>
+
+          <label class="mt-4 block">
+            <span class="ml-label">{{ t('items.walkIn.finalPriceLabel') }}</span>
+            <input
+              v-model="walkInPrice"
+              type="number"
+              min="0"
+              step="0.01"
+              class="ml-input"
+              :disabled="walkInSubmitting"
+              data-testid="vendor-walk-in-price"
+            />
+            <span class="mt-1 block text-xs text-ink-500">{{ t('items.walkIn.finalPriceHint') }}</span>
+          </label>
+
+          <p v-if="walkInError" class="mt-3 text-sm text-rose-700" data-testid="vendor-walk-in-error">{{ walkInError }}</p>
+
+          <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" class="ml-btn-ghost" :disabled="walkInSubmitting" @click="closeWalkInSale">
+              {{ t('items.walkIn.cancel') }}
+            </button>
+            <button
+              type="button"
+              class="ml-btn-primary"
+              :disabled="walkInSubmitting || !canSubmitWalkIn"
+              data-testid="vendor-walk-in-confirm"
+              @click="confirmWalkInSale"
+            >
+              {{ walkInSubmitting ? t('items.walkIn.saving') : t('items.walkIn.confirm') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <ImageLightbox
       v-model:open="imageLightbox.open"
@@ -174,12 +275,24 @@ import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import VendorItemFormModal from './VendorItemFormModal.vue';
 import VendorItemDetailsModal from './VendorItemDetailsModal.vue';
+import VendorSelectEventItemsModal from './VendorSelectEventItemsModal.vue';
 import ImageLightbox from './management/ImageLightbox.vue';
 import api from '../services/api';
+import { recordWalkInSale } from '../services/itemReservationsApi';
+import { getEligibleItemEvents } from '../services/vendorItemEventListingsApi';
 import { extractApiError } from '../utils/apiErrors';
 import { filterTabClass } from '../utils/bookingDisplay';
 import { resolveReuseItemGallery, resolveReuseItemImageUrl, normalizeReuseItem } from '../utils/imageUrl';
-import { formatItemPrice, ITEM_STATUS_TABS, marketplaceVisibilityLabel } from '../utils/vendorCatalog';
+import { formatLocaleDate } from '../utils/localeFormat';
+import {
+  formatItemPrice,
+  ITEM_STATUS_TABS,
+  itemDisplayStatus,
+  itemDisplayStatusBadgeClass,
+  itemDisplayStatusLabel,
+  itemVisibility,
+  itemVisibilityLabel,
+} from '../utils/vendorCatalog';
 
 const emit = defineEmits(['changed']);
 
@@ -196,8 +309,16 @@ const selectedItemStatus = ref('all');
 const itemsExpanded = ref(false);
 const showFormModal = ref(false);
 const showDetailsModal = ref(false);
+const showEventSelectModal = ref(false);
 const editingItem = ref(null);
 const selectedItem = ref(null);
+const walkInItem = ref(null);
+const walkInEventId = ref('');
+const walkInPrice = ref('');
+const walkInError = ref('');
+const walkInSubmitting = ref(false);
+const walkInEvents = ref([]);
+const walkInEventsLoading = ref(false);
 const brokenImageIds = ref(new Set());
 const imageLightbox = ref({
   open: false,
@@ -340,6 +461,71 @@ const removeItem = async (item) => {
     toast.error(extractApiError(error));
   } finally {
     deletingId.value = null;
+  }
+};
+
+const selectedEventCount = (item) =>
+  Array.isArray(item?.selected_event_ids) ? item.selected_event_ids.length : 0;
+
+const walkInEventOptions = computed(() => {
+  const allowed = new Set((walkInItem.value?.selected_event_ids || []).map((id) => String(id)));
+  if (!allowed.size) return walkInEvents.value;
+  return walkInEvents.value.filter((event) => allowed.has(String(event.carboot_event_id)));
+});
+
+const walkInEventLabel = (event) => {
+  const title = event.title || t('items.eventSelect.untitledEvent');
+  const date = formatLocaleDate(event.starts_at, { day: 'numeric', month: 'short', year: 'numeric' });
+  return date ? `${title} · ${date}` : title;
+};
+
+const canSubmitWalkIn = computed(
+  () => Boolean(walkInEventId.value) && walkInPrice.value !== '' && Number(walkInPrice.value) >= 0,
+);
+
+const loadWalkInEvents = async () => {
+  walkInEventsLoading.value = true;
+  try {
+    const { data } = await getEligibleItemEvents();
+    walkInEvents.value = Array.isArray(data?.events) ? data.events : [];
+  } catch (error) {
+    walkInError.value = extractApiError(error);
+    walkInEvents.value = [];
+  } finally {
+    walkInEventsLoading.value = false;
+  }
+};
+
+const openWalkInSale = async (item) => {
+  walkInItem.value = item;
+  walkInError.value = '';
+  walkInPrice.value = item.pricing_type === 'fixed' && item.price != null ? String(item.price) : '';
+  walkInEventId.value = '';
+  await loadWalkInEvents();
+  if (walkInEventOptions.value.length === 1) {
+    walkInEventId.value = String(walkInEventOptions.value[0].carboot_event_id);
+  }
+};
+
+const closeWalkInSale = () => {
+  if (walkInSubmitting.value) return;
+  walkInItem.value = null;
+};
+
+const confirmWalkInSale = async () => {
+  if (!walkInItem.value || walkInSubmitting.value || !canSubmitWalkIn.value) return;
+  walkInSubmitting.value = true;
+  walkInError.value = '';
+  try {
+    await recordWalkInSale(walkInItem.value.id, Number(walkInEventId.value), Number(walkInPrice.value));
+    toast.success(t('items.walkIn.toastRecorded'));
+    walkInItem.value = null;
+    await loadItems();
+  } catch (error) {
+    walkInError.value = extractApiError(error);
+    toast.error(walkInError.value);
+  } finally {
+    walkInSubmitting.value = false;
   }
 };
 
