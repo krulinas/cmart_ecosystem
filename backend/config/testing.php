@@ -35,6 +35,7 @@ return [
     */
     'blocked_databases' => [
         'cmart_db',
+        'cmart_db_rebuild',
         'cmart',
         'production',
         'prod',

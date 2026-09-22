@@ -22,13 +22,13 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_DRIVER" value="array"/>
         <env name="DB_CONNECTION" value="mysql"/>
-        <env name="DB_DATABASE" value="cmart_marketplace_test"/>
-        <env name="TESTING_APPROVED_DATABASE" value="cmart_marketplace_test"/>
+        <env name="DB_DATABASE" value="cmart_test"/>
+        <env name="TESTING_APPROVED_DATABASE" value="cmart_test"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <!-- Host, port, username, and password inherit from .env.testing or .env -->
-        <!-- TestingDatabaseGuard rejects cmart_db and other unsafe database names -->
+        <!-- TestingDatabaseGuard rejects cmart_db, cmart_db_rebuild, and other unsafe names -->
     </php>
 </phpunit>

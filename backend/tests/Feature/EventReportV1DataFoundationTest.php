@@ -167,6 +167,8 @@ class EventReportV1DataFoundationTest extends TestCase
             'product_details' => 'Event report V1 booking fixture with enough detail.',
             'approval_status' => $approvalStatus,
             'checked_in_at' => $checkedIn ? now()->subDay() : null,
+            'unit_site_price' => $invoiceAmount ?? 0,
+            'site_quantity' => $invoiceAmount === null ? 0 : 1,
         ]);
         $this->createdBookingIds[] = $booking->id;
 
@@ -379,6 +381,8 @@ class EventReportV1DataFoundationTest extends TestCase
 
     public function test_attendance_check_in_versus_approved_and_missing(): void
     {
+        $this->app->setLocale('en');
+
         $event = $this->closedEvent();
         $this->seedLayout($event);
         $vendor = $this->user('community');
@@ -497,6 +501,8 @@ class EventReportV1DataFoundationTest extends TestCase
 
     public function test_no_survey_responses_are_not_zero(): void
     {
+        $this->app->setLocale('en');
+
         $event = $this->closedEvent();
         $this->seedLayout($event);
         $survey = app(PostEventSummaryAggregator::class)->build($event->fresh())['sections']['vendor_survey'];
