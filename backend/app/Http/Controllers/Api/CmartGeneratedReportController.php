@@ -9,6 +9,7 @@ use App\Models\ReportWorkflowAudit;
 use App\Services\ReportWorkflowAuditor;
 use App\Services\ReportNotificationReadService;
 use App\Support\GeneratedReportStatus;
+use App\Support\PostEventReportPdfFilename;
 use App\Support\PostEventReportPdfViewData;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -70,28 +71,40 @@ class CmartGeneratedReportController extends Controller
             ], 503);
         }
 
-        $filename = sprintf(
-            'cmart-report-%s-v%d.pdf',
-            $generated_report->report_type,
-            $generated_report->version,
-        );
+        $filename = PostEventReportPdfFilename::forReport($generated_report, 'cmart');
 
-        $pdf = Pdf::loadView(
-            'reports.post_event_summary',
-            PostEventReportPdfViewData::forAudience($generated_report, 'cmart'),
-        )->setPaper('a4');
+        try {
+            $pdf = Pdf::loadView(
+                'reports.post_event_summary',
+                PostEventReportPdfViewData::forAudience($generated_report, 'cmart'),
+            )->setPaper('a4');
 
-        app(ReportWorkflowAuditor::class)->record(
-            ReportWorkflowAudit::ACTION_DOWNLOADED,
-            request()->user(),
-            $generated_report->reportRequest,
-            $generated_report,
-            $generated_report->carboot_event_id,
-            ['version' => $generated_report->version, 'format' => 'pdf'],
-            request(),
-        );
+            app(ReportWorkflowAuditor::class)->record(
+                ReportWorkflowAudit::ACTION_DOWNLOADED,
+                request()->user(),
+                $generated_report->reportRequest,
+                $generated_report,
+                $generated_report->carboot_event_id,
+                ['version' => $generated_report->version, 'format' => 'pdf'],
+                request(),
+            );
 
-        return $pdf->stream($filename);
+            return $pdf->download($filename);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('CMart post-event PDF render failed', [
+                'generated_report_id' => $generated_report->id,
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'message' => __('api.unable_to_generate_pdf') !== 'api.unable_to_generate_pdf'
+                    ? __('api.unable_to_generate_pdf')
+                    : 'Unable to generate the Post-Event PDF. The error has been logged.',
+            ], 500);
+        }
     }
 
     public function markViewed(Request $request, GeneratedReport $generated_report): JsonResponse

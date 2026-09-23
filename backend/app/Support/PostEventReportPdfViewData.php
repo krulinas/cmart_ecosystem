@@ -33,6 +33,8 @@ final class PostEventReportPdfViewData
         return [
             'report' => $report,
             'snapshot' => $snapshot,
+            'visual_spec' => PostEventReportVisualSpec::fromSnapshot($snapshot),
+            'cover_logos' => PostEventReportPresentation::resolveCoverLogoPaths(),
             'pdf_downloaded_at_display' => ReportDateTimeFormatter::datetime(
                 Carbon::now(ReportDateTimeFormatter::TIMEZONE)->toIso8601String()
             ),

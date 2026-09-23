@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   shouldUseDoughnutForCategories,
   presentNumericRows,
+  resolveCategoryChartType,
 } from '../../src/utils/chartLifecycle.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -49,14 +50,24 @@ describe('centralized BM/EN language toggle', () => {
 });
 
 describe('organizer analytics chart mappings', () => {
-  it('uses doughnut for 2–5 vendor categories and bar otherwise', () => {
+  it('uses doughnut for 2–5 vendor categories, ranked bar for 6+, compact for 0–1', () => {
     assert.equal(shouldUseDoughnutForCategories(1), false);
     assert.equal(shouldUseDoughnutForCategories(2), true);
     assert.equal(shouldUseDoughnutForCategories(5), true);
     assert.equal(shouldUseDoughnutForCategories(6), false);
-    assert.match(panel, /shouldUseDoughnutForCategories/);
+    assert.match(panel, /resolveCategoryChartType/);
     assert.match(panel, /overview-vendor-category-doughnut/);
     assert.match(panel, /overview-vendor-category-bars/);
+    assert.match(panel, /overview-vendor-category-compact/);
+  });
+
+  it('uses horizontal stacked bar for revenue collection (not doughnut)', () => {
+    assert.match(panel, /overview-revenue-stacked/);
+    assert.match(panel, /AnalyticsStackedBarChart/);
+    const idx = panel.indexOf('test-id="overview-revenue-stacked"');
+    assert.ok(idx > 0);
+    const window = panel.slice(Math.max(0, idx - 200), idx + 40);
+    assert.equal(window.includes('AnalyticsDoughnutChart'), false);
   });
 
   it('never maps multi-select survey questions to pie/doughnut', () => {

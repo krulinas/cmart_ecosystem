@@ -24,25 +24,23 @@
         .section { margin-bottom: 14px; }
         /* Do not force section-break: always — that wastes pages and fights DomPDF flow. */
         .keep-together { page-break-inside: avoid; }
-        h1 { font-size: 22px; color: #014a7a; margin: 0 0 6px; letter-spacing: 0.04em; }
+        h1 { font-size: 22px; color: #2D439C; margin: 0 0 6px; letter-spacing: 0.04em; }
         h2 {
             font-size: 13px;
-            color: #014a7a;
+            color: #2D439C;
             margin: 0 0 8px;
             padding-bottom: 4px;
-            border-bottom: 2px solid #b3e5fc;
+            border-bottom: 2px solid #E8EEF6;
             text-transform: uppercase;
             letter-spacing: 0.06em;
             page-break-after: avoid;
         }
         h3 {
             font-size: 11px;
-            color: #0277BD;
+            color: #3970E4;
             margin: 8px 0 4px;
-            /* Avoid page-break-after: avoid here — with many survey charts it
-               pushes each Q1–Q13 block onto its own page in DomPDF. */
         }
-        .eyebrow { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #0277BD; font-weight: bold; }
+        .eyebrow { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #3970E4; font-weight: bold; }
         .muted { color: #64748b; font-size: 10px; }
         .note { color: #64748b; font-size: 9.5px; margin-top: 6px; }
         .warn {
@@ -61,16 +59,28 @@
             position: relative;
         }
         .cover-brand { margin-bottom: 28px; }
-        .cover-brand img { height: 42px; }
+        .cover-brand img { height: 42px; margin-right: 14px; vertical-align: middle; }
         .cover-brand-fallback {
             display: inline-block;
-            background: #0277BD;
+            background: #3970E4;
             color: #fff;
             font-weight: bold;
             padding: 10px 14px;
             font-size: 14px;
             letter-spacing: 0.08em;
         }
+        .kpi-table td {
+            width: 25%;
+            background: #F5F8FE;
+            border: 1px solid #E8EEF6;
+            padding: 10px 8px;
+            vertical-align: top;
+        }
+        .kpi-label { font-size: 9px; color: #3970E4; text-transform: uppercase; letter-spacing: 0.04em; }
+        .chart-block { margin-top: 10px; page-break-inside: avoid; }
+        .chart-wrap { width: 100%; border-collapse: collapse; }
+        .money-pos { color: #2E9D78; }
+        .money-warn { color: #E86F88; }
         .cover-title { margin-top: 48px; }
         .cover-event { font-size: 20px; color: #0f172a; font-weight: bold; margin: 14px 0 8px; }
         .cover-meta td { padding: 5px 0; vertical-align: top; }
@@ -111,12 +121,12 @@
         }
         .kpi-table td {
             width: 25%;
-            background: #f0f9ff;
-            border: 1px solid #e0f2fe;
+            background: #F5F8FE;
+            border: 1px solid #E8EEF6;
             padding: 10px 8px;
             vertical-align: top;
         }
-        .kpi-label { font-size: 9px; color: #0277BD; text-transform: uppercase; letter-spacing: 0.04em; }
+        .kpi-label { font-size: 9px; color: #3970E4; text-transform: uppercase; letter-spacing: 0.04em; }
         .kpi-value { font-size: 16px; font-weight: bold; color: #0f172a; margin-top: 4px; }
         .summary-box {
             background: #f8fafc;
@@ -207,16 +217,26 @@
         .footer-table { width: 100%; border-collapse: collapse; }
         .footer-table td { padding: 0; font-size: 8.5px; color: #94a3b8; vertical-align: top; }
         .footer-table .right { text-align: right; }
-        .money-pos { color: #047857; }
-        .money-warn { color: #b45309; }
+        .money-pos { color: #2E9D78; }
+        .money-warn { color: #E86F88; }
     </style>
 </head>
 <body>
 @php
     use App\Support\PostEventReportPresentation as Pres;
+    use App\Support\PostEventReportChartSvg as ChartSvg;
+    use App\Support\PostEventReportVisualSpec;
     use App\Support\ReportDateTimeFormatter;
 
     $snapshot = $snapshot ?? ($report->snapshot ?? []);
+    $visualSpec = is_array($visual_spec ?? null)
+        ? $visual_spec
+        : PostEventReportVisualSpec::fromSnapshot(is_array($snapshot) ? $snapshot : []);
+    $coverLogos = is_array($cover_logos ?? null)
+        ? $cover_logos
+        : Pres::resolveCoverLogoPaths();
+    $logoPath = $coverLogos['cmart'] ?? Pres::resolveLogoPath();
+    $uumLogoPath = $coverLogos['uum'] ?? null;
     $sections = is_array($snapshot['sections'] ?? null) ? $snapshot['sections'] : [];
     $event = is_array($snapshot['event'] ?? null) ? $snapshot['event'] : [];
     $pipeline = is_array($sections['booking_pipeline'] ?? null) ? $sections['booking_pipeline'] : [];
@@ -284,7 +304,7 @@
         $expected !== null ? (float) $expected : null,
     );
     $paidWd = is_array($payments['paid_withdrawals'] ?? null) ? $payments['paid_withdrawals'] : [];
-    $logoPath = Pres::resolveLogoPath();
+    // $logoPath / $uumLogoPath resolved above from branding directory.
 
     $statusBars = [];
     if ($pipelineOk) {
@@ -309,31 +329,18 @@
         $categoryMax = max($categoryMax, (int) ($row['count'] ?? 0));
     }
 
-    $summaryBits = [];
-    if ($totalApps !== null) {
-        $summaryBits[] = (int) $totalApps . ' applications were recorded for this event';
-    }
-    if ($approvedBookings !== null) {
-        $summaryBits[] = (int) $approvedBookings . ' approved bookings';
-    }
-    if ($approvedVendors !== null) {
-        $summaryBits[] = (int) $approvedVendors . ' approved unique vendors';
-    }
-    if ($attendanceRecorded) {
-        $summaryBits[] = (int) $attendance['verified_check_in_count'] . ' verified check-ins';
-    }
-    if ($utilisationOk && isset($utilisation['utilisation_percent'])) {
-        $summaryBits[] = 'site-day utilisation of ' . $utilisation['utilisation_percent'] . '%';
-    }
-    if ($collected !== null) {
-        $summaryBits[] = 'collected booth fees of ' . Pres::money($collected);
-    }
-    if ($surveyOk && isset($survey['respondent_count'])) {
-        $summaryBits[] = (int) $survey['respondent_count'] . ' survey responses';
-    }
-    $executiveSummary = $summaryBits === []
-        ? 'This report summarises the available snapshot for the selected event. Some operational or survey indicators were not recorded.'
-        : 'Based on the frozen event snapshot, this report covers ' . implode(', ', $summaryBits) . '. Figures reflect recorded system and survey data only and do not imply an overall success judgement.';
+    $programme = is_array($snapshot['programme'] ?? null) ? $snapshot['programme'] : [];
+    $programmeDetails = is_array($programme['details'] ?? null) ? $programme['details'] : [];
+    $programmeAnalysis = is_array($programme['analysis'] ?? null) ? $programme['analysis'] : [];
+    $programmeIntro = \App\Support\PostEventReportProgramme::normalizeText($programme['introduction'] ?? $report->programme_introduction ?? null);
+    $programmeObjectives = is_array($programme['objectives'] ?? null)
+        ? $programme['objectives']
+        : (is_array($report->programme_objectives) ? $report->programme_objectives : []);
+    $objectivesNa = (bool) ($programme['objectives_not_applicable'] ?? $report->objectives_not_applicable ?? false);
+    $programmeConclusion = \App\Support\PostEventReportProgramme::normalizeText($programme['conclusion'] ?? $report->conclusion ?? null);
+    $executiveSummary = is_string($programme['executive_summary'] ?? null) && $programme['executive_summary'] !== ''
+        ? $programme['executive_summary']
+        : \App\Support\PostEventReportAnalysis::executiveSummary(is_array($snapshot) ? $snapshot : []);
 
     $publishedDisplay = $published_at_display
         ?? ReportDateTimeFormatter::datetime(optional($report->published_at)?->toIso8601String());
@@ -350,9 +357,12 @@
 <section class="page-cover">
     <div class="cover">
         <div class="cover-brand">
+            @if ($uumLogoPath)
+                <img src="{{ $uumLogoPath }}" alt="UUM">
+            @endif
             @if ($logoPath)
                 <img src="{{ $logoPath }}" alt="CMart">
-            @else
+            @elseif (! $uumLogoPath)
                 <span class="cover-brand-fallback">CMart</span>
             @endif
         </div>
@@ -414,9 +424,111 @@
     <div class="summary-box">{{ $executiveSummary }}</div>
 </section>
 
-{{-- 3. Event and Participation --}}
+{{-- 3. Programme Introduction --}}
 <section class="section">
-    <h2>2. Event and Participation</h2>
+    <h2>2. Programme Introduction</h2>
+    @if ($programmeIntro)
+        <div class="narratives">{{ $programmeIntro }}</div>
+    @else
+        <p class="muted">Not provided</p>
+    @endif
+</section>
+
+{{-- 4. Programme Details --}}
+<section class="section">
+    <h2>3. Programme Details</h2>
+    <table class="kv">
+        <tr><th>Event name</th><td>{{ $programmeDetails['event_name'] ?? $eventTitle }}</td></tr>
+        <tr><th>Date and time</th><td>{{ $programmeDetails['date_time'] ?? ($dateRange ?? 'Not recorded') }}</td></tr>
+        <tr><th>Venue</th><td>{{ $programmeDetails['venue'] ?? $venue }}</td></tr>
+        <tr><th>Organizer</th><td>{{ $programmeDetails['organizer'] ?? __('reports.pdf_ui.carboot_organizer') }}</td></tr>
+        @if (!empty($programmeDetails['event_status']))
+            <tr><th>Event status</th><td>{{ $programmeDetails['event_status'] }}</td></tr>
+        @endif
+        <tr><th>Report version</th><td>Version {{ $report->version }}</td></tr>
+        <tr><th>Data cut-off</th><td>{{ $programmeDetails['data_cut_off'] ?? ($snapshot['generated_at_display'] ?? 'Not recorded') }}</td></tr>
+        @if (array_key_exists('open_booking_sites', $programmeDetails))
+            <tr><th>Open booking sites</th><td>{{ $programmeDetails['open_booking_sites'] }}</td></tr>
+        @endif
+        @if (!empty($programmeDetails['site_price']))
+            <tr><th>Site price</th><td>{{ $programmeDetails['site_price'] }}</td></tr>
+        @endif
+        @if (array_key_exists('approved_bookings', $programmeDetails))
+            <tr><th>Approved bookings</th><td>{{ $programmeDetails['approved_bookings'] }}</td></tr>
+        @endif
+        @if (array_key_exists('unique_participating_vendors', $programmeDetails))
+            <tr><th>Unique participating vendors</th><td>{{ $programmeDetails['unique_participating_vendors'] }}</td></tr>
+        @endif
+        <tr>
+            <th>Item reservations</th>
+            <td>
+                @if (!empty($programmeDetails['item_reservations_enabled']))
+                    Enabled
+                    @if (!empty($programmeDetails['item_reservation_service_fee']))
+                        · service fee {{ $programmeDetails['item_reservation_service_fee'] }}
+                    @endif
+                @else
+                    Not enabled
+                @endif
+            </td>
+        </tr>
+    </table>
+</section>
+
+{{-- 5. Programme Objectives --}}
+<section class="section">
+    <h2>4. Programme Objectives</h2>
+    @if ($objectivesNa)
+        <p class="muted">Objectives marked not applicable for this report.</p>
+    @elseif ($programmeObjectives !== [])
+        <ol>
+            @foreach ($programmeObjectives as $objective)
+                <li style="margin-bottom:4px;">{{ $objective }}</li>
+            @endforeach
+        </ol>
+    @else
+        <p class="muted">Objectives were not provided</p>
+    @endif
+</section>
+
+{{-- Analytics-aligned composition visuals --}}
+@php
+    $vizCharts = is_array($visualSpec['charts'] ?? null) ? $visualSpec['charts'] : [];
+@endphp
+@if ($vizCharts !== [])
+<section class="section">
+    <h2>Analytics snapshot visuals</h2>
+    <p class="note">Charts below use the frozen report snapshot with the Analytics Hub semantic palette. Missing values are omitted (never shown as zero). Performance Across Events is not included because cross-event benchmarks are not frozen into this snapshot.</p>
+
+    @foreach (['site_utilisation', 'booking_status', 'revenue_collection', 'vendor_categories', 'feedback_ratings'] as $chartId)
+        @php $chart = $vizCharts[$chartId] ?? null; @endphp
+        @if (is_array($chart) && empty($chart['empty']) && !empty($chart['rows']))
+            <div class="chart-block" data-chart-id="{{ $chartId }}" data-chart-type="{{ $chart['type'] ?? '' }}">
+                <h3>{{ $chart['title'] ?? $chartId }}</h3>
+                @if (!empty($chart['subtitle']))
+                    <p class="note" style="margin-top:0;">{{ $chart['subtitle'] }}</p>
+                @endif
+                @if (($chart['type'] ?? '') === 'stacked_bar')
+                    {!! ChartSvg::stackedBar($chart['rows']) !!}
+                @elseif (($chart['type'] ?? '') === 'bar')
+                    {!! ChartSvg::horizontalBars($chart['rows']) !!}
+                @elseif (($chart['type'] ?? '') === 'compact')
+                    {!! ChartSvg::compact($chart['rows']) !!}
+                @else
+                    {!! ChartSvg::doughnut($chart['rows']) !!}
+                @endif
+            </div>
+        @endif
+    @endforeach
+</section>
+@endif
+
+{{-- 6. Participation and Operations --}}
+<section class="section">
+    <h2>5. Participation and Operations</h2>
+    @foreach (($programmeAnalysis['participation'] ?? []) as $sentence)
+        <p>{{ $sentence }}</p>
+    @endforeach
     <div class="panel">
         <table class="kv">
             <tr><th>{{ __('reports.pdf.event_title') }}</th><td>{{ $eventTitle }}</td></tr>
@@ -507,11 +619,14 @@
     @endif
 </section>
 
-{{-- 4. Financial Summary --}}
+{{-- 7. Financial and Analytical Findings --}}
 @if ($paymentsOk)
 <section class="section">
-    <h2>3. Financial Summary</h2>
-    <p class="note" style="margin-top:0;">Site booking revenue from frozen booking price snapshots and invoices. Vendor survey sales are not organizer revenue.</p>
+    <h2>6. Financial and Analytical Findings</h2>
+    @foreach (($programmeAnalysis['finance'] ?? []) as $sentence)
+        <p>{{ $sentence }}</p>
+    @endforeach
+    <p class="note" style="margin-top:8px;">Site booking revenue from frozen booking price snapshots and invoices. Vendor survey sales are not organizer revenue.</p>
     <table class="kv">
         <tr><th>{{ __('reports.pdf_ui.expected_booking_revenue') }}</th><td>{{ Pres::money($metric($payments, 'expected_booking_revenue', 'expected_booth_fees') ?? $expected) ?? __('reports.pdf.not_available') }}</td></tr>
         <tr><th>{{ __('reports.pdf_ui.invoiced_amount') }}</th><td>{{ Pres::money($metric($payments, 'invoiced_amount')) ?? __('reports.pdf.not_available') }}</td></tr>
@@ -556,7 +671,10 @@
 
 @if ($eventPerformanceOk)
 <section class="section">
-    <h2>{{ __('reports.pdf_ui.event_performance') }}</h2>
+    <h2>Event Performance (detail)</h2>
+    @foreach (($programmeAnalysis['vendor_mix'] ?? []) as $sentence)
+        <p>{{ $sentence }}</p>
+    @endforeach
     <table class="kv">
         <tr><th>{{ __('reports.pdf_ui.unique_approved_vendors') }}</th><td>{{ $metric($eventPerformance, 'unique_approved_vendors') ?? '—' }}</td></tr>
         <tr><th>{{ __('reports.pdf_ui.approved_bookings') }}</th><td>{{ $metric($eventPerformance, 'approved_bookings') ?? '—' }}</td></tr>
@@ -615,8 +733,11 @@
 
 @if ($feedbackOk)
 <section class="section">
-    <h2>{{ __('reports.pdf_ui.feedback_summary') }}</h2>
-    <p class="note" style="margin-top:0;">Aggregate In-app Feedback only. Raw comments are excluded from published reports.</p>
+    <h2>7. Vendor and Community Feedback</h2>
+    @foreach (($programmeAnalysis['feedback'] ?? []) as $sentence)
+        <p>{{ $sentence }}</p>
+    @endforeach
+    <p class="note" style="margin-top:8px;">Aggregate In-app Feedback only. Raw comments are excluded from published reports.</p>
     @if (($metric($feedback, 'response_count') ?? 0) > 0)
         <table class="kv">
             <tr><th>{{ __('reports.pdf_ui.total_feedback') }}</th><td>{{ (int) $metric($feedback, 'response_count') }}</td></tr>
@@ -679,10 +800,9 @@
 </section>
 @endif
 
-{{-- 5. Vendor and Sales Insights --}}
 @if ($surveyOk || $categoryRows !== [])
 <section class="section">
-    <h2>4. Vendor and Sales Insights</h2>
+    <h2>Vendor and Sales Insights (detail)</h2>
     @if ($surveyOk)
         <p class="note" style="margin-top:0;">{{ $survey['base_display'] ?? ('n = ' . (int) ($survey['respondent_count'] ?? 0) . ' responses') }}. Categorical survey aggregates only; exact total vendor revenue is not calculated.</p>
         @foreach (($survey['distributions'] ?? []) as $name => $distribution)
@@ -735,10 +855,9 @@
 </section>
 @endif
 
-{{-- 6. Environmental and Social --}}
 @if ($envOk)
 <section class="section">
-    <h2>5. Environmental and Social Insights</h2>
+    <h2>Environmental and Social Insights (detail)</h2>
     <p class="note" style="margin-top:0;"><strong>Vendor-reported survey indicators.</strong> These indicators are based on vendor responses and are not direct measurements of waste, carbon emissions or total items sold.</p>
     <table class="kv">
         <tr><th>{{ __('reports.pdf_ui.vendors_reused') }}</th><td>{{ (int) ($environmental['vendors_reporting_reused_goods'] ?? 0) }}</td></tr>
@@ -765,24 +884,58 @@
 </section>
 @endif
 
-{{-- 7. Organizer Assessment --}}
-@if (!empty($report->organizer_observations) || !empty($report->organizer_recommendations))
+{{-- 8. Key Findings --}}
 <section class="section">
-    <h2>6. Organizer Assessment</h2>
-    @if (!empty($report->organizer_observations))
-        <h3>{{ __('reports.pdf_ui.organizer_observations') }}</h3>
-        <div class="narratives">{{ $report->organizer_observations }}</div>
-    @endif
-    @if (!empty($report->organizer_recommendations))
-        <h3>{{ __('reports.pdf_ui.recommendations') }}</h3>
-        <div class="narratives">{{ $report->organizer_recommendations }}</div>
+    <h2>8. Key Findings and Interpretation</h2>
+    @php
+        $findingSentences = array_merge(
+            $programmeAnalysis['participation'] ?? [],
+            $programmeAnalysis['finance'] ?? [],
+            $programmeAnalysis['vendor_mix'] ?? [],
+            $programmeAnalysis['feedback'] ?? [],
+        );
+    @endphp
+    @if ($findingSentences !== [])
+        <ul>
+            @foreach ($findingSentences as $sentence)
+                <li style="margin-bottom:6px;">{{ $sentence }}</li>
+            @endforeach
+        </ul>
+    @else
+        <p class="muted">Insufficient frozen metrics were available to derive descriptive findings.</p>
     @endif
 </section>
-@endif
 
-{{-- 8. Methodology --}}
+{{-- 9. Organizer Observations and Recommendations --}}
 <section class="section">
-    <h2>{{ __('reports.pdf.methodology') }}</h2>
+    <h2>9. Organizer Observations and Recommendations</h2>
+    <h3>{{ __('reports.pdf_ui.organizer_observations') }}</h3>
+    @if (!empty($report->organizer_observations))
+        <div class="narratives">{{ $report->organizer_observations }}</div>
+    @else
+        <p class="muted">Not provided</p>
+    @endif
+    <h3>{{ __('reports.pdf_ui.recommendations') }}</h3>
+    @if (!empty($report->organizer_recommendations))
+        <div class="narratives">{{ $report->organizer_recommendations }}</div>
+    @else
+        <p class="muted">Not provided</p>
+    @endif
+</section>
+
+{{-- 10. Conclusion --}}
+<section class="section">
+    <h2>10. Conclusion</h2>
+    @if ($programmeConclusion)
+        <div class="narratives">{{ $programmeConclusion }}</div>
+    @else
+        <p class="muted">Not provided</p>
+    @endif
+</section>
+
+{{-- 11. Methodology --}}
+<section class="section">
+    <h2>11. Methodology and Data Notes</h2>
     <table class="kv">
         <tr><th>{{ __('reports.methodology.single_event_scope') }}</th><td>This report covers one carboot event only.</td></tr>
         <tr><th>{{ __('reports.pdf_ui.report_version') }}</th><td>Version {{ $report->version }}@if($coverStatus) ({{ $coverStatus }})@endif</td></tr>

@@ -15,7 +15,6 @@ use App\Support\GeneratedReportStatus;
 use App\Support\ReportType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use RuntimeException;
 use Throwable;
 
@@ -27,7 +26,7 @@ class OrganizerGeneratedReportController extends Controller
         private readonly ReportWorkflowAuditor $auditor,
     ) {}
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): \Illuminate\Http\JsonResponse
     {
         $query = GeneratedReport::query()
             ->with(['carbootEvent', 'reportRequest', 'preparedByUser', 'publishedByUser'])
@@ -45,7 +44,9 @@ class OrganizerGeneratedReportController extends Controller
             $query->where('report_type', $request->string('report_type')->toString());
         }
 
-        return OrganizerGeneratedReportResource::collection($query->paginate(25));
+        return OrganizerGeneratedReportResource::collection($query->paginate(25))
+            ->response()
+            ->header('Cache-Control', 'private, no-store, no-cache, must-revalidate');
     }
 
     public function store(Request $request): JsonResponse
@@ -83,7 +84,7 @@ class OrganizerGeneratedReportController extends Controller
         ], 201);
     }
 
-    public function show(GeneratedReport $generated_report): OrganizerGeneratedReportResource
+    public function show(GeneratedReport $generated_report): \Illuminate\Http\JsonResponse
     {
         $generated_report->load([
             'carbootEvent',
@@ -93,7 +94,9 @@ class OrganizerGeneratedReportController extends Controller
             'supersedesReport',
         ]);
 
-        return new OrganizerGeneratedReportResource($generated_report);
+        return (new OrganizerGeneratedReportResource($generated_report))
+            ->response()
+            ->header('Cache-Control', 'private, no-store, no-cache, must-revalidate');
     }
 
     public function updateNarratives(Request $request, GeneratedReport $generated_report): JsonResponse
@@ -107,32 +110,63 @@ class OrganizerGeneratedReportController extends Controller
         $validated = $request->validate([
             'organizer_observations' => 'nullable|string|max:20000',
             'organizer_recommendations' => 'nullable|string|max:20000',
+            'programme_introduction' => 'nullable|string|max:20000',
+            'programme_objectives' => 'nullable|array|max:30',
+            'programme_objectives.*' => 'nullable|string|max:500',
+            'objectives_not_applicable' => 'nullable|boolean',
+            'conclusion' => 'nullable|string|max:20000',
         ]);
 
-        $generated_report->update($validated);
+        $objectives = \App\Support\PostEventReportProgramme::normalizeObjectives(
+            $validated['programme_objectives'] ?? $generated_report->programme_objectives ?? []
+        );
+
+        $generated_report->fill([
+            'organizer_observations' => array_key_exists('organizer_observations', $validated)
+                ? $validated['organizer_observations']
+                : $generated_report->organizer_observations,
+            'organizer_recommendations' => array_key_exists('organizer_recommendations', $validated)
+                ? $validated['organizer_recommendations']
+                : $generated_report->organizer_recommendations,
+            'programme_introduction' => array_key_exists('programme_introduction', $validated)
+                ? $validated['programme_introduction']
+                : $generated_report->programme_introduction,
+            'programme_objectives' => array_key_exists('programme_objectives', $validated)
+                ? $objectives
+                : $generated_report->programme_objectives,
+            'objectives_not_applicable' => array_key_exists('objectives_not_applicable', $validated)
+                ? (bool) $validated['objectives_not_applicable']
+                : $generated_report->objectives_not_applicable,
+            'conclusion' => array_key_exists('conclusion', $validated)
+                ? $validated['conclusion']
+                : $generated_report->conclusion,
+        ]);
+        $generated_report->save();
+
+        // Freeze programme narratives into snapshot so Preview/PDF stay snapshot-driven.
+        $generated_report = $this->drafts->freezeProgrammeNarratives($generated_report, $request->user());
 
         $this->auditor->record(
             ReportWorkflowAudit::ACTION_DRAFT_NARRATIVES_UPDATED,
             $request->user(),
             $generated_report->reportRequest,
-            $generated_report->fresh(),
+            $generated_report,
             $generated_report->carboot_event_id,
             null,
             $request,
         );
 
-        $generated_report->load(['carbootEvent', 'reportRequest', 'preparedByUser', 'publishedByUser']);
-
         return response()->json([
             'message' => __('api.narratives_updated'),
             'generated_report' => new OrganizerGeneratedReportResource($generated_report),
-        ]);
+            'publish_readiness' => \App\Support\PostEventReportProgramme::publishReadiness($generated_report),
+        ])->header('Cache-Control', 'private, no-store, no-cache, must-revalidate');
     }
 
     public function regenerate(Request $request, GeneratedReport $generated_report): JsonResponse
     {
         try {
-            $report = $this->drafts->regenerate($generated_report, $request->user(), $request);
+            $result = $this->drafts->regenerate($generated_report, $request->user(), $request);
         } catch (RuntimeException $e) {
             return response()->json([
                 'message' => $e->getMessage(),
@@ -145,10 +179,17 @@ class OrganizerGeneratedReportController extends Controller
             ], 500);
         }
 
+        $metricsChanged = (bool) ($result['metrics_changed'] ?? false);
+        $message = $metricsChanged
+            ? 'Snapshot regenerated. Report metrics were updated.'
+            : 'Snapshot refreshed. No metric changes were detected.';
+
         return response()->json([
-            'message' => __('api.draft_snapshot_regenerated'),
-            'generated_report' => new OrganizerGeneratedReportResource($report),
-        ]);
+            'message' => $message,
+            'metrics_changed' => $metricsChanged,
+            'snapshot_generated_at' => $result['snapshot_generated_at'] ?? null,
+            'generated_report' => new OrganizerGeneratedReportResource($result['generated_report']),
+        ])->header('Cache-Control', 'private, no-store, no-cache, must-revalidate');
     }
 
     public function publish(Request $request, GeneratedReport $generated_report): JsonResponse
@@ -213,17 +254,29 @@ class OrganizerGeneratedReportController extends Controller
             ], 503);
         }
 
-        $filename = sprintf(
-            'organizer-report-%s-v%d.pdf',
-            $generated_report->report_type,
-            $generated_report->version,
-        );
+        $filename = \App\Support\PostEventReportPdfFilename::forReport($generated_report, 'organizer');
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
-            'reports.post_event_summary',
-            \App\Support\PostEventReportPdfViewData::forAudience($generated_report, 'organizer'),
-        )->setPaper('a4');
+        try {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+                'reports.post_event_summary',
+                \App\Support\PostEventReportPdfViewData::forAudience($generated_report, 'organizer'),
+            )->setPaper('a4');
 
-        return $pdf->stream($filename);
+            return $pdf->download($filename);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Organizer post-event PDF render failed', [
+                'generated_report_id' => $generated_report->id,
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'message' => __('api.unable_to_generate_pdf') !== 'api.unable_to_generate_pdf'
+                    ? __('api.unable_to_generate_pdf')
+                    : 'Unable to generate the Post-Event PDF. The error has been logged.',
+            ], 500);
+        }
     }
 }

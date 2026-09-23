@@ -157,7 +157,7 @@
               </div>
 
               <AnalyticsDoughnutChart
-                v-if="useCategoryDoughnut"
+                v-if="categoryChartType === 'doughnut'"
                 :title="t('organizer.analytics.vendorCategorySystemTitle')"
                 :subtitle="t('organizer.analytics.vendorCategorySystemHint')"
                 :rows="vendorCategoryChartRows"
@@ -166,7 +166,7 @@
                 test-id="overview-vendor-category-doughnut"
               />
               <AnalyticsRankedBarChart
-                v-else
+                v-else-if="categoryChartType === 'bar'"
                 :title="t('organizer.analytics.vendorCategorySystemTitle')"
                 :subtitle="t('organizer.analytics.vendorCategorySystemHint')"
                 :rows="vendorCategoryChartRows"
@@ -174,6 +174,24 @@
                 :empty-text="t('organizer.analytics.noCategoryRecorded')"
                 test-id="overview-vendor-category-bars"
               />
+              <div
+                v-else-if="categoryChartType === 'compact' && vendorCategoryChartRows.length === 1"
+                class="rounded-xl border border-sky-100 bg-white p-3"
+                data-testid="overview-vendor-category-compact"
+              >
+                <h4 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.vendorCategorySystemTitle') }}</h4>
+                <p class="mt-0.5 text-xs text-ink-500">{{ t('organizer.analytics.vendorCategorySystemHint') }}</p>
+                <p class="mt-3 text-sm font-semibold text-ink-800">
+                  {{ vendorCategoryChartRows[0].label }} · {{ vendorCategoryChartRows[0].count }}
+                </p>
+              </div>
+              <div
+                v-else
+                class="rounded-xl border border-dashed border-ink-200 bg-white px-3 py-6 text-center text-sm text-ink-600"
+                data-testid="overview-vendor-category-empty"
+              >
+                {{ t('organizer.analytics.noCategoryRecorded') }}
+              </div>
             </div>
 
             <div class="grid gap-3 lg:grid-cols-2">
@@ -508,7 +526,7 @@ import {
   ANALYTICS_PALETTE,
   COMPOSITION_COLORS,
 } from '../../../utils/analyticsChartPalette';
-import { shouldUseDoughnutForCategories } from '../../../utils/chartLifecycle';
+import { shouldUseDoughnutForCategories, resolveCategoryChartType } from '../../../utils/chartLifecycle';
 import { formatLocaleDateTime, formatLocaleDate, formatLocaleNumber } from '../../../utils/localeFormat';
 import {
   getEventAnalyticsOverview,
@@ -847,9 +865,11 @@ const vendorCategoryChartRows = computed(() => {
     .filter(Boolean);
 });
 
-const useCategoryDoughnut = computed(() =>
-  shouldUseDoughnutForCategories(vendorCategoryChartRows.value.length),
+const categoryChartType = computed(() =>
+  resolveCategoryChartType(vendorCategoryChartRows.value.length),
 );
+
+const useCategoryDoughnut = computed(() => categoryChartType.value === 'doughnut');
 
 const revenueCollectionSegments = computed(() => {
   if (!systemIncluded.value || !operationalReady.value || !hasInvoices.value) return [];

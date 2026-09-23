@@ -168,7 +168,8 @@ import {
   listCmartReportEvents,
   listCmartReportRequests,
   markCmartGeneratedReportViewed,
-  openAuthorizedPdf,
+  downloadAuthorizedPdf,
+  buildPostEventPdfFilename,
 } from '../../../services/reportWorkflowApi';
 
 const { t } = useI18n();
@@ -286,9 +287,15 @@ const openReport = async (id) => {
 
 const downloadPdf = async (id) => {
   try {
-    await openAuthorizedPdf(cmartGeneratedReportPdfUrl(id));
-  } catch {
-    toast.error(t('reports.cmart.toastPdfError'));
+    const report = published.value.find((row) => row.id === id) || activeReport.value;
+    const fallbackFilename = buildPostEventPdfFilename({
+      audience: 'cmart',
+      eventSlug: report?.event_title_snapshot || report?.snapshot?.event?.title || 'event',
+      version: report?.version || 1,
+    });
+    await downloadAuthorizedPdf(cmartGeneratedReportPdfUrl(id), { fallbackFilename });
+  } catch (error) {
+    toast.error(error?.message || t('reports.cmart.toastPdfError'));
   }
 };
 

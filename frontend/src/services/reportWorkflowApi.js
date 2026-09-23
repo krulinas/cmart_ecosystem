@@ -113,19 +113,11 @@ export function markAllManagementNotificationsRead() {
   return api.post('/management/notifications/mark-all-read');
 }
 
-export async function openAuthorizedPdf(url) {
-  const token = localStorage.getItem('carboot_cmart_token');
-  const response = await fetch(url, {
-    headers: {
-      Accept: 'application/pdf',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-  if (!response.ok) {
-    throw new Error('Unable to download PDF.');
-  }
-  const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  window.open(objectUrl, '_blank', 'noopener');
-  setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
-}
+export {
+  buildPostEventPdfFilename,
+  downloadAuthorizedPdf,
+  looksLikePdfBytes,
+  openAuthorizedPdf,
+  parseContentDispositionFilename,
+  previewAuthorizedPdf,
+} from '../utils/reportPdfDownload.js';

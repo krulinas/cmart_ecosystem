@@ -3,8 +3,28 @@
     <!-- 1. Cover -->
     <header class="pes-cover">
       <div class="pes-cover__brand">
-        <img src="/cmart_logo.png" alt="CMart" class="pes-cover__logo" @error="logoFailed = true" v-show="!logoFailed" />
-        <span v-if="logoFailed" class="pes-cover__logo-fallback">CMart</span>
+        <img
+          src="/images/branding/uum-logo.png"
+          alt="UUM"
+          class="pes-cover__logo"
+          @error="uumLogoFailed = true"
+          v-show="!uumLogoFailed"
+        />
+        <img
+          src="/images/branding/cmart-logo.png"
+          alt="CMart"
+          class="pes-cover__logo"
+          @error="onCmartLogoError"
+          v-show="!cmartLogoFailed"
+        />
+        <img
+          v-show="cmartLogoFailed && !legacyLogoFailed"
+          src="/cmart_logo.png"
+          alt="CMart"
+          class="pes-cover__logo"
+          @error="legacyLogoFailed = true"
+        />
+        <span v-if="uumLogoFailed && cmartLogoFailed && legacyLogoFailed" class="pes-cover__logo-fallback">CMart</span>
       </div>
       <p class="pes-eyebrow">{{ t('reports.summary.eyebrow') }}</p>
       <h1 class="pes-cover__title">{{ eventTitle }}</h1>
@@ -34,6 +54,114 @@
         </div>
       </div>
       <p class="pes-summary">{{ executiveNarrative }}</p>
+    </section>
+
+    <section class="pes-section" data-testid="programme-introduction">
+      <h2>{{ t('reports.summary.sectionIntroduction') }}</h2>
+      <div v-if="programmeIntroduction" class="pes-narrative">{{ programmeIntroduction }}</div>
+      <p v-else class="pes-muted">{{ t('reports.summary.notProvided') }}</p>
+    </section>
+
+    <section class="pes-section" data-testid="programme-details">
+      <h2>{{ t('reports.summary.sectionProgrammeDetails') }}</h2>
+      <dl class="pes-kv">
+        <div v-for="(value, key) in programmeDetailRows" :key="key">
+          <dt>{{ value.label }}</dt>
+          <dd>{{ value.text }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="pes-section" data-testid="programme-objectives">
+      <h2>{{ t('reports.summary.sectionObjectives') }}</h2>
+      <p v-if="objectivesNotApplicable" class="pes-muted">{{ t('reports.summary.objectivesNotApplicable') }}</p>
+      <ol v-else-if="programmeObjectives.length">
+        <li v-for="(objective, idx) in programmeObjectives" :key="idx">{{ objective }}</li>
+      </ol>
+      <p v-else class="pes-muted">{{ t('reports.summary.objectivesMissing') }}</p>
+    </section>
+
+    <!-- Analytics-aligned visuals from frozen snapshot -->
+    <section v-if="hasVisualCharts" class="pes-section" data-testid="report-analytics-visuals">
+      <h2>{{ t('reports.summary.sectionAnalyticsVisuals') }}</h2>
+      <p class="pes-note">
+        {{ t('reports.summary.analyticsVisualsHint') }}
+      </p>
+      <p class="pes-note" data-testid="benchmark-omitted-note">
+        {{ visualSpec.performanceAcrossEventsNote }}
+      </p>
+      <div class="pes-visual-grid">
+        <AnalyticsDoughnutChart
+          v-if="visualChart('site_utilisation')"
+          :title="visualChart('site_utilisation').title"
+          :subtitle="visualChart('site_utilisation').subtitle || ''"
+          :rows="visualChart('site_utilisation').rows"
+          :center-value="visualChart('site_utilisation').centerValue"
+          :center-label="visualChart('site_utilisation').centerLabel || ''"
+          :colors="visualChart('site_utilisation').rows.map((r) => r.color)"
+          empty-text="—"
+          test-id="report-chart-site-utilisation"
+        />
+        <AnalyticsDoughnutChart
+          v-if="visualChart('booking_status')"
+          :title="visualChart('booking_status').title"
+          :subtitle="visualChart('booking_status').subtitle || ''"
+          :rows="visualChart('booking_status').rows"
+          :colors="visualChart('booking_status').rows.map((r) => r.color)"
+          empty-text="—"
+          test-id="report-chart-booking-status"
+        />
+        <AnalyticsStackedBarChart
+          v-if="visualChart('revenue_collection')"
+          :title="visualChart('revenue_collection').title"
+          :subtitle="visualChart('revenue_collection').subtitle || ''"
+          :segments="visualChart('revenue_collection').rows"
+          :colors="visualChart('revenue_collection').rows.map((r) => r.color)"
+          value-prefix="RM "
+          empty-text="—"
+          test-id="report-chart-revenue"
+        />
+        <AnalyticsDoughnutChart
+          v-if="categoryChart?.type === 'doughnut'"
+          :title="categoryChart.title"
+          :subtitle="categoryChart.subtitle || ''"
+          :rows="categoryChart.rows"
+          :colors="categoryChart.rows.map((r) => r.color)"
+          empty-text="—"
+          test-id="report-chart-categories-doughnut"
+        />
+        <AnalyticsRankedBarChart
+          v-else-if="categoryChart?.type === 'bar'"
+          :title="categoryChart.title"
+          :subtitle="categoryChart.subtitle || ''"
+          :rows="categoryChart.rows"
+          empty-text="—"
+          test-id="report-chart-categories-bars"
+        />
+        <div
+          v-else-if="categoryChart?.type === 'compact' && categoryChart.rows.length === 1"
+          class="rounded-xl border border-sky-100 bg-white p-3"
+          data-testid="report-chart-categories-compact"
+        >
+          <h4 class="text-sm font-extrabold text-ink-900">{{ categoryChart.title }}</h4>
+          <p v-if="categoryChart.subtitle" class="mt-0.5 text-xs text-ink-500">{{ categoryChart.subtitle }}</p>
+          <p class="mt-3 text-sm font-semibold text-ink-800">
+            <span
+              class="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm"
+              :style="{ background: categoryChart.rows[0].color }"
+            />
+            {{ categoryChart.rows[0].label }} · {{ categoryChart.rows[0].count }}
+          </p>
+        </div>
+        <AnalyticsRankedBarChart
+          v-if="visualChart('feedback_ratings')"
+          :title="visualChart('feedback_ratings').title"
+          :subtitle="visualChart('feedback_ratings').subtitle || ''"
+          :rows="visualChart('feedback_ratings').rows"
+          empty-text="—"
+          test-id="report-chart-feedback-ratings"
+        />
+      </div>
     </section>
 
     <!-- 3. Event and Participation -->
@@ -237,20 +365,38 @@
       </template>
     </section>
 
-    <!-- 7. Organizer Assessment -->
-    <section v-if="report.organizer_observations || report.organizer_recommendations" class="pes-section">
-      <h2>{{ t('reports.summary.sectionOrganizerAssessment') }}</h2>
-      <template v-if="report.organizer_observations">
-        <h3>{{ t('reports.summary.organizerObservations') }}</h3>
-        <div class="pes-narrative">{{ report.organizer_observations }}</div>
-      </template>
-      <template v-if="report.organizer_recommendations">
-        <h3>{{ t('reports.summary.recommendations') }}</h3>
-        <div class="pes-narrative">{{ report.organizer_recommendations }}</div>
-      </template>
+    <!-- Analysis blocks -->
+    <section v-if="analysisParticipation.length" class="pes-section">
+      <h2>{{ t('reports.summary.sectionParticipationOps') }}</h2>
+      <p v-for="(sentence, idx) in analysisParticipation" :key="`p-${idx}`">{{ sentence }}</p>
+    </section>
+    <section v-if="analysisFinance.length" class="pes-section">
+      <h2>{{ t('reports.summary.sectionFinancialFindings') }}</h2>
+      <p v-for="(sentence, idx) in analysisFinance" :key="`f-${idx}`">{{ sentence }}</p>
+    </section>
+    <section v-if="analysisFeedback.length" class="pes-section">
+      <h2>{{ t('reports.summary.sectionFeedbackFindings') }}</h2>
+      <p v-for="(sentence, idx) in analysisFeedback" :key="`fb-${idx}`">{{ sentence }}</p>
     </section>
 
-    <!-- 8. Methodology -->
+    <!-- Organizer Assessment -->
+    <section class="pes-section">
+      <h2>{{ t('reports.summary.sectionOrganizerAssessment') }}</h2>
+      <h3>{{ t('reports.summary.organizerObservations') }}</h3>
+      <div v-if="report.organizer_observations" class="pes-narrative">{{ report.organizer_observations }}</div>
+      <p v-else class="pes-muted">{{ t('reports.summary.notProvided') }}</p>
+      <h3>{{ t('reports.summary.recommendations') }}</h3>
+      <div v-if="report.organizer_recommendations" class="pes-narrative">{{ report.organizer_recommendations }}</div>
+      <p v-else class="pes-muted">{{ t('reports.summary.notProvided') }}</p>
+    </section>
+
+    <section class="pes-section" data-testid="programme-conclusion">
+      <h2>{{ t('reports.summary.sectionConclusion') }}</h2>
+      <div v-if="programmeConclusion" class="pes-narrative">{{ programmeConclusion }}</div>
+      <p v-else class="pes-muted">{{ t('reports.summary.notProvided') }}</p>
+    </section>
+
+    <!-- Methodology -->
     <section class="pes-section">
       <h2>{{ t('reports.summary.sectionMethodology') }}</h2>
       <dl class="pes-kv pes-kv--method">
@@ -307,12 +453,16 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import AnalyticsDoughnutChart from '../analytics/AnalyticsDoughnutChart.vue';
+import AnalyticsRankedBarChart from '../analytics/AnalyticsRankedBarChart.vue';
+import AnalyticsStackedBarChart from '../analytics/AnalyticsStackedBarChart.vue';
 import {
   collectionRate,
   formatReportMoney,
   reportDistributionTitle,
   reportOptionLabel,
 } from '../../utils/postEventReportPresentation.js';
+import { buildReportVisualSpec } from '../../utils/reportVisualSpec.js';
 import { formatLocaleDateTime } from '../../utils/localeFormat';
 
 const props = defineProps({
@@ -320,9 +470,31 @@ const props = defineProps({
 });
 
 const { t } = useI18n();
-const logoFailed = ref(false);
+const uumLogoFailed = ref(false);
+const cmartLogoFailed = ref(false);
+const legacyLogoFailed = ref(false);
+
+const onCmartLogoError = () => {
+  cmartLogoFailed.value = true;
+};
 
 const snapshot = computed(() => props.report?.snapshot || {});
+const visualSpec = computed(() =>
+  buildReportVisualSpec(snapshot.value, {
+    labelFn: (key) => reportOptionLabel(key),
+  }),
+);
+const visualChart = (id) => {
+  const chart = visualSpec.value?.charts?.[id];
+  if (!chart || chart.empty || !chart.rows?.length) return null;
+  return chart;
+};
+const categoryChart = computed(() => visualChart('vendor_categories'));
+const hasVisualCharts = computed(() =>
+  ['site_utilisation', 'booking_status', 'revenue_collection', 'vendor_categories', 'feedback_ratings']
+    .some((id) => visualChart(id)),
+);
+
 const eventTitle = computed(
   () => props.report.event_title_snapshot || snapshot.value?.event?.title || t('reports.summary.eventFallback'),
 );
@@ -536,14 +708,21 @@ const executiveKpis = computed(() => {
 });
 
 const executiveNarrative = computed(() => {
+  const frozen = snapshot.value?.programme?.executive_summary;
+  if (typeof frozen === 'string' && frozen.trim()) return frozen.trim();
+
   const bits = [];
-  if (pipeline.value?.total_bookings != null) bits.push(`${pipeline.value.total_bookings} applications were recorded for this event`);
+  if (pipeline.value?.total_bookings != null) {
+    const n = Number(pipeline.value.total_bookings);
+    bits.push(`${n} application${n === 1 ? '' : 's'} recorded`);
+  }
   const approved = pipeline.value
     ? firstDefined(pipeline.value.approved_count, pipeline.value.by_approval_status?.Approved)
     : null;
-  if (approved != null) bits.push(`${approved} approved bookings`);
+  if (approved != null) bits.push(`${approved} approved booking${Number(approved) === 1 ? '' : 's'}`);
   if (pipeline.value?.approved_unique_vendors != null) {
-    bits.push(`${pipeline.value.approved_unique_vendors} approved unique vendors`);
+    const n = Number(pipeline.value.approved_unique_vendors);
+    bits.push(`${n} approved unique vendor${n === 1 ? '' : 's'}`);
   }
   if (attendanceRecorded.value) bits.push(`${attendance.value.verified_check_in_count} verified check-ins`);
   if (utilisationSection.value?.available && utilisationSection.value.utilisation_percent != null) {
@@ -556,7 +735,60 @@ const executiveNarrative = computed(() => {
   if (!bits.length) {
     return 'This report summarises the available snapshot for the selected event. Some operational or survey indicators were not recorded.';
   }
-  return `Based on the frozen event snapshot, this report covers ${bits.join(', ')}. Figures reflect recorded system and survey data only and do not imply an overall success judgement.`;
+  const joined = bits.length === 1
+    ? bits[0]
+    : bits.length === 2
+      ? `${bits[0]} and ${bits[1]}`
+      : `${bits.slice(0, -1).join(', ')}, and ${bits[bits.length - 1]}`;
+  return `Based on the frozen event snapshot, this report records ${joined}. Figures reflect recorded system and survey data only and do not imply an overall success judgement.`;
+});
+
+const programme = computed(() => snapshot.value?.programme || {});
+const programmeIntroduction = computed(
+  () => programme.value?.introduction || props.report?.programme_introduction || null,
+);
+const programmeObjectives = computed(() => {
+  const rows = programme.value?.objectives ?? props.report?.programme_objectives ?? [];
+  return Array.isArray(rows) ? rows.filter((row) => String(row || '').trim()) : [];
+});
+const objectivesNotApplicable = computed(
+  () => Boolean(programme.value?.objectives_not_applicable || props.report?.objectives_not_applicable),
+);
+const programmeConclusion = computed(
+  () => programme.value?.conclusion || props.report?.conclusion || null,
+);
+const analysisParticipation = computed(() => programme.value?.analysis?.participation || []);
+const analysisFinance = computed(() => programme.value?.analysis?.finance || []);
+const analysisFeedback = computed(() => programme.value?.analysis?.feedback || []);
+const programmeDetailRows = computed(() => {
+  const details = programme.value?.details || {};
+  const map = [
+    ['event_name', t('reports.summary.eventName')],
+    ['date_time', t('reports.summary.dateTime')],
+    ['venue', t('reports.summary.venue')],
+    ['organizer', t('reports.summary.organizer')],
+    ['event_status', t('reports.summary.eventStatus')],
+    ['data_cut_off', t('reports.summary.dataCutOff')],
+    ['open_booking_sites', t('reports.summary.openBookingSites')],
+    ['site_price', t('reports.summary.sitePrice')],
+    ['approved_bookings', t('reports.summary.kpiApprovedBookings')],
+    ['unique_participating_vendors', t('reports.summary.kpiApprovedVendors')],
+  ];
+  const rows = [];
+  map.forEach(([key, label]) => {
+    if (details[key] != null && details[key] !== '') {
+      rows.push({ label, text: details[key] });
+    }
+  });
+  if (details.item_reservations_enabled != null) {
+    rows.push({
+      label: t('reports.summary.itemReservations'),
+      text: details.item_reservations_enabled
+        ? `${t('reports.summary.enabled')}${details.item_reservation_service_fee ? ` · ${details.item_reservation_service_fee}` : ''}`
+        : t('reports.summary.notEnabled'),
+    });
+  }
+  return rows;
 });
 
 const dataCutOff = computed(
@@ -620,14 +852,14 @@ function formatEnglishDate(value) {
 
 <style scoped>
 .pes-report {
-  --pes-navy: #014a7a;
-  --pes-blue: #0277bd;
-  --pes-sky: #e1f5fe;
-  --pes-ink: #0f172a;
-  --pes-muted: #64748b;
-  --pes-line: #e2e8f0;
-  --pes-green: #047857;
-  --pes-amber: #b45309;
+  --pes-navy: #2D439C;
+  --pes-blue: #3970E4;
+  --pes-sky: #F5F8FE;
+  --pes-ink: #1E293B;
+  --pes-muted: #64748B;
+  --pes-line: #E8EEF6;
+  --pes-green: #2E9D78;
+  --pes-amber: #E86F88;
   color: var(--pes-ink);
   font-size: 0.95rem;
   line-height: 1.5;
@@ -640,20 +872,40 @@ function formatEnglishDate(value) {
   margin-bottom: 1.75rem;
 }
 
+.pes-cover__brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
 .pes-cover__logo {
   height: 2.5rem;
   width: auto;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0;
 }
 
 .pes-cover__logo-fallback {
   display: inline-block;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0;
   background: var(--pes-blue);
   color: #fff;
   font-weight: 700;
   letter-spacing: 0.08em;
   padding: 0.55rem 0.85rem;
+}
+
+.pes-visual-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .pes-visual-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .pes-eyebrow {

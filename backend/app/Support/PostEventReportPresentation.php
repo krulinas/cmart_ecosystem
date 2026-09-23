@@ -75,6 +75,54 @@ final class PostEventReportPresentation
 
     public static function resolveLogoPath(): ?string
     {
+        return self::resolveBrandingPath('cmart') ?? self::legacyCmartLogoPath();
+    }
+
+    /**
+     * @return array{cmart: ?string, uum: ?string}
+     */
+    public static function resolveCoverLogoPaths(): array
+    {
+        return [
+            'cmart' => self::resolveBrandingPath('cmart') ?? self::legacyCmartLogoPath(),
+            'uum' => self::resolveBrandingPath('uum'),
+        ];
+    }
+
+    private static function resolveBrandingPath(string $brand): ?string
+    {
+        // Prefer JPEG for DomPDF (works without the PHP GD extension).
+        // PNG is used only when GD is available.
+        $files = $brand === 'uum'
+            ? ['uum-logo.jpg', 'uum-logo.jpeg', 'uum_logo.jpg']
+            : ['cmart-logo.jpg', 'cmart-logo.jpeg', 'cmart_logo.jpg'];
+
+        if (function_exists('imagecreatefrompng')) {
+            $files = array_merge($files, $brand === 'uum'
+                ? ['uum-logo.png', 'uum_logo.png']
+                : ['cmart-logo.png', 'cmart_logo.png']);
+        }
+
+        $dirs = [
+            public_path('images/branding'),
+            base_path('public/images/branding'),
+            base_path('../frontend/public/images/branding'),
+        ];
+
+        foreach ($dirs as $dir) {
+            foreach ($files as $file) {
+                $path = $dir.DIRECTORY_SEPARATOR.$file;
+                if (is_file($path)) {
+                    return $path;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static function legacyCmartLogoPath(): ?string
+    {
         $candidates = [
             public_path('cmart_logo.png'),
             base_path('../frontend/public/cmart_logo.png'),

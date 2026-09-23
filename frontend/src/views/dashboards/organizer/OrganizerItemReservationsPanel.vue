@@ -70,18 +70,72 @@
       </div>
     </section>
 
+    <section
+      v-if="selectedEventId && eventSummary"
+      class="ml-card space-y-3"
+      data-testid="organizer-reservations-event-summary"
+    >
+      <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.itemReservations.summaryTitle') }}</h3>
+      <dl class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryEnabled') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.enabled ? t('organizer.itemReservations.summaryEnabledYes') : t('organizer.itemReservations.summaryEnabledNo') }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryFee') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.feeLabel }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryEligibleListings') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.eligible_listings_count }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryTotal') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.total }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryPendingCharge') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.pending_charge }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryConfirmed') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.confirmed }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryCompleted') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.completed }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryCancelledExpired') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.cancelled_expired }}</dd>
+        </div>
+      </dl>
+    </section>
+
     <div v-if="!selectedEventId" class="ml-card text-sm text-ink-500" data-testid="organizer-reservations-empty-event">
       {{ t('organizer.itemReservations.selectEventPrompt') }}
     </div>
-    <div v-else-if="loading && !rows.length" class="ml-card animate-pulse py-10 text-center text-ink-500">
+    <div v-else-if="loading && !rows.length && !eventSummary" class="ml-card animate-pulse py-10 text-center text-ink-500">
       {{ t('organizer.itemReservations.loading') }}
     </div>
     <div v-else-if="loadError" class="ml-card border-rose-200 bg-rose-50 space-y-3" data-testid="organizer-reservations-error">
       <p class="font-semibold text-rose-900">{{ loadError }}</p>
       <button type="button" class="ml-btn-primary text-sm" @click="loadQueue">{{ t('organizer.itemReservations.tryAgain') }}</button>
     </div>
-    <div v-else-if="!rows.length" class="ml-card text-sm text-ink-500" data-testid="organizer-reservations-empty">
-      {{ t('organizer.itemReservations.empty') }}
+    <div
+      v-else-if="!rows.length"
+      class="ml-card space-y-3 text-sm text-ink-600"
+      data-testid="organizer-reservations-empty"
+    >
+      <p>{{ emptyStateMessage }}</p>
+      <a
+        v-if="emptyStateShowEditLink"
+        href="#carboot-events"
+        class="inline-flex text-sm font-semibold text-blue-800 hover:underline"
+        data-testid="organizer-reservations-edit-event-link"
+      >
+        {{ t('organizer.itemReservations.emptyDisabledEditLink') }}
+      </a>
     </div>
     <section v-else class="ml-card overflow-x-auto" data-testid="organizer-reservations-queue">
       <table class="min-w-full divide-y divide-ink-100 text-sm">
@@ -427,6 +481,26 @@ const rows = ref([]);
 const meta = ref({ current_page: 1, last_page: 1, per_page: 20, total: 0 });
 const loading = ref(false);
 const loadError = ref('');
+const eventSummary = ref(null);
+
+const selectedEvent = computed(() => events.value.find((row) => String(row.id) === String(selectedEventId.value)) || null);
+
+const emptyStateMessage = computed(() => {
+  if (!eventSummary.value) return t('organizer.itemReservations.empty');
+  if (!eventSummary.value.enabled) return t('organizer.itemReservations.emptyDisabled');
+  if ((eventSummary.value.eligible_listings_count || 0) <= 0) {
+    return t('organizer.itemReservations.emptyNoListings');
+  }
+  if ((eventSummary.value.total || 0) <= 0 && !reservationStatus.value && !chargeStatus.value) {
+    return t('organizer.itemReservations.emptyListingsNoReservations');
+  }
+  if ((eventSummary.value.total || 0) <= 0) {
+    return t('organizer.itemReservations.emptyEnabledNoReservations');
+  }
+  return t('organizer.itemReservations.empty');
+});
+
+const emptyStateShowEditLink = computed(() => eventSummary.value && !eventSummary.value.enabled);
 
 const detailOpen = ref(false);
 const detailLoading = ref(false);
@@ -501,6 +575,7 @@ const onEventSelected = async () => {
 const loadQueue = async () => {
   if (!selectedEventId.value) {
     rows.value = [];
+    eventSummary.value = null;
     return;
   }
   loading.value = true;
@@ -514,11 +589,48 @@ const loadQueue = async () => {
     });
     rows.value = data.data || [];
     meta.value = data.meta || meta.value;
+    const summary = data.meta?.event_summary || data.event_summary || null;
+    if (summary) {
+      eventSummary.value = {
+        ...summary,
+        feeLabel: formatSummaryFee(summary),
+      };
+    } else {
+      eventSummary.value = buildLocalEventSummary(selectedEvent.value, meta.value.total || 0);
+    }
   } catch (error) {
     loadError.value = reservationErrorMessage(error, t('organizer.itemReservations.unableLoadQueue'));
   } finally {
     loading.value = false;
   }
+};
+
+const formatSummaryFee = (summary) => {
+  if (!summary?.enabled) return t('organizer.itemReservations.summaryFeeNotConfigured');
+  if (summary.service_fee_amount == null) return t('organizer.itemReservations.summaryFeeNotConfigured');
+  if (Number(summary.service_fee_amount) <= 0) return t('organizer.itemReservations.summaryFeeFree');
+  return formatReservationFee(summary.service_fee_amount, summary.service_fee_currency || 'MYR');
+};
+
+const buildLocalEventSummary = (event, total) => {
+  const fee = event?.item_reservation_service_fee;
+  const enabled = fee !== null && fee !== undefined && fee !== '';
+  return {
+    enabled,
+    service_fee_amount: enabled ? fee : null,
+    service_fee_currency: 'MYR',
+    eligible_listings_count: event?.eligible_item_listings_count ?? 0,
+    total,
+    pending_charge: 0,
+    confirmed: 0,
+    completed: 0,
+    cancelled_expired: 0,
+    feeLabel: !enabled
+      ? t('organizer.itemReservations.summaryFeeNotConfigured')
+      : Number(fee) <= 0
+        ? t('organizer.itemReservations.summaryFeeFree')
+        : formatReservationFee(fee, 'MYR'),
+  };
 };
 
 const goToPage = async (page) => {

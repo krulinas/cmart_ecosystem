@@ -1,0 +1,127 @@
+{
+    "palette": {
+        "primary": "#3970E4",
+        "positive": "#2E9D78",
+        "finance": "#2D439C",
+        "warning": "#E86F88",
+        "survey": "#925FD1",
+        "highlight": "#D5A800",
+        "neutral": "#E8EEF6"
+    },
+    "charts": {
+        "site_utilisation": {
+            "id": "site_utilisation",
+            "type": "doughnut",
+            "empty": false,
+            "rows": [
+                {
+                    "key": "sites_sold",
+                    "label": "Sites sold",
+                    "count": 4,
+                    "color": "#3970E4"
+                },
+                {
+                    "key": "sites_remaining",
+                    "label": "Remaining open sites",
+                    "count": 6,
+                    "color": "#E8EEF6"
+                }
+            ]
+        },
+        "vendor_categories": {
+            "id": "vendor_categories",
+            "type": "doughnut",
+            "empty": false,
+            "rows": [
+                {
+                    "key": "food",
+                    "label": "Food",
+                    "count": 2,
+                    "color": "#3970E4"
+                },
+                {
+                    "key": "fashion",
+                    "label": "Fashion",
+                    "count": 1,
+                    "color": "#2E9D78"
+                },
+                {
+                    "key": "books",
+                    "label": "Books",
+                    "count": 3,
+                    "color": "#925FD1"
+                }
+            ]
+        },
+        "revenue_collection": {
+            "id": "revenue_collection",
+            "type": "stacked_bar",
+            "empty": false,
+            "rows": [
+                {
+                    "key": "collected",
+                    "label": "Collected",
+                    "count": 100.5,
+                    "color": "#2E9D78"
+                },
+                {
+                    "key": "outstanding",
+                    "label": "Outstanding",
+                    "count": 20.25,
+                    "color": "#E86F88"
+                }
+            ]
+        },
+        "booking_status": {
+            "id": "booking_status",
+            "type": "doughnut",
+            "empty": false,
+            "rows": [
+                {
+                    "key": "Pending_Organizer",
+                    "label": "Pending_Organizer",
+                    "count": 1,
+                    "color": "#3970E4"
+                },
+                {
+                    "key": "Approved",
+                    "label": "Approved",
+                    "count": 3,
+                    "color": "#2E9D78"
+                },
+                {
+                    "key": "Rejected",
+                    "label": "Rejected",
+                    "count": 2,
+                    "color": "#925FD1"
+                }
+            ]
+        },
+        "feedback_ratings": {
+            "id": "feedback_ratings",
+            "type": "bar",
+            "empty": false,
+            "rows": [
+                {
+                    "key": "rating_3",
+                    "label": "3\u2605",
+                    "count": 1,
+                    "color": "#E86F88"
+                },
+                {
+                    "key": "rating_4",
+                    "label": "4\u2605",
+                    "count": 1,
+                    "color": "#D5A800"
+                },
+                {
+                    "key": "rating_5",
+                    "label": "5\u2605",
+                    "count": 2,
+                    "color": "#E8EEF6"
+                }
+            ]
+        }
+    },
+    "includePerformanceAcrossEvents": false
+}

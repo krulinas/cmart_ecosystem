@@ -45,3 +45,15 @@ export function presentNumericRows(rows, field = 'count') {
 export function shouldUseDoughnutForCategories(nonZeroCount) {
   return nonZeroCount >= 2 && nonZeroCount <= 5;
 }
+
+/**
+ * Adaptive category chart type used by Analytics Hub, Preview and PDF.
+ * @param {number} validCount categories with present numeric counts (> 0)
+ * @returns {'doughnut'|'bar'|'compact'}
+ */
+export function resolveCategoryChartType(validCount) {
+  const n = Number(validCount) || 0;
+  if (n >= 2 && n <= 5) return 'doughnut';
+  if (n >= 6) return 'bar';
+  return 'compact';
+}

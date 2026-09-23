@@ -109,12 +109,19 @@
             <div>
               <h3 class="font-bold text-ink-900">{{ item.event_title_snapshot || item.event?.title || t('reports.organizer.draftFallback') }}</h3>
               <p class="text-xs text-ink-500">
-                {{ t('reports.organizer.version', { n: item.version }) }} · {{ item.report_request_id ? t('reports.organizer.fromRequest') : t('reports.organizer.organizerInitiated') }} · {{ formatDate(item.created_at) }}
+                {{ t('reports.organizer.version', { n: item.version }) }} · {{ item.report_request_id ? t('reports.organizer.fromRequest') : t('reports.organizer.organizerInitiated') }}
               </p>
+              <p class="text-xs text-ink-500">{{ t('reports.organizer.createdAt', { date: formatDate(item.created_at) }) }}</p>
+              <p class="text-xs text-ink-500">{{ t('reports.organizer.snapshotUpdatedAt', { date: formatDate(item.snapshot_generated_at || item.updated_at) }) }}</p>
             </div>
             <div class="flex flex-wrap gap-2">
               <button type="button" class="ml-btn-ghost text-sm" @click="openReport(item.id)">{{ t('reports.organizer.preview') }}</button>
-              <button type="button" class="ml-btn-ghost text-sm" @click="regenerate(item.id)">{{ t('reports.organizer.regenerate') }}</button>
+              <button
+                type="button"
+                class="ml-btn-ghost text-sm"
+                :disabled="regeneratingId === item.id"
+                @click="regenerate(item.id)"
+              >{{ regeneratingId === item.id ? t('reports.organizer.regenerating') : t('reports.organizer.regenerate') }}</button>
               <button type="button" class="ml-btn-primary text-sm" @click="publish(item.id)">{{ t('reports.organizer.publish') }}</button>
               <button type="button" class="ml-btn-ghost text-sm text-rose-700" @click="removeDraft(item.id)">{{ t('reports.organizer.delete') }}</button>
             </div>
@@ -169,14 +176,59 @@
           >{{ t('reports.organizer.publish') }}</button>
         </div>
 
-        <div v-if="activeReport.status === 'draft'" class="grid gap-3 sm:grid-cols-2">
+        <div v-if="activeReport.status === 'draft'" class="space-y-4">
+          <div v-if="activeReport.publish_readiness" class="rounded-xl border border-ink-200 bg-ink-50/60 p-4" data-testid="publish-readiness">
+            <h3 class="text-sm font-bold text-ink-900">{{ t('reports.organizer.publishReadinessTitle') }}</h3>
+            <ul class="mt-2 space-y-1 text-sm">
+              <li
+                v-for="item in activeReport.publish_readiness.items || []"
+                :key="item.id"
+                :class="item.satisfied ? 'text-emerald-700' : 'text-amber-800'"
+              >
+                {{ item.satisfied ? '✓' : '○' }} {{ item.label }}
+              </li>
+            </ul>
+            <p v-if="!activeReport.publish_readiness.ready" class="mt-2 text-xs text-amber-800">
+              {{ t('reports.organizer.publishReadinessBlocked') }}
+            </p>
+          </div>
+
           <label class="block text-sm font-semibold text-ink-700">
-            {{ t('reports.organizer.observationsLabel') }}
-            <textarea v-model="narrative.observations" rows="5" class="ml-input mt-1 w-full" />
+            {{ t('reports.organizer.introductionLabel') }}
+            <textarea v-model="narrative.introduction" rows="4" class="ml-input mt-1 w-full" />
           </label>
+
+          <div class="space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-sm font-semibold text-ink-700">{{ t('reports.organizer.objectivesLabel') }}</span>
+              <label class="flex items-center gap-2 text-xs text-ink-600">
+                <input v-model="narrative.objectivesNotApplicable" type="checkbox" class="rounded border-ink-300" />
+                {{ t('reports.organizer.objectivesNotApplicable') }}
+              </label>
+            </div>
+            <div v-if="!narrative.objectivesNotApplicable" class="space-y-2">
+              <div v-for="(objective, idx) in narrative.objectives" :key="idx" class="flex gap-2">
+                <input v-model="narrative.objectives[idx]" type="text" class="ml-input flex-1" :placeholder="t('reports.organizer.objectivePlaceholder')" />
+                <button type="button" class="ml-btn-ghost text-sm" @click="narrative.objectives.splice(idx, 1)">{{ t('reports.organizer.removeObjective') }}</button>
+              </div>
+              <button type="button" class="ml-btn-ghost text-sm" @click="narrative.objectives.push('')">{{ t('reports.organizer.addObjective') }}</button>
+            </div>
+          </div>
+
+          <div class="grid gap-3 sm:grid-cols-2">
+            <label class="block text-sm font-semibold text-ink-700">
+              {{ t('reports.organizer.observationsLabel') }}
+              <textarea v-model="narrative.observations" rows="5" class="ml-input mt-1 w-full" />
+            </label>
+            <label class="block text-sm font-semibold text-ink-700">
+              {{ t('reports.organizer.recommendationsLabel') }}
+              <textarea v-model="narrative.recommendations" rows="5" class="ml-input mt-1 w-full" />
+            </label>
+          </div>
+
           <label class="block text-sm font-semibold text-ink-700">
-            {{ t('reports.organizer.recommendationsLabel') }}
-            <textarea v-model="narrative.recommendations" rows="5" class="ml-input mt-1 w-full" />
+            {{ t('reports.organizer.conclusionLabel') }}
+            <textarea v-model="narrative.conclusion" rows="5" class="ml-input mt-1 w-full" />
           </label>
         </div>
 
@@ -205,7 +257,8 @@ import {
   getOrganizerReportRequest,
   listOrganizerGeneratedReports,
   listOrganizerReportRequests,
-  openAuthorizedPdf,
+  downloadAuthorizedPdf,
+  buildPostEventPdfFilename,
   organizerGeneratedReportPdfUrl,
   publishOrganizerReport,
   regenerateOrganizerReport,
@@ -240,8 +293,41 @@ try {
   /* ignore */
 }
 const activeReport = ref(null);
-const narrative = ref({ observations: '', recommendations: '' });
+const narrative = ref({
+  observations: '',
+  recommendations: '',
+  introduction: '',
+  objectives: [],
+  objectivesNotApplicable: false,
+  conclusion: '',
+});
 const requestDetail = ref(null);
+const regeneratingId = ref(null);
+
+const applyReportToState = (report) => {
+  if (!report?.id) return;
+  const idx = drafts.value.findIndex((row) => row.id === report.id);
+  if (idx >= 0) {
+    drafts.value.splice(idx, 1, { ...drafts.value[idx], ...report });
+  }
+  if (activeReport.value?.id === report.id) {
+    activeReport.value = report;
+    syncNarrativeFromReport(report);
+  }
+};
+
+const syncNarrativeFromReport = (report) => {
+  narrative.value = {
+    observations: report.organizer_observations ?? '',
+    recommendations: report.organizer_recommendations ?? '',
+    introduction: report.programme_introduction ?? report.snapshot?.programme?.introduction ?? '',
+    objectives: Array.isArray(report.programme_objectives) && report.programme_objectives.length
+      ? [...report.programme_objectives]
+      : [],
+    objectivesNotApplicable: Boolean(report.objectives_not_applicable),
+    conclusion: report.conclusion ?? report.snapshot?.programme?.conclusion ?? '',
+  };
+};
 
 const actionRequiredCount = computed(() =>
   requests.value.filter((row) => ['requested', 'acknowledged'].includes(row.status)).length,
@@ -360,10 +446,7 @@ const openReport = async (id) => {
     const { data } = await getOrganizerGeneratedReport(id);
     const report = data.data || data.generated_report || data;
     activeReport.value = report;
-    narrative.value = {
-      observations: report.organizer_observations || '',
-      recommendations: report.organizer_recommendations || '',
-    };
+    syncNarrativeFromReport(report);
   } catch (error) {
     toast.error(error.response?.data?.message || t('reports.organizer.toastOpenError'));
   }
@@ -375,8 +458,15 @@ const saveNarratives = async () => {
     const { data } = await updateOrganizerReportNarratives(activeReport.value.id, {
       organizer_observations: narrative.value.observations,
       organizer_recommendations: narrative.value.recommendations,
+      programme_introduction: narrative.value.introduction,
+      programme_objectives: narrative.value.objectivesNotApplicable
+        ? []
+        : narrative.value.objectives.filter((row) => String(row || '').trim()),
+      objectives_not_applicable: narrative.value.objectivesNotApplicable,
+      conclusion: narrative.value.conclusion,
     });
-    activeReport.value = data.generated_report || data.data || activeReport.value;
+    const report = data.generated_report || data.data || activeReport.value;
+    applyReportToState(report);
     toast.success(t('reports.organizer.toastNarrativesSaved'));
   } catch (error) {
     toast.error(error.response?.data?.message || t('reports.organizer.toastNarrativesError'));
@@ -384,13 +474,21 @@ const saveNarratives = async () => {
 };
 
 const regenerate = async (id) => {
+  if (regeneratingId.value) return;
+  regeneratingId.value = id;
   try {
-    await regenerateOrganizerReport(id);
-    toast.success(t('reports.organizer.toastRegenerated'));
-    await load();
-    if (activeReport.value?.id === id) await openReport(id);
+    const { data } = await regenerateOrganizerReport(id);
+    const report = data.generated_report || data.data;
+    if (report) applyReportToState(report);
+    toast.success(data.message || (
+      data.metrics_changed
+        ? t('reports.organizer.toastRegeneratedChanged')
+        : t('reports.organizer.toastRegeneratedUnchanged')
+    ));
   } catch (error) {
     toast.error(error.response?.data?.message || t('reports.organizer.toastRegenerateError'));
+  } finally {
+    regeneratingId.value = null;
   }
 };
 
@@ -439,9 +537,15 @@ const createRevision = async (id) => {
 
 const downloadPdf = async (id) => {
   try {
-    await openAuthorizedPdf(organizerGeneratedReportPdfUrl(id));
-  } catch {
-    toast.error(t('reports.organizer.toastPdfError'));
+    const report = [...drafts.value, ...published.value].find((row) => row.id === id) || activeReport.value;
+    const fallbackFilename = buildPostEventPdfFilename({
+      audience: 'organizer',
+      eventSlug: report?.event_title_snapshot || report?.snapshot?.event?.title || 'event',
+      version: report?.version || 1,
+    });
+    await downloadAuthorizedPdf(organizerGeneratedReportPdfUrl(id), { fallbackFilename });
+  } catch (error) {
+    toast.error(error?.message || t('reports.organizer.toastPdfError'));
   }
 };
 

@@ -1657,6 +1657,9 @@ export default {
       sectionExecutive: '1. Ringkasan eksekutif',
       provisionalWarn:
         'Laporan ini bersifat Sementara. Angka mencerminkan snapshot sedia ada dan mungkin berubah jika versi kemudian diterbitkan.',
+      sectionAnalyticsVisuals: 'Visual snapshot analitik',
+      analyticsVisualsHint:
+        'Carta komposisi di bawah menggunakan snapshot laporan beku dan palet semantik Hab Analitik. Nilai hilang dikecualikan — tidak pernah ditunjukkan sebagai sifar.',
       sectionParticipation: '2. Acara dan penyertaan',
       event: 'Acara',
       dateTime: 'Tarikh & masa',

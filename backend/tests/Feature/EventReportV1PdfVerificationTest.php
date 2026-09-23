@@ -26,6 +26,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\CleansUpTestFixtures;
 use Tests\Concerns\EnsuresCanonicalLayoutForSites;
 use Tests\TestCase;
@@ -627,5 +628,38 @@ class EventReportV1PdfVerificationTest extends TestCase
             ], $row));
             $this->createdSurveyResponseIds[] = $response->id;
         }
+    }
+
+    public function test_organizer_pdf_download_returns_attachment_headers_and_pdf_bytes(): void
+    {
+        if (! class_exists(Pdf::class)) {
+            $this->markTestSkipped('DomPDF is not available.');
+        }
+
+        $organizer = $this->user('organizer', 'pdfdl');
+        $starts = now()->subDays(3)->setTime(10, 0, 0);
+        $event = $this->trackEvent(CarbootEvent::create([
+            'title' => 'Download Headers Event ' . uniqid(),
+            'starts_at' => $starts,
+            'ends_at' => $starts->copy()->addHours(8),
+            'status' => 'Closed',
+            'description' => 'PDF download header fixture',
+            'max_slots' => 20,
+            'day_generation_mode' => 'calendar_days',
+            'analytics_source_mode' => 'system_only',
+        ]));
+
+        $draft = $this->trackReport(app(ReportDraftService::class)->generate($event, $organizer));
+
+        Sanctum::actingAs($organizer);
+        $response = $this->get('/api/organizer/generated-reports/'.$draft->id.'/pdf');
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+        $disposition = (string) $response->headers->get('content-disposition');
+        $this->assertStringContainsString('attachment', $disposition);
+        $this->assertMatchesRegularExpression('/filename=.+\\.pdf/i', $disposition);
+        $this->assertStringContainsString('organizer-post-event-report-', $disposition);
+        $this->assertStringStartsWith('%PDF', $response->getContent());
     }
 }

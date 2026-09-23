@@ -34,6 +34,20 @@ class ReportPublicationService
             ]);
         }
 
+        $readiness = \App\Support\PostEventReportProgramme::publishReadiness($report);
+        if (! $readiness['ready']) {
+            $missing = collect($readiness['items'])
+                ->filter(fn ($item) => $item['required'] && ! $item['satisfied'])
+                ->pluck('label')
+                ->values()
+                ->all();
+
+            throw ValidationException::withMessages([
+                'publish_readiness' => 'This draft is not ready to publish as an official programme report.',
+                'missing' => $missing,
+            ]);
+        }
+
         $event = $report->carbootEvent;
         if (! $this->isEligibleForPublication($event?->status, $event?->ends_at)) {
             throw ValidationException::withMessages([
