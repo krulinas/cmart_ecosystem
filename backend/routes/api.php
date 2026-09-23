@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\OrganizerEventLayoutRowController;
 use App\Http\Controllers\Api\OrganizerEventLayoutSiteController;
 use App\Http\Controllers\Api\OrganizerEventAnalyticsController;
 use App\Http\Controllers\Api\OrganizerEventAnalyticsDataSourceController;
+use App\Http\Controllers\Api\OrganizerEventBenchmarkController;
 use App\Http\Controllers\Api\OrganizerGeneratedReportController;
 use App\Http\Controllers\Api\OrganizerItemReservationController;
 use App\Http\Controllers\Api\OrganizerReleasedDayRecoveryController;
@@ -284,6 +285,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Event-scoped analytics hub + vendor survey import (organizer / super_admin).
         Route::get('/organizer/events/{event}/analytics/overview', [OrganizerEventAnalyticsController::class, 'overview']);
+        Route::get('/organizer/events/{event}/analytics/benchmark', [OrganizerEventBenchmarkController::class, 'show']);
         Route::get('/organizer/events/{event}/analytics/{section}', [OrganizerEventAnalyticsController::class, 'section']);
         Route::post('/organizer/events/{event}/analytics/recompute', [OrganizerEventAnalyticsController::class, 'recompute']);
         Route::put('/organizer/events/{event}/analytics/source-mode', [OrganizerEventAnalyticsDataSourceController::class, 'updateMode']);

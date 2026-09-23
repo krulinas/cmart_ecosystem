@@ -120,10 +120,69 @@
           </div>
 
           <template v-else>
+            <div class="grid gap-3 lg:grid-cols-2" data-testid="overview-visuals">
+              <AnalyticsDoughnutChart
+                v-if="siteUtilisationSegments.length"
+                :title="t('organizer.analytics.siteUtilisationChart')"
+                :subtitle="t('organizer.analytics.siteUtilisationChartHint')"
+                :rows="siteUtilisationSegments"
+                :center-value="eventPerformance?.site_utilisation_percent != null ? `${eventPerformance.site_utilisation_percent}%` : null"
+                :center-label="t('organizer.analytics.utilised')"
+                :colors="[palette.primary, palette.neutral]"
+                :empty-text="t('organizer.analytics.utilisationChartEmpty')"
+                test-id="overview-site-utilisation-doughnut"
+              />
+              <div
+                v-else
+                class="rounded-xl border border-dashed border-ink-200 bg-white px-3 py-6 text-center text-sm text-ink-600"
+              >
+                {{ t('organizer.analytics.utilisationChartEmpty') }}
+              </div>
+
+              <AnalyticsDoughnutChart
+                v-if="useCategoryDoughnut"
+                :title="t('organizer.analytics.vendorCategoryDistribution')"
+                :subtitle="t('organizer.analytics.vendorCategoryHint')"
+                :rows="vendorCategoryChartRows"
+                :colors="compositionColors"
+                :empty-text="t('organizer.analytics.categoryChartEmpty')"
+                test-id="overview-vendor-category-doughnut"
+              />
+              <AnalyticsRankedBarChart
+                v-else
+                :title="t('organizer.analytics.vendorCategoryDistribution')"
+                :subtitle="t('organizer.analytics.vendorCategoryHint')"
+                :rows="vendorCategoryChartRows"
+                :color="palette.survey"
+                :empty-text="t('organizer.analytics.noCategoryRecorded')"
+                test-id="overview-vendor-category-bars"
+              />
+            </div>
+
+            <div class="grid gap-3 lg:grid-cols-2">
+              <AnalyticsStackedBarChart
+                :title="t('organizer.analytics.revenueCollectionChart')"
+                :subtitle="t('organizer.analytics.revenueCollectionHint')"
+                :segments="revenueCollectionSegments"
+                :colors="[palette.positive, palette.warning]"
+                value-prefix="RM "
+                :empty-text="t('organizer.analytics.revenueChartEmpty')"
+                test-id="overview-revenue-stacked"
+              />
+              <AnalyticsDoughnutChart
+                :title="t('organizer.analytics.bookingStatusChart')"
+                :subtitle="t('organizer.analytics.bookingStatusHint')"
+                :rows="bookingStatusChartRows"
+                :colors="compositionColors"
+                :empty-text="t('organizer.analytics.statusChartEmpty')"
+                test-id="overview-booking-status-doughnut"
+              />
+            </div>
+
             <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="event-performance">
               <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.eventPerformance') }}</h3>
               <p class="mt-0.5 text-xs text-ink-500">{{ t('organizer.analytics.eventPerformanceHint') }}</p>
-              <dl class="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 lg:grid-cols-5">
+              <dl class="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 lg:grid-cols-4">
                 <div>
                   <dt class="text-ink-500">{{ t('organizer.analytics.approvedBookings') }}</dt>
                   <dd class="font-bold text-ink-900">{{ eventPerformance?.approved_bookings ?? approvedCount ?? '—' }}</dd>
@@ -145,12 +204,6 @@
                   <dd class="font-bold text-ink-900">{{ eventPerformance?.available_sites ?? '—' }}</dd>
                 </div>
                 <div>
-                  <dt class="text-ink-500">{{ t('organizer.analytics.siteUtilisation') }}</dt>
-                  <dd class="font-bold text-ink-900">
-                    {{ eventPerformance?.site_utilisation_percent != null ? `${eventPerformance.site_utilisation_percent}%` : '—' }}
-                  </dd>
-                </div>
-                <div>
                   <dt class="text-ink-500">{{ t('organizer.analytics.feedbackResponses') }}</dt>
                   <dd class="font-bold text-ink-900">{{ eventPerformance?.feedback_response_count ?? inAppFeedback?.response_count ?? '—' }}</dd>
                 </div>
@@ -168,7 +221,7 @@
               </p>
             </div>
 
-            <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+            <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               <button
                 v-for="card in overviewKpis"
                 :key="card.id"
@@ -228,18 +281,6 @@
                       <dt class="text-ink-500">{{ t('organizer.analytics.collectionRate') }}</dt>
                       <dd class="font-bold text-ink-900">{{ collectionRateLabel }}</dd>
                     </div>
-                    <div>
-                      <dt class="text-ink-500">{{ t('organizer.analytics.avgPerApprovedVendor') }}</dt>
-                      <dd class="font-bold text-ink-900">
-                        {{ payments?.average_revenue_per_approved_vendor != null ? `RM ${formatMoney(payments.average_revenue_per_approved_vendor)}` : '—' }}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt class="text-ink-500">{{ t('organizer.analytics.avgPerSiteSold') }}</dt>
-                      <dd class="font-bold text-ink-900">
-                        {{ payments?.average_revenue_per_site_sold != null ? `RM ${formatMoney(payments.average_revenue_per_site_sold)}` : '—' }}
-                      </dd>
-                    </div>
                   </dl>
                   <p v-if="!hasInvoices" class="mt-2 text-xs text-ink-500">
                     {{ t('organizer.analytics.noInvoicesNote') }}
@@ -252,24 +293,7 @@
                 </div>
               </div>
 
-              <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="vendor-category-distribution">
-                <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.vendorCategoryDistribution') }}</h3>
-                <p class="mt-0.5 text-xs text-ink-500">{{ t('organizer.analytics.vendorCategoryHint') }}</p>
-                <ul v-if="(vendorCategories?.distribution || []).length" class="mt-3 space-y-2 text-sm">
-                  <li
-                    v-for="row in vendorCategories.distribution"
-                    :key="row.label"
-                    class="flex items-center justify-between gap-2 rounded-lg border border-ink-100 px-2 py-1.5"
-                  >
-                    <span class="font-semibold text-ink-800">{{ row.label }}</span>
-                    <span class="text-xs text-ink-500">
-                      {{ t('organizer.analytics.vendorsCount', { count: row.unique_vendors ?? row.count }) }}
-                      <template v-if="row.vendor_percent != null"> · {{ row.vendor_percent }}%</template>
-                    </span>
-                  </li>
-                </ul>
-                <p v-else class="mt-3 text-sm text-ink-600">{{ t('organizer.analytics.noCategoryRecorded') }}</p>
-              </div>
+              <PerformanceAcrossEventsPanel :event-id="selectedEventId" />
             </div>
           </template>
         </section>
@@ -473,10 +497,19 @@ import { useToast } from 'vue-toastification';
 import AnalyticsBarList from '../../../components/analytics/AnalyticsBarList.vue';
 import AnalyticsDataSourceBadge from '../../../components/analytics/AnalyticsDataSourceBadge.vue';
 import AnalyticsDataSourceManager from '../../../components/analytics/AnalyticsDataSourceManager.vue';
+import AnalyticsDoughnutChart from '../../../components/analytics/AnalyticsDoughnutChart.vue';
+import AnalyticsRankedBarChart from '../../../components/analytics/AnalyticsRankedBarChart.vue';
+import AnalyticsStackedBarChart from '../../../components/analytics/AnalyticsStackedBarChart.vue';
 import EventCommentsWordCloud from '../../../components/analytics/EventCommentsWordCloud.vue';
+import PerformanceAcrossEventsPanel from '../../../components/analytics/PerformanceAcrossEventsPanel.vue';
 import SurveyResultsPanel from '../../../components/analytics/SurveyResultsPanel.vue';
 import { useEventAnalyticsContext } from '../../../composables/useEventAnalyticsContext';
 import { ANALYTICS_HUB_TAB_STORAGE_KEY } from '../../../config/workspaceNav';
+import {
+  ANALYTICS_PALETTE,
+  COMPOSITION_COLORS,
+} from '../../../utils/analyticsChartPalette';
+import { shouldUseDoughnutForCategories } from '../../../utils/chartLifecycle';
 import { formatLocaleDateTime, formatLocaleDate, formatLocaleNumber } from '../../../utils/localeFormat';
 import {
   getEventAnalyticsOverview,
@@ -488,6 +521,8 @@ const { t } = useI18n();
 const toast = useToast();
 const router = useRouter();
 const { selectedEventId, setSelectedEvent, setSelectedEventId } = useEventAnalyticsContext();
+const palette = ANALYTICS_PALETTE;
+const compositionColors = COMPOSITION_COLORS;
 
 const tabs = computed(() => [
   { id: 'overview', label: t('organizer.analytics.tabOverview') },
@@ -712,39 +747,6 @@ const overviewKpis = computed(() => [
     onClick: () => goToBookings({ status: 'Approved' }),
   },
   {
-    id: 'expected_revenue',
-    label: t('organizer.analytics.kpiExpectedRevenue'),
-    value: !systemIncluded.value
-      ? t('organizer.analytics.excluded')
-      : (!operationalReady.value ? t('organizer.analytics.unavailable') : `RM ${formatMoney(payments.value?.expected)}`),
-    note: t('organizer.analytics.kpiPlatformFees'),
-    title: t('organizer.analytics.kpiJumpFinance'),
-    clickable: systemIncluded.value && operationalReady.value,
-    onClick: scrollToFinance,
-  },
-  {
-    id: 'collected_revenue',
-    label: t('organizer.analytics.kpiCollectedRevenue'),
-    value: !systemIncluded.value
-      ? t('organizer.analytics.excluded')
-      : (!operationalReady.value ? t('organizer.analytics.unavailable') : `RM ${formatMoney(payments.value?.collected)}`),
-    note: t('organizer.analytics.kpiPaidInvoices'),
-    title: t('organizer.analytics.kpiJumpFinance'),
-    clickable: systemIncluded.value && operationalReady.value,
-    onClick: scrollToFinance,
-  },
-  {
-    id: 'outstanding_revenue',
-    label: t('organizer.analytics.kpiOutstandingRevenue'),
-    value: !systemIncluded.value
-      ? t('organizer.analytics.excluded')
-      : (!operationalReady.value ? t('organizer.analytics.unavailable') : `RM ${formatMoney(payments.value?.outstanding)}`),
-    note: t('organizer.analytics.kpiUnpaidInvoices'),
-    title: t('organizer.analytics.kpiJumpFinance'),
-    clickable: systemIncluded.value && operationalReady.value,
-    onClick: scrollToFinance,
-  },
-  {
     id: 'collection_rate',
     label: t('organizer.analytics.collectionRate'),
     value: !systemIncluded.value
@@ -756,6 +758,19 @@ const overviewKpis = computed(() => [
     title: t('organizer.analytics.kpiShowPaymentBreakdown'),
     clickable: systemIncluded.value && operationalReady.value,
     onClick: showPaymentBreakdown,
+  },
+  {
+    id: 'outstanding_revenue',
+    label: t('organizer.analytics.kpiOutstandingRevenue'),
+    value: !systemIncluded.value
+      ? t('organizer.analytics.excluded')
+      : (!operationalReady.value || !hasInvoices.value
+        ? t('organizer.analytics.notAvailable')
+        : `RM ${formatMoney(payments.value?.outstanding_invoice_balance ?? payments.value?.outstanding)}`),
+    note: t('organizer.analytics.kpiUnpaidInvoices'),
+    title: t('organizer.analytics.kpiJumpFinance'),
+    clickable: systemIncluded.value && operationalReady.value,
+    onClick: scrollToFinance,
   },
 ]);
 
@@ -770,6 +785,86 @@ const bookingStatusRows = computed(() => {
     percent: total ? Math.round((count / total) * 1000) / 10 : 0,
     display: total ? t('organizer.analytics.ofTotal', { count, total, pct: ((count / total) * 100).toFixed(1) }) : `${count}`,
   }));
+});
+
+const bookingStatusChartRows = computed(() => bookingStatusRows.value.map((row) => ({
+  key: row.key,
+  label: row.label,
+  count: row.count,
+  percent: row.percent,
+})));
+
+const siteUtilisationSegments = computed(() => {
+  if (!systemIncluded.value || !operationalReady.value) return [];
+  const sold = eventPerformance.value?.sites_sold;
+  const open = eventPerformance.value?.open_booking_sites
+    ?? sites.value?.open_booking_sites
+    ?? null;
+  if (sold == null || open == null) return [];
+  const soldN = Number(sold);
+  const openN = Number(open);
+  if (Number.isNaN(soldN) || Number.isNaN(openN) || openN <= 0) return [];
+  const remaining = Math.max(openN - soldN, 0);
+  const utilPct = eventPerformance.value?.site_utilisation_percent;
+  return [
+    {
+      key: 'sold',
+      label: t('organizer.analytics.sitesOccupied'),
+      count: soldN,
+      percent: utilPct != null ? Number(utilPct) : (openN ? Math.round((soldN / openN) * 1000) / 10 : null),
+    },
+    {
+      key: 'remaining',
+      label: t('organizer.analytics.sitesRemaining'),
+      count: remaining,
+      percent: utilPct != null ? Math.round((100 - Number(utilPct)) * 10) / 10 : null,
+    },
+  ];
+});
+
+const vendorCategoryChartRows = computed(() => {
+  const dist = vendorCategories.value?.distribution || [];
+  return dist
+    .map((row) => {
+      const count = row.unique_vendors ?? row.count;
+      if (count == null || count === '') return null;
+      const n = Number(count);
+      if (Number.isNaN(n) || n <= 0) return null;
+      return {
+        key: row.label,
+        label: row.label,
+        count: n,
+        percent: row.vendor_percent != null ? Number(row.vendor_percent) : null,
+      };
+    })
+    .filter(Boolean);
+});
+
+const useCategoryDoughnut = computed(() =>
+  shouldUseDoughnutForCategories(vendorCategoryChartRows.value.length),
+);
+
+const revenueCollectionSegments = computed(() => {
+  if (!systemIncluded.value || !operationalReady.value || !hasInvoices.value) return [];
+  const collected = payments.value?.collected_revenue ?? payments.value?.collected;
+  const outstanding = payments.value?.outstanding_invoice_balance ?? payments.value?.outstanding;
+  if (collected == null && outstanding == null) return [];
+  const segments = [];
+  if (collected != null && collected !== '') {
+    segments.push({
+      key: 'collected',
+      label: t('organizer.analytics.collectedSegment'),
+      count: Number(collected),
+    });
+  }
+  if (outstanding != null && outstanding !== '') {
+    segments.push({
+      key: 'outstanding',
+      label: t('organizer.analytics.outstandingSegment'),
+      count: Number(outstanding),
+    });
+  }
+  return segments.filter((s) => !Number.isNaN(s.count));
 });
 
 const siteStatusRows = computed(() => {

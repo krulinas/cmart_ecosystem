@@ -1,10 +1,7 @@
 <template>
   <div class="flex h-screen flex-col overflow-hidden bg-slate-50 lg:flex-row">
-    <!-- Mobile section nav -->
+    <!-- Mobile section nav (language control lives in the header on small screens) -->
     <div class="shrink-0 border-b border-ink-200 bg-white px-4 py-2.5 lg:hidden">
-      <div class="mb-2 flex justify-end">
-        <LanguageToggle />
-      </div>
       <div class="flex items-center gap-2 overflow-x-auto pb-0.5">
         <router-link
           v-for="item in flatNavItems"
@@ -116,8 +113,8 @@
             </div>
           </div>
         </div>
-        <div class="mt-3 flex justify-center">
-          <LanguageToggle />
+        <div class="mt-3 flex justify-center" data-testid="locale-toggle-desktop-slot">
+          <LanguageToggle placement="desktop" />
         </div>
       </div>
     </aside>
@@ -167,7 +164,10 @@
           </div>
 
           <div class="flex shrink-0 flex-wrap items-center gap-2">
-            <LanguageToggle />
+            <!-- Mobile only: sidebar is hidden below lg, so keep one header control -->
+            <div class="lg:hidden" data-testid="locale-toggle-mobile-slot">
+              <LanguageToggle placement="mobile" />
+            </div>
             <slot name="actions" />
           </div>
         </div>

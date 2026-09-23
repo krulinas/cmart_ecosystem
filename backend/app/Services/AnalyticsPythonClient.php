@@ -78,6 +78,42 @@ class AnalyticsPythonClient
         return $response->json() ?? [];
     }
 
+    /**
+     * Cross-event statistical benchmark (Python/Pandas). Payload must already
+     * contain authoritative Laravel metrics — Python must not invent formulas.
+     *
+     * @param  array{selected_event_id:int, events:list<array<string, mixed>>}  $payload
+     * @return array<string, mixed>
+     */
+    public function eventBenchmark(array $payload): array
+    {
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders($this->headers())
+                ->acceptJson()
+                ->post($this->baseUrl().'/api/analytics/event-benchmark', $payload);
+        } catch (ConnectionException $e) {
+            throw new RuntimeException(
+                'Analytics service is unavailable for event benchmarking.',
+                0,
+                $e,
+            );
+        }
+
+        if (! $response->successful()) {
+            $detail = $response->json('detail');
+            if (is_array($detail)) {
+                $detail = json_encode($detail);
+            }
+
+            throw new RuntimeException(
+                $detail ?: 'Event benchmarking service returned an error.',
+            );
+        }
+
+        return $response->json() ?? [];
+    }
+
     public function isReachable(): bool
     {
         try {

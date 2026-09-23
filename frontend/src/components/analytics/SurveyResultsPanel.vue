@@ -120,7 +120,7 @@
           <SurveyDistributionChart
             :title="t('organizer.analytics.survey.usedItemSellThrough')"
             :subtitle="t('organizer.analytics.survey.usedItemSellThroughSub')"
-            chart-type="segmented-h"
+            chart-type="column-v"
             test-id="chart-items-sold"
             :rows="itemsSold"
             :order="ITEMS_SOLD_BAND_ORDER"
@@ -217,6 +217,23 @@
             :metric-mode="metricMode"
             :empty-text="t('organizer.analytics.survey.supportingAttractedEmpty')"
           />
+          <AnalyticsDoughnutChart
+            v-if="difficultyRows.length"
+            :title="t('organizer.analytics.survey.vendorDifficulties')"
+            :subtitle="t('organizer.analytics.survey.yesNo', { yes: hasDifficulty?.yes_display || '—', no: hasDifficulty?.no_display || '—' })"
+            :rows="difficultyRows"
+            :colors="[palette.warning, palette.positive]"
+            test-id="chart-has-difficulty-doughnut"
+          />
+          <div
+            v-else-if="hasDifficulty"
+            class="rounded-xl border border-sky-100 bg-white p-3 text-sm text-ink-700"
+          >
+            <p class="font-bold text-ink-900">{{ t('organizer.analytics.survey.vendorDifficulties') }}</p>
+            <p class="mt-1">
+              {{ t('organizer.analytics.survey.yesNo', { yes: hasDifficulty.yes_display, no: hasDifficulty.no_display }) }}
+            </p>
+          </div>
           <SurveyDistributionChart
             :title="t('organizer.analytics.survey.supportingImpacts')"
             :subtitle="t('organizer.analytics.survey.supportingImpactsSub')"
@@ -229,15 +246,6 @@
             :empty-text="t('organizer.analytics.survey.supportingImpactsEmpty')"
           />
         </div>
-        <div
-          v-if="hasDifficulty"
-          class="rounded-xl border border-sky-100 bg-white p-3 text-sm text-ink-700"
-        >
-          <p class="font-bold text-ink-900">{{ t('organizer.analytics.survey.vendorDifficulties') }}</p>
-          <p class="mt-1">
-{{ t('organizer.analytics.survey.yesNo', { yes: hasDifficulty.yes_display, no: hasDifficulty.no_display }) }}
-          </p>
-        </div>
       </section>
     </template>
   </div>
@@ -247,7 +255,9 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import AnalyticsDataSourceBadge from './AnalyticsDataSourceBadge.vue';
+import AnalyticsDoughnutChart from './AnalyticsDoughnutChart.vue';
 import SurveyDistributionChart from './SurveyDistributionChart.vue';
+import { ANALYTICS_PALETTE } from '../../utils/analyticsChartPalette';
 import {
   EVENT_INFO_SOURCE_ORDER,
   GROSS_SALES_BAND_ORDER,
@@ -268,6 +278,7 @@ defineEmits(['open-data-sources']);
 
 const { t } = useI18n();
 const metricMode = ref('count');
+const palette = ANALYTICS_PALETTE;
 
 const vendors = computed(() => props.overview?.survey?.sections?.vendors || {});
 const economics = computed(() => props.overview?.survey?.sections?.economics || {});
@@ -288,6 +299,21 @@ const improvementAreas = computed(() => operations.value.improvement_areas || []
 const supportingAttracted = computed(() => experience.value.supporting_activity_attracted_visitors || []);
 const supportingImpacts = computed(() => experience.value.supporting_activity_impacts || []);
 const hasDifficulty = computed(() => operations.value.has_difficulty || null);
+
+const difficultyRows = computed(() => {
+  const block = hasDifficulty.value;
+  if (!block) return [];
+  const yes = block.yes ?? block.yes_count;
+  const no = block.no ?? block.no_count;
+  const rows = [];
+  if (yes != null && yes !== '') {
+    rows.push({ key: 'yes', label: 'Yes', count: Number(yes) });
+  }
+  if (no != null && no !== '') {
+    rows.push({ key: 'no', label: 'No', count: Number(no) });
+  }
+  return rows.filter((r) => !Number.isNaN(r.count));
+});
 
 const salesPurposeAnswered = computed(() => {
   if (vendors.value.sales_purpose_answered != null) return Number(vendors.value.sales_purpose_answered);

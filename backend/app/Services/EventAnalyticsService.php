@@ -494,8 +494,8 @@ class EventAnalyticsService
             ],
             'python_analytics' => [
                 'label' => 'Python analytics service',
-                'ready' => $this->python->isReachable(),
-                'detail' => $this->python->isReachable()
+                'ready' => ($pythonReachable = $this->python->isReachable()),
+                'detail' => $pythonReachable
                     ? 'Analytics service reachable at configured URL.'
                     : 'Python analytics service unreachable — survey compute will degrade.',
             ],

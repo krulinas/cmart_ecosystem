@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from event_aggregations import aggregate_survey_records
+from event_benchmarking import benchmark_events
 from survey_schema import CALCULATION_VERSION, SCHEMA_NAME, SCHEMA_VERSION
 from text_analytics import counter_to_terms, tokenize_feedback, tokenize_products
 from validate_survey_csv import validate_survey_csv_text
@@ -254,6 +255,19 @@ def aggregate_survey(payload: SurveyAggregateRequest):
         import_batch_id=payload.import_batch_id,
         source_fingerprint=payload.source_fingerprint,
     )
+
+
+class EventBenchmarkRequest(BaseModel):
+    selected_event_id: int
+    events: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@app.post("/api/analytics/event-benchmark", dependencies=[Depends(verify_api_key)])
+def event_benchmark(payload: EventBenchmarkRequest):
+    try:
+        return benchmark_events(payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/api/analytics/survey/schema", dependencies=[Depends(verify_api_key)])
