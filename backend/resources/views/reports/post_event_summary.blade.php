@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <title>{{ $report->event_title_snapshot }} — {{ __('reports.pdf.title_suffix') }}</title>
     <style>
-        @page { margin: 22mm 16mm 20mm 16mm; }
+        @page { margin: 22mm 16mm 24mm 16mm; }
         body {
             font-family: DejaVu Sans, sans-serif;
             font-size: 11px;
@@ -12,19 +12,36 @@
             line-height: 1.45;
         }
         .page-cover { page-break-after: always; }
-        .section { page-break-inside: avoid; margin-bottom: 16px; }
-        .section-break { page-break-before: always; }
+        /*
+         * DomPDF 3.x / CPDF: do NOT keep whole report sections together.
+         * Oversized blocks (especially Vendor Survey Q1–Q13) force DomPDF into
+         * pathological fragmentation — footer-only and near-empty pages.
+         * Keep page-break-inside: avoid only for compact units that fit on one page.
+         *
+         * Also avoid position:fixed footers with negative bottom offsets — DomPDF
+         * treats that as overflow and invents blank/footer-only pages.
+         */
+        .section { margin-bottom: 14px; }
+        /* Do not force section-break: always — that wastes pages and fights DomPDF flow. */
+        .keep-together { page-break-inside: avoid; }
         h1 { font-size: 22px; color: #014a7a; margin: 0 0 6px; letter-spacing: 0.04em; }
         h2 {
             font-size: 13px;
             color: #014a7a;
-            margin: 0 0 10px;
+            margin: 0 0 8px;
             padding-bottom: 4px;
             border-bottom: 2px solid #b3e5fc;
             text-transform: uppercase;
             letter-spacing: 0.06em;
+            page-break-after: avoid;
         }
-        h3 { font-size: 11px; color: #0277BD; margin: 12px 0 6px; }
+        h3 {
+            font-size: 11px;
+            color: #0277BD;
+            margin: 8px 0 4px;
+            /* Avoid page-break-after: avoid here — with many survey charts it
+               pushes each Q1–Q13 block onto its own page in DomPDF. */
+        }
         .eyebrow { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #0277BD; font-weight: bold; }
         .muted { color: #64748b; font-size: 10px; }
         .note { color: #64748b; font-size: 9.5px; margin-top: 6px; }
@@ -35,6 +52,7 @@
             padding: 8px 10px;
             margin-top: 8px;
             font-size: 10px;
+            page-break-inside: avoid;
         }
         .cover {
             border: 1px solid #e2e8f0;
@@ -84,7 +102,13 @@
             color: #64748b;
             font-size: 9.5px;
         }
-        .kpi-table { width: 100%; border-collapse: separate; border-spacing: 6px; margin: 0 -6px; }
+        .kpi-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 6px;
+            margin: 0 -6px;
+            page-break-inside: avoid;
+        }
         .kpi-table td {
             width: 25%;
             background: #f0f9ff;
@@ -99,25 +123,57 @@
             border: 1px solid #e2e8f0;
             padding: 10px 12px;
             margin-top: 10px;
+            page-break-inside: avoid;
         }
         .panel {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             padding: 10px 12px;
             margin-bottom: 10px;
+            page-break-inside: avoid;
         }
         table.kv { width: 100%; border-collapse: collapse; }
         table.kv th, table.kv td { padding: 6px 4px; border-bottom: 1px solid #eef2f7; vertical-align: top; }
         table.kv th { width: 48%; color: #475569; font-weight: normal; text-align: left; }
         table.kv td { font-weight: bold; color: #0f172a; }
-        .bar-row { margin: 5px 0 7px; }
-        .bar-label { overflow: hidden; margin-bottom: 2px; }
-        .bar-label .name { float: left; color: #334155; }
-        .bar-label .val { float: right; color: #0f172a; font-weight: bold; }
-        .bar-track { clear: both; height: 7px; background: #e2e8f0; border: 0; }
+        table.kv tr { page-break-inside: avoid; }
+        table.data { width: 100%; border-collapse: collapse; margin-top: 6px; }
+        table.data th, table.data td {
+            padding: 5px 4px;
+            border-bottom: 1px solid #eef2f7;
+            text-align: left;
+            vertical-align: top;
+            font-size: 10px;
+        }
+        table.data th { color: #475569; font-weight: bold; }
+        table.data tr { page-break-inside: avoid; }
+        /* Compact chart row as a small table (no floats). Keep label+track as one
+         * visual unit without page-break-inside: avoid — DomPDF fragments badly
+         * when dozens of avoided rows stack inside a long survey section. */
+        table.bar-unit {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2px 0 4px;
+        }
+        table.bar-unit td {
+            padding: 0;
+            vertical-align: bottom;
+        }
+        table.bar-unit .name { color: #334155; text-align: left; }
+        table.bar-unit .val {
+            color: #0f172a;
+            font-weight: bold;
+            text-align: right;
+            white-space: nowrap;
+            width: 1%;
+            padding-left: 8px;
+        }
+        table.bar-unit .track-cell { padding-top: 2px; }
+        .bar-track { height: 7px; background: #e2e8f0; border: 0; }
         .bar-fill { height: 7px; background: #0277BD; }
         .bar-fill.is-green { background: #059669; }
         .bar-fill.is-amber { background: #d97706; }
+        .survey-block { margin-bottom: 6px; }
         .status-chips { margin-top: 6px; }
         .status-chip {
             display: inline-block;
@@ -141,13 +197,16 @@
             position: fixed;
             left: 0;
             right: 0;
-            bottom: -14mm;
+            bottom: 0;
+            height: 14px;
             font-size: 8.5px;
             color: #94a3b8;
             border-top: 1px solid #e2e8f0;
-            padding-top: 4px;
+            padding-top: 3px;
         }
-        .footer .right { float: right; }
+        .footer-table { width: 100%; border-collapse: collapse; }
+        .footer-table td { padding: 0; font-size: 8.5px; color: #94a3b8; vertical-align: top; }
+        .footer-table .right { text-align: right; }
         .money-pos { color: #047857; }
         .money-warn { color: #b45309; }
     </style>
@@ -281,8 +340,10 @@
 @endphp
 
 <div class="footer">
-    <span>{{ $eventTitle }} · {{ __('reports.pdf.title_suffix') }} · {{ __('reports.pdf.version') }} {{ $report->version }}</span>
-    <span class="right">{{ __('reports.pdf_ui.footer_note') }}</span>
+    <table class="footer-table"><tr>
+        <td>{{ $eventTitle }} · {{ __('reports.pdf.title_suffix') }} · {{ __('reports.pdf.version') }} {{ $report->version }}</td>
+        <td class="right">{{ __('reports.pdf_ui.footer_note') }}</td>
+    </tr></table>
 </div>
 
 {{-- 1. Cover --}}
@@ -376,10 +437,17 @@
             <div style="margin-top: 8px;">
                 @foreach ($statusBars as $label => $count)
                     @php $pct = $statusMax > 0 ? round(($count / $statusMax) * 100) : 0; @endphp
-                    <div class="bar-row">
-                        <div class="bar-label"><span class="name">{{ $label }}</span><span class="val">{{ $count }}</span></div>
-                        <div class="bar-track"><div class="bar-fill" style="width: {{ max(4, $pct) }}%;"></div></div>
-                    </div>
+                    <table class="bar-unit">
+                        <tr>
+                            <td class="name">{{ $label }}</td>
+                            <td class="val">{{ $count }}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" class="track-cell">
+                                <div class="bar-track"><div class="bar-fill" style="width: {{ max(4, $pct) }}%;"></div></div>
+                            </td>
+                        </tr>
+                    </table>
                 @endforeach
             </div>
             <p class="note">Only statuses with recorded applications are shown. Application counts and unique-vendor counts are reported separately. Approved bookings are not verified attendance.</p>
@@ -407,7 +475,7 @@
             @php
                 $utilPct = (float) $utilisation['utilisation_percent'];
             @endphp
-            <div class="bar-row" style="margin-top:8px;">
+            <div style="margin-top:8px;">
                 <div class="bar-track"><div class="bar-fill is-green" style="width: {{ max(2, min(100, $utilPct)) }}%;"></div></div>
             </div>
             <p class="note">Site-day utilisation = occupied active site-days ÷ available active site-days × 100. Unavailable sites are excluded. This is not unique physical-booth occupancy.</p>
@@ -424,17 +492,24 @@
                 $pct = $categoryMax > 0 ? round(($count / $categoryMax) * 100) : 0;
                 $label = $row['label'] ?? $row['category'] ?? 'Unspecified';
             @endphp
-            <div class="bar-row">
-                <div class="bar-label"><span class="name">{{ $label }}</span><span class="val">{{ $count }}</span></div>
-                <div class="bar-track"><div class="bar-fill" style="width: {{ max(4, $pct) }}%;"></div></div>
-            </div>
+            <table class="bar-unit">
+                <tr>
+                    <td class="name">{{ $label }}</td>
+                    <td class="val">{{ $count }}</td>
+                </tr>
+                <tr>
+                    <td colspan="2" class="track-cell">
+                        <div class="bar-track"><div class="bar-fill" style="width: {{ max(4, $pct) }}%;"></div></div>
+                    </td>
+                </tr>
+            </table>
         @endforeach
     @endif
 </section>
 
 {{-- 4. Financial Summary --}}
 @if ($paymentsOk)
-<section class="section section-break">
+<section class="section">
     <h2>3. Financial Summary</h2>
     <p class="note" style="margin-top:0;">Site booking revenue from frozen booking price snapshots and invoices. Vendor survey sales are not organizer revenue.</p>
     <table class="kv">
@@ -612,38 +687,47 @@
         <p class="note" style="margin-top:0;">{{ $survey['base_display'] ?? ('n = ' . (int) ($survey['respondent_count'] ?? 0) . ' responses') }}. Categorical survey aggregates only; exact total vendor revenue is not calculated.</p>
         @foreach (($survey['distributions'] ?? []) as $name => $distribution)
             @continue(empty($distribution['rows']) && empty($distribution['message']))
-            <h3>{{ Pres::distributionTitle((string) $name) }}</h3>
-            @if (!empty($distribution['rows']))
-                <p class="note" style="margin-top:0;">
-                    {{ $distribution['base_display'] ?? '' }}
-                    @if (!empty($distribution['denominator_note']))
-                        · {{ $distribution['denominator_note'] }}
-                    @endif
-                    @if (!empty($distribution['multi_select']))
-                        · Multiple responses allowed; percentages may exceed 100%.
-                    @endif
-                </p>
-                @php
-                    $distMax = 1;
-                    foreach ($distribution['rows'] as $row) {
-                        $distMax = max($distMax, (int) ($row['count'] ?? 0));
-                    }
-                @endphp
-                @foreach ($distribution['rows'] as $row)
+            <div class="survey-block">
+                <h3>{{ Pres::distributionTitle((string) $name) }}</h3>
+                @if (!empty($distribution['rows']))
+                    <p class="note" style="margin-top:0;">
+                        {{ $distribution['base_display'] ?? '' }}
+                        @if (!empty($distribution['denominator_note']))
+                            · {{ $distribution['denominator_note'] }}
+                        @endif
+                        @if (!empty($distribution['multi_select']))
+                            · Multiple responses allowed; percentages may exceed 100%.
+                        @endif
+                    </p>
                     @php
-                        $count = (int) ($row['count'] ?? 0);
-                        $pctBar = $distMax > 0 ? round(($count / $distMax) * 100) : 0;
-                        $label = Pres::optionLabel($row['label'] ?? $row['key'] ?? null);
-                        $pctText = ($row['percent'] ?? null) !== null ? ' · ' . $row['percent'] . '%' : '';
+                        $distMax = 1;
+                        foreach ($distribution['rows'] as $row) {
+                            $distMax = max($distMax, (int) ($row['count'] ?? 0));
+                        }
                     @endphp
-                    <div class="bar-row">
-                        <div class="bar-label"><span class="name">{{ $label }}</span><span class="val">{{ $count }}{{ $pctText }}</span></div>
-                        <div class="bar-track"><div class="bar-fill" style="width: {{ max(4, $pctBar) }}%;"></div></div>
-                    </div>
-                @endforeach
-            @elseif (!empty($distribution['message']))
-                <p class="muted">{{ $distribution['message'] }}</p>
-            @endif
+                    @foreach ($distribution['rows'] as $row)
+                        @php
+                            $count = (int) ($row['count'] ?? 0);
+                            $pctBar = $distMax > 0 ? round(($count / $distMax) * 100) : 0;
+                            $label = Pres::optionLabel($row['label'] ?? $row['key'] ?? null);
+                            $pctText = ($row['percent'] ?? null) !== null ? ' · ' . $row['percent'] . '%' : '';
+                        @endphp
+                        <table class="bar-unit">
+                            <tr>
+                                <td class="name">{{ $label }}</td>
+                                <td class="val">{{ $count }}{{ $pctText }}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" class="track-cell">
+                                    <div class="bar-track"><div class="bar-fill" style="width: {{ max(4, $pctBar) }}%;"></div></div>
+                                </td>
+                            </tr>
+                        </table>
+                    @endforeach
+                @elseif (!empty($distribution['message']))
+                    <p class="muted">{{ $distribution['message'] }}</p>
+                @endif
+            </div>
         @endforeach
     @elseif ($categoryRows !== [])
         <p class="muted">Survey responses were not available for this event. Approved vendor categories are shown in Participation.</p>
@@ -683,7 +767,7 @@
 
 {{-- 7. Organizer Assessment --}}
 @if (!empty($report->organizer_observations) || !empty($report->organizer_recommendations))
-<section class="section section-break">
+<section class="section">
     <h2>6. Organizer Assessment</h2>
     @if (!empty($report->organizer_observations))
         <h3>{{ __('reports.pdf_ui.organizer_observations') }}</h3>
