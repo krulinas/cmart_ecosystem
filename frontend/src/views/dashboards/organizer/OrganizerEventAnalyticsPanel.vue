@@ -213,25 +213,25 @@
                   <dl class="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
                     <div>
                       <dt class="text-ink-500">{{ t('organizer.analytics.expectedBookingRevenue') }}</dt>
-                      <dd class="font-bold text-ink-900">RM {{ formatMoney(payments?.expected_booking_revenue ?? payments?.expected) }}</dd>
+                      <dd class="font-bold text-ink-900">{{ displayMoney(payments?.expected_booking_revenue ?? payments?.expected) }}</dd>
                     </div>
                     <div>
                       <dt class="text-ink-500">{{ t('organizer.analytics.invoicedAmount') }}</dt>
-                      <dd class="font-bold text-ink-900">RM {{ formatMoney(payments?.invoiced_amount) }}</dd>
+                      <dd class="font-bold text-ink-900">{{ displayMoney(payments?.invoiced_amount) }}</dd>
                     </div>
                     <div>
                       <dt class="text-ink-500">{{ t('organizer.analytics.collectedRevenue') }}</dt>
-                      <dd class="font-bold text-emerald-700">RM {{ formatMoney(payments?.collected_revenue ?? payments?.collected) }}</dd>
+                      <dd class="font-bold text-emerald-700">{{ displayMoney(payments?.collected_revenue ?? payments?.collected) }}</dd>
                     </div>
                     <div>
                       <dt class="text-ink-500">{{ t('organizer.analytics.outstandingInvoiceBalance') }}</dt>
                       <dd class="font-bold text-rose-700">
-                        {{ hasInvoices ? `RM ${formatMoney(payments?.outstanding_invoice_balance ?? payments?.outstanding)}` : '—' }}
+                        {{ hasInvoices ? displayMoney(payments?.outstanding_invoice_balance ?? payments?.outstanding) : '—' }}
                       </dd>
                     </div>
                     <div>
                       <dt class="text-ink-500">{{ t('organizer.analytics.unbilledBookingValue') }}</dt>
-                      <dd class="font-bold text-ink-900">RM {{ formatMoney(payments?.unbilled_booking_value) }}</dd>
+                      <dd class="font-bold text-ink-900">{{ displayMoney(payments?.unbilled_booking_value) }}</dd>
                     </div>
                     <div>
                       <dt class="text-ink-500">{{ t('organizer.analytics.collectionRate') }}</dt>
@@ -362,6 +362,7 @@
             <p class="mb-3 text-xs text-ink-500">{{ t('organizer.analytics.vendorCommentsThemesHint') }}</p>
             <EventCommentsWordCloud
               :event-id="selectedEventId"
+              :system-included="systemIncluded"
               :qualitative="qualitativeComments"
               :respondent-count="respondentCount"
               :feedback-link-ready="feedbackLinkReady"
@@ -404,7 +405,7 @@
               </article>
               <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
                 <p class="text-[11px] font-semibold uppercase text-ink-500">{{ t('organizer.analytics.participatingVendorsSystem') }}</p>
-                <p class="mt-1 text-xl font-extrabold">{{ eventPerformance?.unique_approved_vendors ?? approvedCount ?? '—' }}</p>
+                <p class="mt-1 text-xl font-extrabold">{{ resolveUniqueApprovedVendors(eventPerformance) ?? '—' }}</p>
               </article>
               <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
                 <p class="text-[11px] font-semibold uppercase text-ink-500">{{ t('organizer.analytics.sitesSlots') }}</p>
@@ -496,6 +497,11 @@ import AnalyticsStackedBarChart from '../../../components/analytics/AnalyticsSta
 import EventCommentsWordCloud from '../../../components/analytics/EventCommentsWordCloud.vue';
 import PerformanceAcrossEventsPanel from '../../../components/analytics/PerformanceAcrossEventsPanel.vue';
 import SurveyResultsPanel from '../../../components/analytics/SurveyResultsPanel.vue';
+import {
+  displayMoney as formatDisplayMoney,
+  operationalStatusLabel as resolveOperationalStatusLabel,
+  resolveUniqueApprovedVendors,
+} from '../../../utils/analyticsDisplay.js';
 import { useEventAnalyticsContext } from '../../../composables/useEventAnalyticsContext';
 import { ANALYTICS_HUB_TAB_STORAGE_KEY } from '../../../config/workspaceNav';
 import {
@@ -712,11 +718,15 @@ const kpiSurveyValue = computed(() => {
   return t('organizer.analytics.unavailable');
 });
 
-const kpiBookingsValue = computed(() => {
+const kpiParticipatingVendorsValue = computed(() => {
   if (!systemIncluded.value) return t('organizer.analytics.excluded');
   if (!operationalReady.value) return t('organizer.analytics.unavailable');
-  return String(approvedCount.value ?? 0);
+  const unique = resolveUniqueApprovedVendors(eventPerformance.value);
+  if (unique == null) return t('organizer.analytics.notAvailable');
+  return String(unique);
 });
+
+const displayMoney = (value) => formatDisplayMoney(value, formatLocaleNumber);
 
 const overviewKpis = computed(() => [
   {
@@ -731,13 +741,13 @@ const overviewKpis = computed(() => [
     onClick: () => setActiveTab(surveyReady.value ? 'vendor-insights' : 'data-sources'),
   },
   {
-    id: 'approved_bookings',
+    id: 'participating_vendors',
     label: t('organizer.analytics.participatingVendorsSystem'),
-    value: kpiBookingsValue.value,
+    value: kpiParticipatingVendorsValue.value,
     note: !systemIncluded.value
       ? t('organizer.analytics.kpiExcludedByMode')
-      : (Number(approvedCount.value) ? t('organizer.analytics.kpiOpenBookings') : t('organizer.analytics.kpiZeroApproved')),
-    title: t('organizer.analytics.kpiOpenBookingsTitle'),
+      : t('organizer.analytics.kpiUniqueVendorsNote'),
+    title: t('organizer.analytics.kpiOpenApprovedBookingsTitle'),
     clickable: systemIncluded.value && operationalReady.value,
     onClick: () => goToBookings({ status: 'Approved' }),
   },
@@ -761,7 +771,7 @@ const overviewKpis = computed(() => [
       ? t('organizer.analytics.excluded')
       : (!operationalReady.value || !hasInvoices.value
         ? t('organizer.analytics.notAvailable')
-        : `RM ${formatMoney(payments.value?.outstanding_invoice_balance ?? payments.value?.outstanding)}`),
+        : displayMoney(payments.value?.outstanding_invoice_balance ?? payments.value?.outstanding)),
     note: t('organizer.analytics.kpiUnpaidInvoices'),
     title: t('organizer.analytics.kpiJumpFinance'),
     clickable: systemIncluded.value && operationalReady.value,
@@ -769,12 +779,14 @@ const overviewKpis = computed(() => [
   },
 ]);
 
+const operationalStatusLabel = (key) => resolveOperationalStatusLabel(key, t);
+
 const bookingStatusRows = computed(() => {
   const by = pipeline.value?.by_approval_status || {};
   const total = pipeline.value?.total_bookings || 0;
   return Object.entries(by).map(([key, count]) => ({
     key,
-    label: key.replace(/_/g, ' '),
+    label: operationalStatusLabel(key),
     count,
     denominator: total,
     percent: total ? Math.round((count / total) * 1000) / 10 : 0,
@@ -867,20 +879,13 @@ const siteStatusRows = computed(() => {
   const total = sites.value?.total || 0;
   return Object.entries(by).map(([key, count]) => ({
     key,
-    label: key.replace(/_/g, ' '),
+    label: operationalStatusLabel(key),
     count,
     denominator: total,
     percent: total ? Math.round((count / total) * 1000) / 10 : 0,
     display: total ? t('organizer.analytics.ofTotal', { count, total, pct: ((count / total) * 100).toFixed(1) }) : `${count}`,
   }));
 });
-
-const formatMoney = (value) => {
-  if (value == null || value === '') return '0.00';
-  const n = Number(value);
-  if (Number.isNaN(n)) return '0.00';
-  return formatLocaleNumber(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
 
 const formatDate = (value) => {
   if (!value) return 'Unknown';

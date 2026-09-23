@@ -6,6 +6,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const display = await import('../../src/utils/itemReservationStatusCore.js');
+const analyticsDisplay = await import('../../src/utils/analyticsDisplay.js');
+const { fetchSystemWordcloudsIfIncluded } = await import('../../src/utils/eventWordcloudLoad.js');
+
 const panel = readFileSync(
   join(root, 'src/views/dashboards/organizer/OrganizerEventAnalyticsPanel.vue'),
   'utf8',
@@ -20,10 +23,15 @@ const lifecycleStrip = readFileSync(
   join(root, 'src/components/reservations/ReservationLifecycleStrip.vue'),
   'utf8',
 );
+const wordcloud = readFileSync(
+  join(root, 'src/components/analytics/EventCommentsWordCloud.vue'),
+  'utf8',
+);
+
+const formatLocaleNumber = (n, opts) =>
+  Number(n).toLocaleString('en-MY', opts);
 
 const tEn = (key) => {
-  // Minimal stub: evaluate keys from embedded en catalogue via string search is hard;
-  // use the real label maps through a tiny resolver that mirrors production keys.
   const map = {
     'status.pending_charge': 'Awaiting charge decision',
     'status.confirmed': 'Confirmed',
@@ -36,6 +44,14 @@ const tEn = (key) => {
     'status.waived': 'Charge waived',
     'status.not_required': 'No charge required',
     'status.charge_cancelled': 'Charge cancelled',
+    'status.Approved': 'Approved',
+    'status.Pending_Organizer': 'Pending Organizer Review',
+    'status.Needs_Revision': 'Needs Revision',
+    'status.Rejected': 'Rejected',
+    'status.Withdrawn': 'Withdrawn',
+    'status.active': 'Active',
+    'status.unavailable': 'Unavailable',
+    'status.disabled': 'Disabled',
     'common.unknown': 'Unknown',
     'reservation.lifecycle.received': 'Reservation received',
     'reservation.lifecycle.chargeDecision': 'Charge decision',
@@ -46,6 +62,8 @@ const tEn = (key) => {
     'reservation.lifecycle.completed': 'Completed',
     'reservation.lifecycle.cancelled': 'Cancelled',
     'reservation.lifecycle.expired': 'Expired',
+    'reservation.lifecycle.confirmedIndeterminate':
+      'Confirmed stage not determinable from current status alone',
     'reservation.lifecycle.nextConfirmOrWaive': 'Next: confirm or waive the service charge',
     'reservation.lifecycle.nextMarkCollected': 'Next: mark item as collected',
   };
@@ -64,7 +82,14 @@ const tMs = (key) => {
     'status.waived': 'Caj dikecualikan',
     'status.not_required': 'Tiada caj diperlukan',
     'status.charge_cancelled': 'Caj dibatalkan',
+    'status.Approved': 'Diluluskan',
+    'status.Pending_Organizer': 'Menunggu Semakan Penganjur',
+    'status.active': 'Aktif',
+    'status.unavailable': 'Tidak tersedia',
+    'status.disabled': 'Dilumpuhkan',
     'common.unknown': 'Tidak diketahui',
+    'reservation.lifecycle.confirmedIndeterminate':
+      'Peringkat Disahkan tidak boleh ditentukan daripada status semasa sahaja',
   };
   return map[key] || key;
 };
@@ -116,6 +141,118 @@ describe('system data vs survey csv separation', () => {
   it('does not add system vendor counts to survey respondent counts', () => {
     assert.equal(/respondentCount\s*\+\s*approvedCount|approvedCount\s*\+\s*respondentCount/.test(panel), false);
     assert.equal(/average_rating\s*\+\s*|experience_rating.*average_rating/.test(panel), false);
+  });
+});
+
+describe('Part 04.1 participating vendors KPI', () => {
+  it('uses unique_approved_vendors and never falls back to approved_count under a vendor label', () => {
+    assert.match(panel, /resolveUniqueApprovedVendors/);
+    assert.match(panel, /kpiParticipatingVendorsValue/);
+    assert.match(panel, /id: 'participating_vendors'/);
+    assert.match(panel, /kpiUniqueVendorsNote/);
+    assert.equal(panel.includes('kpiBookingsValue'), false);
+    assert.equal(
+      /participating_vendors[\s\S]{0,400}approvedCount/.test(panel),
+      false,
+    );
+  });
+
+  it('one vendor with multiple approved bookings still yields one unique vendor KPI', () => {
+    // Payload shape: three approved bookings, one distinct vendor.
+    const eventPerformance = { unique_approved_vendors: 1 };
+    const approvedCount = 3;
+    assert.equal(analyticsDisplay.resolveUniqueApprovedVendors(eventPerformance), 1);
+    assert.notEqual(
+      analyticsDisplay.resolveUniqueApprovedVendors(eventPerformance),
+      approvedCount,
+    );
+    assert.equal(
+      analyticsDisplay.resolveUniqueApprovedVendors({ unique_approved_vendors: null }),
+      null,
+    );
+    assert.equal(analyticsDisplay.resolveUniqueApprovedVendors({}), null);
+  });
+});
+
+describe('Part 04.1 csv_only wordcloud gate', () => {
+  it('passes systemIncluded into EventCommentsWordCloud and watches mode changes', () => {
+    assert.match(panel, /:system-included="systemIncluded"/);
+    assert.match(wordcloud, /systemIncluded/);
+    assert.match(wordcloud, /clearSystemWordclouds/);
+    assert.match(wordcloud, /\[props\.eventId, props\.systemIncluded\]/);
+    assert.match(wordcloud, /excludedBySourceMode/);
+  });
+
+  it('does not request System Data wordclouds in csv_only mode', async () => {
+    const calls = [];
+    const getWordcloud = async (kind, eventId) => {
+      calls.push([kind, eventId]);
+      return { data: { terms: [] } };
+    };
+
+    const skipped = await fetchSystemWordcloudsIfIncluded({
+      eventId: 42,
+      systemIncluded: false,
+      getWordcloud,
+    });
+    assert.equal(skipped.requested, false);
+    assert.equal(calls.length, 0);
+
+    const loaded = await fetchSystemWordcloudsIfIncluded({
+      eventId: 42,
+      systemIncluded: true,
+      getWordcloud,
+    });
+    assert.equal(loaded.requested, true);
+    assert.deepEqual(calls, [['feedback', 42], ['products', 42]]);
+  });
+
+  it('clearing path is wired so combined → csv_only drops stale System Data results', () => {
+    assert.match(wordcloud, /if \(!props\.systemIncluded\)/);
+    assert.match(wordcloud, /clearSystemWordclouds\(\)/);
+    assert.match(wordcloud, /feedbackData\.value = null/);
+    assert.match(wordcloud, /productsData\.value = null/);
+  });
+});
+
+describe('Part 04.1 money null vs zero', () => {
+  it('treats null/invalid as unavailable and keeps genuine zero as RM 0.00', () => {
+    assert.equal(analyticsDisplay.displayMoney(null, formatLocaleNumber), '—');
+    assert.equal(analyticsDisplay.displayMoney(undefined, formatLocaleNumber), '—');
+    assert.equal(analyticsDisplay.displayMoney('', formatLocaleNumber), '—');
+    assert.equal(analyticsDisplay.displayMoney('abc', formatLocaleNumber), '—');
+    assert.equal(analyticsDisplay.displayMoney(0, formatLocaleNumber), 'RM 0.00');
+    assert.equal(analyticsDisplay.displayMoney('0', formatLocaleNumber), 'RM 0.00');
+    assert.equal(analyticsDisplay.displayMoney(12.5, formatLocaleNumber).startsWith('RM '), true);
+    assert.equal(analyticsDisplay.displayMoney(12.5, formatLocaleNumber).includes('—'), false);
+  });
+
+  it('Overview finance values use displayMoney helper', () => {
+    assert.match(panel, /displayMoney\(payments/);
+    assert.equal(panel.includes('RM {{ formatMoney'), false);
+    assert.equal(panel.includes("RM ${formatMoney"), false);
+  });
+});
+
+describe('Part 04.1 operations status labels', () => {
+  it('localizes EN/MS booking and site operational statuses without leaking status.* keys', () => {
+    for (const key of ['Approved', 'Pending_Organizer', 'Needs_Revision', 'Rejected', 'Withdrawn', 'Cancelled']) {
+      const enLabel = analyticsDisplay.operationalStatusLabel(key, tEn);
+      const msLabel = analyticsDisplay.operationalStatusLabel(key, tMs);
+      assert.equal(enLabel.includes('status.'), false, enLabel);
+      assert.equal(msLabel.includes('status.'), false, msLabel);
+      assert.ok(enLabel.length > 1);
+    }
+    for (const key of ['active', 'unavailable', 'disabled']) {
+      assert.equal(analyticsDisplay.operationalStatusLabel(key, tEn).includes('status.'), false);
+      assert.equal(analyticsDisplay.operationalStatusLabel(key, tMs).includes('status.'), false);
+    }
+    assert.equal(analyticsDisplay.operationalStatusLabel('weird_thing', tEn), 'Weird Thing');
+  });
+
+  it('Operations tables use operationalStatusLabel', () => {
+    assert.match(panel, /operationalStatusLabel/);
+    assert.equal(panel.includes("label: key.replace(/_/g, ' ')"), false);
   });
 });
 
@@ -202,19 +339,60 @@ describe('reservation lifecycle', () => {
       charge_status: 'cancelled',
     }, tEn);
     assert.equal(cancelled.terminal?.id, 'cancelled');
+    assert.equal(cancelled.stages.find((s) => s.id === 'confirmed').state, 'skipped');
 
     const expired = display.buildReservationLifecycle({
       reservation_status: 'expired',
       charge_status: 'confirmed',
     }, tEn);
     assert.equal(expired.terminal?.id, 'expired');
+    assert.equal(expired.stages.find((s) => s.id === 'confirmed').state, 'complete');
   });
 
-  it('renders an accessible lifecycle strip in the reservation detail modal', () => {
+  it('does not claim Confirmed was skipped when terminal history is ambiguous', () => {
+    const ambiguous = display.buildReservationLifecycle({
+      reservation_status: 'cancelled',
+      charge_status: 'required',
+    }, tEn);
+    const confirmed = ambiguous.stages.find((s) => s.id === 'confirmed');
+    assert.equal(confirmed.state, 'unknown');
+    assert.match(confirmed.a11yLabel, /not determinable/i);
+
+    const viaAudit = display.buildReservationLifecycle(
+      { reservation_status: 'cancelled', charge_status: 'cancelled' },
+      tEn,
+      { audits: [{ action: 'reservation_confirmed', to_reservation_status: 'confirmed' }] },
+    );
+    assert.equal(viaAudit.stages.find((s) => s.id === 'confirmed').state, 'complete');
+
+    const neverConfirmed = display.buildReservationLifecycle(
+      { reservation_status: 'cancelled', charge_status: 'cancelled' },
+      tEn,
+      { audits: [{ action: 'reservation_cancelled', to_reservation_status: 'cancelled' }] },
+    );
+    assert.equal(neverConfirmed.stages.find((s) => s.id === 'confirmed').state, 'skipped');
+  });
+
+  it('renders an accessible lifecycle strip with only li children inside ol', () => {
     assert.match(reservationsPanel, /ReservationLifecycleStrip/);
+    assert.match(reservationsPanel, /:audits="audits"/);
     assert.match(lifecycleStrip, /data-testid="reservation-lifecycle"/);
     assert.match(lifecycleStrip, /aria-label/);
     assert.match(lifecycleStrip, /reservation-lifecycle-fallback/);
     assert.match(lifecycleStrip, /sm:flex-row/);
+
+    // Direct children of ol must be li — connectors live inside each li.
+    const olMatch = lifecycleStrip.match(
+      /<ol[\s\S]*?data-testid="reservation-lifecycle-stages"[\s\S]*?<\/ol>/,
+    );
+    assert.ok(olMatch);
+    const olBody = olMatch[0]
+      .replace(/<ol[^>]*>/, '')
+      .replace(/<\/ol>/, '')
+      .trim();
+    // Strip nested content inside li tags, then assert no leftover span siblings.
+    const withoutLis = olBody.replace(/<li[\s\S]*?<\/li>/g, '').trim();
+    assert.equal(withoutLis.includes('<span'), false, withoutLis);
+    assert.equal(/^\s*$/.test(withoutLis) || withoutLis === '', true, withoutLis);
   });
 });

@@ -24,36 +24,45 @@
       class="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-1.5"
       data-testid="reservation-lifecycle-stages"
     >
-      <template v-for="(stage, idx) in lifecycle.stages" :key="stage.id">
-        <li
+      <li
+        v-for="(stage, idx) in lifecycle.stages"
+        :key="stage.id"
+        class="inline-flex items-center gap-1.5"
+      >
+        <span
           class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1"
           :class="stageClass(stage.state)"
           :data-stage-id="stage.id"
           :data-stage-state="stage.state"
+          :aria-label="stage.a11yLabel || stage.label"
+          :title="stage.a11yLabel && stage.a11yLabel !== stage.label ? stage.a11yLabel : undefined"
         >
           <span class="inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] ring-1 ring-current/30">
             {{ stageGlyph(stage.state) }}
           </span>
           <span>{{ stage.label }}</span>
-        </li>
+        </span>
         <span
           v-if="idx < lifecycle.stages.length - 1"
           class="hidden text-ink-300 sm:inline"
           aria-hidden="true"
         >→</span>
-      </template>
-      <template v-if="lifecycle.terminal">
-        <span class="hidden text-ink-300 sm:inline" aria-hidden="true">·</span>
-        <li
-          class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1"
-          :class="stageClass('terminal')"
-          :data-stage-id="lifecycle.terminal.id"
-          data-stage-state="terminal"
-        >
-          <span class="inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] ring-1 ring-current/30">×</span>
-          <span>{{ lifecycle.terminal.label }}</span>
-        </li>
-      </template>
+        <span
+          v-else-if="lifecycle.terminal"
+          class="hidden text-ink-300 sm:inline"
+          aria-hidden="true"
+        >·</span>
+      </li>
+      <li
+        v-if="lifecycle.terminal"
+        class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1"
+        :class="stageClass('terminal')"
+        :data-stage-id="lifecycle.terminal.id"
+        data-stage-state="terminal"
+      >
+        <span class="inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] ring-1 ring-current/30">×</span>
+        <span>{{ lifecycle.terminal.label }}</span>
+      </li>
     </ol>
 
     <p class="mt-2 text-[11px] text-ink-500" data-testid="reservation-lifecycle-fallback">
@@ -70,11 +79,15 @@ import { buildReservationLifecycle } from '../../utils/itemReservationStatusCore
 
 const props = defineProps({
   reservation: { type: Object, required: true },
+  /** Audit trail when available — used to resolve Confirmed for terminal reservations. */
+  audits: { type: Array, default: null },
 });
 
 const { t } = useI18n();
 
-const lifecycle = computed(() => buildReservationLifecycle(props.reservation, t));
+const lifecycle = computed(() =>
+  buildReservationLifecycle(props.reservation, t, { audits: props.audits }),
+);
 
 const stageClass = (state) => {
   switch (state) {
@@ -86,6 +99,8 @@ const stageClass = (state) => {
       return 'bg-rose-50 text-rose-800 ring-rose-200';
     case 'skipped':
       return 'bg-ink-50 text-ink-400 ring-ink-100 line-through';
+    case 'unknown':
+      return 'bg-white text-ink-500 ring-ink-200 border-dashed';
     default:
       return 'bg-white text-ink-500 ring-ink-200';
   }
@@ -95,6 +110,8 @@ const stageGlyph = (state) => {
   if (state === 'complete') return '✓';
   if (state === 'current') return '•';
   if (state === 'terminal') return '×';
+  if (state === 'unknown') return '?';
+  if (state === 'skipped') return '–';
   return '○';
 };
 </script>

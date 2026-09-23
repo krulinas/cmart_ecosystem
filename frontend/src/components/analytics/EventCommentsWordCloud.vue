@@ -58,7 +58,7 @@
 
     <!-- Separated sources -->
     <div class="grid gap-4 lg:grid-cols-2">
-      <section class="rounded-xl border border-sky-100 bg-white p-3">
+      <section class="rounded-xl border border-sky-100 bg-white p-3" data-testid="wordcloud-feedback-section">
         <div class="mb-2 flex items-start justify-between gap-2">
           <div>
             <h4 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.comments.communityFeedback') }}</h4>
@@ -68,57 +68,75 @@
         </div>
 
         <p
-          v-if="feedbackLinkReady === false"
-          class="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950"
+          v-if="!systemIncluded"
+          class="py-6 text-center text-sm text-ink-500"
+          data-testid="wordcloud-feedback-excluded"
         >
-          {{ t('organizer.analytics.comments.feedbackNotLinked') }}
+          {{ t('organizer.analytics.comments.excludedBySourceMode') }}
         </p>
+        <template v-else>
+          <p
+            v-if="feedbackLinkReady === false"
+            class="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950"
+          >
+            {{ t('organizer.analytics.comments.feedbackNotLinked') }}
+          </p>
 
-        <p v-if="feedbackError" class="text-sm text-rose-700">{{ feedbackError }}</p>
-        <template v-else-if="feedbackTerms.length >= wordCloudThreshold">
-          <div class="flex min-h-[120px] flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-lg bg-sky-50/60 p-3">
-            <span
-              v-for="term in feedbackTerms"
-              :key="`fb-${term.text}`"
-              class="font-semibold text-brand-700"
-              :style="{ fontSize: `${termSize(term.weight, feedbackTerms)}px` }"
-              :title="`${term.text}: ${term.weight}`"
-            >
-              {{ term.text }}
-            </span>
-          </div>
+          <p v-if="feedbackError" class="text-sm text-rose-700">{{ feedbackError }}</p>
+          <template v-else-if="feedbackTerms.length >= wordCloudThreshold">
+            <div class="flex min-h-[120px] flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-lg bg-sky-50/60 p-3">
+              <span
+                v-for="term in feedbackTerms"
+                :key="`fb-${term.text}`"
+                class="font-semibold text-brand-700"
+                :style="{ fontSize: `${termSize(term.weight, feedbackTerms)}px` }"
+                :title="`${term.text}: ${term.weight}`"
+              >
+                {{ term.text }}
+              </span>
+            </div>
+          </template>
+          <p v-else class="py-6 text-center text-sm text-ink-500">
+            {{ feedbackWordCloudMessage }}
+          </p>
         </template>
-        <p v-else class="py-6 text-center text-sm text-ink-500">
-          {{ feedbackWordCloudMessage }}
-        </p>
       </section>
 
-      <section class="rounded-xl border border-sky-100 bg-white p-3">
+      <section class="rounded-xl border border-sky-100 bg-white p-3" data-testid="wordcloud-products-section">
         <div class="mb-2">
           <h4 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.comments.productDescriptions') }}</h4>
           <p class="text-xs text-ink-500">{{ t('organizer.analytics.comments.productDescriptionsHint') }}</p>
         </div>
-        <p v-if="productsError" class="text-sm text-rose-700">{{ productsError }}</p>
-        <template v-else-if="productTerms.length >= wordCloudThreshold">
-          <div class="flex min-h-[120px] flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-lg bg-emerald-50/50 p-3">
-            <span
-              v-for="term in productTerms"
-              :key="`pd-${term.text}`"
-              class="font-semibold text-emerald-700"
-              :style="{ fontSize: `${termSize(term.weight, productTerms)}px` }"
-              :title="`${term.text}: ${term.weight}`"
-            >
-              {{ term.text }}
-            </span>
-          </div>
-        </template>
-        <p v-else class="py-6 text-center text-sm text-ink-500">
-          {{
-            productTerms.length
-              ? t('organizer.analytics.comments.needMoreResponses')
-              : t('organizer.analytics.comments.noProductDescriptions')
-          }}
+        <p
+          v-if="!systemIncluded"
+          class="py-6 text-center text-sm text-ink-500"
+          data-testid="wordcloud-products-excluded"
+        >
+          {{ t('organizer.analytics.comments.excludedBySourceMode') }}
         </p>
+        <template v-else>
+          <p v-if="productsError" class="text-sm text-rose-700">{{ productsError }}</p>
+          <template v-else-if="productTerms.length >= wordCloudThreshold">
+            <div class="flex min-h-[120px] flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-lg bg-emerald-50/50 p-3">
+              <span
+                v-for="term in productTerms"
+                :key="`pd-${term.text}`"
+                class="font-semibold text-emerald-700"
+                :style="{ fontSize: `${termSize(term.weight, productTerms)}px` }"
+                :title="`${term.text}: ${term.weight}`"
+              >
+                {{ term.text }}
+              </span>
+            </div>
+          </template>
+          <p v-else class="py-6 text-center text-sm text-ink-500">
+            {{
+              productTerms.length
+                ? t('organizer.analytics.comments.needMoreResponses')
+                : t('organizer.analytics.comments.noProductDescriptions')
+            }}
+          </p>
+        </template>
       </section>
     </div>
   </div>
@@ -128,6 +146,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getEventWordcloud } from '../../services/eventAnalyticsApi';
+import { fetchSystemWordcloudsIfIncluded } from '../../utils/eventWordcloudLoad.js';
 
 const { t } = useI18n();
 
@@ -135,6 +154,8 @@ const WORD_CLOUD_THRESHOLD = 5;
 
 const props = defineProps({
   eventId: { type: [String, Number], required: true },
+  /** When false (e.g. csv_only), System Data wordcloud endpoints must not be requested. */
+  systemIncluded: { type: Boolean, default: true },
   qualitative: { type: Object, default: null },
   respondentCount: { type: Number, default: null },
   feedbackLinkReady: { type: Boolean, default: true },
@@ -153,7 +174,7 @@ const feedbackTerms = computed(() => feedbackData.value?.terms || []);
 const productTerms = computed(() => productsData.value?.terms || []);
 
 const themeSummary = computed(() =>
-  (props.qualitative?.theme_summary || []).filter((t) => Number(t.count) > 0),
+  (props.qualitative?.theme_summary || []).filter((row) => Number(row.count) > 0),
 );
 
 const groupsMap = computed(() => props.qualitative?.groups || {});
@@ -215,7 +236,7 @@ const commentText = (item) => (typeof item === 'string' ? item : (item?.text || 
 const commentSource = (item) => (typeof item === 'object' ? (item?.source_question || '') : '');
 
 const termSize = (weight, terms) => {
-  const weights = terms.map((t) => t.weight);
+  const weights = terms.map((row) => row.weight);
   const min = Math.min(...weights);
   const max = Math.max(...weights);
   if (max === min) return 18;
@@ -223,8 +244,23 @@ const termSize = (weight, terms) => {
   return Math.round(13 + normalized * 18);
 };
 
+const clearSystemWordclouds = () => {
+  feedbackData.value = null;
+  productsData.value = null;
+  feedbackError.value = '';
+  productsError.value = '';
+  feedbackUnavailableReason.value = '';
+  feedbackLoading.value = false;
+};
+
 const load = async () => {
   if (!props.eventId) return;
+
+  if (!props.systemIncluded) {
+    clearSystemWordclouds();
+    return;
+  }
+
   feedbackLoading.value = true;
   feedbackError.value = '';
   productsError.value = '';
@@ -233,10 +269,19 @@ const load = async () => {
   productsData.value = null;
 
   try {
-    const [feedbackRes, productsRes] = await Promise.allSettled([
-      getEventWordcloud('feedback', props.eventId),
-      getEventWordcloud('products', props.eventId),
-    ]);
+    const result = await fetchSystemWordcloudsIfIncluded({
+      eventId: props.eventId,
+      systemIncluded: props.systemIncluded,
+      getWordcloud: getEventWordcloud,
+    });
+
+    if (!result.requested) {
+      clearSystemWordclouds();
+      return;
+    }
+
+    const feedbackRes = result.feedback;
+    const productsRes = result.products;
 
     if (feedbackRes.status === 'fulfilled') {
       feedbackData.value = feedbackRes.value.data;
@@ -263,7 +308,13 @@ const load = async () => {
   }
 };
 
-watch(() => props.eventId, () => load(), { immediate: true });
+watch(
+  () => [props.eventId, props.systemIncluded],
+  () => {
+    load();
+  },
+  { immediate: true },
+);
 
-defineExpose({ load });
+defineExpose({ load, clearSystemWordclouds, feedbackData, productsData });
 </script>

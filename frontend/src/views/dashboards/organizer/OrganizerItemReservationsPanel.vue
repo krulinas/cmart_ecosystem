@@ -223,7 +223,7 @@
               </div>
             </dl>
 
-            <ReservationLifecycleStrip :reservation="detail" />
+            <ReservationLifecycleStrip :reservation="detail" :audits="audits" />
 
             <div class="rounded-xl border border-ink-100 p-4 text-sm space-y-2">
               <h4 class="font-bold text-ink-900">{{ t('organizer.itemReservations.chargeEvidence') }}</h4>

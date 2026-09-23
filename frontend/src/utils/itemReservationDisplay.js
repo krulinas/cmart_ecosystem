@@ -68,8 +68,8 @@ export function chargeStatusOptions(t = tt) {
   return chargeOptionsCore(t);
 }
 
-export function buildReservationLifecycle(reservation, t = tt) {
-  return buildLifecycleCore(reservation, t);
+export function buildReservationLifecycle(reservation, t = tt, options = {}) {
+  return buildLifecycleCore(reservation, t, options);
 }
 
 export function formatReservationFee(amount, currency = 'MYR') {

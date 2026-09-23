@@ -86,10 +86,15 @@ export function canOrganizerConfirmCharge(reservation) {
 
 /**
  * Compact lifecycle model matching ItemReservationLifecycleService.
+ *
+ * @param {object} reservation
+ * @param {Function} t
+ * @param {{ audits?: Array|null }} [options]
  */
-export function buildReservationLifecycle(reservation, t) {
+export function buildReservationLifecycle(reservation, t, options = {}) {
   const status = normalizeStatusKey(reservation?.reservation_status);
   const charge = normalizeStatusKey(reservation?.charge_status);
+  const audits = options.audits;
   const zeroFee = Number(reservation?.service_fee_amount) === 0
     || charge === 'not_required';
 
@@ -141,7 +146,16 @@ export function buildReservationLifecycle(reservation, t) {
     stages[2].state = 'complete';
     stages[3].state = 'complete';
   } else if (isTerminal) {
-    stages[2].state = isConfirmed ? 'complete' : 'skipped';
+    const confirmedReached = resolveConfirmedReached(audits, charge);
+    if (confirmedReached === true) {
+      stages[2].state = 'complete';
+    } else if (confirmedReached === false) {
+      stages[2].state = 'skipped';
+    } else {
+      // Current status alone cannot prove Confirmed happened — stay neutral.
+      stages[2].state = 'unknown';
+      stages[2].a11yLabel = t('reservation.lifecycle.confirmedIndeterminate');
+    }
     stages[3].state = 'skipped';
   }
 
@@ -173,4 +187,34 @@ export function buildReservationLifecycle(reservation, t) {
     chargeLabel: chargeStatusLabel(charge, t),
     reservationLabel: reservationStatusLabel(status, t),
   };
+}
+
+/**
+ * Determine whether the Confirmed stage was reached for a terminal reservation.
+ * @returns {true|false|null} null = not determinable
+ */
+export function resolveConfirmedReached(audits, chargeStatus) {
+  const charge = normalizeStatusKey(chargeStatus);
+
+  if (Array.isArray(audits) && audits.length > 0) {
+    return audits.some((entry) => {
+      const action = String(entry?.action || '');
+      if ([
+        'reservation_confirmed',
+        'charge_confirmation_recorded',
+        'charge_waived',
+        'reservation_completed',
+      ].includes(action)) {
+        return true;
+      }
+      const to = normalizeStatusKey(entry?.to_reservation_status);
+      return to === 'confirmed' || to === 'completed';
+    });
+  }
+
+  // After termination, preserved charge statuses imply Confirmed was reached;
+  // charge cancelled typically means terminated from pending_charge.
+  if (['confirmed', 'waived', 'not_required'].includes(charge)) return true;
+  if (charge === 'cancelled') return false;
+  return null;
 }

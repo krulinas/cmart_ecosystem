@@ -722,6 +722,8 @@ export default {
       completed: 'Selesai',
       cancelled: 'Dibatalkan',
       expired: 'Tamat tempoh',
+      confirmedIndeterminate:
+        'Peringkat Disahkan tidak boleh ditentukan daripada status semasa sahaja; tempahan mungkin ditamatkan daripada caj menunggu atau selepas pengesahan.',
       nextConfirmOrWaive: 'Seterusnya: sahkan atau kecualikan caj perkhidmatan',
       nextMarkCollected: 'Seterusnya: tandakan barangan sebagai diambil',
       chargeNote: 'Status caj: {charge}.',
@@ -2621,6 +2623,9 @@ export default {
       kpiZeroApproved: '0 tempahan diluluskan',
       kpiExcludedByMode: 'Dikecualikan oleh mod sumber',
       kpiOpenBookingsTitle: 'Buka Tempahan untuk acara ini',
+      kpiUniqueVendorsNote:
+        'Peniaga unik daripada tempahan diluluskan (Data sistem). Gerudi membuka tempahan diluluskan — bilangan tempahan mungkin melebihi peniaga unik.',
+      kpiOpenApprovedBookingsTitle: 'Buka tempahan diluluskan untuk acara ini',
       kpiExpectedRevenue: 'Hasil platform dijangka',
       kpiPlatformFees: 'Yuran platform',
       kpiJumpFinance: 'Lompat ke prestasi kewangan',
@@ -2726,6 +2731,7 @@ export default {
         productDescriptionsHint: 'Butiran produk tempahan diluluskan untuk acara ini',
         noProductDescriptions: 'Belum ada penerangan produk peniaga diluluskan untuk acara ini.',
         unableLoadProducts: 'Tidak dapat memuatkan tema produk peniaga untuk acara ini.',
+        excludedBySourceMode: 'Dikecualikan oleh mod sumber',
       },
       dataSources: {
         analyticsSource: 'Sumber analitik',

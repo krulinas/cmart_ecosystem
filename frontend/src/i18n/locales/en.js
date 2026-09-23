@@ -720,6 +720,8 @@ export default {
       completed: 'Completed',
       cancelled: 'Cancelled',
       expired: 'Expired',
+      confirmedIndeterminate:
+        'Confirmed stage not determinable from current status alone; reservation may have ended from pending charge or after confirmation.',
       nextConfirmOrWaive: 'Next: confirm or waive the service charge',
       nextMarkCollected: 'Next: mark item as collected',
       chargeNote: 'Charge status: {charge}.',
@@ -2616,6 +2618,9 @@ export default {
       kpiZeroApproved: '0 approved bookings',
       kpiExcludedByMode: 'Excluded by source mode',
       kpiOpenBookingsTitle: 'Open Bookings for this event',
+      kpiUniqueVendorsNote:
+        'Unique vendors from approved bookings (System Data). Drill-down opens approved bookings — booking count may exceed unique vendors.',
+      kpiOpenApprovedBookingsTitle: 'Open approved bookings for this event',
       kpiExpectedRevenue: 'Expected platform revenue',
       kpiPlatformFees: 'Platform fees',
       kpiJumpFinance: 'Jump to financial performance',
@@ -2721,6 +2726,7 @@ export default {
         productDescriptionsHint: 'Approved booking product details for this event',
         noProductDescriptions: 'No approved vendor product descriptions for this event yet.',
         unableLoadProducts: 'Unable to load vendor product themes for this event.',
+        excludedBySourceMode: 'Excluded by source mode',
       },
       dataSources: {
         analyticsSource: 'Analytics source',
