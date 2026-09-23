@@ -99,6 +99,41 @@ export function canCommunityCancel(reservation) {
   return normalizeStatusKey(reservation?.reservation_status) === 'pending_charge';
 }
 
+/** Confirmed holds show collection location (sites or unassigned). */
+export function showCollectionLocation(reservation) {
+  return normalizeStatusKey(reservation?.reservation_status) === 'confirmed';
+}
+
+/** Active pickup copy only for confirmed — never cancelled/expired/completed. */
+export function showCollectionInstruction(reservation) {
+  return normalizeStatusKey(reservation?.reservation_status) === 'confirmed';
+}
+
+export function collectionLocationAvailable(reservation) {
+  if (typeof reservation?.collection?.collection_location_available === 'boolean') {
+    return reservation.collection.collection_location_available;
+  }
+  return (reservation?.collection?.collection_sites || []).length > 0;
+}
+
+export function collectionSiteCodes(reservation) {
+  const sites = reservation?.collection?.collection_sites;
+  if (Array.isArray(sites) && sites.length) {
+    return sites
+      .map((site) => (typeof site === 'string' ? site : site?.code))
+      .filter((code) => typeof code === 'string' && code.trim() !== '');
+  }
+  const labels = reservation?.collection?.site_labels;
+  return Array.isArray(labels) ? labels.filter((code) => typeof code === 'string' && code.trim() !== '') : [];
+}
+
+export function collectionSiteLabel(reservation, t = tt) {
+  const codes = collectionSiteCodes(reservation);
+  if (!codes.length) return '';
+  const prefix = codes.length === 1 ? t('reservation.my.vendorSite') : t('reservation.my.vendorSites');
+  return `${prefix}: ${codes.join(', ')}`;
+}
+
 export function canVendorCancel(reservation) {
   return ['pending_charge', 'confirmed'].includes(normalizeStatusKey(reservation?.reservation_status));
 }

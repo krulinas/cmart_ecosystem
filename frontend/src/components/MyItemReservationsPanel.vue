@@ -134,6 +134,39 @@
             <div><dt class="text-xs uppercase text-ink-400 font-bold">{{ t('reservation.my.created') }}</dt><dd>{{ formatReservationTimestamp(detail.created_at) }}</dd></div>
             <div v-if="detail.cancelled_at"><dt class="text-xs uppercase text-ink-400 font-bold">{{ t('reservation.my.cancelled') }}</dt><dd>{{ formatReservationTimestamp(detail.cancelled_at) }}</dd></div>
             <div v-if="detail.completed_at"><dt class="text-xs uppercase text-ink-400 font-bold">{{ t('reservation.my.completed') }}</dt><dd>{{ formatReservationTimestamp(detail.completed_at) }}</dd></div>
+            <div
+              v-if="showCollectionLocation(detail)"
+              class="min-w-0"
+              data-testid="my-reservation-collection-location"
+            >
+              <dt class="text-xs uppercase text-ink-400 font-bold">{{ t('reservation.my.collectionLocation') }}</dt>
+              <dd class="mt-1 min-w-0 break-words text-ink-700">
+                <template v-if="collectionLocationAvailable(detail)">
+                  <p class="font-semibold text-ink-900" data-testid="my-reservation-collection-sites">
+                    {{ collectionSiteLabel(detail, t) }}
+                  </p>
+                  <p
+                    v-if="showCollectionInstruction(detail)"
+                    class="mt-1 text-ink-600"
+                    data-testid="my-reservation-collection-instruction"
+                  >
+                    {{ t('reservation.my.collectionInstruction') }}
+                  </p>
+                </template>
+                <template v-else>
+                  <p class="font-semibold text-ink-900" data-testid="my-reservation-collection-unassigned">
+                    {{ t('reservation.my.siteUnassigned') }}
+                  </p>
+                  <p
+                    v-if="showCollectionInstruction(detail)"
+                    class="mt-1 text-ink-600"
+                    data-testid="my-reservation-collection-unassigned-hint"
+                  >
+                    {{ t('reservation.my.siteUnassignedHint') }}
+                  </p>
+                </template>
+              </dd>
+            </div>
           </dl>
           <div class="mt-5 flex flex-wrap justify-end gap-2">
             <button type="button" class="ml-btn-ghost" @click="detail = null">{{ t('reservation.my.close') }}</button>
@@ -211,11 +244,15 @@ import { cancelMyItemReservation, getMyItemReservations } from '../services/item
 import {
   canCommunityCancel,
   chargeStatusLabel,
+  collectionLocationAvailable,
+  collectionSiteLabel,
   formatReservationFee,
   formatReservationTimestamp,
   reservationErrorMessage,
   reservationStatusBadgeClass,
   reservationStatusLabel,
+  showCollectionInstruction,
+  showCollectionLocation,
 } from '../utils/itemReservationDisplay';
 import { vendorWhatsappContact } from '../utils/whatsappContact';
 

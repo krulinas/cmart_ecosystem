@@ -45,7 +45,12 @@ class ItemReservationController extends Controller
     public function mine(Request $request): JsonResponse
     {
         $paginator = ItemReservation::query()
-            ->with(['carbootEvent', 'vendorUser.businessProfile'])
+            ->with([
+                'carbootEvent',
+                'vendorItem',
+                'vendorUser.businessProfile',
+                'vendorBooking.bookingDayAllocations.eventSite',
+            ])
             ->where('reserving_user_id', $request->user()->id)
             ->latest()
             ->paginate(20);

@@ -678,6 +678,12 @@ export default {
       toastCancelled: 'Tempahan dibatalkan.',
       loadError: 'Tidak dapat memuatkan tempahan anda.',
       cancelError: 'Tidak dapat membatalkan tempahan ini.',
+      collectionLocation: 'Lokasi pengambilan',
+      vendorSite: 'Tapak vendor',
+      vendorSites: 'Tapak vendor',
+      collectionInstruction: 'Ambil item ini terus daripada vendor semasa acara.',
+      siteUnassigned: 'Tapak vendor belum ditetapkan.',
+      siteUnassignedHint: 'Sila semak semula apabila tarikh acara semakin hampir.',
     },
     confirm: {
       titleAsk: 'Tempah barangan ini?',

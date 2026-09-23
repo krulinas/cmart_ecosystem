@@ -676,6 +676,12 @@ export default {
       toastCancelled: 'Reservation cancelled.',
       loadError: 'Unable to load your reservations.',
       cancelError: 'Unable to cancel this reservation.',
+      collectionLocation: 'Collection location',
+      vendorSite: 'Vendor site',
+      vendorSites: 'Vendor sites',
+      collectionInstruction: 'Collect this item directly from the vendor at the event.',
+      siteUnassigned: 'Vendor site has not been assigned yet.',
+      siteUnassignedHint: 'Please check again closer to the event.',
     },
     confirm: {
       titleAsk: 'Reserve this item?',

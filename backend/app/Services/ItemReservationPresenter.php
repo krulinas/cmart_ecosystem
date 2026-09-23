@@ -121,10 +121,16 @@ class ItemReservationPresenter
 
     private static function common(ItemReservation $reservation): array
     {
-        $reservation->loadMissing(['carbootEvent', 'vendorItem', 'vendorBooking']);
-        $booth = $reservation->vendorBooking
-            ? VendorBookingPresenter::boothNumber($reservation->vendorBooking)
-            : null;
+        $reservation->loadMissing([
+            'carbootEvent',
+            'vendorItem',
+            'vendorBooking.bookingDayAllocations.eventSite',
+        ]);
+
+        $collectionSites = self::resolveCollectionSites($reservation);
+        $locationAvailable = $collectionSites !== [];
+        $siteCodes = array_column($collectionSites, 'code');
+        $isConfirmed = $reservation->reservation_status === ItemReservation::STATUS_CONFIRMED;
 
         return [
             'public_reference' => $reservation->public_reference,
@@ -148,15 +154,75 @@ class ItemReservationPresenter
                 'venue' => 'CMart Kompleks Changlun',
             ],
             'collection' => [
-                'booth_number' => $booth,
-                'site_labels' => $booth ? [$booth] : [],
-                'guidance' => __('api.collect_in_person_at_the_vendor_booth_during_the_event'),
+                'collection_sites' => $collectionSites,
+                'collection_location_available' => $locationAvailable,
+                // Physical labels only — never invent from site_quantity / boothNumber fallback.
+                'booth_number' => $locationAvailable ? implode(', ', $siteCodes) : null,
+                'site_labels' => $siteCodes,
+                'guidance' => $isConfirmed
+                    ? __('api.collect_in_person_at_the_vendor_booth_during_the_event')
+                    : null,
             ],
             'cancellation_reason' => $reservation->cancellation_reason,
             'created_at' => $reservation->created_at?->toIso8601String(),
             'cancelled_at' => $reservation->cancelled_at?->toIso8601String(),
             'completed_at' => $reservation->completed_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Resolve physical event sites for collection from the reservation's
+     * exact event + seller + approved booking + occupying allocations only.
+     *
+     * @return list<array{id: int, code: string}>
+     */
+    private static function resolveCollectionSites(ItemReservation $reservation): array
+    {
+        $booking = $reservation->vendorBooking;
+        if ($booking === null) {
+            return [];
+        }
+
+        if ($booking->approval_status !== 'Approved') {
+            return [];
+        }
+
+        if ((int) $booking->user_id !== (int) $reservation->vendor_user_id) {
+            return [];
+        }
+
+        if ((int) $booking->carboot_event_id !== (int) $reservation->carboot_event_id) {
+            return [];
+        }
+
+        $booking->loadMissing(['bookingDayAllocations.eventSite']);
+
+        $eventId = (int) $reservation->carboot_event_id;
+
+        $sites = $booking->bookingDayAllocations
+            ->filter(fn ($allocation) => (int) $allocation->active_lock === 1)
+            ->map(fn ($allocation) => $allocation->eventSite)
+            ->filter(function ($site) use ($eventId) {
+                if ($site === null) {
+                    return false;
+                }
+
+                if ((int) $site->carboot_event_id !== $eventId) {
+                    return false;
+                }
+
+                $code = trim((string) ($site->label ?? ''));
+
+                return $code !== '';
+            })
+            ->unique('id')
+            ->sort(fn ($a, $b) => strnatcasecmp((string) $a->label, (string) $b->label))
+            ->values();
+
+        return $sites->map(fn ($site) => [
+            'id' => (int) $site->id,
+            'code' => (string) $site->label,
+        ])->all();
     }
 
     private static function whatsappContactForReservingUser(ItemReservation $reservation): ?array
