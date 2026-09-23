@@ -3,10 +3,10 @@
     <section class="ml-card space-y-4">
       <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p class="text-xs font-bold uppercase tracking-wider text-blue-800">Item Reservations</p>
-          <h2 class="text-xl font-extrabold text-ink-900">Event reservation queue</h2>
+          <p class="text-xs font-bold uppercase tracking-wider text-blue-800">{{ t('organizer.itemReservations.eyebrow') }}</p>
+          <h2 class="text-xl font-extrabold text-ink-900">{{ t('organizer.itemReservations.title') }}</h2>
           <p class="mt-1 text-sm text-ink-500">
-            Reconcile manual off-platform service fees. The platform records Organizer confirmation only and never processes payment.
+            {{ t('organizer.itemReservations.lead') }}
           </p>
         </div>
         <button
@@ -16,13 +16,13 @@
           data-testid="organizer-reservations-refresh"
           @click="loadQueue"
         >
-          {{ loading ? 'Refreshing…' : 'Refresh' }}
+          {{ loading ? t('organizer.itemReservations.refreshing') : t('organizer.itemReservations.refresh') }}
         </button>
       </div>
 
       <div class="grid gap-3 md:grid-cols-4 md:items-end">
         <div class="md:col-span-2">
-          <label class="ml-label" for="organizer-reservation-event">Event</label>
+          <label class="ml-label" for="organizer-reservation-event">{{ t('organizer.itemReservations.event') }}</label>
           <select
             id="organizer-reservation-event"
             v-model="selectedEventId"
@@ -31,14 +31,14 @@
             :disabled="loadingEvents"
             @change="onEventSelected"
           >
-            <option value="">— Select event —</option>
+            <option value="">{{ t('organizer.itemReservations.selectEvent') }}</option>
             <option v-for="event in events" :key="event.id" :value="String(event.id)">
               {{ event.title }}
             </option>
           </select>
         </div>
         <div>
-          <label class="ml-label" for="organizer-reservation-status">Reservation status</label>
+          <label class="ml-label" for="organizer-reservation-status">{{ t('organizer.itemReservations.reservationStatus') }}</label>
           <select
             id="organizer-reservation-status"
             v-model="reservationStatus"
@@ -46,14 +46,14 @@
             data-testid="organizer-reservation-status-filter"
             @change="loadQueue"
           >
-            <option value="">All</option>
-            <option v-for="(label, value) in RESERVATION_STATUS_LABELS" :key="value" :value="value">
-              {{ label }}
+            <option value="">{{ t('organizer.itemReservations.all') }}</option>
+            <option v-for="opt in reservationStatusFilterOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
             </option>
           </select>
         </div>
         <div>
-          <label class="ml-label" for="organizer-charge-status">Charge status</label>
+          <label class="ml-label" for="organizer-charge-status">{{ t('organizer.itemReservations.chargeStatus') }}</label>
           <select
             id="organizer-charge-status"
             v-model="chargeStatus"
@@ -61,39 +61,93 @@
             data-testid="organizer-charge-status-filter"
             @change="loadQueue"
           >
-            <option value="">All</option>
-            <option v-for="(label, value) in CHARGE_STATUS_LABELS" :key="value" :value="value">
-              {{ label }}
+            <option value="">{{ t('organizer.itemReservations.all') }}</option>
+            <option v-for="opt in chargeStatusFilterOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
             </option>
           </select>
         </div>
       </div>
     </section>
 
+    <section
+      v-if="selectedEventId && eventSummary"
+      class="ml-card space-y-3"
+      data-testid="organizer-reservations-event-summary"
+    >
+      <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.itemReservations.summaryTitle') }}</h3>
+      <dl class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryEnabled') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.enabled ? t('organizer.itemReservations.summaryEnabledYes') : t('organizer.itemReservations.summaryEnabledNo') }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryFee') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.feeLabel }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryEligibleListings') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.eligible_listings_count }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryTotal') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.total }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryPendingCharge') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.pending_charge }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryConfirmed') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.confirmed }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryCompleted') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.completed }}</dd>
+        </div>
+        <div>
+          <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.summaryCancelledExpired') }}</dt>
+          <dd class="font-semibold text-ink-900">{{ eventSummary.cancelled_expired }}</dd>
+        </div>
+      </dl>
+    </section>
+
     <div v-if="!selectedEventId" class="ml-card text-sm text-ink-500" data-testid="organizer-reservations-empty-event">
-      Select an event to load its reservation queue.
+      {{ t('organizer.itemReservations.selectEventPrompt') }}
     </div>
-    <div v-else-if="loading && !rows.length" class="ml-card animate-pulse py-10 text-center text-ink-500">
-      Loading reservations…
+    <div v-else-if="loading && !rows.length && !eventSummary" class="ml-card animate-pulse py-10 text-center text-ink-500">
+      {{ t('organizer.itemReservations.loading') }}
     </div>
     <div v-else-if="loadError" class="ml-card border-rose-200 bg-rose-50 space-y-3" data-testid="organizer-reservations-error">
       <p class="font-semibold text-rose-900">{{ loadError }}</p>
-      <button type="button" class="ml-btn-primary text-sm" @click="loadQueue">Try Again</button>
+      <button type="button" class="ml-btn-primary text-sm" @click="loadQueue">{{ t('organizer.itemReservations.tryAgain') }}</button>
     </div>
-    <div v-else-if="!rows.length" class="ml-card text-sm text-ink-500" data-testid="organizer-reservations-empty">
-      No reservations match the current filters.
+    <div
+      v-else-if="!rows.length"
+      class="ml-card space-y-3 text-sm text-ink-600"
+      data-testid="organizer-reservations-empty"
+    >
+      <p>{{ emptyStateMessage }}</p>
+      <a
+        v-if="emptyStateShowEditLink"
+        href="#carboot-events"
+        class="inline-flex text-sm font-semibold text-blue-800 hover:underline"
+        data-testid="organizer-reservations-edit-event-link"
+      >
+        {{ t('organizer.itemReservations.emptyDisabledEditLink') }}
+      </a>
     </div>
     <section v-else class="ml-card overflow-x-auto" data-testid="organizer-reservations-queue">
       <table class="min-w-full divide-y divide-ink-100 text-sm">
         <thead class="bg-ink-50/80">
           <tr>
-            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Reference</th>
-            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Item</th>
-            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Vendor</th>
-            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Reserver</th>
-            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Status</th>
-            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">Fee</th>
-            <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">Action</th>
+            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('organizer.itemReservations.colReference') }}</th>
+            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('organizer.itemReservations.colItem') }}</th>
+            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('organizer.itemReservations.colVendor') }}</th>
+            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('organizer.itemReservations.colReserver') }}</th>
+            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('organizer.itemReservations.colStatus') }}</th>
+            <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('organizer.itemReservations.colFee') }}</th>
+            <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('organizer.itemReservations.colAction') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-ink-100 bg-white">
@@ -135,7 +189,7 @@
                 data-testid="organizer-reservation-open"
                 @click="openDetail(row.public_reference)"
               >
-                Details
+                {{ t('organizer.itemReservations.details') }}
               </button>
             </td>
           </tr>
@@ -143,7 +197,7 @@
       </table>
 
       <div v-if="meta.last_page > 1" class="mt-4 flex items-center justify-between text-sm">
-        <p class="text-ink-500">Page {{ meta.current_page }} of {{ meta.last_page }} · {{ meta.total }} total</p>
+        <p class="text-ink-500">{{ t('organizer.itemReservations.pageInfo', { current: meta.current_page, last: meta.last_page, total: meta.total }) }}</p>
         <div class="flex gap-2">
           <button
             type="button"
@@ -151,7 +205,7 @@
             :disabled="meta.current_page <= 1 || loading"
             @click="goToPage(meta.current_page - 1)"
           >
-            Previous
+            {{ t('organizer.itemReservations.previous') }}
           </button>
           <button
             type="button"
@@ -159,7 +213,7 @@
             :disabled="meta.current_page >= meta.last_page || loading"
             @click="goToPage(meta.current_page + 1)"
           >
-            Next
+            {{ t('organizer.itemReservations.next') }}
           </button>
         </div>
       </div>
@@ -179,21 +233,21 @@
           <div class="border-b border-ink-100 px-5 py-4 flex items-start justify-between gap-3">
             <div>
               <h3 class="text-lg font-extrabold text-ink-900">
-                {{ detail?.public_reference || 'Reservation detail' }}
+                {{ detail?.public_reference || t('organizer.itemReservations.detailFallback') }}
               </h3>
               <p class="text-sm text-ink-500 mt-1">
-                Manual off-platform fee reconciliation — not a payment gateway receipt.
+                {{ t('organizer.itemReservations.detailLead') }}
               </p>
             </div>
-            <button type="button" class="ml-btn-ghost text-sm" :disabled="mutating" @click="closeDetail">Close</button>
+            <button type="button" class="ml-btn-ghost text-sm" :disabled="mutating" @click="closeDetail">{{ t('organizer.itemReservations.close') }}</button>
           </div>
 
-          <div v-if="detailLoading" class="p-8 text-center text-ink-500">Loading detail…</div>
+          <div v-if="detailLoading" class="p-8 text-center text-ink-500">{{ t('organizer.itemReservations.loadingDetail') }}</div>
           <div v-else-if="detailError" class="p-6 text-rose-700">{{ detailError }}</div>
           <div v-else-if="detail" class="p-5 space-y-5">
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div class="rounded-xl border border-ink-100 p-3">
-                <dt class="text-xs font-bold uppercase text-ink-400">Item</dt>
+                <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.item') }}</dt>
                 <dd class="font-semibold text-ink-900">{{ detail.item?.name }}</dd>
               </div>
               <div class="rounded-xl border border-ink-100 p-3">
@@ -201,37 +255,39 @@
                 <dd class="font-semibold text-ink-900">{{ detail.event?.title }}</dd>
               </div>
               <div class="rounded-xl border border-ink-100 p-3">
-                <dt class="text-xs font-bold uppercase text-ink-400">Vendor</dt>
+                <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.vendor') }}</dt>
                 <dd>{{ detail.vendor?.business_name || detail.vendor?.name }}</dd>
                 <dd class="text-xs text-ink-500">{{ detail.vendor?.email }}</dd>
               </div>
               <div class="rounded-xl border border-ink-100 p-3">
-                <dt class="text-xs font-bold uppercase text-ink-400">Reserving user</dt>
+                <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.reservingUser') }}</dt>
                 <dd>{{ detail.reserving_user?.name }}</dd>
                 <dd class="text-xs text-ink-500">{{ detail.reserving_user?.email }}</dd>
               </div>
               <div class="rounded-xl border border-ink-100 p-3">
-                <dt class="text-xs font-bold uppercase text-ink-400">Statuses</dt>
+                <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.statuses') }}</dt>
                 <dd>
                   {{ reservationStatusLabel(detail.reservation_status) }}
                   · {{ chargeStatusLabel(detail.charge_status) }}
                 </dd>
               </div>
               <div class="rounded-xl border border-ink-100 p-3">
-                <dt class="text-xs font-bold uppercase text-ink-400">Service fee</dt>
+                <dt class="text-xs font-bold uppercase text-ink-400">{{ t('organizer.itemReservations.serviceFee') }}</dt>
                 <dd>{{ formatReservationFee(detail.service_fee_amount, detail.service_fee_currency) }}</dd>
               </div>
             </dl>
 
+            <ReservationLifecycleStrip :reservation="detail" :audits="audits" />
+
             <div class="rounded-xl border border-ink-100 p-4 text-sm space-y-2">
-              <h4 class="font-bold text-ink-900">Charge evidence</h4>
-              <p>Confirmation note: {{ detail.charge_confirmation?.note || '—' }}</p>
-              <p>Confirmed by: {{ detail.charge_confirmation?.confirmed_by || '—' }} · {{ formatReservationTimestamp(detail.charge_confirmation?.confirmed_at) }}</p>
-              <p>Waiver reason: {{ detail.charge_waiver?.reason || '—' }}</p>
-              <p>Waived by: {{ detail.charge_waiver?.waived_by || '—' }} · {{ formatReservationTimestamp(detail.charge_waiver?.waived_at) }}</p>
-              <p>Cancelled by: {{ detail.cancelled_by || '—' }} · {{ formatReservationTimestamp(detail.cancelled_at) }}</p>
-              <p>Expired by: {{ detail.expired_by || '—' }} · {{ formatReservationTimestamp(detail.expired_at) }}</p>
-              <p>Completed by: {{ detail.completed_by || '—' }} · {{ formatReservationTimestamp(detail.completed_at) }}</p>
+              <h4 class="font-bold text-ink-900">{{ t('organizer.itemReservations.chargeEvidence') }}</h4>
+              <p>{{ t('organizer.itemReservations.confirmationNote', { value: detail.charge_confirmation?.note || '—' }) }}</p>
+              <p>{{ t('organizer.itemReservations.confirmedBy', { who: detail.charge_confirmation?.confirmed_by || '—', when: formatReservationTimestamp(detail.charge_confirmation?.confirmed_at) }) }}</p>
+              <p>{{ t('organizer.itemReservations.waiverReason', { value: detail.charge_waiver?.reason || '—' }) }}</p>
+              <p>{{ t('organizer.itemReservations.waivedBy', { who: detail.charge_waiver?.waived_by || '—', when: formatReservationTimestamp(detail.charge_waiver?.waived_at) }) }}</p>
+              <p>{{ t('organizer.itemReservations.cancelledBy', { who: detail.cancelled_by || '—', when: formatReservationTimestamp(detail.cancelled_at) }) }}</p>
+              <p>{{ t('organizer.itemReservations.expiredBy', { who: detail.expired_by || '—', when: formatReservationTimestamp(detail.expired_at) }) }}</p>
+              <p>{{ t('organizer.itemReservations.completedBy', { who: detail.completed_by || '—', when: formatReservationTimestamp(detail.completed_at) }) }}</p>
             </div>
 
             <div class="flex flex-wrap gap-2" data-testid="organizer-reservation-actions">
@@ -243,7 +299,7 @@
                 :disabled="mutating"
                 @click="actionMode = 'confirm'"
               >
-                Confirm charge
+                {{ t('organizer.itemReservations.confirmCharge') }}
               </button>
               <button
                 v-if="canOrganizerWaiveCharge(detail)"
@@ -253,7 +309,7 @@
                 :disabled="mutating"
                 @click="actionMode = 'waive'"
               >
-                Waive charge
+                {{ t('organizer.itemReservations.waiveCharge') }}
               </button>
               <button
                 v-if="canOrganizerCancelOrExpire(detail)"
@@ -263,7 +319,7 @@
                 :disabled="mutating"
                 @click="actionMode = 'cancel'"
               >
-                Cancel
+                {{ t('organizer.itemReservations.cancel') }}
               </button>
               <button
                 v-if="canOrganizerCancelOrExpire(detail)"
@@ -273,7 +329,7 @@
                 :disabled="mutating"
                 @click="actionMode = 'expire'"
               >
-                Manual expiry
+                {{ t('organizer.itemReservations.manualExpiry') }}
               </button>
               <button
                 v-if="canCompleteReservation(detail)"
@@ -283,7 +339,7 @@
                 :disabled="mutating"
                 @click="actionMode = 'complete'"
               >
-                Mark collected
+                {{ t('organizer.itemReservations.markCollected') }}
               </button>
             </div>
 
@@ -318,7 +374,7 @@
                   :disabled="mutating"
                 />
                 <span class="text-sm text-rose-900">
-                  I acknowledge that the manually confirmed service fee will not be refunded by the platform.
+                  {{ t('organizer.itemReservations.noRefundAck') }}
                 </span>
               </label>
               <p
@@ -329,7 +385,7 @@
                 {{ actionError }}
               </p>
               <div class="flex justify-end gap-2">
-                <button type="button" class="ml-btn-ghost text-sm" :disabled="mutating" @click="resetAction">Back</button>
+                <button type="button" class="ml-btn-ghost text-sm" :disabled="mutating" @click="resetAction">{{ t('organizer.itemReservations.back') }}</button>
                 <button
                   type="button"
                   class="ml-btn-primary text-sm"
@@ -337,14 +393,14 @@
                   :disabled="mutating || !canSubmitAction"
                   @click="submitAction"
                 >
-                  {{ mutating ? 'Saving…' : 'Submit' }}
+                  {{ mutating ? t('organizer.itemReservations.saving') : t('organizer.itemReservations.submit') }}
                 </button>
               </div>
             </div>
 
             <div data-testid="organizer-reservation-audit-timeline">
-              <h4 class="font-bold text-ink-900 mb-3">Audit timeline</h4>
-              <div v-if="!audits.length" class="text-sm text-ink-500">No audit entries yet.</div>
+              <h4 class="font-bold text-ink-900 mb-3">{{ t('organizer.itemReservations.auditTimeline') }}</h4>
+              <div v-if="!audits.length" class="text-sm text-ink-500">{{ t('organizer.itemReservations.noAudits') }}</div>
               <ol v-else class="space-y-3">
                 <li
                   v-for="(audit, index) in audits"
@@ -355,7 +411,7 @@
                 >
                   <p class="font-semibold text-ink-900">{{ auditActionLabel(audit.action) }}</p>
                   <p class="text-ink-600 mt-1">
-                    {{ audit.actor || 'System' }} · {{ formatReservationTimestamp(audit.created_at) }}
+                    {{ audit.actor || t('organizer.itemReservations.systemActor') }} · {{ formatReservationTimestamp(audit.created_at) }}
                   </p>
                   <p class="text-ink-600 mt-1">
                     {{ reservationStatusLabel(audit.from_reservation_status) }}
@@ -376,8 +432,10 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
+import ReservationLifecycleStrip from '../../../components/reservations/ReservationLifecycleStrip.vue';
 import { getCarbootEvents } from '../../../services/organizerEventLayoutApi';
 import {
   cancelOrganizerItemReservation,
@@ -390,25 +448,29 @@ import {
   waiveOrganizerItemReservationCharge,
 } from '../../../services/itemReservationsApi';
 import {
-  CHARGE_STATUS_LABELS,
-  RESERVATION_STATUS_LABELS,
   auditActionLabel,
   canCompleteReservation,
   canOrganizerCancelOrExpire,
   canOrganizerConfirmCharge,
   canOrganizerWaiveCharge,
   chargeStatusLabel,
+  chargeStatusOptions,
   formatReservationFee,
   formatReservationTimestamp,
   requiresNoRefundAcknowledgement,
   reservationErrorMessage,
   reservationStatusBadgeClass,
   reservationStatusLabel,
+  reservationStatusOptions,
 } from '../../../utils/itemReservationDisplay';
 
+const { t } = useI18n();
 const toast = useToast();
 const route = useRoute();
 const router = useRouter();
+
+const reservationStatusFilterOptions = computed(() => reservationStatusOptions(t));
+const chargeStatusFilterOptions = computed(() => chargeStatusOptions(t));
 
 const events = ref([]);
 const loadingEvents = ref(false);
@@ -419,6 +481,26 @@ const rows = ref([]);
 const meta = ref({ current_page: 1, last_page: 1, per_page: 20, total: 0 });
 const loading = ref(false);
 const loadError = ref('');
+const eventSummary = ref(null);
+
+const selectedEvent = computed(() => events.value.find((row) => String(row.id) === String(selectedEventId.value)) || null);
+
+const emptyStateMessage = computed(() => {
+  if (!eventSummary.value) return t('organizer.itemReservations.empty');
+  if (!eventSummary.value.enabled) return t('organizer.itemReservations.emptyDisabled');
+  if ((eventSummary.value.eligible_listings_count || 0) <= 0) {
+    return t('organizer.itemReservations.emptyNoListings');
+  }
+  if ((eventSummary.value.total || 0) <= 0 && !reservationStatus.value && !chargeStatus.value) {
+    return t('organizer.itemReservations.emptyListingsNoReservations');
+  }
+  if ((eventSummary.value.total || 0) <= 0) {
+    return t('organizer.itemReservations.emptyEnabledNoReservations');
+  }
+  return t('organizer.itemReservations.empty');
+});
+
+const emptyStateShowEditLink = computed(() => eventSummary.value && !eventSummary.value.enabled);
 
 const detailOpen = ref(false);
 const detailLoading = ref(false);
@@ -432,23 +514,23 @@ const actionError = ref('');
 const mutating = ref(false);
 
 const actionTitle = computed(() => ({
-  confirm: 'Record manual charge confirmation',
-  waive: 'Waive service fee',
-  cancel: 'Cancel active reservation',
-  expire: 'Manually expire reservation',
-  complete: 'Mark item collected',
+  confirm: t('organizer.itemReservations.actionConfirmTitle'),
+  waive: t('organizer.itemReservations.actionWaiveTitle'),
+  cancel: t('organizer.itemReservations.actionCancelTitle'),
+  expire: t('organizer.itemReservations.actionExpireTitle'),
+  complete: t('organizer.itemReservations.actionCompleteTitle'),
 }[actionMode.value] || ''));
 
 const actionHelp = computed(() => ({
-  confirm: 'Record that the Organizer received the service fee off-platform. This does not process payment.',
-  waive: 'Waive the required service fee and confirm the reservation. Not the same as a zero-fee not_required charge.',
-  cancel: 'Clear the active hold. Confirmed charge history remains; the platform issues no refund.',
-  expire: 'Manually expire this active reservation. This is not an automatic timeout.',
-  complete: 'Confirm the reserved item was handed over. The item becomes inactive.',
+  confirm: t('organizer.itemReservations.actionConfirmHelp'),
+  waive: t('organizer.itemReservations.actionWaiveHelp'),
+  cancel: t('organizer.itemReservations.actionCancelHelp'),
+  expire: t('organizer.itemReservations.actionExpireHelp'),
+  complete: t('organizer.itemReservations.actionCompleteHelp'),
 }[actionMode.value] || ''));
 
 const needsNote = computed(() => ['confirm', 'waive', 'cancel', 'expire'].includes(actionMode.value));
-const noteLabel = computed(() => (actionMode.value === 'confirm' ? 'Confirmation note' : 'Reason'));
+const noteLabel = computed(() => (actionMode.value === 'confirm' ? t('organizer.itemReservations.confirmationNoteLabel') : t('organizer.itemReservations.reasonLabel')));
 
 const canSubmitAction = computed(() => {
   if (!actionMode.value || mutating.value) return false;
@@ -470,7 +552,7 @@ const loadEvents = async () => {
     events.value = data.events || data.data || data || [];
   } catch (error) {
     if (!error.forbiddenMessage) {
-      toast.error(reservationErrorMessage(error, 'Unable to load events.'));
+      toast.error(reservationErrorMessage(error, t('organizer.itemReservations.unableLoadEvents')));
     }
   } finally {
     loadingEvents.value = false;
@@ -493,6 +575,7 @@ const onEventSelected = async () => {
 const loadQueue = async () => {
   if (!selectedEventId.value) {
     rows.value = [];
+    eventSummary.value = null;
     return;
   }
   loading.value = true;
@@ -506,11 +589,48 @@ const loadQueue = async () => {
     });
     rows.value = data.data || [];
     meta.value = data.meta || meta.value;
+    const summary = data.meta?.event_summary || data.event_summary || null;
+    if (summary) {
+      eventSummary.value = {
+        ...summary,
+        feeLabel: formatSummaryFee(summary),
+      };
+    } else {
+      eventSummary.value = buildLocalEventSummary(selectedEvent.value, meta.value.total || 0);
+    }
   } catch (error) {
-    loadError.value = reservationErrorMessage(error, 'Unable to load the reservation queue.');
+    loadError.value = reservationErrorMessage(error, t('organizer.itemReservations.unableLoadQueue'));
   } finally {
     loading.value = false;
   }
+};
+
+const formatSummaryFee = (summary) => {
+  if (!summary?.enabled) return t('organizer.itemReservations.summaryFeeNotConfigured');
+  if (summary.service_fee_amount == null) return t('organizer.itemReservations.summaryFeeNotConfigured');
+  if (Number(summary.service_fee_amount) <= 0) return t('organizer.itemReservations.summaryFeeFree');
+  return formatReservationFee(summary.service_fee_amount, summary.service_fee_currency || 'MYR');
+};
+
+const buildLocalEventSummary = (event, total) => {
+  const fee = event?.item_reservation_service_fee;
+  const enabled = fee !== null && fee !== undefined && fee !== '';
+  return {
+    enabled,
+    service_fee_amount: enabled ? fee : null,
+    service_fee_currency: 'MYR',
+    eligible_listings_count: event?.eligible_item_listings_count ?? 0,
+    total,
+    pending_charge: 0,
+    confirmed: 0,
+    completed: 0,
+    cancelled_expired: 0,
+    feeLabel: !enabled
+      ? t('organizer.itemReservations.summaryFeeNotConfigured')
+      : Number(fee) <= 0
+        ? t('organizer.itemReservations.summaryFeeFree')
+        : formatReservationFee(fee, 'MYR'),
+  };
 };
 
 const goToPage = async (page) => {
@@ -540,7 +660,7 @@ const openDetail = async (publicReference) => {
     detail.value = detailResponse.data.reservation;
     audits.value = auditsResponse.data.audits || [];
   } catch (error) {
-    detailError.value = reservationErrorMessage(error, 'Unable to load reservation detail.');
+    detailError.value = reservationErrorMessage(error, t('organizer.itemReservations.unableLoadDetail'));
   } finally {
     detailLoading.value = false;
   }
@@ -581,11 +701,11 @@ const submitAction = async () => {
     } else if (actionMode.value === 'complete') {
       await completeOrganizerItemReservation(reference);
     }
-    toast.success('Reservation updated.');
+    toast.success(t('organizer.itemReservations.updated'));
     resetAction();
     await refreshDetailAndQueue();
   } catch (error) {
-    actionError.value = reservationErrorMessage(error, 'Unable to update this reservation.');
+    actionError.value = reservationErrorMessage(error, t('organizer.itemReservations.unableUpdate'));
     toast.error(actionError.value);
     if (error?.response?.status === 409) {
       await refreshDetailAndQueue();

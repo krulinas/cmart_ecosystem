@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\OrganizerEventLayoutRowController;
 use App\Http\Controllers\Api\OrganizerEventLayoutSiteController;
 use App\Http\Controllers\Api\OrganizerEventAnalyticsController;
 use App\Http\Controllers\Api\OrganizerEventAnalyticsDataSourceController;
+use App\Http\Controllers\Api\OrganizerEventBenchmarkController;
 use App\Http\Controllers\Api\OrganizerGeneratedReportController;
 use App\Http\Controllers\Api\OrganizerItemReservationController;
 use App\Http\Controllers\Api\OrganizerReleasedDayRecoveryController;
@@ -39,7 +40,9 @@ use App\Http\Controllers\Api\VendorEventPassController;
 use App\Http\Controllers\Api\VendorEventSiteAvailabilityController;
 use App\Http\Controllers\Api\VendorHistoryController;
 use App\Http\Controllers\Api\VendorItemController;
+use App\Http\Controllers\Api\VendorItemEventListingController;
 use App\Http\Controllers\Api\VendorItemReservationController;
+use App\Http\Controllers\Api\VendorItemSaleController;
 use App\Http\Controllers\Api\VendorProfileController;
 use App\Support\ManagementCapability;
 use App\Support\ManagementRole;
@@ -110,6 +113,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/vendor/items/{vendor_item}', [VendorItemController::class, 'show']);
         Route::put('/vendor/items/{vendor_item}', [VendorItemController::class, 'update']);
         Route::delete('/vendor/items/{vendor_item}', [VendorItemController::class, 'destroy']);
+        Route::post('/vendor/items/{vendor_item}/walk-in-sale', [VendorItemSaleController::class, 'storeWalkIn']);
+
+        Route::get('/vendor/item-event-listings/eligible-events', [VendorItemEventListingController::class, 'eligibleEvents']);
+        Route::get('/vendor/events/{carboot_event}/item-listings', [VendorItemEventListingController::class, 'index']);
+        Route::post('/vendor/events/{carboot_event}/item-listings', [VendorItemEventListingController::class, 'store']);
+        Route::delete('/vendor/events/{carboot_event}/item-listings/{vendor_item}', [VendorItemEventListingController::class, 'destroy']);
 
         Route::post('/reservations', [ItemReservationController::class, 'store']);
         Route::get('/reservations/me', [ItemReservationController::class, 'mine']);
@@ -276,6 +285,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Event-scoped analytics hub + vendor survey import (organizer / super_admin).
         Route::get('/organizer/events/{event}/analytics/overview', [OrganizerEventAnalyticsController::class, 'overview']);
+        Route::get('/organizer/events/{event}/analytics/benchmark', [OrganizerEventBenchmarkController::class, 'show']);
         Route::get('/organizer/events/{event}/analytics/{section}', [OrganizerEventAnalyticsController::class, 'section']);
         Route::post('/organizer/events/{event}/analytics/recompute', [OrganizerEventAnalyticsController::class, 'recompute']);
         Route::put('/organizer/events/{event}/analytics/source-mode', [OrganizerEventAnalyticsDataSourceController::class, 'updateMode']);

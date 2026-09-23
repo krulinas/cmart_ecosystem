@@ -56,7 +56,7 @@ class ManagementNotificationController extends Controller
         $notification->markAsRead();
 
         return response()->json([
-            'message' => '200 OK: Notification marked as read.',
+            'message' => __('api.notification_marked_as_read'),
             'notification' => $this->present($notification->fresh()),
             'unread_count' => $this->unreadReportCount($request),
         ]);
@@ -68,7 +68,7 @@ class ManagementNotificationController extends Controller
 
         // Intentionally not exposed for Report Centre open — avoid clearing unrelated notices.
         return response()->json([
-            'message' => '405 Method Not Allowed: Bulk mark-all-read is disabled for report badges.',
+            'message' => __('api.bulk_mark_all_read_is_disabled_for_report_badges'),
         ], 405);
     }
 

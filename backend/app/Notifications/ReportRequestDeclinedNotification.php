@@ -30,13 +30,19 @@ class ReportRequestDeclinedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         $typeLabel = ReportType::label($this->reportRequest->report_type);
-        $eventTitle = $this->reportRequest->carbootEvent?->title ?? 'an event';
-        $reason = $this->reportRequest->decline_reason ?: 'No reason provided.';
+        $eventTitle = $this->reportRequest->carbootEvent?->title
+            ?: __('reports.notify.an_event');
+        $reason = $this->reportRequest->decline_reason
+            ?: __('reports.notify.no_reason');
 
         return [
             'type' => ReportNotificationType::REQUEST_DECLINED,
-            'title' => 'Report request declined',
-            'body' => "Organizer declined the {$typeLabel} for {$eventTitle}: {$reason}",
+            'title' => __('reports.notify.request_declined_title'),
+            'body' => __('reports.notify.request_declined_body', [
+                'type' => $typeLabel,
+                'event' => $eventTitle,
+                'reason' => $reason,
+            ]),
             'link' => '/admin#reports',
             'report_request_id' => $this->reportRequest->id,
             'carboot_event_id' => $this->reportRequest->carboot_event_id,

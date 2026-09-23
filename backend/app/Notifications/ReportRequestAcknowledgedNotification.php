@@ -30,12 +30,16 @@ class ReportRequestAcknowledgedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         $typeLabel = ReportType::label($this->reportRequest->report_type);
-        $eventTitle = $this->reportRequest->carbootEvent?->title ?? 'an event';
+        $eventTitle = $this->reportRequest->carbootEvent?->title
+            ?: __('reports.notify.an_event');
 
         return [
             'type' => ReportNotificationType::REQUEST_ACKNOWLEDGED,
-            'title' => 'Report request acknowledged',
-            'body' => "Organizer acknowledged the {$typeLabel} request for {$eventTitle}.",
+            'title' => __('reports.notify.request_ack_title'),
+            'body' => __('reports.notify.request_ack_body', [
+                'type' => $typeLabel,
+                'event' => $eventTitle,
+            ]),
             'link' => '/admin#reports',
             'report_request_id' => $this->reportRequest->id,
             'carboot_event_id' => $this->reportRequest->carboot_event_id,

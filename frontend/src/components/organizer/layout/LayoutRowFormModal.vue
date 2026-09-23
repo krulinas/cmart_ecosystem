@@ -125,7 +125,8 @@
 
 <script setup>
 import { reactive, watch, computed } from 'vue';
-import { LAYOUT_COPY } from '../../../utils/organizerEventLayoutMessages';
+import { useI18n } from 'vue-i18n';
+import { getLayoutCopy } from '../../../utils/organizerEventLayoutMessages';
 import { isAllowedPhysicalRowLabel } from '../../../config/cmartCarbootPhysicalLayout';
 
 const props = defineProps({
@@ -139,7 +140,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'submit']);
 
-const copy = LAYOUT_COPY;
+const { t } = useI18n();
+const copy = computed(() => getLayoutCopy(t));
 const isEdit = computed(() => Boolean(props.row?.id));
 const renameLocked = computed(() => Boolean(props.row?.locks?.rename_locked));
 const categoryLocked = computed(() => Boolean(props.row?.locks?.category_change_locked));

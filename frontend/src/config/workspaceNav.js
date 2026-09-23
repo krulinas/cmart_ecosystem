@@ -4,7 +4,7 @@ export const WORKSPACE_NAV_ITEMS = [
   {
     id: 'bookings',
     hash: 'bookings',
-    label: 'Bookings',
+    labelKey: 'management.bookings',
     shortIcon: 'Bk',
     group: 'carboot_operations',
     domain: 'carboot',
@@ -14,7 +14,7 @@ export const WORKSPACE_NAV_ITEMS = [
   {
     id: 'feedback',
     hash: 'feedback',
-    label: 'Feedback',
+    labelKey: 'management.feedback',
     shortIcon: 'Fb',
     group: 'carboot_operations',
     domain: 'carboot',
@@ -24,7 +24,7 @@ export const WORKSPACE_NAV_ITEMS = [
   {
     id: 'events',
     hash: 'events',
-    label: 'Carboot Events',
+    labelKey: 'management.carbootEvents',
     shortIcon: 'Ev',
     group: 'carboot_operations',
     domain: 'carboot',
@@ -34,7 +34,7 @@ export const WORKSPACE_NAV_ITEMS = [
   {
     id: 'layout',
     hash: 'layout',
-    label: 'Layout Management',
+    labelKey: 'management.layoutManagement',
     shortIcon: 'Ly',
     group: 'carboot_operations',
     domain: 'carboot',
@@ -44,7 +44,7 @@ export const WORKSPACE_NAV_ITEMS = [
   {
     id: 'item-reservations',
     hash: 'item-reservations',
-    label: 'Item Reservations',
+    labelKey: 'management.itemReservations',
     shortIcon: 'Ir',
     group: 'carboot_operations',
     domain: 'carboot',
@@ -54,7 +54,7 @@ export const WORKSPACE_NAV_ITEMS = [
   {
     id: 'news',
     hash: 'news',
-    label: 'Venue News',
+    labelKey: 'management.venueNews',
     shortIcon: 'Nw',
     group: 'cmart_activities',
     domain: 'cmart_activity',
@@ -64,7 +64,7 @@ export const WORKSPACE_NAV_ITEMS = [
   {
     id: 'event-analytics',
     hash: 'event-analytics',
-    label: 'Analytics Hub',
+    labelKey: 'management.analyticsHub',
     shortIcon: 'Ah',
     group: 'carboot_analytics',
     domain: 'carboot_analytics',
@@ -74,7 +74,7 @@ export const WORKSPACE_NAV_ITEMS = [
   {
     id: 'audit',
     hash: 'audit',
-    label: 'Booking Audit Log',
+    labelKey: 'management.bookingAuditLog',
     shortIcon: 'Au',
     group: 'administration',
     domain: 'administration',
@@ -85,7 +85,7 @@ export const WORKSPACE_NAV_ITEMS = [
   {
     id: 'report-centre',
     hash: 'report-centre',
-    label: 'Report Centre',
+    labelKey: 'management.reportCentre',
     shortIcon: 'RC',
     group: 'report_centre',
     domain: 'report_centre',
@@ -95,7 +95,7 @@ export const WORKSPACE_NAV_ITEMS = [
   {
     id: 'reports',
     hash: 'reports',
-    label: 'Reports',
+    labelKey: 'management.reports',
     shortIcon: 'Rp',
     group: 'generated_reports',
     domain: 'generated_reports',
@@ -109,7 +109,7 @@ export const WORKSPACE_NAV_ITEMS = [
 /** Legacy hashes that redirect into the Analytics Hub (not shown in sidebar). */
 export const LEGACY_ANALYTICS_HASH_REDIRECTS = {
   revenue: { section: 'event-analytics', tab: 'overview' },
-  analytics: { section: 'event-analytics', tab: 'comments' },
+  analytics: { section: 'event-analytics', tab: 'vendor-insights' },
 };
 
 export const ANALYTICS_HUB_TAB_STORAGE_KEY = 'cmart.eventAnalytics.activeTab';
@@ -126,6 +126,20 @@ export const BOSS_ONLY_HASHES = CARBOOT_ANALYTICS_HASHES;
 
 export const ALL_WORKSPACE_HASHES = WORKSPACE_NAV_ITEMS.map((item) => item.hash);
 
+export const SECTION_SUBTITLE_KEYS = {
+  bookings: 'management.sectionBookings',
+  feedback: 'management.sectionFeedback',
+  events: 'management.sectionEvents',
+  layout: 'management.sectionLayout',
+  'item-reservations': 'management.sectionItemReservations',
+  news: 'management.sectionNews',
+  'event-analytics': 'management.sectionEventAnalytics',
+  audit: 'management.sectionAudit',
+  'report-centre': 'management.sectionReportCentre',
+  reports: 'management.sectionReports',
+};
+
+/** @deprecated Prefer SECTION_SUBTITLE_KEYS + vue-i18n */
 export const SECTION_SUBTITLES = {
   bookings: 'Review vendor slot requests, approve or request revision, and verify payments.',
   feedback: 'Moderate community reviews and manage visibility on the public portal.',

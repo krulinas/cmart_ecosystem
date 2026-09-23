@@ -31,7 +31,7 @@ class AuthController extends Controller
             'vendor_status' => 'none',
         ]);
 
-        return $this->respondWithToken($user, '201 Created: Account registered successfully.', 201);
+        return $this->respondWithToken($user, __('auth.api.registered'), 201);
     }
 
     public function login(Request $request)
@@ -45,11 +45,11 @@ class AuthController extends Controller
 
         if (!$user || !Hash::check($validated['password'], $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['401 Unauthorized: Invalid email or password.'],
+                'email' => [__('auth.api.invalid_credentials')],
             ]);
         }
 
-        return $this->respondWithToken($user, '200 OK: Authentication successful.');
+        return $this->respondWithToken($user, __('auth.api.authenticated'));
     }
 
     public function me(Request $request)
@@ -64,7 +64,7 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'message' => '200 OK: Session terminated successfully.',
+            'message' => __('auth.api.logged_out'),
         ]);
     }
 
@@ -110,11 +110,11 @@ class AuthController extends Controller
             }
 
             // Reuse respondWithToken() for a consistent JSON response shape
-            return $this->respondWithToken($user, '200 OK: Google authentication successful.');
+            return $this->respondWithToken($user, __('auth.api.google_authenticated'));
 
         } catch (\Exception $e) {
             return response()->json([
-                'message' => '500 Internal Server Error: Failed to authenticate with Google.',
+                'message' => __('auth.api.google_failed'),
                 'error' => $e->getMessage()
             ], 500);
         }

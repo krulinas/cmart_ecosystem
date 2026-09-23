@@ -7,18 +7,18 @@
     <div
       v-if="!displaySources.length"
       class="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-ink-50 px-2.5 py-0.5 text-[11px] font-semibold text-ink-600"
-      title="No analytics sources available for this event"
+      :title="t('organizer.analytics.badge.noDataTitle')"
     >
-      No Data
+      {{ t('organizer.analytics.badge.noData') }}
     </div>
 
     <template v-else>
       <span
         v-if="mode === 'mixed'"
         class="inline-flex items-center rounded-full border border-teal-200 bg-teal-50 px-2.5 py-0.5 text-[11px] font-semibold text-teal-950"
-        title="Overview combines System Data and CSV survey responses"
+        :title="t('organizer.analytics.badge.mixedTitle')"
       >
-        Mixed Sources
+        {{ t('organizer.analytics.badge.mixedSources') }}
       </span>
 
       <span
@@ -29,15 +29,15 @@
         :title="tooltipFor(source)"
       >
         <template v-if="source.type === 'csv_import'">
-          CSV: {{ source.original_filename || 'survey file' }}
+          {{ t('organizer.analytics.badge.csvPrefix', { filename: source.original_filename || t('organizer.analytics.badge.surveyFile') }) }}
         </template>
         <template v-else>
-          System Data
+          {{ t('organizer.analytics.badge.systemData') }}
         </template>
         <span
           v-if="source.included_in_analytics === false"
           class="ml-1 font-medium opacity-70"
-        >(excluded)</span>
+        >{{ t('organizer.analytics.badge.excluded') }}</span>
       </span>
     </template>
   </div>
@@ -45,6 +45,10 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { formatLocaleDateTime } from '../../utils/localeFormat';
+
+const { t } = useI18n();
 
 const props = defineProps({
   sources: { type: Array, default: () => [] },
@@ -99,7 +103,7 @@ const pillClass = (source) => {
 const formatDate = (value) => {
   if (!value) return '';
   try {
-    return new Date(value).toLocaleString();
+    return formatLocaleDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
   } catch {
     return String(value);
   }
@@ -112,19 +116,19 @@ const humanSources = (list) => (list || [])
 const tooltipFor = (source) => {
   if (source.type === 'csv_import') {
     const parts = [
-      source.original_filename || 'CSV import',
-      source.batch_id != null ? `batch #${source.batch_id}` : null,
+      source.original_filename || t('organizer.analytics.badge.csvImport'),
+      source.batch_id != null ? t('organizer.analytics.badge.batch', { id: source.batch_id }) : null,
       source.respondent_count != null ? `n = ${source.respondent_count}` : null,
       source.schema_version || null,
-      source.imported_at ? `imported ${formatDate(source.imported_at)}` : null,
+      source.imported_at ? t('organizer.analytics.badge.imported', { date: formatDate(source.imported_at) }) : null,
       source.inclusion_label || null,
     ];
     return parts.filter(Boolean).join(' · ');
   }
   const parts = [
-    'System Database',
+    t('organizer.analytics.badge.systemDatabase'),
     humanSources(source.sources),
-    source.updated_at ? `updated ${formatDate(source.updated_at)}` : null,
+    source.updated_at ? t('organizer.analytics.badge.updated', { date: formatDate(source.updated_at) }) : null,
     source.inclusion_label || null,
   ];
   return parts.filter(Boolean).join(' · ');

@@ -1,13 +1,13 @@
 <template>
   <WorkspaceShell
     v-if="authorized"
-    :theme="workspaceTheme"
+    :theme="resolvedWorkspaceTheme"
     :nav-groups="groupedNavItems"
     :flat-nav-items="filteredNavItems"
     :workspace-title="heroTitle"
     :workspace-subtitle="heroSubtitle"
     :section-subtitle="sectionSubtitle"
-    :user-name="auth.user?.name || 'Management User'"
+    :user-name="auth.user?.name || t('management.managementUserFallback')"
     :user-role-label="userRoleLabel"
     :role-badge="roleBadge"
     :tier-badge="tierBadge"
@@ -20,8 +20,8 @@
         v-if="sessionReady && showReservedHqNotice"
         class="mb-5 flex flex-col gap-2 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-amber-50/40 px-4 py-3 text-sm text-blue-950"
       >
-        <div class="font-bold">Reserved HQ Access</div>
-        <div class="text-xs text-blue-800/80">Technical override mode for Carboot event operations and analytics.</div>
+        <div class="font-bold">{{ t('management.reservedHqTitle') }}</div>
+        <div class="text-xs text-blue-800/80">{{ t('management.reservedHqBody') }}</div>
       </div>
     </template>
 
@@ -36,14 +36,14 @@
         <span class="hidden sm:inline">{{ refreshButtonLabel }}</span>
       </button>
       <button class="ml-btn-ghost text-sm ring-1 ring-ink-200/80 bg-white/70" @click="logout">
-        Logout
+        {{ t('common.logout') }}
       </button>
     </template>
 
     <div v-if="!sessionReady" class="flex flex-col items-center justify-center rounded-2xl border border-ink-200 bg-white py-20 text-center shadow-sm">
       <div class="h-10 w-10 animate-pulse rounded-full bg-ink-200" />
       <p class="mt-4 text-sm font-medium text-ink-500">
-        {{ canPerformCarbootOperations ? 'Preparing your event workspace…' : 'Preparing your venue workspace…' }}
+        {{ canPerformCarbootOperations ? t('management.preparingEventWorkspace') : t('management.preparingVenueWorkspace') }}
       </p>
     </div>
 
@@ -135,24 +135,27 @@ import {
   ANALYTICS_HUB_TAB_STORAGE_KEY,
   CARBOOT_ANALYTICS_HASHES,
   LEGACY_ANALYTICS_HASH_REDIRECTS,
+  SECTION_SUBTITLE_KEYS,
   SECTION_SUBTITLES,
 } from '../../config/workspaceNav';
 import { MANAGEMENT_WORKSPACE_ROLES, defaultManagementHashForRole } from '../../utils/managementRoles';
 import { getManagementUnreadNotificationCount } from '../../services/reportWorkflowApi';
+import { useI18n } from 'vue-i18n';
 
-const SECTION_LABELS = {
-  bookings: 'Bookings',
-  feedback: 'Feedback',
-  events: 'Events',
-  layout: 'Layout Management',
-  'item-reservations': 'Item Reservations',
-  news: 'News',
-  'event-analytics': 'Analytics Hub',
-  audit: 'Booking Audit Log',
-  reports: 'Reports',
-  'report-centre': 'Report Centre',
+const SECTION_LABEL_KEYS = {
+  bookings: 'management.bookings',
+  feedback: 'management.feedback',
+  events: 'management.carbootEvents',
+  layout: 'management.layoutManagement',
+  'item-reservations': 'management.itemReservations',
+  news: 'management.venueNews',
+  'event-analytics': 'management.analyticsHub',
+  audit: 'management.bookingAuditLog',
+  reports: 'management.reports',
+  'report-centre': 'management.reportCentre',
 };
 
+const { t } = useI18n();
 const toast = useToast();
 const router = useRouter();
 const route = useRoute();
@@ -193,19 +196,38 @@ const notificationUnreadCount = ref(0);
 
 const authorized = computed(() => auth.hasAnyRole(MANAGEMENT_WORKSPACE_ROLES));
 
-const heroTitle = computed(() => workspaceTheme.value.workspaceTitle);
-const heroSubtitle = computed(() => workspaceTheme.value.workspaceSubtitle);
+const resolveThemeString = (theme, keyField) => {
+  const key = theme?.[keyField];
+  return key ? t(key) : '';
+};
+
+const resolvedWorkspaceTheme = computed(() => {
+  const theme = workspaceTheme.value;
+  return {
+    ...theme,
+    brandSubtitle: resolveThemeString(theme, 'brandSubtitleKey'),
+    workspaceTitle: resolveThemeString(theme, 'workspaceTitleKey'),
+    workspaceSubtitle: resolveThemeString(theme, 'workspaceSubtitleKey'),
+    roleBadge: resolveThemeString(theme, 'roleBadgeKey'),
+    venueLabel: resolveThemeString(theme, 'venueLabelKey'),
+    registryLabel: resolveThemeString(theme, 'registryLabelKey'),
+    registryDescription: resolveThemeString(theme, 'registryDescriptionKey'),
+  };
+});
+
+const heroTitle = computed(() => resolvedWorkspaceTheme.value.workspaceTitle);
+const heroSubtitle = computed(() => resolvedWorkspaceTheme.value.workspaceSubtitle);
 const showReservedHqNotice = computed(() => auth.isSuperAdmin);
-const roleBadge = computed(() => workspaceTheme.value.roleBadge || '');
+const roleBadge = computed(() => resolvedWorkspaceTheme.value.roleBadge || '');
 const tierBadge = computed(() => {
-  if (workspaceTheme.value.hideTierBadge) return '';
-  return workspaceTheme.value.tierLabel || '';
+  if (resolvedWorkspaceTheme.value.hideTierBadge) return '';
+  return resolvedWorkspaceTheme.value.tierLabel || '';
 });
 const branchName = computed(() => {
-  if (workspaceTheme.value.venueLabel) return workspaceTheme.value.venueLabel;
+  if (resolvedWorkspaceTheme.value.venueLabel) return resolvedWorkspaceTheme.value.venueLabel;
   const profileName = auth.managementProfile?.branch_name;
   if (profileName && profileName !== 'CMart Main Branch') return profileName;
-  return 'CMart Changlun';
+  return t('management.venueChanglunFallback');
 });
 
 const userRoleLabel = computed(() => auth.roleLabel);
@@ -214,14 +236,17 @@ const shellDepartment = computed(() => {
   if (!canPerformCarbootOperations.value) {
     const raw = auth.managementProfile?.department || '';
     if (!raw || /organizer|carboot\s*ops|carboot\s*operations|tier\s*\d/i.test(raw)) {
-      return 'Venue & Activities';
+      return t('management.venueActivitiesFallback');
     }
     return raw;
   }
   return auth.managementProfile?.department || '';
 });
 
-const sectionSubtitle = computed(() => SECTION_SUBTITLES[activeSection.value] || SECTION_SUBTITLES.bookings);
+const sectionSubtitle = computed(() => {
+  const key = SECTION_SUBTITLE_KEYS[activeSection.value] || SECTION_SUBTITLE_KEYS.bookings;
+  return t(key) || SECTION_SUBTITLES[activeSection.value] || SECTION_SUBTITLES.bookings;
+});
 
 const activeSectionState = computed(() => sectionCache.value[activeSection.value] ?? {});
 
@@ -231,18 +256,21 @@ const showSectionLoader = computed(() => {
 });
 
 const sectionLoadingMessage = computed(() => {
-  const label = SECTION_LABELS[activeSection.value] || 'section';
-  return `Loading ${label.toLowerCase()}…`;
+  const key = SECTION_LABEL_KEYS[activeSection.value];
+  const label = key ? t(key) : t('common.loading');
+  return `${t('common.loading')} ${label}`;
 });
 
 const refreshButtonLabel = computed(() => {
-  const label = SECTION_LABELS[activeSection.value] || 'Section';
-  return isRefreshing.value ? 'Refreshing…' : `Refresh ${label}`;
+  const key = SECTION_LABEL_KEYS[activeSection.value];
+  const label = key ? t(key) : t('common.refresh');
+  return isRefreshing.value ? t('common.loading') : `${t('common.refresh')} ${label}`;
 });
 
 const refreshButtonTitle = computed(() => {
-  const label = SECTION_LABELS[activeSection.value] || 'active section';
-  return isRefreshing.value ? 'Reloading data…' : `Reload ${label} data`;
+  const key = SECTION_LABEL_KEYS[activeSection.value];
+  const label = key ? t(key) : t('common.refresh');
+  return isRefreshing.value ? t('common.loading') : `${t('common.refresh')} · ${label}`;
 });
 
 const syncSectionFromHash = () => {

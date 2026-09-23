@@ -20,11 +20,11 @@
         <div class="absolute inset-0 bg-[rgba(15,23,42,0.65)] backdrop-blur-[6px]" @click="close" />
 
         <div class="relative z-10 w-full max-w-2xl rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 overflow-hidden max-h-[90vh] overflow-y-auto" @click.stop>
-          <div v-if="loading" class="p-10 text-center text-ink-500">Loading item details…</div>
+          <div v-if="loading" class="p-10 text-center text-ink-500">{{ t('marketplace.details.loading') }}</div>
 
           <div v-else-if="loadError" class="p-10 text-center">
-            <p class="text-sm text-rose-700 font-semibold">Unable to load this preview item.</p>
-            <button type="button" class="mt-4 ml-btn-ghost text-sm" @click="loadItem">Try Again</button>
+            <p class="text-sm text-rose-700 font-semibold">{{ t('marketplace.details.loadError') }}</p>
+            <button type="button" class="mt-4 ml-btn-ghost text-sm" @click="loadItem">{{ t('marketplace.details.tryAgain') }}</button>
           </div>
 
           <template v-else-if="item">
@@ -42,41 +42,41 @@
 
               <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div>
-                  <p class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ item.category }}</p>
+                  <p class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ categoryLabel }}</p>
                   <h2 id="marketplace-item-details-title" class="mt-1 text-2xl font-extrabold text-ink-900">{{ item.name }}</h2>
                   <p class="mt-2 text-sm text-emerald-700 font-medium">
-                    Available at CMart Carboot
+                    {{ t('marketplace.details.availableAt') }}
                     <span v-if="item.event?.date_label"> · {{ item.event.date_label }}</span>
-                    . Purchase: In-person only.
+                    {{ t('marketplace.details.purchaseInPersonSuffix') }}
                   </p>
                   <p
                     v-if="item.has_active_reservation"
                     class="mt-2 text-sm font-semibold text-amber-700"
                     data-testid="marketplace-item-already-reserved"
                   >
-                    This item already has an active reservation.
+                    {{ t('marketplace.details.alreadyReserved') }}
                   </p>
                 </div>
                 <p class="text-lg font-black text-brand-700 shrink-0">
-                  Guide Price: {{ formatItemPrice(item) }}
+                  {{ t('marketplace.details.guidePricePrefix') }} {{ priceLabel }}
                 </p>
               </div>
 
               <dl class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-                  <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Condition</dt>
+                  <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('marketplace.details.condition') }}</dt>
                   <dd class="mt-1 font-semibold text-ink-900">{{ item.condition }}</dd>
                 </div>
                 <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-                  <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Budget Guide</dt>
-                  <dd class="mt-1 font-semibold text-ink-900 capitalize">{{ item.pricing_type.replace('_', ' ') }}</dd>
+                  <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('marketplace.details.budgetGuide') }}</dt>
+                  <dd class="mt-1 font-semibold text-ink-900 capitalize">{{ pricingTypeLabel }}</dd>
                 </div>
                 <div
                   v-if="item.reservation_service_fee != null"
                   class="rounded-xl border border-ink-100 bg-ink-50/50 p-4 sm:col-span-2"
                   data-testid="marketplace-reservation-fee"
                 >
-                  <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Reservation service fee</dt>
+                  <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('marketplace.details.reservationFee') }}</dt>
                   <dd class="mt-1 font-semibold text-ink-900">
                     {{ formatReservationFee(item.reservation_service_fee, item.reservation_service_fee_currency) }}
                   </dd>
@@ -84,7 +84,7 @@
               </dl>
 
               <div v-if="item.description" class="mt-4 rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-ink-400">Description</h3>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('marketplace.details.description') }}</h3>
                 <p class="mt-2 text-sm text-ink-700 whitespace-pre-line">{{ item.description }}</p>
               </div>
 
@@ -97,11 +97,11 @@
                       :alt="`${item.vendor.business_name} logo`"
                       class="h-full w-full object-cover"
                     />
-                    <span v-else class="text-[10px] font-bold uppercase text-ink-400">Vendor</span>
+                    <span v-else class="text-[10px] font-bold uppercase text-ink-400">{{ t('marketplace.details.vendor') }}</span>
                   </div>
                   <div>
-                    <p class="text-xs font-bold uppercase tracking-wider text-ink-400">Vendor</p>
-                    <h3 class="text-lg font-bold text-ink-900">{{ item.vendor?.business_name || 'CMart Vendor' }}</h3>
+                    <p class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('marketplace.details.vendor') }}</p>
+                    <h3 class="text-lg font-bold text-ink-900">{{ item.vendor?.business_name || t('marketplace.details.cmartVendor') }}</h3>
                     <p v-if="item.vendor?.business_category" class="text-sm text-brand-700 font-semibold mt-0.5">
                       {{ item.vendor.business_category }}
                     </p>
@@ -113,7 +113,7 @@
               </div>
 
               <div class="mt-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-end gap-3">
-                <button type="button" class="ml-btn-ghost" @click="close">Close</button>
+                <button type="button" class="ml-btn-ghost" @click="close">{{ t('marketplace.details.close') }}</button>
                 <a
                   v-if="whatsappContact"
                   :href="whatsappContact.url"
@@ -121,9 +121,9 @@
                   rel="noopener noreferrer"
                   class="ml-btn-ghost"
                   data-testid="marketplace-whatsapp-contact"
-                  :aria-label="`Contact ${item.vendor?.business_name || 'vendor'} on WhatsApp`"
+                  :aria-label="t('marketplace.details.contactWhatsAppAria', { name: item.vendor?.business_name || t('marketplace.details.vendor') })"
                 >
-                  Contact Vendor on WhatsApp
+                  {{ t('marketplace.details.contactWhatsApp') }}
                 </a>
                 <router-link
                   v-if="reserveMode === 'login'"
@@ -131,7 +131,7 @@
                   class="ml-btn-primary"
                   data-testid="marketplace-reserve-login"
                 >
-                  Log in to Reserve
+                  {{ t('marketplace.details.logInToReserve') }}
                 </router-link>
                 <button
                   v-else-if="reserveMode === 'reserve'"
@@ -140,7 +140,7 @@
                   data-testid="marketplace-reserve-cta"
                   @click="showReserveModal = true"
                 >
-                  Reserve
+                  {{ t('marketplace.details.reserve') }}
                 </button>
                 <button
                   v-else-if="reserveMode === 'already_reserved'"
@@ -149,7 +149,7 @@
                   disabled
                   data-testid="marketplace-already-reserved"
                 >
-                  Already reserved
+                  {{ t('marketplace.details.alreadyReservedCta') }}
                 </button>
                 <button
                   v-else-if="reserveMode === 'not_configured'"
@@ -158,21 +158,21 @@
                   disabled
                   data-testid="marketplace-reservation-unavailable"
                 >
-                  Reservation unavailable
+                  {{ t('marketplace.details.reservationUnavailable') }}
                 </button>
                 <p
                   v-else-if="reserveMode === 'own_item'"
                   class="text-sm font-semibold text-ink-500"
                   data-testid="marketplace-own-listing"
                 >
-                  Your listing
+                  {{ t('marketplace.details.yourListing') }}
                 </p>
                 <p
                   v-else-if="reserveMode === 'ineligible_role'"
                   class="text-sm font-semibold text-ink-500"
                   data-testid="marketplace-reservation-ineligible"
                 >
-                  Reservations are available to community members only.
+                  {{ t('marketplace.details.communityOnly') }}
                 </p>
                 <button
                   v-else
@@ -181,14 +181,14 @@
                   disabled
                   data-testid="marketplace-reservation-closed"
                 >
-                  Reservation unavailable
+                  {{ t('marketplace.details.reservationUnavailable') }}
                 </button>
               </div>
               <p
                 v-if="reserveMode === 'not_configured'"
                 class="mt-3 text-sm text-ink-500 sm:text-right"
               >
-                This event is currently available for in-person browsing only.
+                {{ t('marketplace.details.inPersonOnlyNote') }}
               </p>
             </div>
           </template>
@@ -207,6 +207,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import api from '../services/api';
 import ReuseItemImageGallery from './ReuseItemImageGallery.vue';
 import ItemReservationConfirmModal from './ItemReservationConfirmModal.vue';
@@ -220,15 +221,26 @@ import { useAuthStore } from '../stores/auth';
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   itemId: { type: [Number, String], default: null },
+  carbootEventId: { type: [Number, String], default: null },
 });
 
 const emit = defineEmits(['update:modelValue', 'reserved']);
+const { t } = useI18n();
 
 const auth = useAuthStore();
 const item = ref(null);
 const loading = ref(false);
 const loadError = ref(false);
 const showReserveModal = ref(false);
+
+const CATEGORY_KEYS = {
+  'Pre-loved / Thrift': 'marketplace.categories.preloved',
+  'Food & Beverages': 'marketplace.categories.food',
+  'Clothing & Apparel': 'marketplace.categories.clothing',
+  'Handicrafts & Art': 'marketplace.categories.handicrafts',
+  'Electronics & Gadgets': 'marketplace.categories.electronics',
+  Others: 'marketplace.categories.others',
+};
 
 const close = () => emit('update:modelValue', false);
 
@@ -241,26 +253,40 @@ const reserveMode = computed(() => reserveCtaMode({
 
 const whatsappContact = computed(() => vendorWhatsappContact(item.value));
 
+const categoryLabel = computed(() => {
+  const key = CATEGORY_KEYS[item.value?.category];
+  return key ? t(key) : item.value?.category;
+});
+
+const priceLabel = computed(() => {
+  if (item.value?.pricing_type === 'free') return t('marketplace.pricing.free');
+  if (item.value?.pricing_type === 'donation') return t('marketplace.pricing.donation');
+  return formatItemPrice(item.value);
+});
+
+const pricingTypeLabel = computed(() => {
+  const type = item.value?.pricing_type;
+  if (type === 'free') return t('marketplace.pricing.free');
+  if (type === 'donation') return t('marketplace.pricing.donation');
+  return String(type || '').replace('_', ' ');
+});
+
 const policyTitle = computed(() => {
-  if (reserveMode.value === 'already_reserved') return 'This item is currently on hold.';
-  if (reserveMode.value === 'not_configured') return 'In-person browsing for this event.';
+  if (reserveMode.value === 'already_reserved') return t('marketplace.details.policyHoldTitle');
+  if (reserveMode.value === 'not_configured') return t('marketplace.details.policyInPersonTitle');
   if (reserveMode.value === 'reserve' || reserveMode.value === 'login') {
-    return 'Reserve a hold, then collect in person at the event.';
+    return t('marketplace.details.policyReserveTitle');
   }
-  return 'Browse online, collect in person.';
+  return t('marketplace.details.policyBrowseTitle');
 });
 
 const policyBody = computed(() => {
-  if (reserveMode.value === 'already_reserved') {
-    return 'Another visitor already has an active reservation. Availability and final item condition are still confirmed with the vendor at the booth.';
-  }
-  if (reserveMode.value === 'not_configured') {
-    return 'This event is currently available for in-person browsing only. Item payment, inspection and collection take place at the vendor booth.';
-  }
+  if (reserveMode.value === 'already_reserved') return t('marketplace.details.policyHoldBody');
+  if (reserveMode.value === 'not_configured') return t('marketplace.details.policyInPersonBody');
   if (reserveMode.value === 'reserve' || reserveMode.value === 'login') {
-    return 'A reservation is a temporary hold, not an online purchase. The item price is a guide. Item payment, inspection and collection still take place at the vendor booth. Any reservation service fee is separate from the item price.';
+    return t('marketplace.details.policyReserveBody');
   }
-  return 'Items are purchased and collected in person. CMart does not process item payment, delivery or refunds.';
+  return t('marketplace.details.policyBrowseBody');
 });
 
 const policyToneClass = computed(() => (
@@ -276,10 +302,11 @@ const policyTitleClass = computed(() => (
 ));
 
 const loginHref = computed(() => {
-  const redirect = props.itemId
-    ? `/marketplace?item=${encodeURIComponent(props.itemId)}`
-    : '/marketplace';
-  return loginPathWithRedirect(redirect);
+  const params = new URLSearchParams();
+  if (props.itemId) params.set('item', String(props.itemId));
+  if (props.carbootEventId) params.set('event', String(props.carbootEventId));
+  const query = params.toString();
+  return loginPathWithRedirect(query ? `/marketplace?${query}` : '/marketplace');
 });
 
 const loadItem = async () => {
@@ -287,7 +314,9 @@ const loadItem = async () => {
   loading.value = true;
   loadError.value = false;
   try {
-    const { data } = await api.get(`/marketplace/items/${props.itemId}`);
+    const { data } = await api.get(`/marketplace/items/${props.itemId}`, {
+      params: { carboot_event_id: props.carbootEventId || undefined },
+    });
     item.value = normalizeReuseItem(data.item);
   } catch (error) {
     console.error('Unable to load preview item:', error);
@@ -309,7 +338,7 @@ const onReserveConflict = async () => {
 };
 
 watch(
-  () => [props.modelValue, props.itemId],
+  () => [props.modelValue, props.itemId, props.carbootEventId],
   ([open, id]) => {
     if (open && id) loadItem();
     if (!open) {

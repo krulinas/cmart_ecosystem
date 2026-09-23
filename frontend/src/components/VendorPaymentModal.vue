@@ -32,20 +32,20 @@
           >
             <div class="border-b border-ink-100 px-5 py-4">
               <h3 id="payment-modal-title" class="text-lg font-extrabold text-ink-900">
-                Submit payment proof
+                {{ t('payment.modal.title') }}
               </h3>
               <p v-if="amount != null" class="mt-1 text-sm text-ink-500">
-                Booking {{ formatBookingReference(bookingId) }} · RM {{ formattedAmount }}
+                {{ formatBookingReference(bookingId) }} · RM {{ formattedAmount }}
               </p>
             </div>
 
             <div class="px-5 py-4 space-y-4" data-testid="invoice-payment-section">
               <p class="text-sm text-ink-700 leading-relaxed">
-                Upload your transfer receipt or payment screenshot. The Carboot Organizer will verify your payment before your booth pass is released.
+                {{ t('payment.modal.lead') }}
               </p>
 
               <div>
-                <label for="payment-proof-input" class="ml-label">Payment proof (image)</label>
+                <label for="payment-proof-input" class="ml-label">{{ t('payment.modal.proofLabel') }}</label>
                 <input
                   id="payment-proof-input"
                   ref="fileInputRef"
@@ -56,7 +56,7 @@
                   :disabled="submitting"
                   @change="onFileChange"
                 />
-                <p v-if="selectedFileName" class="mt-2 text-xs text-ink-500">Selected: {{ selectedFileName }}</p>
+                <p v-if="selectedFileName" class="mt-2 text-xs text-ink-500">{{ t('payment.modal.selectedPrefix') }} {{ selectedFileName }}</p>
               </div>
 
               <p v-if="errorMessage" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
@@ -80,7 +80,7 @@
                 :disabled="submitting"
                 @click="close"
               >
-                Cancel
+                {{ t('payment.modal.cancel') }}
               </button>
               <button
                 type="button"
@@ -89,7 +89,7 @@
                 :disabled="submitting || !selectedFile"
                 @click="submitPayment"
               >
-                {{ submitting ? 'Submitting…' : 'Submit payment' }}
+                {{ submitting ? t('payment.modal.submitting') : t('payment.modal.submit') }}
               </button>
             </div>
           </div>
@@ -101,6 +101,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import api from '../services/api';
 import {
@@ -116,6 +117,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue', 'submitted']);
+const { t } = useI18n();
 const toast = useToast();
 
 const fileInputRef = ref(null);
@@ -161,7 +163,7 @@ const closeIfIneligible = (booking) => {
 
 const submitPayment = async () => {
   if (!selectedFile.value || !props.bookingId) {
-    errorMessage.value = 'Please choose a payment proof image before submitting.';
+    errorMessage.value = t('payment.modal.chooseFile');
     return;
   }
 
@@ -177,13 +179,13 @@ const submitPayment = async () => {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
 
-    successMessage.value = data.message || 'Payment proof submitted successfully.';
+    successMessage.value = data.message || t('payment.modal.successFallback');
     emit('submitted', data);
     setTimeout(() => {
       emit('update:modelValue', false);
     }, 600);
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Unable to submit payment proof.';
+    errorMessage.value = error.response?.data?.message || t('payment.modal.unableSubmit');
   } finally {
     submitting.value = false;
   }

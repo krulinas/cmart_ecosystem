@@ -1,9 +1,13 @@
+import { tt, statusLabel as i18nStatusLabel, getAppLocale } from '../i18n';
+import { bcp47ForLocale } from '../i18n/localeStorage';
+import { formatLocaleDate, formatLocaleDateTime } from './localeFormat';
+
 const MY_TZ = 'Asia/Kuala_Lumpur';
 
 export const PIPELINE_STEPS = [
-  { index: 1, status: 'Submitted', label: 'Submitted' },
-  { index: 2, status: 'Pending_Organizer', label: 'Organizer Review' },
-  { index: 3, status: 'Approved', label: 'Approved' },
+  { index: 1, status: 'Submitted', labelKey: 'status.Submitted' },
+  { index: 2, status: 'Pending_Organizer', labelKey: 'status.Pending_Organizer' },
+  { index: 3, status: 'Approved', labelKey: 'status.Approved' },
 ];
 
 export const PENDING_STATUSES = ['Pending_Organizer', 'Needs_Revision'];
@@ -22,13 +26,19 @@ export const PRODUCT_CATEGORIES = [
 ];
 
 export const FILTER_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'pending', label: 'Pending' },
-  { id: 'approved', label: 'Approved' },
-  { id: 'rejected', label: 'Rejected' },
-  { id: 'withdrawn', label: 'Withdrawn' },
-  { id: 'cancelled', label: 'Cancelled' },
+  { id: 'all', labelKey: 'booking.manage.filterAll' },
+  { id: 'pending', labelKey: 'booking.manage.filterPending' },
+  { id: 'approved', labelKey: 'booking.manage.filterApproved' },
+  { id: 'rejected', labelKey: 'booking.manage.filterRejected' },
+  { id: 'withdrawn', labelKey: 'booking.manage.filterWithdrawn' },
+  { id: 'cancelled', labelKey: 'booking.manage.filterCancelled' },
 ];
+
+export const filterTabLabel = (tab, t = tt) =>
+  tab?.labelKey ? t(tab.labelKey) : (tab?.label || '');
+
+export const pipelineStepLabel = (step, t = tt) =>
+  step?.labelKey ? t(step.labelKey) : (step?.label || '');
 
 export const formatBookingReference = (id) => {
   const numeric = Number.parseInt(String(id ?? ''), 10);
@@ -48,7 +58,7 @@ export const isValidBookingDate = (dateStr) => {
 
 export const formatBookingDate = (dateStr) => {
   if (!isValidBookingDate(dateStr)) return '—';
-  return new Date(dateStr).toLocaleDateString('en-GB', {
+  return new Date(dateStr).toLocaleDateString(bcp47ForLocale(getAppLocale()), {
     timeZone: MY_TZ,
     day: 'numeric',
     month: 'short',
@@ -56,17 +66,12 @@ export const formatBookingDate = (dateStr) => {
   });
 };
 
-export const statusLabel = (status) =>
-  ({
-    Pending_Organizer: 'Pending Organizer Review',
-    Needs_Revision: 'Needs Revision',
-    Approved: 'Approved',
-    Rejected: 'Rejected',
-    Cancelled: 'Cancelled',
-    Withdrawn: 'Withdrawn',
-    Pending_Staff: 'Pending Organizer Review (legacy)',
-    Pending_Boss: 'Pending Organizer Review (legacy)',
-  }[status] || status);
+export const statusLabel = (status, t = tt) => {
+  if (!status) return '';
+  const translated = i18nStatusLabel(status, t);
+  if (translated && translated !== `status.${status}`) return translated;
+  return String(status);
+};
 
 export const statusBadgeClass = (status) =>
   ({
@@ -96,14 +101,12 @@ export const matchesStatusFilter = (booking, filterId) => {
   return true;
 };
 
-export const allocationStatusLabel = (status) =>
-  ({
-    reserved: 'Reserved',
-    confirmed: 'Confirmed',
-    released: 'Released',
-    cancelled: 'Cancelled',
-    mixed: 'Mixed',
-  }[status] || status);
+export const allocationStatusLabel = (status, t = tt) => {
+  if (!status) return '';
+  const key = `status.${status}`;
+  const translated = t(key);
+  return translated === key ? String(status) : translated;
+};
 
 export const siteLabelsForBooking = (booking) => {
   const sites = booking?.site_selection?.sites;
@@ -190,15 +193,13 @@ export const formatWithdrawnDate = (value) => {
 export const canVendorEdit = (booking) =>
   ['Pending_Organizer', 'Needs_Revision'].includes(booking?.approval_status);
 
-/** Deferred BM copy — preserved for future locale toggle. */
+/** Deferred BM copy — prefer booking.withdraw.noRefundWarning via vue-i18n. */
 export const NO_REFUND_WITHDRAWAL_WARNING_MS =
   'Anda boleh menarik diri selepas bayaran dibuat, tetapi bayaran tidak akan dipulangkan. Tapak yang telah ditempah akan dibuka semula kepada vendor lain.';
 
-export const NO_REFUND_WITHDRAWAL_WARNING =
-  'You may withdraw after payment has been made, but no refund will be issued. Any reserved sites will be released for other vendors.';
+export const NO_REFUND_WITHDRAWAL_WARNING = () => tt('booking.withdraw.noRefundWarning');
 
-export const UNPAID_WITHDRAWAL_WARNING =
-  'Withdrawing will end this booking and release your selected sites for other vendors. This action cannot be undone from your dashboard.';
+export const UNPAID_WITHDRAWAL_WARNING = () => tt('booking.withdraw.unpaidWarning');
 
 export const withdrawalPolicyForBooking = (booking) =>
   booking?.withdrawal_policy || null;
@@ -224,19 +225,19 @@ export const requiresNoRefundAcknowledgement = (booking) => {
 export const withdrawalWarningMessage = (booking) => {
   const policy = withdrawalPolicyForBooking(booking);
   if (policy?.warning_message) return policy.warning_message;
-  if (requiresNoRefundAcknowledgement(booking)) return NO_REFUND_WITHDRAWAL_WARNING;
-  return UNPAID_WITHDRAWAL_WARNING;
+  if (requiresNoRefundAcknowledgement(booking)) return NO_REFUND_WITHDRAWAL_WARNING();
+  return UNPAID_WITHDRAWAL_WARNING();
 };
 
-export const withdrawnNoRefundNotice = (booking) => {
+export const withdrawnNoRefundNotice = (booking, t = tt) => {
   if (!isWithdrawnBooking(booking)) return null;
   const paymentState = withdrawalPolicyForBooking(booking)?.payment_state
     || normalizePaymentStatus(booking).toLowerCase();
   if (paymentState === 'paid' || paymentState === 'pending verification') {
-    return 'Payment remains recorded. No refund was issued. Physical sites have been released.';
+    return t('booking.details.withdrawnPaidNotice');
   }
   if (paymentState === 'payment_submitted') {
-    return 'Payment proof remains on record. No refund was issued. Physical sites have been released.';
+    return t('booking.details.withdrawnProofNotice');
   }
   return null;
 };
@@ -256,12 +257,15 @@ export const organizerWithdrawalSummary = (booking) => {
   };
 };
 
-export const organizerPaymentStateLabel = (state) =>
-  ({
-    paid: 'Paid',
-    payment_submitted: 'Payment Submitted',
-    unpaid: 'Unpaid',
-  }[state] || 'Unpaid');
+export const organizerPaymentStateLabel = (state, t = tt) => {
+  const map = {
+    paid: 'status.Paid',
+    payment_submitted: 'status.payment_submitted',
+    unpaid: 'status.Unpaid',
+  };
+  const key = map[state] || 'status.Unpaid';
+  return t(key);
+};
 
 export const organizerReconciliationForBooking = (booking) =>
   booking?.withdrawal_reconciliation || null;
@@ -275,14 +279,14 @@ export const attendanceRetainedDayIds = (policy) =>
 export const attendanceReleaseCount = (policy, retainedDayIds) =>
   (policy?.retained_days || []).filter((day) => !retainedDayIds.includes(day.id)).length;
 
-export const attendanceExceptionValidation = (policy, retainedDayIds, reason, acknowledged) => {
-  if (!retainedDayIds.length) return 'At least one EventDay must remain.';
-  if (reason.trim().length < 10) return 'Provide a reason of at least 10 characters.';
+export const attendanceExceptionValidation = (policy, retainedDayIds, reason, acknowledged, t = tt) => {
+  if (!retainedDayIds.length) return t('organizer.attendance.validationAtLeastOne');
+  if (reason.trim().length < 10) return t('organizer.attendance.validationReasonShort');
   if (attendanceReleaseCount(policy, retainedDayIds) < 1) {
-    return 'Deselect at least one future EventDay to apply an exception.';
+    return t('organizer.attendance.validationDeselectOne');
   }
   if (policy?.requires_no_refund_acknowledgement && !acknowledged) {
-    return 'No-refund acknowledgement is required.';
+    return t('organizer.attendance.validationAckRequired');
   }
   return '';
 };
@@ -314,8 +318,8 @@ export const productSummary = (booking) => {
   return details ? `${category} · ${details}` : category;
 };
 
-export const VENDOR_PAYMENT_APPROVAL_REQUIRED_MESSAGE =
-  'Your booking must be approved by the organizer before payment can be submitted.';
+export const VENDOR_PAYMENT_APPROVAL_REQUIRED_MESSAGE = () =>
+  tt('payment.approvalRequiredMessage');
 
 export const bookingApprovalStatusOf = (bookingOrRow) =>
   bookingOrRow?.approval_status || bookingOrRow?.booking_status || null;
@@ -367,22 +371,24 @@ export const isVendorPaymentLockedUntilApproval = (bookingOrRow) => {
 export const vendorPaymentBlockedMessage = (bookingOrRow) => {
   if (canVendorPayBooking(bookingOrRow)) return null;
   if (isVendorPaymentPendingVerification(bookingOrRow)) {
-    return 'Your payment proof is awaiting organizer verification.';
+    return tt('payment.proofAwaiting');
   }
   if (isBookingPaymentPaid(bookingOrRow)) {
-    return 'This booking has already been paid.';
+    return tt('payment.alreadyPaid');
   }
   if (bookingApprovalStatusOf(bookingOrRow) !== 'Approved') {
-    return VENDOR_PAYMENT_APPROVAL_REQUIRED_MESSAGE;
+    return VENDOR_PAYMENT_APPROVAL_REQUIRED_MESSAGE();
   }
-  return 'Payment is not available for this booking.';
+  return tt('payment.notAvailable');
 };
 
 export const vendorPaymentStatusLabel = (bookingOrRow) => {
-  if (isVendorPaymentLockedUntilApproval(bookingOrRow)) return 'Locked until approval';
-  if (isVendorPaymentPendingVerification(bookingOrRow)) return 'Payment submitted';
-  if (isBookingPaymentPaid(bookingOrRow)) return 'Paid';
-  return paymentStatusOf(bookingOrRow) || 'Unpaid';
+  if (isVendorPaymentLockedUntilApproval(bookingOrRow)) return tt('payment.lockedUntilApproval');
+  if (isVendorPaymentPendingVerification(bookingOrRow)) return tt('payment.paymentSubmitted');
+  if (isBookingPaymentPaid(bookingOrRow)) return tt('status.Paid');
+  const raw = paymentStatusOf(bookingOrRow);
+  if (!raw) return tt('status.Unpaid');
+  return statusLabel(raw) || tt('status.Unpaid');
 };
 
 export const formatVendorAmountLabel = (amount) => {
@@ -396,12 +402,12 @@ export const vendorBookingStatusHint = (booking, boothNumber = null) => {
   if (!booking) return null;
   const approval = booking.approval_status;
   if (approval === 'Pending_Organizer' || approval === 'Pending_Staff' || approval === 'Pending_Boss') {
-    return 'Waiting for organizer approval';
+    return tt('payment.waitingOrganizerApproval');
   }
   if (approval === 'Approved' && canVendorPayBooking(booking)) {
-    return 'Ready for payment';
+    return tt('payment.readyForPayment');
   }
-  return boothNumber ? `Booth ${boothNumber}` : null;
+  return boothNumber ? `${tt('booking.booth')} ${boothNumber}` : null;
 };
 
 const paymentSnapshot = (booking, paymentRecord = null) => {
@@ -419,12 +425,12 @@ const paymentSnapshot = (booking, paymentRecord = null) => {
   };
 };
 
-export const resolveVendorPaymentUi = (booking, paymentRecord = null) => {
+export const resolveVendorPaymentUi = (booking, paymentRecord = null, t = tt) => {
   if (!booking) {
     return {
       actionable: false,
       complete: false,
-      value: 'Not started',
+      value: t('payment.notStarted'),
       hint: null,
       statusKey: 'none',
       canPay: false,
@@ -435,8 +441,8 @@ export const resolveVendorPaymentUi = (booking, paymentRecord = null) => {
     return {
       actionable: false,
       complete: false,
-      value: 'Not applicable',
-      hint: statusLabel(booking.approval_status),
+      value: t('payment.notApplicable'),
+      hint: statusLabel(booking.approval_status, t),
       statusKey: 'terminal',
       canPay: false,
     };
@@ -453,8 +459,8 @@ export const resolveVendorPaymentUi = (booking, paymentRecord = null) => {
     return {
       actionable: true,
       complete: false,
-      value: status || 'Unpaid',
-      hint: amountLabel ? `${amountLabel} due` : 'Payment required',
+      value: status ? (statusLabel(status, t) || status) : t('status.Unpaid'),
+      hint: amountLabel ? t('payment.amountDue', { amount: amountLabel }) : t('payment.paymentRequired'),
       statusKey: 'unpaid',
       amount,
       canPay: true,
@@ -471,9 +477,11 @@ export const resolveVendorPaymentUi = (booking, paymentRecord = null) => {
     return {
       actionable: false,
       complete: false,
-      value: 'Locked until approval',
-      hint: amountLabel ? `${amountLabel} due after approval` : 'Payment is not due yet',
-      lockCopy: 'Payment will be available once the organizer approves your booking.',
+      value: t('payment.lockedUntilApproval'),
+      hint: amountLabel
+        ? t('payment.amountDue', { amount: amountLabel })
+        : t('payment.notDueYet'),
+      lockCopy: t('payment.availableAfterApproval'),
       statusKey: 'locked',
       amount,
       canPay: false,
@@ -485,8 +493,8 @@ export const resolveVendorPaymentUi = (booking, paymentRecord = null) => {
     return {
       actionable: false,
       complete: false,
-      value: 'Payment submitted',
-      hint: 'Waiting for organizer verification.',
+      value: t('payment.paymentSubmitted'),
+      hint: t('payment.waitingOrganizerVerification'),
       statusKey: 'pending',
       amount,
       canPay: false,
@@ -498,7 +506,7 @@ export const resolveVendorPaymentUi = (booking, paymentRecord = null) => {
     return {
       actionable: false,
       complete: true,
-      value: 'Paid',
+      value: t('status.Paid'),
       hint: amountLabel,
       statusKey: 'paid',
       amount,
@@ -512,8 +520,8 @@ export const resolveVendorPaymentUi = (booking, paymentRecord = null) => {
     return {
       actionable: false,
       complete: false,
-      value: 'Awaiting invoice',
-      hint: 'Check again after approval processing',
+      value: t('payment.awaitingInvoice'),
+      hint: t('payment.availableAfterApproval'),
       statusKey: 'awaiting',
       canPay: false,
     };
@@ -523,8 +531,8 @@ export const resolveVendorPaymentUi = (booking, paymentRecord = null) => {
     return {
       actionable: false,
       complete: false,
-      value: 'Not due yet',
-      hint: 'Pay after approval',
+      value: t('payment.notDueYet'),
+      hint: t('payment.availableAfterApproval'),
       statusKey: 'not_due',
       canPay: false,
     };
@@ -533,18 +541,18 @@ export const resolveVendorPaymentUi = (booking, paymentRecord = null) => {
   return {
     actionable: false,
     complete: false,
-    value: status,
+    value: statusLabel(status, t) || status,
     hint: amountLabel,
     statusKey: 'other',
     canPay: false,
   };
 };
 
-export const resolveVendorFocusPrimaryAction = (booking, payment = {}) => {
+export const resolveVendorFocusPrimaryAction = (booking, payment = {}, t = tt) => {
   if (!booking?.id) return null;
 
   if (booking.approval_status === 'Needs_Revision') {
-    return { type: 'view-booking', bookingId: booking.id, label: 'Review Booking' };
+    return { type: 'view-booking', bookingId: booking.id, label: t('vendor.onboarding.reviewBooking') };
   }
 
   if (payment.canPay) {
@@ -552,7 +560,7 @@ export const resolveVendorFocusPrimaryAction = (booking, payment = {}) => {
       type: 'pay',
       bookingId: booking.id,
       amount: payment.amount ?? null,
-      label: 'Pay Now',
+      label: t('vendor.focus.payNow'),
       emphasis: 'payment',
     };
   }
@@ -562,11 +570,11 @@ export const resolveVendorFocusPrimaryAction = (booking, payment = {}) => {
       type: 'pay',
       bookingId: booking.id,
       amount: payment.amount ?? null,
-      label: 'Pay Now',
+      label: t('vendor.focus.payNow'),
       emphasis: 'locked',
       disabled: true,
       locked: true,
-      lockHint: 'Payment will be available once the organizer approves your booking.',
+      lockHint: t('payment.availableAfterApproval'),
     };
   }
 
@@ -574,7 +582,7 @@ export const resolveVendorFocusPrimaryAction = (booking, payment = {}) => {
     return {
       type: 'view-document',
       bookingId: booking.id,
-      label: 'View Invoice',
+      label: t('payment.history.viewInvoice'),
     };
   }
 
@@ -582,15 +590,15 @@ export const resolveVendorFocusPrimaryAction = (booking, payment = {}) => {
     return {
       type: 'view-pass',
       bookingId: booking.id,
-      label: 'View Event Pass',
+      label: t('vendor.focus.viewEventPass'),
     };
   }
 
   if (PENDING_STATUSES.includes(booking.approval_status)) {
-    return { type: 'view-booking', bookingId: booking.id, label: 'View Booking' };
+    return { type: 'view-booking', bookingId: booking.id, label: t('booking.manage.viewDetails') };
   }
 
-  return { type: 'view-booking', bookingId: booking.id, label: 'View Details' };
+  return { type: 'view-booking', bookingId: booking.id, label: t('vendor.viewDetails') };
 };
 
 export const canVendorAccessWhatsAppGroup = (booking) =>
@@ -598,17 +606,16 @@ export const canVendorAccessWhatsAppGroup = (booking) =>
 
 export const VENDOR_WHATSAPP_GROUP_URL = 'https://chat.whatsapp.com/CMartVendorDemoGroup';
 
-export const formatDateTime = (value) => {
-  if (!value) return 'Not recorded';
+export const formatDateTime = (value, t = tt) => {
+  if (!value) return t('common.notRecorded');
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Not recorded';
-  return date.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: MY_TZ });
+  if (Number.isNaN(date.getTime())) return t('common.notRecorded');
+  return formatLocaleDateTime(date, { dateStyle: 'medium', timeStyle: 'short' });
 };
 
 export const formatOperationalDate = (dateStr) => {
   if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    timeZone: MY_TZ,
+  return formatLocaleDate(dateStr, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -624,14 +631,12 @@ export const recoveryStateOptions = [
   'operationally_unavailable',
 ];
 
-export const recoveryStateLabel = (state) =>
-  ({
-    recoverable: 'Recoverable',
-    partially_blocked: 'Partially Blocked',
-    fully_blocked: 'Fully Blocked',
-    expired: 'Expired',
-    operationally_unavailable: 'Operationally Unavailable',
-  }[state] || state);
+export const recoveryStateLabel = (state, t = tt) => {
+  if (!state) return '';
+  const key = `organizer.recovery.states.${state}`;
+  const translated = t(key);
+  return translated === key ? state : translated;
+};
 
 export const recoveryStateBadgeClass = (state) =>
   ({
@@ -651,24 +656,23 @@ export const recoveryPaymentBadgeClass = (state) =>
     unpaid: 'inline-flex rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-semibold text-ink-700',
   }[state] || 'inline-flex rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-semibold text-ink-700');
 
-export const releaseReasonLabel = (reason) =>
-  ({
-    organizer_day_exception: 'Organizer attendance exception',
-    booking_withdrawn: 'Vendor withdrawal',
-    booking_cancelled: 'Booking cancelled',
-    booking_rejected: 'Booking rejected',
-  }[reason] || reason || '—');
+export const releaseReasonLabel = (reason, t = tt) => {
+  if (!reason) return t('common.none');
+  const key = `organizer.recovery.releaseReasons.${reason}`;
+  const translated = t(key);
+  return translated === key ? reason : translated;
+};
 
 export const releasedSiteLabels = (row) =>
   (row?.released_sites || []).map((site) => site.label).filter(Boolean).join(', ') || '—';
 
-export const recoveryBlockerSummary = (row) => {
+export const recoveryBlockerSummary = (row, t = tt) => {
   const blockers = (row?.released_sites || [])
     .map((site) => site.blocker)
     .filter(Boolean);
   if (!blockers.length) return '';
   if (blockers.length === 1) return blockers[0];
-  return `${blockers.length} sites blocked`;
+  return t('organizer.recovery.sitesBlocked', { count: blockers.length });
 };
 
 export const buildRecoveryQueryParams = ({

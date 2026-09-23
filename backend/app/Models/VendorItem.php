@@ -75,6 +75,62 @@ class VendorItem extends Model
         return $this->hasOne(ItemReservation::class)->where('active_lock', 1);
     }
 
+    public function eventListings(): HasMany
+    {
+        return $this->hasMany(VendorItemEventListing::class);
+    }
+
+    public function sale(): HasOne
+    {
+        return $this->hasOne(VendorItemSale::class);
+    }
+
+    public function hasSale(): bool
+    {
+        if (array_key_exists('has_sale', $this->getAttributes())) {
+            return (bool) $this->getAttribute('has_sale');
+        }
+
+        if ($this->relationLoaded('sale')) {
+            return $this->sale !== null;
+        }
+
+        return $this->sale()->exists();
+    }
+
+    public function hasActiveReservationFlag(): bool
+    {
+        if (array_key_exists('has_active_reservation', $this->getAttributes())) {
+            return (bool) $this->getAttribute('has_active_reservation');
+        }
+
+        if ($this->relationLoaded('activeReservation')) {
+            return $this->activeReservation !== null;
+        }
+
+        return $this->reservations()->where('active_lock', 1)->exists();
+    }
+
+    /**
+     * Computed display status for UI (does not mutate stored status).
+     */
+    public function displayStatus(): string
+    {
+        if ($this->hasSale()) {
+            return 'sold';
+        }
+
+        if ($this->hasActiveReservationFlag()) {
+            return 'reserved';
+        }
+
+        if ($this->status !== 'active') {
+            return 'hidden';
+        }
+
+        return 'available';
+    }
+
     public function galleryImagesForApi(): array
     {
         if ($this->hasGalleryTable()) {

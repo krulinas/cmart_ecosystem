@@ -1,35 +1,35 @@
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <section class="ml-card">
-      <h2 class="text-lg font-extrabold text-ink-900 mb-4">{{ editingId ? 'Edit Post' : 'Create News Post' }}</h2>
+      <h2 class="text-lg font-extrabold text-ink-900 mb-4">{{ editingId ? t('staff.news.editTitle') : t('staff.news.createTitle') }}</h2>
       <form @submit.prevent="save" class="space-y-3">
         <div>
-          <label class="ml-label">Title</label>
+          <label class="ml-label">{{ t('staff.news.title') }}</label>
           <input v-model="form.title" required class="ml-input" />
         </div>
         <div>
-          <label class="ml-label">Category</label>
-          <input v-model="form.category" required class="ml-input" placeholder="Announcement" />
+          <label class="ml-label">{{ t('staff.news.category') }}</label>
+          <input v-model="form.category" required class="ml-input" :placeholder="t('staff.news.categoryPlaceholder')" />
         </div>
         <div>
-          <label class="ml-label">Short summary</label>
+          <label class="ml-label">{{ t('staff.news.shortSummary') }}</label>
           <textarea v-model="form.excerpt" required rows="5" class="ml-input"></textarea>
-          <p class="text-xs text-ink-500 mt-1">Shown as a short preview on the Venue News page.</p>
+          <p class="text-xs text-ink-500 mt-1">{{ t('staff.news.shortSummaryHint') }}</p>
         </div>
         <div>
-          <label class="ml-label">Full details (optional)</label>
+          <label class="ml-label">{{ t('staff.news.fullDetails') }}</label>
           <textarea v-model="form.body" rows="4" class="ml-input"></textarea>
         </div>
         <MultiImageUploadField
           ref="imageField"
-          label="News images (optional)"
+          :label="t('staff.news.newsImages')"
           :existing="editingImages"
           :legacy-field="legacyImagePath"
           @update:files="imageFiles = $event"
           @update:removeIds="removeImageIds = $event"
         />
         <div>
-          <label class="ml-label" for="news-video-input">Promotional video (optional)</label>
+          <label class="ml-label" for="news-video-input">{{ t('staff.news.promoVideo') }}</label>
           <input
             id="news-video-input"
             ref="videoInput"
@@ -39,11 +39,11 @@
             @change="onVideoSelected"
           />
           <p class="text-xs text-ink-500 mt-1">
-            One MP4 or WebM video, up to 10 MB. Images remain the cover. Video is secondary and optional.
+            {{ t('staff.news.promoVideoHint') }}
           </p>
           <div v-if="videoPreviewUrl || (existingVideoUrl && !removeVideo)" class="mt-3 rounded-lg border border-ink-200 p-3 space-y-2">
             <p class="text-xs font-semibold text-ink-700">
-              {{ videoFileName || 'Current video' }}
+              {{ videoFileName || t('staff.news.currentVideo') }}
               <span v-if="videoFileSizeLabel" class="font-normal text-ink-500"> · {{ videoFileSizeLabel }}</span>
             </p>
             <video
@@ -56,8 +56,8 @@
               muted
             />
             <div class="flex flex-wrap gap-2">
-              <button type="button" class="ml-btn-ghost text-sm" @click="triggerVideoReplace">Replace</button>
-              <button type="button" class="ml-btn-ghost text-sm text-rose-600" @click="removeSelectedVideo">Remove</button>
+              <button type="button" class="ml-btn-ghost text-sm" @click="triggerVideoReplace">{{ t('staff.news.replace') }}</button>
+              <button type="button" class="ml-btn-ghost text-sm text-rose-600" @click="removeSelectedVideo">{{ t('staff.news.remove') }}</button>
             </div>
           </div>
         </div>
@@ -66,39 +66,39 @@
           class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
           role="status"
         >
-          Your text was restored. Please select image and video files again after logging in.
+          {{ t('staff.news.draftRestored') }}
         </p>
         <div>
-          <label class="ml-label">External image URL (optional fallback)</label>
+          <label class="ml-label">{{ t('staff.news.externalImageUrl') }}</label>
           <input v-model="form.image_url" type="url" class="ml-input" placeholder="https://..." />
-          <p class="text-xs text-ink-500 mt-1">Used only when no uploaded images are set.</p>
+          <p class="text-xs text-ink-500 mt-1">{{ t('staff.news.externalImageHint') }}</p>
         </div>
         <div>
-          <label class="ml-label">Published at</label>
+          <label class="ml-label">{{ t('staff.news.publishedAt') }}</label>
           <input v-model="form.published_at" type="datetime-local" class="ml-input" />
         </div>
         <label class="flex items-center gap-2 text-sm font-medium text-ink-700">
           <input v-model="form.is_published" type="checkbox" class="rounded" />
-          Published on community portal
+          {{ t('staff.news.publishedOnPortal') }}
         </label>
         <div class="flex gap-2">
-          <button type="submit" class="ml-btn-primary" :disabled="saving">{{ saving ? 'Saving…' : 'Save Post' }}</button>
-          <button v-if="editingId" type="button" class="ml-btn-ghost" @click="resetForm">Cancel Edit</button>
+          <button type="submit" class="ml-btn-primary" :disabled="saving">{{ saving ? t('staff.news.saving') : t('staff.news.savePost') }}</button>
+          <button v-if="editingId" type="button" class="ml-btn-ghost" @click="resetForm">{{ t('staff.news.cancelEdit') }}</button>
         </div>
       </form>
     </section>
 
     <section class="ml-card">
-      <h2 class="text-lg font-extrabold text-ink-900 mb-4">All News Posts</h2>
-      <div v-if="loading && !hasLoaded" class="text-ink-500 text-sm">Loading news posts…</div>
-      <div v-else-if="hasLoaded && !posts.length" class="text-ink-500 text-sm">No news posts yet.</div>
+      <h2 class="text-lg font-extrabold text-ink-900 mb-4">{{ t('staff.news.allPosts') }}</h2>
+      <div v-if="loading && !hasLoaded" class="text-ink-500 text-sm">{{ t('staff.news.loading') }}</div>
+      <div v-else-if="hasLoaded && !posts.length" class="text-ink-500 text-sm">{{ t('staff.news.empty') }}</div>
       <ul v-else class="space-y-3">
         <li
           v-for="post in posts"
           :key="post.id"
           tabindex="0"
           role="button"
-          :aria-label="`View news post: ${post.title}`"
+          :aria-label="t('staff.news.viewAria', { title: post.title })"
           class="rounded-lg border border-ink-200 p-3 cursor-pointer hover:border-brand-300 hover:bg-brand-50/30 hover:ring-2 hover:ring-brand-500/10 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 group"
           @click="openNewsDetails(post)"
           @keydown.enter.prevent="openNewsDetails(post)"
@@ -110,24 +110,24 @@
                 <img
                   v-if="post.bannerUrl"
                   :src="post.bannerUrl"
-                  :alt="`${post.title} banner preview`"
+                  :alt="t('staff.news.bannerAlt', { title: post.title })"
                   class="w-16 h-16 rounded-lg object-cover object-top border border-ink-200"
                 />
                 <div
                   v-else-if="post.hasVideo"
                   class="w-16 h-16 rounded-lg border border-dashed border-ink-200 bg-ink-50 flex items-center justify-center text-[10px] font-bold uppercase tracking-wide text-ink-500"
                 >
-                  Video
+                  {{ t('staff.news.video') }}
                 </div>
                 <div v-else class="w-16 h-16 rounded-lg border border-dashed border-ink-200 bg-ink-50 flex items-center justify-center text-[10px] font-bold text-ink-400">
-                  No image
+                  {{ t('staff.news.noImage') }}
                 </div>
                 <span
                   v-if="post.hasVideo && post.bannerUrl"
                   class="absolute bottom-0.5 left-0.5 rounded bg-black/70 px-1 py-px text-[9px] font-bold uppercase tracking-wide text-white"
-                  aria-label="This post includes a video"
+                  :aria-label="t('staff.news.hasVideoAria')"
                 >
-                  Video
+                  {{ t('staff.news.video') }}
                 </span>
               </div>
               <div class="min-w-0">
@@ -138,14 +138,14 @@
                 </div>
                 <p v-if="post.excerpt" class="text-xs text-ink-500 mt-1 line-clamp-2">{{ post.excerpt }}</p>
                 <p class="text-xs text-brand-600 font-semibold mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  Click to preview full post
+                  {{ t('staff.news.clickToPreview') }}
                 </p>
               </div>
             </div>
             <div class="flex flex-col gap-1 shrink-0" @click.stop>
-              <button class="ml-btn-ghost text-sm" @click="edit(post)">Edit</button>
+              <button class="ml-btn-ghost text-sm" @click="edit(post)">{{ t('staff.news.edit') }}</button>
               <button class="ml-btn-ghost text-sm text-rose-600" :disabled="deletingId === post.id" @click="remove(post.id)">
-                {{ deletingId === post.id ? 'Deleting…' : 'Delete' }}
+                {{ deletingId === post.id ? t('staff.news.deleting') : t('staff.news.delete') }}
               </button>
             </div>
           </div>
@@ -159,6 +159,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import NewsDetailsModal from '../../../components/NewsDetailsModal.vue';
 import MultiImageUploadField from '../../../components/MultiImageUploadField.vue';
@@ -167,6 +168,7 @@ import { mapApiNewsToCard } from '../../../utils/newsDisplay';
 import { normalizeNews } from '../../../utils/imageUrl';
 import { onSessionExpired } from '../../../utils/sessionExpiry';
 
+const { t } = useI18n();
 const toast = useToast();
 const posts = ref([]);
 const loading = ref(false);
@@ -288,11 +290,11 @@ const onVideoSelected = (event) => {
 
   const typeOk = file.type === 'video/mp4' || file.type === 'video/webm' || /\.(mp4|webm)$/i.test(file.name);
   if (!typeOk) {
-    toast.error('Only MP4 or WebM video files are allowed.');
+    toast.error(t('staff.news.onlyMp4Webm'));
     return;
   }
   if (file.size > MAX_VIDEO_BYTES) {
-    toast.error('Video must be 10 MB or smaller.');
+    toast.error(t('staff.news.videoTooLarge'));
     return;
   }
 
@@ -326,7 +328,7 @@ const extractApiError = (error) => {
   if (data?.errors) {
     return Object.values(data.errors).flat().join(' ');
   }
-  return data?.message || error.message || 'Request failed.';
+  return data?.message || error.message || t('staff.news.requestFailed');
 };
 
 const buildFormData = () => {
@@ -436,7 +438,7 @@ const edit = (post) => {
 
 const save = async () => {
   if (!form.title.trim() || !form.excerpt.trim() || !form.category.trim()) {
-    toast.error('Title, short summary, and category are required.');
+    toast.error(t('staff.news.fieldsRequired'));
     return;
   }
 
@@ -453,10 +455,10 @@ const save = async () => {
       if (editingId.value) {
         fd.append('_method', 'PUT');
         await api.post(`/news-posts/${editingId.value}`, fd);
-        toast.success('News post updated.');
+        toast.success(t('staff.news.postUpdated'));
       } else {
         await api.post('/news-posts', fd);
-        toast.success('News post created.');
+        toast.success(t('staff.news.postCreated'));
       }
     } else if (editingId.value) {
       const payload = {
@@ -471,7 +473,7 @@ const save = async () => {
         payload.image_url = form.image_url.trim();
       }
       await api.put(`/news-posts/${editingId.value}`, payload);
-      toast.success('News post updated.');
+      toast.success(t('staff.news.postUpdated'));
     } else {
       await api.post('/news-posts', {
         title: form.title.trim(),
@@ -482,7 +484,7 @@ const save = async () => {
         published_at: form.published_at || null,
         is_published: form.is_published,
       });
-      toast.success('News post created.');
+      toast.success(t('staff.news.postCreated'));
     }
 
     resetForm();
@@ -496,12 +498,12 @@ const save = async () => {
 };
 
 const remove = async (id) => {
-  if (!window.confirm('Delete this news post? This cannot be undone.')) return;
+  if (!window.confirm(t('staff.news.deleteConfirm'))) return;
 
   deletingId.value = id;
   try {
     await api.delete(`/news-posts/${id}`);
-    toast.success('News post deleted.');
+    toast.success(t('staff.news.postDeleted'));
     await load();
   } catch (error) {
     console.error('Failed to delete news post:', error);

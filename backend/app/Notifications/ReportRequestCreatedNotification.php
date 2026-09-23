@@ -30,12 +30,16 @@ class ReportRequestCreatedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         $typeLabel = ReportType::label($this->reportRequest->report_type);
-        $eventTitle = $this->reportRequest->carbootEvent?->title ?? 'an event';
+        $eventTitle = $this->reportRequest->carbootEvent?->title
+            ?: __('reports.notify.an_event');
 
         return [
             'type' => ReportNotificationType::REQUEST_CREATED,
-            'title' => 'New report request',
-            'body' => "CMart requested a {$typeLabel} for {$eventTitle}.",
+            'title' => __('reports.notify.request_created_title'),
+            'body' => __('reports.notify.request_created_body', [
+                'type' => $typeLabel,
+                'event' => $eventTitle,
+            ]),
             'link' => '/admin#report-centre',
             'report_request_id' => $this->reportRequest->id,
             'carboot_event_id' => $this->reportRequest->carboot_event_id,

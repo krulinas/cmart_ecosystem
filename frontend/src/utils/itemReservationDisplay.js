@@ -1,44 +1,75 @@
+import { tt } from '../i18n';
+import { formatLocaleDateTime } from './localeFormat';
+import {
+  CHARGE_STATUS_KEYS,
+  CHARGE_STATUS_VALUES,
+  RESERVATION_STATUS_KEYS,
+  RESERVATION_STATUS_VALUES,
+  buildReservationLifecycle as buildLifecycleCore,
+  canCompleteReservation as canCompleteCore,
+  canOrganizerConfirmCharge as canConfirmCore,
+  chargeStatusLabel as chargeLabelCore,
+  chargeStatusOptions as chargeOptionsCore,
+  humanizeStatusKey,
+  normalizeStatusKey,
+  reservationStatusLabel as reservationLabelCore,
+  reservationStatusOptions as reservationOptionsCore,
+} from './itemReservationStatusCore';
+
 /**
- * Phase 4.4 — centralized reservation status / charge / action helpers.
- * Keep exact backend values in API payloads; use these labels in templates.
+ * Phase 4.4 / Part 04 — centralized reservation status / charge / action helpers.
+ * Keep exact backend values in API payloads; translate only at the display boundary.
  */
 
-export const RESERVATION_STATUS_LABELS = {
-  pending_charge: 'Pending Charge',
-  confirmed: 'Confirmed',
-  cancelled: 'Cancelled',
-  expired: 'Expired',
-  completed: 'Completed',
+export {
+  CHARGE_STATUS_KEYS,
+  CHARGE_STATUS_VALUES,
+  RESERVATION_STATUS_KEYS,
+  RESERVATION_STATUS_VALUES,
+  humanizeStatusKey,
+  normalizeStatusKey,
 };
 
-export const CHARGE_STATUS_LABELS = {
-  required: 'Charge Required',
-  confirmed: 'Charge Confirmed',
-  waived: 'Waived',
-  not_required: 'No Charge Required',
-  cancelled: 'Charge Cancelled',
+export const AUDIT_ACTION_KEYS = {
+  reservation_created: 'reservation.auditCreated',
+  charge_confirmation_recorded: 'reservation.auditChargeConfirmed',
+  charge_waived: 'reservation.auditChargeWaived',
+  reservation_confirmed: 'reservation.auditConfirmed',
+  reservation_cancelled: 'reservation.auditCancelled',
+  reservation_expired: 'reservation.auditExpired',
+  reservation_completed: 'reservation.auditCompleted',
 };
 
-export const AUDIT_ACTION_LABELS = {
-  reservation_created: 'Reservation created',
-  charge_confirmation_recorded: 'Manual charge confirmation recorded',
-  charge_waived: 'Service fee waived',
-  reservation_confirmed: 'Reservation confirmed',
-  reservation_cancelled: 'Reservation cancelled',
-  reservation_expired: 'Reservation manually expired',
-  reservation_completed: 'Item collected / completed',
-};
+/** @deprecated Prefer reservationStatusOptions(t); kept for callers reading maps. */
+export const RESERVATION_STATUS_LABELS = RESERVATION_STATUS_KEYS;
+export const CHARGE_STATUS_LABELS = CHARGE_STATUS_KEYS;
+export const AUDIT_ACTION_LABELS = AUDIT_ACTION_KEYS;
 
-export function reservationStatusLabel(status) {
-  return RESERVATION_STATUS_LABELS[status] || status || 'Unknown';
+export function reservationStatusLabel(status, t = tt) {
+  return reservationLabelCore(status, t);
 }
 
-export function chargeStatusLabel(status) {
-  return CHARGE_STATUS_LABELS[status] || status || 'Unknown';
+export function chargeStatusLabel(status, t = tt) {
+  return chargeLabelCore(status, t);
 }
 
-export function auditActionLabel(action) {
-  return AUDIT_ACTION_LABELS[action] || action || 'Activity';
+export function auditActionLabel(action, t = tt) {
+  const key = AUDIT_ACTION_KEYS[action];
+  if (!key) return action || t('reservation.activity');
+  const translated = t(key);
+  return translated === key ? humanizeStatusKey(action) : translated;
+}
+
+export function reservationStatusOptions(t = tt) {
+  return reservationOptionsCore(t);
+}
+
+export function chargeStatusOptions(t = tt) {
+  return chargeOptionsCore(t);
+}
+
+export function buildReservationLifecycle(reservation, t = tt, options = {}) {
+  return buildLifecycleCore(reservation, t, options);
 }
 
 export function formatReservationFee(amount, currency = 'MYR') {
@@ -55,32 +86,64 @@ export function isZeroFee(amount) {
 
 export function feeExplanation(amount) {
   if (isZeroFee(amount)) {
-    return 'No reservation service fee is required for this item.';
+    return tt('reservation.confirm.feeZero');
   }
-  return 'The system records the reservation and required service fee. Payment is handled manually outside the platform and confirmed by the Organizer.';
+  return tt('reservation.confirm.feeExplain');
 }
 
 export function requiresNoRefundAcknowledgement(reservation) {
-  return reservation?.charge_status === 'confirmed';
+  return normalizeStatusKey(reservation?.charge_status) === 'confirmed';
 }
 
 export function canCommunityCancel(reservation) {
-  return reservation?.reservation_status === 'pending_charge';
+  return normalizeStatusKey(reservation?.reservation_status) === 'pending_charge';
+}
+
+/** Confirmed holds show collection location (sites or unassigned). */
+export function showCollectionLocation(reservation) {
+  return normalizeStatusKey(reservation?.reservation_status) === 'confirmed';
+}
+
+/** Active pickup copy only for confirmed — never cancelled/expired/completed. */
+export function showCollectionInstruction(reservation) {
+  return normalizeStatusKey(reservation?.reservation_status) === 'confirmed';
+}
+
+export function collectionLocationAvailable(reservation) {
+  if (typeof reservation?.collection?.collection_location_available === 'boolean') {
+    return reservation.collection.collection_location_available;
+  }
+  return (reservation?.collection?.collection_sites || []).length > 0;
+}
+
+export function collectionSiteCodes(reservation) {
+  const sites = reservation?.collection?.collection_sites;
+  if (Array.isArray(sites) && sites.length) {
+    return sites
+      .map((site) => (typeof site === 'string' ? site : site?.code))
+      .filter((code) => typeof code === 'string' && code.trim() !== '');
+  }
+  const labels = reservation?.collection?.site_labels;
+  return Array.isArray(labels) ? labels.filter((code) => typeof code === 'string' && code.trim() !== '') : [];
+}
+
+export function collectionSiteLabel(reservation, t = tt) {
+  const codes = collectionSiteCodes(reservation);
+  if (!codes.length) return '';
+  const prefix = codes.length === 1 ? t('reservation.my.vendorSite') : t('reservation.my.vendorSites');
+  return `${prefix}: ${codes.join(', ')}`;
 }
 
 export function canVendorCancel(reservation) {
-  return ['pending_charge', 'confirmed'].includes(reservation?.reservation_status);
+  return ['pending_charge', 'confirmed'].includes(normalizeStatusKey(reservation?.reservation_status));
 }
 
 export function canCompleteReservation(reservation) {
-  return reservation?.reservation_status === 'confirmed';
+  return canCompleteCore(reservation);
 }
 
 export function canOrganizerConfirmCharge(reservation) {
-  return (
-    reservation?.reservation_status === 'pending_charge'
-    && reservation?.charge_status === 'required'
-  );
+  return canConfirmCore(reservation);
 }
 
 export function canOrganizerWaiveCharge(reservation) {
@@ -88,7 +151,7 @@ export function canOrganizerWaiveCharge(reservation) {
 }
 
 export function canOrganizerCancelOrExpire(reservation) {
-  return ['pending_charge', 'confirmed'].includes(reservation?.reservation_status);
+  return ['pending_charge', 'confirmed'].includes(normalizeStatusKey(reservation?.reservation_status));
 }
 
 export function canShowReserveCta(args = {}) {
@@ -149,7 +212,7 @@ export function reservationConflictCode(error) {
 }
 
 export function reservationStatusBadgeClass(status) {
-  switch (status) {
+  switch (normalizeStatusKey(status)) {
     case 'pending_charge':
       return 'bg-amber-100 text-amber-800 ring-amber-200';
     case 'confirmed':
@@ -166,7 +229,7 @@ export function reservationStatusBadgeClass(status) {
 }
 
 export function chargeStatusBadgeClass(status) {
-  switch (status) {
+  switch (normalizeStatusKey(status)) {
     case 'required':
       return 'bg-amber-50 text-amber-800 ring-amber-200';
     case 'confirmed':
@@ -186,7 +249,7 @@ export function formatReservationTimestamp(value) {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('en-MY', {
+  return formatLocaleDateTime(date, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

@@ -159,7 +159,7 @@ class OrganizerEventLayoutController extends Controller
             );
         } catch (DomainConflictException $exception) {
             return response()->json([
-                'message' => '409 Conflict: '.$exception->getMessage(),
+                'message' => __('api.msg').$exception->getMessage(),
                 'error' => $exception->error,
             ], 409);
         } catch (InvalidArgumentException $exception) {
@@ -173,13 +173,13 @@ class OrganizerEventLayoutController extends Controller
             }
 
             return response()->json([
-                'message' => '422 Unprocessable Entity: '.$message,
+                'message' => __('api.msg').$message,
                 'error' => $error,
             ], 422);
         }
 
         return response()->json([
-            'message' => '201 Created: Standard parking layout generated successfully.',
+            'message' => __('api.standard_parking_layout_generated_successfully'),
             'template' => CmartCarbootPhysicalLayout::TEMPLATE_KEY,
             'rows_created' => $result['rows_created'],
             'sites_created' => $result['sites_created'],
@@ -209,18 +209,18 @@ class OrganizerEventLayoutController extends Controller
             );
         } catch (DomainConflictException $exception) {
             return response()->json([
-                'message' => '409 Conflict: '.$exception->getMessage(),
+                'message' => __('api.msg').$exception->getMessage(),
                 'error' => $exception->error,
             ], 409);
         } catch (InvalidArgumentException $exception) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: '.$exception->getMessage(),
+                'message' => __('api.msg').$exception->getMessage(),
                 'error' => 'INVALID_OPEN_SITE_SELECTION',
             ], 422);
         }
 
         return response()->json([
-            'message' => '200 OK: Booking sites confirmed successfully.',
+            'message' => __('api.booking_sites_confirmed_successfully'),
             'opened' => $result['opened'],
             'closed' => $result['closed'],
             'open_site_count' => $result['open_site_count'],
@@ -238,7 +238,7 @@ class OrganizerEventLayoutController extends Controller
 
         if (! $readiness['public_ready']) {
             return response()->json([
-                'message' => 'The layout is not ready to publish.',
+                'message' => __('api.the_layout_is_not_ready_to_publish'),
                 'error' => 'PUBLIC_LAYOUT_NOT_PUBLISHABLE',
                 'blocking_reasons' => $readiness['blocking_reasons'],
             ], 422);
@@ -267,7 +267,7 @@ class OrganizerEventLayoutController extends Controller
             );
 
             return response()->json([
-                'message' => 'The public layout has been published.',
+                'message' => __('api.the_public_layout_has_been_published'),
                 'publication' => [
                     'published' => true,
                     'published_at' => $event->public_layout_published_at?->toIso8601String(),
@@ -299,7 +299,7 @@ class OrganizerEventLayoutController extends Controller
             );
 
             return response()->json([
-                'message' => 'The public layout has been unpublished.',
+                'message' => __('api.the_public_layout_has_been_unpublished'),
                 'publication' => [
                     'published' => false,
                     'published_at' => null,
@@ -318,13 +318,13 @@ class OrganizerEventLayoutController extends Controller
             $result = $this->layout->deleteEntireParkingLayout($carboot_event, $request->user());
         } catch (DomainConflictException $exception) {
             return response()->json([
-                'message' => '409 Conflict: '.$exception->getMessage(),
+                'message' => __('api.msg').$exception->getMessage(),
                 'error' => $exception->error,
             ], 409);
         }
 
         return response()->json([
-            'message' => '200 OK: Parking layout deleted successfully.',
+            'message' => __('api.parking_layout_deleted_successfully'),
             'rows_deleted' => $result['rows_deleted'],
             'sites_deleted' => $result['sites_deleted'],
             'vendor_site_open_limit' => $result['vendor_site_open_limit'],

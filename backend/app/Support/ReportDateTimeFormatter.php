@@ -6,7 +6,7 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 
 /**
- * English, Asia/Kuala_Lumpur formatting for official report surfaces.
+ * Locale-aware Asia/Kuala_Lumpur formatting for official report surfaces.
  */
 final class ReportDateTimeFormatter
 {
@@ -25,31 +25,31 @@ final class ReportDateTimeFormatter
             if ($start->isSameDay($end)) {
                 return sprintf(
                     '%s, %s – %s',
-                    $start->format('j F Y'),
-                    $start->format('g:i A'),
-                    $end->format('g:i A'),
+                    self::formatDate($start),
+                    self::formatTime($start),
+                    self::formatTime($end),
                 );
             }
 
             return sprintf(
                 '%s, %s – %s, %s',
-                $start->format('j F Y'),
-                $start->format('g:i A'),
-                $end->format('j F Y'),
-                $end->format('g:i A'),
+                self::formatDate($start),
+                self::formatTime($start),
+                self::formatDate($end),
+                self::formatTime($end),
             );
         }
 
         $only = $start ?? $end;
 
-        return $only->format('j F Y, g:i A');
+        return self::formatDateTime($only);
     }
 
     public static function datetime(?string $value): ?string
     {
         $parsed = self::parse($value);
 
-        return $parsed?->format('j F Y, g:i A');
+        return $parsed ? self::formatDateTime($parsed) : null;
     }
 
     public static function parse(null|string|CarbonInterface $value): ?Carbon
@@ -63,9 +63,24 @@ final class ReportDateTimeFormatter
                 ? Carbon::instance($value)
                 : Carbon::parse($value);
 
-            return $carbon->timezone(self::TIMEZONE);
+            return $carbon->timezone(self::TIMEZONE)->locale(app()->getLocale());
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private static function formatDate(Carbon $carbon): string
+    {
+        return $carbon->locale(app()->getLocale())->translatedFormat('j F Y');
+    }
+
+    private static function formatTime(Carbon $carbon): string
+    {
+        return $carbon->locale(app()->getLocale())->translatedFormat('g:i A');
+    }
+
+    private static function formatDateTime(Carbon $carbon): string
+    {
+        return $carbon->locale(app()->getLocale())->translatedFormat('j F Y, g:i A');
     }
 }

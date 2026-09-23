@@ -1,4 +1,5 @@
 import { PENDING_STATUSES } from './bookingDisplay';
+import { tt } from '../i18n';
 
 const ONBOARDING_STATES = {
   WELCOME: 'welcome',
@@ -40,6 +41,35 @@ export function resolveVendorOnboardingState(bookings = []) {
   return ONBOARDING_STATES.WELCOME;
 }
 
+/** Map onboarding state ids to camelCase catalog key prefixes. */
+const ONBOARDING_COPY_PREFIX = {
+  welcome: 'welcome',
+  pending: 'pending',
+  needs_revision: 'needsRevision',
+  rejected: 'rejected',
+  active: 'active',
+};
+
+/** Localized onboarding copy for the current UI locale. */
+export function vendorOnboardingCopy(state, t = tt) {
+  const key = state || ONBOARDING_STATES.WELCOME;
+  const prefix = ONBOARDING_COPY_PREFIX[key] || 'welcome';
+  return {
+    title: t(`vendor.onboarding.${prefix}Title`),
+    message: t(`vendor.onboarding.${prefix}Message`),
+    tone: VENDOR_ONBOARDING_TONES[key] || 'brand',
+  };
+}
+
+const VENDOR_ONBOARDING_TONES = {
+  welcome: 'brand',
+  pending: 'info',
+  needs_revision: 'warning',
+  rejected: 'neutral',
+  active: 'success',
+};
+
+/** @deprecated Prefer vendorOnboardingCopy(state). English snapshot for tests/legacy. */
 export const VENDOR_ONBOARDING_COPY = {
   welcome: {
     title: 'Welcome to your vendor workspace',

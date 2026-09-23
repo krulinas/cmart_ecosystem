@@ -34,7 +34,10 @@ class Phase45ItemReservationFixturesTest extends TestCase
         $this->assertSame(0, $create);
 
         $payload = $this->decodeJsonOutput(Artisan::output());
-        $this->assertSame('cmart_test', $payload['database']);
+        $this->assertSame(
+            (string) config('testing.approved_database', 'cmart_test'),
+            $payload['database'],
+        );
         $this->assertSame(E2EItemReservationFixtures::VENDOR_EMAIL, $payload['vendor_email']);
         $this->assertSame(E2EItemReservationFixtures::PASSWORD, $payload['vendor_password']);
         $this->assertSame(E2EItemReservationFixtures::RESERVER_EMAIL, $payload['reserver_email']);
@@ -56,10 +59,9 @@ class Phase45ItemReservationFixturesTest extends TestCase
             ->assertJsonPath('item.is_reservable', true)
             ->assertJsonPath('item.has_active_reservation', false);
 
+        // Held/conflict items are excluded from public preview while actively reserved.
         $this->getJson('/api/marketplace/items/'.$payload['conflict_item_id'])
-            ->assertOk()
-            ->assertJsonPath('item.is_reservable', false)
-            ->assertJsonPath('item.has_active_reservation', true);
+            ->assertNotFound();
 
         $imagePath = VendorItem::query()->findOrFail($payload['success_item_id'])->image_path;
         $this->assertNotEmpty($imagePath);
@@ -71,7 +73,10 @@ class Phase45ItemReservationFixturesTest extends TestCase
         ]);
         $this->assertSame(0, $statusCode);
         $status = $this->decodeJsonOutput(Artisan::output());
-        $this->assertSame('cmart_test', $status['database']);
+        $this->assertSame(
+            (string) config('testing.approved_database', 'cmart_test'),
+            $status['database'],
+        );
         $this->assertGreaterThanOrEqual(6, $status['users']);
         $this->assertGreaterThanOrEqual(1, $status['events']);
         $this->assertGreaterThanOrEqual(1, $status['reservations']);
@@ -150,6 +155,7 @@ class Phase45ItemReservationFixturesTest extends TestCase
 
         $this->postJson('/api/reservations', [
             'vendor_item_id' => $payload['success_item_id'],
+            'carboot_event_id' => $payload['event_id'],
         ])->assertCreated()
             ->assertJsonPath('reservation.reservation_status', ItemReservation::STATUS_PENDING_CHARGE)
             ->assertJsonPath('reservation.service_fee_amount', '15.00');

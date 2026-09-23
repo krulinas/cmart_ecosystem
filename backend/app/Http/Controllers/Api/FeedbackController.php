@@ -31,7 +31,7 @@ class FeedbackController extends Controller
     {
         $user = $request->user();
         if (! $user) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('api.unauthenticated')], 401);
         }
 
         $vendorEvents = $this->eligibility->eligibleVendorEventsForUser($user);
@@ -49,7 +49,7 @@ class FeedbackController extends Controller
     {
         $user = $request->user();
         if (! $user) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('api.unauthenticated')], 401);
         }
 
         $validated = $request->validate([
@@ -165,7 +165,7 @@ class FeedbackController extends Controller
         $feedback->increment('helpful_count');
 
         return response()->json([
-            'message' => 'Feedback marked as helpful!',
+            'message' => __('api.feedback_marked_as_helpful'),
             'success' => true,
         ], 200);
     }
@@ -245,7 +245,7 @@ class FeedbackController extends Controller
         $feedback->update(collect($validated)->only('is_hidden')->all());
 
         return response()->json([
-            'message' => '200 OK: Feedback updated successfully.',
+            'message' => __('api.feedback_updated_successfully'),
             'feedback' => $this->formatFeedback(
                 $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser', 'images']),
                 true
@@ -261,7 +261,7 @@ class FeedbackController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Feedback marked as reviewed.',
+            'message' => __('api.feedback_marked_as_reviewed'),
             'feedback' => $this->formatFeedback(
                 $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser', 'images']),
                 true
@@ -276,7 +276,7 @@ class FeedbackController extends Controller
             && !ManagementRole::isOrganizerEquivalent($request->user()->role)
         ) {
             return response()->json([
-                'message' => '403 Forbidden: Organizer approval required to edit a published reply.',
+                'message' => __('api.organizer_approval_required_to_edit_a_published_reply'),
             ], 403);
         }
 
@@ -314,7 +314,7 @@ class FeedbackController extends Controller
     public function publishOfficialReply(Request $request, Feedback $feedback)
     {
         if (!ManagementRole::canAccessOrganizerRoutes($request->user()->role)) {
-            return response()->json(['message' => '403 Forbidden: Organizer access required.'], 403);
+            return response()->json(['message' => __('api.organizer_access_required')], 403);
         }
 
         $validated = $request->validate([
@@ -324,7 +324,7 @@ class FeedbackController extends Controller
         $text = trim($validated['official_reply_text'] ?? $feedback->official_reply_text ?? '');
 
         if ($text === '') {
-            return response()->json(['message' => 'Reply text is required before publishing.'], 422);
+            return response()->json(['message' => __('api.reply_text_is_required_before_publishing')], 422);
         }
 
         $feedback->update([
@@ -335,7 +335,7 @@ class FeedbackController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Official reply published.',
+            'message' => __('api.official_reply_published'),
             'feedback' => $this->formatFeedback(
                 $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser', 'images']),
                 true
@@ -346,13 +346,13 @@ class FeedbackController extends Controller
     public function destroy(Request $request, Feedback $feedback)
     {
         if (!ManagementRole::canAccessOrganizerRoutes($request->user()->role)) {
-            return response()->json(['message' => '403 Forbidden: Organizer access required.'], 403);
+            return response()->json(['message' => __('api.organizer_access_required')], 403);
         }
 
         $feedback->delete();
 
         return response()->json([
-            'message' => '200 OK: Feedback deleted successfully.',
+            'message' => __('api.feedback_deleted_successfully'),
             'success' => true,
         ], 200);
     }
@@ -360,7 +360,7 @@ class FeedbackController extends Controller
     public function destroyImage(Request $request, Feedback $feedback, string $image)
     {
         if (!ManagementRole::canAccessOrganizerRoutes($request->user()->role)) {
-            return response()->json(['message' => '403 Forbidden: Organizer access required.'], 403);
+            return response()->json(['message' => __('api.organizer_access_required')], 403);
         }
 
         if ($image === 'legacy') {
@@ -368,19 +368,19 @@ class FeedbackController extends Controller
         } else {
             $imageId = (int) $image;
             if ($imageId < 1) {
-                return response()->json(['message' => '404 Not Found: Feedback image not found.'], 404);
+                return response()->json(['message' => __('api.feedback_image_not_found')], 404);
             }
 
             $record = $feedback->images()->whereKey($imageId)->first();
             if (!$record) {
-                return response()->json(['message' => '404 Not Found: Feedback image not found.'], 404);
+                return response()->json(['message' => __('api.feedback_image_not_found')], 404);
             }
 
             $this->removeRelatedImage($feedback, $record);
         }
 
         return response()->json([
-            'message' => 'Feedback attachment removed.',
+            'message' => __('api.feedback_attachment_removed'),
             'feedback' => $this->formatFeedback(
                 $feedback->fresh(['user', 'reviewedByUser', 'officialReplyByUser', 'images']),
                 true

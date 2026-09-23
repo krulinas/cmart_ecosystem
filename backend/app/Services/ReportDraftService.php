@@ -8,6 +8,8 @@ use App\Models\ReportRequest;
 use App\Models\ReportWorkflowAudit;
 use App\Models\User;
 use App\Support\GeneratedReportStatus;
+use App\Support\PostEventReportProgramme;
+use App\Support\PostEventReportSnapshotCompare;
 use App\Support\ReportRequestStatus;
 use App\Support\ReportType;
 use Illuminate\Http\Request;
@@ -79,11 +81,23 @@ class ReportDraftService
                 ->first();
 
             if ($existingDraft) {
-                return $this->regenerate($existingDraft, $user, $httpRequest);
+                return $this->regenerate($existingDraft, $user, $httpRequest)['generated_report'];
             }
 
             $version = $this->nextVersion($event->id, $reportType);
-            $snapshot = $this->aggregator->build($event);
+            $metricsSnapshot = $this->aggregator->build($event);
+            $introduction = PostEventReportProgramme::defaultIntroduction($event);
+            $conclusion = PostEventReportProgramme::seedConclusion($metricsSnapshot);
+            $snapshot = PostEventReportProgramme::mergeIntoSnapshot(
+                $metricsSnapshot,
+                $event,
+                $introduction,
+                [],
+                false,
+                $conclusion,
+                $user,
+            );
+            $snapshot['programme']['details']['report_version'] = $version;
 
             $report = GeneratedReport::create([
                 'carboot_event_id' => $event->id,
@@ -92,6 +106,10 @@ class ReportDraftService
                 'version' => $version,
                 'status' => GeneratedReportStatus::DRAFT,
                 'snapshot' => $snapshot,
+                'programme_introduction' => $introduction,
+                'programme_objectives' => [],
+                'objectives_not_applicable' => false,
+                'conclusion' => $conclusion,
                 'prepared_by' => $user->id,
                 'event_title_snapshot' => $event->title,
                 'event_starts_at_snapshot' => $event->starts_at,
@@ -112,18 +130,21 @@ class ReportDraftService
         });
     }
 
+    /**
+     * @return array{generated_report: GeneratedReport, metrics_changed: bool, snapshot_generated_at: ?string}
+     */
     public function regenerate(
         GeneratedReport $report,
         User $user,
         ?Request $httpRequest = null,
-    ): GeneratedReport {
+    ): array {
         if ($report->status !== GeneratedReportStatus::DRAFT) {
             throw ValidationException::withMessages([
                 'status' => 'Only draft reports can be regenerated.',
             ]);
         }
 
-        $report->loadMissing('carbootEvent');
+        $report->loadMissing(['carbootEvent', 'preparedByUser']);
         $event = $report->carbootEvent;
         if (! $event) {
             throw ValidationException::withMessages([
@@ -131,15 +152,46 @@ class ReportDraftService
             ]);
         }
 
-        $snapshot = $this->aggregator->build($event);
+        $previousSnapshot = is_array($report->snapshot) ? $report->snapshot : [];
+        $metricsSnapshot = $this->aggregator->build($event);
 
-        $report->update([
+        $introduction = $report->programme_introduction;
+        if (PostEventReportProgramme::normalizeText($introduction) === null) {
+            $introduction = PostEventReportProgramme::defaultIntroduction($event);
+        }
+        $objectives = is_array($report->programme_objectives) ? $report->programme_objectives : [];
+        $objectivesNa = (bool) $report->objectives_not_applicable;
+        $conclusion = $report->conclusion;
+        if (PostEventReportProgramme::normalizeText($conclusion) === null) {
+            $conclusion = PostEventReportProgramme::seedConclusion($metricsSnapshot);
+        }
+
+        $snapshot = PostEventReportProgramme::mergeIntoSnapshot(
+            $metricsSnapshot,
+            $event,
+            $introduction,
+            $objectives,
+            $objectivesNa,
+            $conclusion,
+            $user,
+        );
+        $snapshot['programme']['details']['report_version'] = $report->version;
+
+        $metricsChanged = PostEventReportSnapshotCompare::metricsChanged($previousSnapshot, $snapshot);
+
+        // Preserve created_at; only update snapshot + denormalized event fields.
+        $report->forceFill([
             'snapshot' => $snapshot,
+            'programme_introduction' => $introduction,
+            'programme_objectives' => PostEventReportProgramme::normalizeObjectives($objectives),
+            'objectives_not_applicable' => $objectivesNa,
+            'conclusion' => $conclusion,
             'prepared_by' => $user->id,
             'event_title_snapshot' => $event->title,
             'event_starts_at_snapshot' => $event->starts_at,
             'event_ends_at_snapshot' => $event->ends_at,
         ]);
+        $report->save();
 
         $this->auditor->record(
             ReportWorkflowAudit::ACTION_DRAFT_REGENERATED,
@@ -147,11 +199,22 @@ class ReportDraftService
             $report->reportRequest,
             $report->fresh(),
             $event->id,
-            ['version' => $report->version],
+            [
+                'version' => $report->version,
+                'metrics_changed' => $metricsChanged,
+            ],
             $httpRequest,
         );
 
-        return $report->fresh(['carbootEvent', 'reportRequest', 'preparedByUser']);
+        $fresh = $report->fresh(['carbootEvent', 'reportRequest', 'preparedByUser']);
+
+        return [
+            'generated_report' => $fresh,
+            'metrics_changed' => $metricsChanged,
+            'snapshot_generated_at' => is_array($fresh->snapshot)
+                ? ($fresh->snapshot['generated_at'] ?? null)
+                : null,
+        ];
     }
 
     public function createRevision(
@@ -189,7 +252,21 @@ class ReportDraftService
             }
 
             $version = $this->nextVersion($publishedReport->carboot_event_id, $publishedReport->report_type);
-            $snapshot = $this->aggregator->build($event);
+            $metricsSnapshot = $this->aggregator->build($event);
+            $introduction = $publishedReport->programme_introduction;
+            $objectives = is_array($publishedReport->programme_objectives) ? $publishedReport->programme_objectives : [];
+            $objectivesNa = (bool) $publishedReport->objectives_not_applicable;
+            $conclusion = $publishedReport->conclusion;
+            $snapshot = PostEventReportProgramme::mergeIntoSnapshot(
+                $metricsSnapshot,
+                $event,
+                $introduction,
+                $objectives,
+                $objectivesNa,
+                $conclusion,
+                $user,
+            );
+            $snapshot['programme']['details']['report_version'] = $version;
 
             $revision = GeneratedReport::create([
                 'carboot_event_id' => $publishedReport->carboot_event_id,
@@ -200,6 +277,10 @@ class ReportDraftService
                 'snapshot' => $snapshot,
                 'organizer_observations' => $publishedReport->organizer_observations,
                 'organizer_recommendations' => $publishedReport->organizer_recommendations,
+                'programme_introduction' => $introduction,
+                'programme_objectives' => $objectives,
+                'objectives_not_applicable' => $objectivesNa,
+                'conclusion' => $conclusion,
                 'prepared_by' => $user->id,
                 'revision_reason' => $reason,
                 'supersedes_report_id' => $publishedReport->id,
@@ -224,6 +305,34 @@ class ReportDraftService
 
             return $revision->fresh(['carbootEvent', 'reportRequest', 'preparedByUser', 'supersedesReport']);
         });
+    }
+
+    /**
+     * Freeze editable programme narratives into the draft snapshot without rebuilding metrics.
+     */
+    public function freezeProgrammeNarratives(GeneratedReport $report, User $user): GeneratedReport
+    {
+        $report->loadMissing(['carbootEvent', 'preparedByUser']);
+        $event = $report->carbootEvent;
+        if (! $event) {
+            return $report;
+        }
+
+        $snapshot = is_array($report->snapshot) ? $report->snapshot : [];
+        $snapshot = PostEventReportProgramme::mergeIntoSnapshot(
+            $snapshot,
+            $event,
+            $report->programme_introduction,
+            is_array($report->programme_objectives) ? $report->programme_objectives : [],
+            (bool) $report->objectives_not_applicable,
+            $report->conclusion,
+            $user,
+        );
+        $snapshot['programme']['details']['report_version'] = $report->version;
+        // Preserve original metrics cut-off when only freezing narratives.
+        $report->forceFill(['snapshot' => $snapshot])->save();
+
+        return $report->fresh(['carbootEvent', 'reportRequest', 'preparedByUser', 'publishedByUser']);
     }
 
     private function nextVersion(int $eventId, string $reportType): int

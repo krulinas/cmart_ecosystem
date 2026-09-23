@@ -67,7 +67,7 @@ class OrganizerBookingSiteAssignmentController extends Controller
             );
 
             return response()->json([
-                'message' => '200 OK: Booking site assignment updated successfully.',
+                'message' => __('api.booking_site_assignment_updated_successfully'),
                 'booking' => VendorBookingPresenter::presentForOrganizer($result['booking'], true),
                 'category_placement' => $result['placement'],
             ]);

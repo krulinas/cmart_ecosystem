@@ -11,6 +11,7 @@ class TestingDatabaseGuardBootTest extends TestCase
     {
         $this->assertSame('testing', app()->environment());
         $this->assertSame('mysql', config('database.default'));
+        $this->assertSame('cmart_test', config('testing.approved_database'));
         $this->assertSame('cmart_test', config('database.connections.mysql.database'));
 
         DB::connection()->getPdo();

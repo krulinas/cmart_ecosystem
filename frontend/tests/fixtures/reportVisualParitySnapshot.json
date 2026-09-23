@@ -1,0 +1,34 @@
+{
+  "sections": {
+    "event_performance": {
+      "sites_sold": 4,
+      "available_sites": 6,
+      "site_utilisation_percent": 40
+    },
+    "booking_pipeline": {
+      "by_approval_status": {
+        "Pending_Organizer": 1,
+        "Approved": 3,
+        "Rejected": 2
+      }
+    },
+    "payments": {
+      "collected_revenue": 100.5,
+      "outstanding_invoice_balance": 20.25,
+      "invoice_count": 2
+    },
+    "vendor_categories": {
+      "distribution": [
+        { "key": "food", "label": "Food", "unique_vendors": 2 },
+        { "key": "fashion", "label": "Fashion", "unique_vendors": 1 },
+        { "key": "books", "label": "Books", "unique_vendors": 3 },
+        { "key": "zero", "label": "Zero", "unique_vendors": 0 },
+        { "key": "missing", "label": "Missing", "unique_vendors": null }
+      ]
+    },
+    "feedback": {
+      "response_count": 4,
+      "rating_distribution": { "5": 2, "4": 1, "3": 1, "2": 0, "1": 0 }
+    }
+  }
+}

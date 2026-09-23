@@ -25,13 +25,13 @@ class VendorEventSiteAvailabilityController extends Controller
             $booking = Booking::query()->find((int) $bookingId);
             if (! $booking || (int) $booking->user_id !== (int) $request->user()->id) {
                 return response()->json([
-                    'message' => '403 Forbidden: Booking context is not accessible.',
+                    'message' => __('api.booking_context_is_not_accessible'),
                     'error' => 'BOOKING_CONTEXT_FORBIDDEN',
                 ], 403);
             }
             if ((int) $booking->carboot_event_id !== (int) $carboot_event->id) {
                 return response()->json([
-                    'message' => '422 Unprocessable Entity: Booking does not belong to this event.',
+                    'message' => __('api.booking_does_not_belong_to_this_event'),
                     'error' => 'BOOKING_EVENT_MISMATCH',
                 ], 422);
             }

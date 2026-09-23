@@ -39,6 +39,14 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
+  try {
+    const stored = localStorage.getItem('cmart_ui_locale');
+    const locale = stored === 'en' || stored === 'ms' ? stored : 'ms';
+    config.headers['Accept-Language'] = locale;
+  } catch {
+    config.headers['Accept-Language'] = 'ms';
+  }
+
   return config;
 });
 

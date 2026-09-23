@@ -120,7 +120,7 @@ class VendorProfileController extends Controller
         $profile = $user->businessProfile;
 
         return response()->json([
-            'message' => '200 OK: Vendor profile updated successfully.',
+            'message' => __('api.vendor_profile_updated_successfully'),
             'profile' => VendorProfilePresenter::fromUser($user, $profile),
             'user' => UserAuthPresenter::present($user),
         ]);

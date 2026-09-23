@@ -61,7 +61,7 @@ class OrganizerReportRequestController extends Controller
         $this->notifyAllCmart(new ReportRequestAcknowledgedNotification($updated), $updated);
 
         return response()->json([
-            'message' => '200 OK: Report request acknowledged.',
+            'message' => __('api.report_request_acknowledged'),
             'report_request' => new OrganizerReportRequestResource($updated),
         ]);
     }
@@ -72,7 +72,7 @@ class OrganizerReportRequestController extends Controller
         $updated->load(['carbootEvent', 'requester', 'acknowledgedByUser']);
 
         return response()->json([
-            'message' => '200 OK: Report preparation started.',
+            'message' => __('api.report_preparation_started'),
             'report_request' => new OrganizerReportRequestResource($updated),
         ]);
     }
@@ -97,7 +97,7 @@ class OrganizerReportRequestController extends Controller
         $this->externalAlerts->simulateRequestDeclined($updated);
 
         return response()->json([
-            'message' => '200 OK: Report request declined.',
+            'message' => __('api.report_request_declined'),
             'report_request' => new OrganizerReportRequestResource($updated),
         ]);
     }

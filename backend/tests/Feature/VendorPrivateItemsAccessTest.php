@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\Space;
 use App\Models\User;
 use App\Models\VendorItem;
+use App\Models\VendorItemEventListing;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -151,13 +152,31 @@ class VendorPrivateItemsAccessTest extends TestCase
     public function test_approved_booking_publishes_active_items_publicly(): void
     {
         $vendor = $this->createCommunityVendor(['vendor_status' => 'approved']);
-        $this->createBookingFor($vendor, 'Approved', 'Paid');
+        $booking = $this->createBookingFor($vendor, 'Approved', 'Paid');
 
         Sanctum::actingAs($vendor);
 
         $create = $this->postJson('/api/vendor/items', $this->createPrivateItemPayload('should-appear-publicly'));
         $create->assertCreated();
-        $this->createdItemIds[] = $create->json('item.id');
+        $itemId = $create->json('item.id');
+        $this->createdItemIds[] = $itemId;
+
+        $hidden = $this->getJson('/api/marketplace/items');
+        $hidden->assertOk()
+            ->assertJsonPath('public_listing_enabled', true);
+        $this->assertFalse(
+            collect($hidden->json('data'))->pluck('name')->contains('Private Prep Item should-appear-publicly'),
+            'Unselected catalog items must not appear on the public marketplace.',
+        );
+
+        VendorItemEventListing::query()->create([
+            'vendor_item_id' => $itemId,
+            'carboot_event_id' => $booking->carboot_event_id,
+            'vendor_booking_id' => $booking->id,
+            'vendor_user_id' => $vendor->id,
+            'selected_by' => $vendor->id,
+            'selected_at' => now(),
+        ]);
 
         $public = $this->getJson('/api/marketplace/items');
         $public->assertOk()

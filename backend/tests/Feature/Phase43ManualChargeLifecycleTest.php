@@ -30,8 +30,17 @@ class Phase43ManualChargeLifecycleTest extends TestCase
     /** @var list<int> */
     private array $reservationIds = [];
 
+    /** @var array<int, int> */
+    private array $vendorEventIds = [];
+
     protected function tearDown(): void
     {
+        if (Schema::hasTable('vendor_item_sales')) {
+            DB::table('vendor_item_sales')->whereIn('vendor_item_id', $this->itemIds)->delete();
+        }
+        if (Schema::hasTable('vendor_item_event_selections')) {
+            DB::table('vendor_item_event_selections')->whereIn('vendor_item_id', $this->itemIds)->delete();
+        }
         DB::table('item_reservation_audits')
             ->whereIn('item_reservation_id', $this->reservationIds)
             ->delete();
@@ -547,6 +556,7 @@ class Phase43ManualChargeLifecycleTest extends TestCase
             'approval_status' => 'Approved',
         ]);
         $this->bookingIds[] = $booking->id;
+        $this->vendorEventIds[$vendor->id] = $event->id;
 
         return [$event, $booking];
     }
@@ -568,6 +578,29 @@ class Phase43ManualChargeLifecycleTest extends TestCase
         ]);
         $this->itemIds[] = $item->id;
 
+        $eventId = $this->vendorEventIds[$vendor->id] ?? null;
+        if ($eventId) {
+            $booking = Booking::query()
+                ->where('user_id', $vendor->id)
+                ->where('carboot_event_id', $eventId)
+                ->where('approval_status', 'Approved')
+                ->first();
+            if ($booking) {
+                \App\Models\VendorItemEventListing::query()->updateOrCreate(
+                    [
+                        'vendor_item_id' => $item->id,
+                        'carboot_event_id' => $eventId,
+                    ],
+                    [
+                        'vendor_booking_id' => $booking->id,
+                        'vendor_user_id' => $vendor->id,
+                        'selected_by' => $vendor->id,
+                        'selected_at' => now(),
+                    ],
+                );
+            }
+        }
+
         return $item;
     }
 
@@ -577,7 +610,10 @@ class Phase43ManualChargeLifecycleTest extends TestCase
         string $expectedStatus = 'pending_charge',
     ): ItemReservation {
         Sanctum::actingAs($reserver);
-        $response = $this->postJson('/api/reservations', ['vendor_item_id' => $item->id])
+        $response = $this->postJson('/api/reservations', [
+            'vendor_item_id' => $item->id,
+            'carboot_event_id' => (int) ($this->vendorEventIds[$item->user_id] ?? 0),
+        ])
             ->assertCreated()
             ->assertJsonPath('reservation.reservation_status', $expectedStatus);
 

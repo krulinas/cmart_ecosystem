@@ -25,30 +25,30 @@
         >
           <div class="border-b border-ink-100 px-5 py-4">
             <h3 id="item-reservation-confirm-title" class="text-lg font-extrabold text-ink-900">
-              {{ successReservation ? 'Reservation recorded' : 'Reserve this item?' }}
+              {{ successReservation ? t('reservation.confirm.titleDone') : t('reservation.confirm.titleAsk') }}
             </h3>
           </div>
 
           <div v-if="successReservation" class="px-5 py-5 space-y-4" data-testid="item-reservation-success">
             <p class="text-sm text-emerald-800 font-semibold">
-              Your reservation hold is recorded. Collect the item in person at the event.
+              {{ t('reservation.confirm.successBody') }}
             </p>
             <dl class="grid grid-cols-1 gap-3 text-sm">
               <div class="rounded-xl border border-ink-100 bg-ink-50/60 p-3">
-                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Reference</dt>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('reservation.confirm.reference') }}</dt>
                 <dd class="mt-1 font-bold text-ink-900" data-testid="reservation-success-reference">
                   {{ successReservation.public_reference }}
                 </dd>
               </div>
               <div class="rounded-xl border border-ink-100 bg-ink-50/60 p-3">
-                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Status</dt>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('reservation.confirm.status') }}</dt>
                 <dd class="mt-1 font-semibold text-ink-900">
-                  {{ reservationStatusLabel(successReservation.reservation_status) }}
-                  · {{ chargeStatusLabel(successReservation.charge_status) }}
+                  {{ reservationStatusLabel(successReservation.reservation_status, t) }}
+                  · {{ chargeStatusLabel(successReservation.charge_status, t) }}
                 </dd>
               </div>
               <div class="rounded-xl border border-ink-100 bg-ink-50/60 p-3">
-                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Service fee</dt>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('reservation.confirm.serviceFee') }}</dt>
                 <dd class="mt-1 font-semibold text-ink-900">
                   {{ formatReservationFee(successReservation.service_fee_amount, successReservation.service_fee_currency) }}
                 </dd>
@@ -71,7 +71,7 @@
                 <p class="text-xs font-bold uppercase tracking-wider text-brand-600">{{ item?.category }}</p>
                 <h4 class="text-base font-extrabold text-ink-900">{{ item?.name }}</h4>
                 <p class="mt-1 text-sm text-ink-600">
-                  {{ item?.vendor?.business_name || 'CMart Vendor' }}
+                  {{ item?.vendor?.business_name || t('reservation.confirm.cmartVendor') }}
                 </p>
                 <p v-if="item?.event" class="mt-1 text-sm text-emerald-700 font-medium">
                   {{ item.event.title }}
@@ -81,7 +81,7 @@
             </div>
 
             <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-              <p class="font-semibold">Reservation service fee</p>
+              <p class="font-semibold">{{ t('reservation.confirm.feeHeading') }}</p>
               <p class="mt-1 font-bold" data-testid="reservation-fee-amount">
                 {{ formatReservationFee(item?.reservation_service_fee, item?.reservation_service_fee_currency) }}
               </p>
@@ -89,7 +89,7 @@
                 {{ feeExplanation(item?.reservation_service_fee) }}
               </p>
               <p class="mt-2 text-xs text-amber-900/80">
-                This is not an online purchase of the item and the platform does not process payment, delivery, or refunds.
+                {{ t('reservation.confirm.notOnlinePurchase') }}
               </p>
             </div>
 
@@ -110,7 +110,7 @@
               :disabled="submitting"
               @click="close"
             >
-              {{ successReservation ? 'Close' : 'Cancel' }}
+              {{ successReservation ? t('reservation.confirm.close') : t('reservation.confirm.cancel') }}
             </button>
             <router-link
               v-if="successReservation"
@@ -119,17 +119,17 @@
               data-testid="item-reservation-go-to-mine"
               @click="close"
             >
-              View My Reservations
+              {{ t('reservation.confirm.viewMine') }}
             </router-link>
             <button
               v-else
               type="button"
               class="ml-btn-primary"
               data-testid="item-reservation-confirm-submit"
-              :disabled="submitting"
+              :disabled="submitting || !carbootEventId"
               @click="submit"
             >
-              {{ submitting ? 'Reserving…' : 'Confirm reservation' }}
+              {{ submitting ? t('reservation.confirm.reserving') : t('reservation.confirm.submit') }}
             </button>
           </div>
         </div>
@@ -140,6 +140,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import { createItemReservation } from '../services/itemReservationsApi';
 import {
@@ -160,6 +161,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'reserved', 'conflict']);
 
+const { t } = useI18n();
 const toast = useToast();
 const auth = useAuthStore();
 const submitting = ref(false);
@@ -168,6 +170,8 @@ const successReservation = ref(null);
 
 const myReservationsHref = computed(() => myReservationsPath(auth));
 
+const carbootEventId = computed(() => props.item?.carboot_event_id ?? props.item?.event?.id ?? null);
+
 const close = () => {
   if (submitting.value) return;
   emit('update:modelValue', false);
@@ -175,16 +179,20 @@ const close = () => {
 
 const submit = async () => {
   if (!props.item?.id || submitting.value) return;
+  if (!carbootEventId.value) {
+    errorMessage.value = t('reservation.confirm.missingEvent');
+    return;
+  }
   submitting.value = true;
   errorMessage.value = '';
   try {
-    const { data } = await createItemReservation(props.item.id);
+    const { data } = await createItemReservation(props.item.id, carbootEventId.value);
     successReservation.value = data.reservation;
-    toast.success('Reservation recorded successfully.');
+    toast.success(t('reservation.confirm.toastSuccess'));
     emit('reserved', data.reservation);
   } catch (error) {
     const code = reservationConflictCode(error);
-    const message = reservationErrorMessage(error, 'Unable to reserve this item.');
+    const message = reservationErrorMessage(error, t('reservation.confirm.unableReserve'));
     if (error?.response?.status === 409 && code === 'item_already_reserved') {
       toast.error(message);
       emit('conflict', { code, message });

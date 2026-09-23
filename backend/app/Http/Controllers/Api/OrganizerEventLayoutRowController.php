@@ -44,7 +44,7 @@ class OrganizerEventLayoutRowController extends Controller
         }
 
         return response()->json([
-            'message' => '201 Created: Layout row created successfully.',
+            'message' => __('api.layout_row_created_successfully'),
             'row' => $this->present($row),
         ], 201);
     }
@@ -73,7 +73,7 @@ class OrganizerEventLayoutRowController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Layout row updated successfully.',
+            'message' => __('api.layout_row_updated_successfully'),
             'row' => $this->present($row),
         ]);
     }
@@ -95,7 +95,7 @@ class OrganizerEventLayoutRowController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Layout rows reordered successfully.',
+            'message' => __('api.layout_rows_reordered_successfully'),
         ]);
     }
 
@@ -112,7 +112,7 @@ class OrganizerEventLayoutRowController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Layout row deleted successfully.',
+            'message' => __('api.layout_row_deleted_successfully'),
         ]);
     }
 
@@ -129,7 +129,7 @@ class OrganizerEventLayoutRowController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Layout row archived successfully.',
+            'message' => __('api.layout_row_archived_successfully'),
             'row' => $this->present($row),
         ]);
     }
@@ -149,7 +149,7 @@ class OrganizerEventLayoutRowController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Layout row unarchived successfully.',
+            'message' => __('api.layout_row_unarchived_successfully'),
             'row' => $this->present($result['row']),
             'readiness' => $result['readiness'],
         ]);
@@ -189,7 +189,7 @@ class OrganizerEventLayoutRowController extends Controller
     private function conflict(DomainConflictException $exception): JsonResponse
     {
         return response()->json([
-            'message' => '409 Conflict: ' . $exception->getMessage(),
+            'message' => __('api.msg') . $exception->getMessage(),
             'error' => $exception->error,
         ], 409);
     }
@@ -205,7 +205,7 @@ class OrganizerEventLayoutRowController extends Controller
         }
 
         return response()->json([
-            'message' => '422 Unprocessable Entity: ' . $message,
+            'message' => __('api.msg') . $message,
             'error' => $error,
         ], 422);
     }
@@ -213,7 +213,7 @@ class OrganizerEventLayoutRowController extends Controller
     private function notFound(): JsonResponse
     {
         return response()->json([
-            'message' => '404 Not Found: Layout row not found for this event.',
+            'message' => __('api.layout_row_not_found_for_this_event'),
         ], 404);
     }
 }

@@ -27,7 +27,7 @@
       <button
         type="button"
         class="absolute left-0 top-1/2 z-10 -translate-y-1/2 -translate-x-1 sm:-translate-x-3 flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-md transition hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-        aria-label="Previous events"
+        :aria-label="t('calendar.prevEvents')"
         @click="goPrevious"
       >
         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -38,7 +38,7 @@
       <button
         type="button"
         class="absolute right-0 top-1/2 z-10 -translate-y-1/2 translate-x-1 sm:translate-x-3 flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-md transition hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-        aria-label="Next events"
+        :aria-label="t('calendar.nextEvents')"
         @click="goNext"
       >
         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -51,7 +51,7 @@
       v-if="pageCount > 1"
       class="mt-6 flex justify-center gap-2"
       role="tablist"
-      aria-label="Event carousel pages"
+      :aria-label="t('calendar.carouselPages')"
     >
       <button
         v-for="page in pageCount"
@@ -60,7 +60,7 @@
         role="tab"
         class="h-2.5 rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
         :class="page - 1 === currentPage ? 'w-8 bg-brand-600' : 'w-2.5 bg-gray-300 hover:bg-brand-300'"
-        :aria-label="`Go to event slide ${page}`"
+        :aria-label="t('calendar.goToSlide', { page })"
         :aria-selected="page - 1 === currentPage"
         @click="goToPage(page - 1)"
       />
@@ -70,6 +70,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import PublicEventCard from './PublicEventCard.vue';
 
 const props = defineProps({
@@ -79,6 +80,7 @@ const props = defineProps({
 
 defineEmits(['select']);
 
+const { t } = useI18n();
 const currentPage = ref(0);
 const slidesPerView = ref(1);
 const autoSlideEnabled = ref(true);

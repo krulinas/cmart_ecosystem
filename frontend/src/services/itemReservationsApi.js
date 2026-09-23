@@ -6,8 +6,11 @@ import api from './api';
 
 // ── Community / reserving user ──────────────────────────────────────────────
 
-export function createItemReservation(vendorItemId) {
-  return api.post('/reservations', { vendor_item_id: vendorItemId });
+export function createItemReservation(vendorItemId, carbootEventId) {
+  return api.post('/reservations', {
+    vendor_item_id: vendorItemId,
+    carboot_event_id: carbootEventId,
+  });
 }
 
 export function getMyItemReservations(params = {}) {
@@ -36,8 +39,17 @@ export function cancelVendorItemReservation(publicReference, payload = {}) {
   return api.post(`/vendor/item-reservations/${publicReference}/cancel`, payload);
 }
 
-export function completeVendorItemReservation(publicReference) {
-  return api.post(`/vendor/item-reservations/${publicReference}/complete`);
+export function completeVendorItemReservation(publicReference, finalSalePrice) {
+  return api.post(`/vendor/item-reservations/${publicReference}/complete`, {
+    final_sale_price: finalSalePrice,
+  });
+}
+
+export function recordWalkInSale(vendorItemId, carbootEventId, finalSalePrice) {
+  return api.post(`/vendor/items/${vendorItemId}/walk-in-sale`, {
+    carboot_event_id: carbootEventId,
+    final_sale_price: finalSalePrice,
+  });
 }
 
 // ── Organizer ───────────────────────────────────────────────────────────────

@@ -45,3 +45,7 @@ export const getEventWordcloud = (source, eventId) =>
   api.get(`/boss/analytics/wordcloud/${source}`, {
     params: { event_id: eventId },
   });
+
+/** Python-powered cross-event benchmark (graceful when service is down). */
+export const getEventAnalyticsBenchmark = (eventId) =>
+  api.get(`/organizer/events/${eventId}/analytics/benchmark`);

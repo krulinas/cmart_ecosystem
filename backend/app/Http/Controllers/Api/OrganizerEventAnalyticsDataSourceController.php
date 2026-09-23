@@ -32,7 +32,7 @@ class OrganizerEventAnalyticsDataSourceController extends Controller
         }
 
         return response()->json([
-            'message' => 'Analytics source mode updated.',
+            'message' => __('api.analytics_source_mode_updated'),
             'analytics_source_mode' => $result['analytics_source_mode'],
             'overview' => $this->analytics->overview($result['event'], true),
         ]);
@@ -52,7 +52,7 @@ class OrganizerEventAnalyticsDataSourceController extends Controller
         // Reject calls that still express the former soft-exclude / "remove from analytics" intent.
         if ($this->requestsSoftExcludeBehaviour($request)) {
             return response()->json([
-                'message' => 'Soft exclusion is no longer supported. Permanent deletion requires confirm_permanent_deletion=true on DELETE /survey-imports/current.',
+                'message' => __('api.soft_exclusion_is_no_longer_supported_permanent_de_e6febcb7'),
                 'code' => 'survey_soft_exclude_rejected',
             ], 422);
         }
@@ -67,7 +67,7 @@ class OrganizerEventAnalyticsDataSourceController extends Controller
         // Defensive: validation already enforces accepted, but keep intent explicit.
         if (! filter_var($validated['confirm_permanent_deletion'], FILTER_VALIDATE_BOOLEAN)) {
             return response()->json([
-                'message' => 'Explicit confirmation is required to permanently delete CSV survey data.',
+                'message' => __('api.explicit_confirmation_is_required_to_permanently_d_263db073'),
                 'code' => 'survey_permanent_delete_confirmation_required',
             ], 422);
         }
@@ -80,12 +80,12 @@ class OrganizerEventAnalyticsDataSourceController extends Controller
             report($e);
 
             return response()->json([
-                'message' => 'Unable to delete CSV survey data for this event.',
+                'message' => __('api.unable_to_delete_csv_survey_data_for_this_event'),
             ], 500);
         }
 
         return response()->json([
-            'message' => 'CSV survey data permanently deleted. Analytics mode is now System Data only.',
+            'message' => __('api.csv_survey_data_permanently_deleted_analytics_mode_072f532f'),
             'deleted' => $result['deleted'],
             'deleted_batch_count' => $result['deleted_batch_count'],
             'deleted_response_count' => $result['deleted_response_count'],

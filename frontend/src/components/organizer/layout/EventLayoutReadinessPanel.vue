@@ -91,7 +91,8 @@
 
 <script setup>
 import { computed } from 'vue';
-import { LAYOUT_COPY, readinessMessage } from '../../../utils/organizerEventLayoutMessages';
+import { useI18n } from 'vue-i18n';
+import { getLayoutCopy, readinessMessage } from '../../../utils/organizerEventLayoutMessages';
 
 const SETUP_CODES = new Set([
   'VENDOR_SITE_OPEN_LIMIT_NOT_SET',
@@ -118,7 +119,8 @@ const props = defineProps({
   },
 });
 
-const copy = LAYOUT_COPY;
+const { t } = useI18n();
+const copy = computed(() => getLayoutCopy(t));
 const operationalReady = computed(() => Boolean(props.readiness?.operational_ready));
 const publicReady = computed(() => Boolean(props.readiness?.public_ready));
 const blockers = computed(() => props.readiness?.blocking_reasons || []);
@@ -137,10 +139,10 @@ const remainingBlockers = computed(() =>
 );
 
 const statusBadgeLabel = computed(() => {
-  if (props.selectMode) return copy.selectionModeBadge;
-  if (operationalReady.value) return copy.vendorBookingOpen;
-  if (needsSiteSetup.value) return copy.vendorBookingSetupRequired;
-  return copy.operationalNotReady;
+  if (props.selectMode) return copy.value.selectionModeBadge;
+  if (operationalReady.value) return copy.value.vendorBookingOpen;
+  if (needsSiteSetup.value) return copy.value.vendorBookingSetupRequired;
+  return copy.value.operationalNotReady;
 });
 
 const statusBadgeClass = computed(() => {
@@ -150,13 +152,13 @@ const statusBadgeClass = computed(() => {
 });
 
 const primaryMessage = computed(() => {
-  if (props.selectMode) return copy.vendorBookingSelectingMessage;
+  if (props.selectMode) return copy.value.vendorBookingSelectingMessage;
   if (operationalReady.value) {
-    return copy.vendorBookingOpenMessage(props.openSiteCount || 0);
+    return copy.value.vendorBookingOpenMessage(props.openSiteCount || 0);
   }
-  if (needsSiteSetup.value) return copy.vendorBookingSetupMessage;
+  if (needsSiteSetup.value) return copy.value.vendorBookingSetupMessage;
   const first = remainingBlockers.value[0] || blockers.value.find((b) => !SETUP_CODES.has(b.code));
-  return first ? messageFor(first) : copy.vendorBookingSetupMessage;
+  return first ? messageFor(first) : copy.value.vendorBookingSetupMessage;
 });
 
 const primaryMessageClass = computed(() => {

@@ -16,7 +16,7 @@ class PublicEventLayoutController extends Controller
         if (! $carbootEvent) {
             return response()->json([
                 'layout_available' => false,
-                'message' => 'Event not found.',
+                'message' => __('api.event_not_found'),
                 'error' => 'PUBLIC_EVENT_NOT_FOUND',
             ], 404);
         }
@@ -30,7 +30,7 @@ class PublicEventLayoutController extends Controller
                     'name' => $carbootEvent->title,
                 ],
                 'rows' => [],
-                'message' => 'The event layout has not been published.',
+                'message' => __('api.the_event_layout_has_not_been_published'),
                 'error' => 'PUBLIC_LAYOUT_NOT_AVAILABLE',
             ], 404);
         }

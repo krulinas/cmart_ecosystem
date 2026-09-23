@@ -52,7 +52,7 @@ class OrganizerEventLayoutSiteController extends Controller
         }
 
         return response()->json([
-            'message' => '201 Created: Event site created successfully.',
+            'message' => __('api.event_site_created_successfully'),
             'site' => $this->present($site),
         ], 201);
     }
@@ -88,7 +88,7 @@ class OrganizerEventLayoutSiteController extends Controller
             ->values();
 
         return response()->json([
-            'message' => '201 Created: Row sites generated successfully.',
+            'message' => __('api.row_sites_generated_successfully'),
             'created_count' => $sites->count(),
             'sites' => $sites,
         ], 201);
@@ -121,7 +121,7 @@ class OrganizerEventLayoutSiteController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Event site updated successfully.',
+            'message' => __('api.event_site_updated_successfully'),
             'site' => $this->present($site),
         ]);
     }
@@ -147,7 +147,7 @@ class OrganizerEventLayoutSiteController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Layout sites reordered successfully.',
+            'message' => __('api.layout_sites_reordered_successfully'),
         ]);
     }
 
@@ -164,7 +164,7 @@ class OrganizerEventLayoutSiteController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Event site deleted successfully.',
+            'message' => __('api.event_site_deleted_successfully'),
         ]);
     }
 
@@ -182,7 +182,7 @@ class OrganizerEventLayoutSiteController extends Controller
         $restoreAll = (bool) ($validated['restore_all_missing'] ?? false);
         if (! $restoreAll && empty($validated['label'])) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Provide a canonical site label to restore.',
+                'message' => __('api.provide_a_canonical_site_label_to_restore'),
                 'error' => 'INVALID_SITE_LABEL',
             ], 422);
         }
@@ -193,7 +193,7 @@ class OrganizerEventLayoutSiteController extends Controller
                 $sites = collect($result['sites'])->map(fn (EventSite $site) => $this->present($site))->values();
 
                 return response()->json([
-                    'message' => '200 OK: Missing physical sites restored as NOT OPEN.',
+                    'message' => __('api.missing_physical_sites_restored_as_not_open'),
                     'restored_labels' => $result['restored_labels'],
                     'restored_count' => count($result['restored_labels']),
                     'sites' => $sites,
@@ -208,7 +208,7 @@ class OrganizerEventLayoutSiteController extends Controller
             );
 
             return response()->json([
-                'message' => '200 OK: Physical site restored as NOT OPEN.',
+                'message' => __('api.physical_site_restored_as_not_open'),
                 'restored_labels' => $result['restored_labels'],
                 'restored_count' => 1,
                 'site' => $this->present($result['site']),
@@ -258,7 +258,7 @@ class OrganizerEventLayoutSiteController extends Controller
     private function conflict(DomainConflictException $exception): JsonResponse
     {
         return response()->json([
-            'message' => '409 Conflict: ' . $exception->getMessage(),
+            'message' => __('api.msg') . $exception->getMessage(),
             'error' => $exception->error,
         ], 409);
     }
@@ -279,7 +279,7 @@ class OrganizerEventLayoutSiteController extends Controller
         }
 
         return response()->json([
-            'message' => '422 Unprocessable Entity: ' . $message,
+            'message' => __('api.msg') . $message,
             'error' => $error,
         ], 422);
     }
@@ -287,14 +287,14 @@ class OrganizerEventLayoutSiteController extends Controller
     private function rowNotFound(): JsonResponse
     {
         return response()->json([
-            'message' => '404 Not Found: Layout row not found for this event.',
+            'message' => __('api.layout_row_not_found_for_this_event'),
         ], 404);
     }
 
     private function siteNotFound(): JsonResponse
     {
         return response()->json([
-            'message' => '404 Not Found: Event site not found for this event.',
+            'message' => __('api.event_site_not_found_for_this_event'),
         ], 404);
     }
 }

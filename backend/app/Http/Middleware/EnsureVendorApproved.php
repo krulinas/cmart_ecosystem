@@ -17,7 +17,7 @@ class EnsureVendorApproved
 
         if (!$user || $user->role !== 'community' || $user->vendor_status !== 'approved') {
             return response()->json([
-                'message' => '403 Forbidden: Vendor access has not been approved.',
+                'message' => __('api.vendor_access_has_not_been_approved'),
             ], 403);
         }
 

@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-screen flex-col overflow-hidden bg-slate-50 lg:flex-row">
-    <!-- Mobile section nav -->
+    <!-- Mobile section nav (language control lives in the header on small screens) -->
     <div class="shrink-0 border-b border-ink-200 bg-white px-4 py-2.5 lg:hidden">
       <div class="flex items-center gap-2 overflow-x-auto pb-0.5">
         <router-link
@@ -19,7 +19,7 @@
     <!-- Sidebar — fixed viewport frame -->
     <aside
       class="hidden h-screen w-72 shrink-0 flex-col border-r border-ink-200/80 bg-white shadow-sm lg:flex"
-      aria-label="Organizer workspace sidebar"
+      :aria-label="t('navigation.workspaceSidebar')"
     >
       <!-- Brand header -->
       <div class="shrink-0 px-4 py-4 text-white" :class="theme.sidebarHeaderBg">
@@ -35,13 +35,13 @@
               {{ theme.brandTitle || 'SOC UUM' }}
             </div>
             <div class="text-[10px] uppercase tracking-[0.18em]" :class="theme.brandSubtitleClass || 'text-amber-200/90'">
-              {{ theme.brandSubtitle || 'Carboot Event Operations' }}
+              {{ theme.brandSubtitle || (theme.brandSubtitleKey ? t(theme.brandSubtitleKey) : '') }}
             </div>
           </div>
         </router-link>
 
         <div v-if="branchName" class="mt-3 space-y-1">
-          <div class="text-[10px] font-semibold uppercase tracking-wider text-white/55">Host venue</div>
+          <div class="text-[10px] font-semibold uppercase tracking-wider text-white/55">{{ t('navigation.hostVenue') }}</div>
           <div class="text-sm font-bold leading-snug text-white/95">{{ branchName }}</div>
           <div v-if="department" class="flex flex-wrap gap-1.5 pt-0.5">
             <span
@@ -80,7 +80,7 @@
               <span
                 v-if="badgeCountFor(item.hash)"
                 class="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-400 px-1.5 text-[10px] font-bold text-amber-950"
-                aria-label="Unread notifications"
+                :aria-label="t('navigation.unreadNotifications')"
               >
                 {{ badgeCountFor(item.hash) }}
               </span>
@@ -112,6 +112,9 @@
               </div>
             </div>
           </div>
+        </div>
+        <div class="mt-3 flex justify-center" data-testid="locale-toggle-desktop-slot">
+          <LanguageToggle placement="desktop" />
         </div>
       </div>
     </aside>
@@ -161,6 +164,10 @@
           </div>
 
           <div class="flex shrink-0 flex-wrap items-center gap-2">
+            <!-- Mobile only: sidebar is hidden below lg, so keep one header control -->
+            <div class="lg:hidden" data-testid="locale-toggle-mobile-slot">
+              <LanguageToggle placement="mobile" />
+            </div>
             <slot name="actions" />
           </div>
         </div>
@@ -176,9 +183,12 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute } from 'vue-router';
+import LanguageToggle from '../components/LanguageToggle.vue';
 import { useAuthStore } from '../stores/auth';
 
+const { t } = useI18n();
 const route = useRoute();
 const auth = useAuthStore();
 const homeLink = computed(() => auth.homeForUser());

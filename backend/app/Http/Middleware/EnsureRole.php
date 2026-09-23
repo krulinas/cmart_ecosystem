@@ -16,8 +16,8 @@ class EnsureRole
             $requiresOrganizer = !empty(array_intersect($roles, ManagementRole::organizerEquivalentRoles()));
 
             $message = $requiresOrganizer && !ManagementRole::isOrganizerEquivalent($user?->role)
-                ? '403 Forbidden: Organizer access required.'
-                : '403 Forbidden: The authenticated user does not have permission to access this resource.';
+                ? __('api.organizer_access_required')
+                : __('api.authenticated_user_no_resource_permission');
 
             return response()->json(['message' => $message], 403);
         }

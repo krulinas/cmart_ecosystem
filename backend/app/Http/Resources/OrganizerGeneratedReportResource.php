@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Support\PostEventReportProgramme;
+use App\Support\ReportDateTimeFormatter;
 use App\Support\ReportType;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -18,6 +20,11 @@ class OrganizerGeneratedReportResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $snapshot = is_array($this->snapshot) ? $this->snapshot : [];
+        $generatedAt = $snapshot['generated_at'] ?? null;
+        $generatedAtDisplay = $snapshot['generated_at_display']
+            ?? ($generatedAt ? ReportDateTimeFormatter::datetime($generatedAt) : null);
+
         return [
             'id' => $this->id,
             'carboot_event_id' => $this->carboot_event_id,
@@ -27,8 +34,15 @@ class OrganizerGeneratedReportResource extends JsonResource
             'version' => $this->version,
             'status' => $this->status,
             'snapshot' => $this->snapshot,
+            'snapshot_generated_at' => $generatedAt,
+            'snapshot_generated_at_display' => $generatedAtDisplay,
             'organizer_observations' => $this->organizer_observations,
             'organizer_recommendations' => $this->organizer_recommendations,
+            'programme_introduction' => $this->programme_introduction,
+            'programme_objectives' => is_array($this->programme_objectives) ? $this->programme_objectives : [],
+            'objectives_not_applicable' => (bool) $this->objectives_not_applicable,
+            'conclusion' => $this->conclusion,
+            'publish_readiness' => PostEventReportProgramme::publishReadiness($this->resource),
             'prepared_by' => $this->whenLoaded('preparedByUser', fn () => [
                 'id' => $this->preparedByUser->id,
                 'name' => $this->preparedByUser->name,

@@ -57,7 +57,7 @@ class Handler extends ExceptionHandler
             || $request->is('api/proxy/*')
         ) {
             return response()->json([
-                'message' => '401 Unauthorized: Authentication required.',
+                'message' => __('api.authentication_required'),
             ], 401);
         }
 

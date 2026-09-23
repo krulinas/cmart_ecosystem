@@ -44,6 +44,18 @@ const DEFAULT_ANALYTICS = {
   },
   trends: { monthly_bookings: [], monthly_payments: [] },
   distributions: { booking_status: {}, reuse_listing_status: { active: 0, inactive: 0 } },
+  item_sales: {
+    available: false,
+    clarification_key: 'vendor_item_sales_cmart_only',
+    items_sold: 0,
+    recorded_sales_total: 0,
+    currency: 'MYR',
+    reserved_sales_count: 0,
+    reserved_sales_total: 0,
+    walk_in_sales_count: 0,
+    walk_in_sales_total: 0,
+    sales_by_event: [],
+  },
   recent_activity: [],
   latest: { booking: null, receipt: null, reuse_item: null },
 };
@@ -64,6 +76,7 @@ const fetchVendorInsights = async () => {
       booth: { ...DEFAULT_ANALYTICS.booth, ...data.booth },
       trends: { ...DEFAULT_ANALYTICS.trends, ...data.trends },
       distributions: { ...DEFAULT_ANALYTICS.distributions, ...data.distributions },
+      item_sales: { ...DEFAULT_ANALYTICS.item_sales, ...data.item_sales },
       latest: { ...DEFAULT_ANALYTICS.latest, ...data.latest },
       recent_activity: Array.isArray(data.recent_activity) ? data.recent_activity : [],
     };

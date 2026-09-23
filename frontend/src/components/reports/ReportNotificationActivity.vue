@@ -1,8 +1,8 @@
 <template>
   <div v-if="items.length" class="mt-3 rounded-xl border border-ink-100 bg-ink-50/70 p-3">
-    <h4 class="text-xs font-bold uppercase tracking-wider text-ink-500">Notification activity</h4>
+    <h4 class="text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('reports.notifications.title') }}</h4>
     <p class="mt-1 text-[11px] leading-relaxed text-ink-500">
-      Email and WhatsApp alerts shown here are simulations for the current prototype. No external message was sent.
+      {{ t('reports.notifications.simulationNote') }}
     </p>
     <ul class="mt-2 space-y-1.5 text-sm text-ink-700">
       <li v-for="row in items" :key="row.id || `${row.action}-${row.created_at}-${row.channel}`" class="flex flex-wrap items-start gap-2">
@@ -19,9 +19,14 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n';
+import { formatLocaleDateTime } from '../../utils/localeFormat';
+
 defineProps({
   items: { type: Array, default: () => [] },
 });
+
+const { t } = useI18n();
 
 const glyph = (row) => {
   if (row.kind === 'external_simulation') {
@@ -33,7 +38,7 @@ const glyph = (row) => {
 const formatDate = (value) => {
   if (!value) return '';
   try {
-    return new Date(value).toLocaleString();
+    return formatLocaleDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
   } catch {
     return value;
   }

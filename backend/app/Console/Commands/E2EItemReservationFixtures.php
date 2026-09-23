@@ -14,6 +14,8 @@ use App\Models\User;
 use App\Models\VendorBusinessProfile;
 use App\Models\VendorCategory;
 use App\Models\VendorItem;
+use App\Models\VendorItemEventListing;
+use App\Models\VendorItemSale;
 use App\Services\ItemReservationReferenceGenerator;
 use App\Support\E2EDatabaseGuard;
 use App\Support\TestingDatabaseGuard;
@@ -53,8 +55,6 @@ class E2EItemReservationFixtures extends Command
     public const MANAGEMENT_EMAIL = 'e2e-p45-management@example.test';
 
     public const PASSWORD = 'P45-E2E-password';
-
-    private const SPACE_NAME = Space::PHYSICAL_PARKING_SITE;
 
     private const SERVICE_FEE = '15.00';
 
@@ -174,13 +174,13 @@ class E2EItemReservationFixtures extends Command
                     'approval_status' => 'Approved',
                 ]);
 
-                $successItem = $this->createItem($vendor, $thrift, self::MARKER.' Success Camera');
-                $conflictItem = $this->createItem($vendor, $thrift, self::MARKER.' Conflict Lamp');
-                $cancelItem = $this->createItem($vendor, $thrift, self::MARKER.' Cancel Radio');
-                $expiryItem = $this->createItem($vendor, $thrift, self::MARKER.' Expiry Clock');
-                $completionItem = $this->createItem($vendor, $thrift, self::MARKER.' Complete Bag');
-                $accessItem = $this->createItem($vendor, $thrift, self::MARKER.' Access Mirror');
-                $ownerOnlyItem = $this->createItem($vendor, $thrift, self::MARKER.' Owner Only Hat');
+                $successItem = $this->createItem($vendor, $thrift, self::MARKER.' Success Camera', $event, $booking);
+                $conflictItem = $this->createItem($vendor, $thrift, self::MARKER.' Conflict Lamp', $event, $booking);
+                $cancelItem = $this->createItem($vendor, $thrift, self::MARKER.' Cancel Radio', $event, $booking);
+                $expiryItem = $this->createItem($vendor, $thrift, self::MARKER.' Expiry Clock', $event, $booking);
+                $completionItem = $this->createItem($vendor, $thrift, self::MARKER.' Complete Bag', $event, $booking);
+                $accessItem = $this->createItem($vendor, $thrift, self::MARKER.' Access Mirror', $event, $booking);
+                $ownerOnlyItem = $this->createItem($vendor, $thrift, self::MARKER.' Owner Only Hat', $event, $booking);
 
                 $heldReservation = $this->seedReservation(
                     $conflictItem,
@@ -214,7 +214,7 @@ class E2EItemReservationFixtures extends Command
                     'product_details' => self::MARKER.' zero-fee booking',
                     'approval_status' => 'Approved',
                 ]);
-                $zeroFeeItem = $this->createItem($vendor, $thrift, self::MARKER.' Zero Fee Mug');
+                $zeroFeeItem = $this->createItem($vendor, $thrift, self::MARKER.' Zero Fee Mug', $zeroFeeEvent, $zeroFeeBooking);
 
                 return [
                     'database' => DB::connection()->getDatabaseName(),
@@ -336,9 +336,14 @@ class E2EItemReservationFixtures extends Command
         ]);
     }
 
-    private function createItem(User $vendor, VendorCategory $category, string $name): VendorItem
-    {
-        return VendorItem::query()->create([
+    private function createItem(
+        User $vendor,
+        VendorCategory $category,
+        string $name,
+        CarbootEvent $event,
+        Booking $booking,
+    ): VendorItem {
+        $item = VendorItem::query()->create([
             'user_id' => $vendor->id,
             'name' => $name,
             'vendor_category_id' => $category->id,
@@ -349,6 +354,23 @@ class E2EItemReservationFixtures extends Command
             'description' => self::MARKER.' reservable item',
             'status' => 'active',
         ]);
+
+        if (\Illuminate\Support\Facades\Schema::hasTable('vendor_item_event_selections')) {
+            VendorItemEventListing::query()->updateOrCreate(
+                [
+                    'vendor_item_id' => $item->id,
+                    'carboot_event_id' => $event->id,
+                ],
+                [
+                    'vendor_booking_id' => $booking->id,
+                    'vendor_user_id' => $vendor->id,
+                    'selected_by' => $vendor->id,
+                    'selected_at' => now(),
+                ],
+            );
+        }
+
+        return $item;
     }
 
     private function seedReservation(
@@ -399,6 +421,13 @@ class E2EItemReservationFixtures extends Command
                 ->whereIn('carboot_event_id', $eventIds)
                 ->orWhereIn('user_id', $userIds)
                 ->pluck('id');
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('vendor_item_sales')) {
+                VendorItemSale::query()->whereIn('vendor_item_id', $itemIds)->delete();
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('vendor_item_event_selections')) {
+                VendorItemEventListing::query()->whereIn('vendor_item_id', $itemIds)->delete();
+            }
 
             $deletedAudits = DB::table('item_reservation_audits')
                 ->whereIn('item_reservation_id', $reservationIds)
@@ -505,7 +534,7 @@ class E2EItemReservationFixtures extends Command
                 ->whereIn('carboot_event_id', $eventIds)
                 ->orWhereIn('user_id', $userIds)
                 ->count(),
-            'spaces' => Space::query()->where('space_size', self::SPACE_NAME)->count(),
+            'spaces' => Space::query()->where('space_size', 'like', self::MARKER.'%')->count(),
             'fixture_images' => collect(Storage::disk('public')->files('reuse-items'))
                 ->filter(fn (string $path) => str_contains($path, 'e2e-p45'))
                 ->count(),

@@ -28,7 +28,9 @@ class VendorItemController extends Controller
             ->withExists([
                 'reservations as has_active_reservation' => fn ($reservationQuery) => $reservationQuery
                     ->where('active_lock', 1),
+                'sale as has_sale',
             ])
+            ->with(['eventListings.carbootEvent'])
             ->latest();
 
         if (Schema::hasTable('reuse_item_images')) {
@@ -69,7 +71,7 @@ class VendorItemController extends Controller
         $this->attachUploadedImages($request, $item);
 
         return response()->json([
-            'message' => '201 Created: Reuse item created successfully.',
+            'message' => __('api.reuse_item_created_successfully'),
             'item' => VendorItemPresenter::fromModel($item->fresh('images')),
         ], 201);
     }
@@ -109,7 +111,7 @@ class VendorItemController extends Controller
             && $vendor_item->reservations()->active()->exists()
         ) {
             return response()->json([
-                'message' => 'This item has an active reservation and cannot be unpublished.',
+                'message' => __('api.this_item_has_an_active_reservation_and_cannot_be__efa38a38'),
                 'error' => 'item_has_active_reservation',
             ], 409);
         }
@@ -127,7 +129,7 @@ class VendorItemController extends Controller
         $this->attachUploadedImages($request, $vendor_item);
 
         return response()->json([
-            'message' => '200 OK: Reuse item updated successfully.',
+            'message' => __('api.reuse_item_updated_successfully'),
             'item' => VendorItemPresenter::fromModel($vendor_item->fresh('images')),
         ]);
     }
@@ -140,15 +142,22 @@ class VendorItemController extends Controller
 
         if ($vendor_item->reservations()->exists()) {
             return response()->json([
-                'message' => 'This item has reservation history and cannot be deleted.',
+                'message' => __('api.this_item_has_reservation_history_and_cannot_be_deleted'),
                 'error' => 'item_has_reservation_history',
+            ], 409);
+        }
+
+        if ($vendor_item->hasSale()) {
+            return response()->json([
+                'message' => __('api.this_item_has_sale_history_and_cannot_be_deleted'),
+                'error' => 'item_has_sale_history',
             ], 409);
         }
 
         $vendor_item->delete();
 
         return response()->json([
-            'message' => '200 OK: Reuse item deleted successfully.',
+            'message' => __('api.reuse_item_deleted_successfully'),
         ]);
     }
 
@@ -156,7 +165,7 @@ class VendorItemController extends Controller
     {
         if ($item->user_id !== $request->user()->id) {
             return response()->json([
-                'message' => '403 Forbidden: You do not have permission to access this item.',
+                'message' => __('api.you_do_not_have_permission_to_access_this_item'),
             ], 403);
         }
 

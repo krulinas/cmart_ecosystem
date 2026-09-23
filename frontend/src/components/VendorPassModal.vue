@@ -29,14 +29,14 @@
             <button
               type="button"
               class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 hover:bg-white/25"
-              aria-label="Close vendor pass"
+              :aria-label="t('vendor.passModal.closeAria')"
               @click="close"
             >
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <p class="text-xs font-bold uppercase tracking-wider text-brand-100">Vendor Event Pass</p>
+            <p class="text-xs font-bold uppercase tracking-wider text-brand-100">{{ t('vendor.passModal.eyebrow') }}</p>
             <h2 :id="titleId" class="mt-1 text-2xl font-black" data-testid="vendor-pass-booking-reference">
               Booking {{ formatBookingReference(pass.booking_id || pass.id) }}
             </h2>
@@ -44,44 +44,44 @@
 
           <div class="p-6 space-y-5">
             <div class="flex flex-wrap gap-2">
-              <span :class="passStatusBadgeClass(pass.pass_status)">{{ pass.pass_status_label || 'Pass' }}</span>
+              <span :class="passStatusBadgeClass(pass.pass_status)">{{ pass.pass_status_label || t('vendor.passModal.passFallback') }}</span>
               <span
                 v-if="pass.payment_status === 'Paid'"
                 class="ml-badge bg-emerald-100 text-emerald-800"
                 data-testid="vendor-pass-payment-status"
               >
-                Paid
+                {{ t('vendor.passModal.paid') }}
               </span>
-              <span v-if="pass.show_qr && isPassQrScannable(pass)" class="ml-badge bg-cyan-100 text-cyan-800">QR Active</span>
-              <span v-else-if="pass.show_qr" class="ml-badge bg-ink-100 text-ink-700">QR Inactive</span>
+              <span v-if="pass.show_qr && isPassQrScannable(pass)" class="ml-badge bg-cyan-100 text-cyan-800">{{ t('vendor.passModal.qrActive') }}</span>
+              <span v-else-if="pass.show_qr" class="ml-badge bg-ink-100 text-ink-700">{{ t('vendor.passModal.qrInactive') }}</span>
             </div>
 
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
-                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Vendor</dt>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('vendor.passModal.vendor') }}</dt>
                 <dd class="mt-1 font-semibold text-ink-900">{{ vendorName }}</dd>
               </div>
               <div>
-                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Event</dt>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('vendor.passModal.event') }}</dt>
                 <dd class="mt-1 font-semibold text-ink-900" data-testid="vendor-pass-event-label">{{ pass.event_name || '—' }}</dd>
               </div>
               <div>
-                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Assigned Booth</dt>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('vendor.passModal.assignedBooth') }}</dt>
                 <dd class="mt-1 font-semibold text-ink-900" data-testid="vendor-pass-booth-label">
                   <template v-if="pass.show_booth">{{ pass.booth_label || '—' }}</template>
-                  <template v-else>{{ pass.pending_message || 'Booth will be assigned after approval' }}</template>
+                  <template v-else>{{ pass.pending_message || t('vendor.passes.boothPendingFallback') }}</template>
                 </dd>
               </div>
               <div>
-                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Event Date</dt>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('vendor.passModal.eventDate') }}</dt>
                 <dd class="mt-1 font-semibold text-ink-900">{{ pass.event_date_label || eventDateLabel }}</dd>
               </div>
               <div>
-                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Event Time</dt>
-                <dd class="mt-1 font-semibold text-ink-900">{{ formatEventTimeLabel(pass) || eventTimeLabel }}</dd>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('vendor.passModal.eventTime') }}</dt>
+                <dd class="mt-1 font-semibold text-ink-900">{{ formatEventTimeLabel(pass, t) || eventTimeLabel || t('vendor.passes.allDayEvent') }}</dd>
               </div>
               <div class="sm:col-span-2">
-                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Product</dt>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('vendor.passModal.product') }}</dt>
                 <dd class="mt-1 font-semibold text-ink-900">{{ pass.product_label || productLabel }}</dd>
               </div>
             </dl>
@@ -93,7 +93,7 @@
                   :alt="`Verification QR for booking ${pass.booking_id || pass.id}`"
                   class="mx-auto h-44 w-44 rounded-lg border border-ink-200 bg-white p-2 object-contain"
                 />
-                <p class="mt-3 text-xs text-ink-400">Staff can scan this code during the check-in window.</p>
+                <p class="mt-3 text-xs text-ink-400">{{ t('vendor.passModal.staffScan') }}</p>
               </template>
               <p v-else class="text-sm font-semibold text-ink-500 py-8">
                 {{ passQrDisabledMessage(pass) }}
@@ -101,7 +101,7 @@
             </div>
 
             <p class="rounded-xl border border-brand-100 bg-brand-50/80 px-4 py-3 text-sm text-brand-900">
-              This pass is valid only for the selected event. QR codes expire after the check-in window closes.
+              {{ t('vendor.passModal.validNote') }}
             </p>
 
             <div class="flex flex-wrap gap-3">
@@ -111,9 +111,9 @@
                 class="ml-btn-primary"
                 @click="downloadPass"
               >
-                Download Pass
+                {{ t('vendor.passModal.downloadPass') }}
               </button>
-              <button type="button" class="ml-btn-ghost" @click="close">Close</button>
+              <button type="button" class="ml-btn-ghost" @click="close">{{ t('vendor.passModal.close') }}</button>
             </div>
           </div>
         </div>
@@ -124,6 +124,7 @@
 
 <script setup>
 import { computed, ref, watch, onUnmounted, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { formatBookingReference } from '../utils/bookingDisplay';
 import {
   buildQrImageUrl,
@@ -139,13 +140,15 @@ const props = defineProps({
   vendorName: { type: String, default: 'Vendor' },
   boothLabel: { type: String, default: '—' },
   eventDateLabel: { type: String, default: '—' },
-  eventTimeLabel: { type: String, default: 'All day event' },
+  eventTimeLabel: { type: String, default: '' },
   productLabel: { type: String, default: '—' },
   verifyUrl: { type: String, default: '' },
   qrImageUrl: { type: String, default: '' },
 });
 
 const emit = defineEmits(['update:modelValue', 'download']);
+
+const { t } = useI18n();
 
 const panelRef = ref(null);
 const titleId = computed(() => {

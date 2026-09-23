@@ -25,7 +25,7 @@
           <button
             type="button"
             class="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-ink-500 shadow-md ring-1 ring-ink-200 hover:bg-ink-50"
-            aria-label="Close edit profile"
+            :aria-label="t('profile.edit.closeAria')"
             @click="close"
           >
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,31 +33,31 @@
             </svg>
           </button>
 
-          <h2 id="vendor-profile-edit-title" class="text-2xl font-extrabold text-ink-900 pr-10">Edit Profile</h2>
-          <p class="mt-1 text-sm text-ink-500">Update your personal and business details.</p>
+          <h2 id="vendor-profile-edit-title" class="text-2xl font-extrabold text-ink-900 pr-10">{{ t('profile.edit.title') }}</h2>
+          <p class="mt-1 text-sm text-ink-500">{{ t('profile.edit.subtitle') }}</p>
 
           <form class="mt-6 space-y-5" @submit.prevent="save">
             <div class="flex flex-col sm:flex-row gap-4 items-start">
               <div class="shrink-0">
                 <div class="h-20 w-20 rounded-2xl border border-ink-200 bg-ink-50 overflow-hidden flex items-center justify-center">
                   <img v-if="logoPreviewUrl" :src="logoPreviewUrl" alt="Logo preview" class="h-full w-full object-cover" />
-                  <span v-else class="text-xs font-bold text-ink-400 text-center px-2">No logo</span>
+                  <span v-else class="text-xs font-bold text-ink-400 text-center px-2">{{ t('profile.edit.noLogo') }}</span>
                 </div>
                 <input ref="logoInput" type="file" accept="image/jpeg,image/jpg,image/png,image/webp" class="hidden" @change="onLogoSelected" />
                 <div class="mt-2 flex flex-wrap gap-2">
-                  <button type="button" class="ml-btn-ghost text-xs" @click="logoInput?.click()">Upload logo</button>
-                  <button v-if="logoPreviewUrl" type="button" class="ml-btn-ghost text-xs text-rose-600" @click="clearLogo">Remove</button>
+                  <button type="button" class="ml-btn-ghost text-xs" @click="logoInput?.click()">{{ t('profile.edit.uploadLogo') }}</button>
+                  <button v-if="logoPreviewUrl" type="button" class="ml-btn-ghost text-xs text-rose-600" @click="clearLogo">{{ t('profile.edit.remove') }}</button>
                 </div>
               </div>
 
               <div class="flex-1 w-full space-y-4">
                 <div>
-                  <label class="ml-label">Full name</label>
+                  <label class="ml-label">{{ t('profile.edit.fullName') }}</label>
                   <input v-model="form.name" class="ml-input" required />
                   <p v-if="errors.name" class="mt-1 text-xs text-rose-600">{{ errors.name }}</p>
                 </div>
                 <div>
-                  <label class="ml-label">Phone</label>
+                  <label class="ml-label">{{ t('profile.edit.phone') }}</label>
                   <input v-model="form.phone_number" class="ml-input" />
                   <p v-if="errors.phone_number" class="mt-1 text-xs text-rose-600">{{ errors.phone_number }}</p>
                 </div>
@@ -65,13 +65,13 @@
             </div>
 
             <div>
-              <label class="ml-label">Business name</label>
+              <label class="ml-label">{{ t('profile.edit.businessName') }}</label>
               <input v-model="form.business_name" class="ml-input" required />
               <p v-if="errors.business_name" class="mt-1 text-xs text-rose-600">{{ errors.business_name }}</p>
             </div>
 
             <div>
-              <label class="ml-label">Business phone</label>
+              <label class="ml-label">{{ t('profile.edit.businessPhone') }}</label>
               <input v-model="form.business_phone" class="ml-input" />
               <p v-if="errors.business_phone" class="mt-1 text-xs text-rose-600">{{ errors.business_phone }}</p>
             </div>
@@ -84,9 +84,9 @@
                 data-testid="vendor-whatsapp-opt-in"
               />
               <span>
-                <span class="font-semibold text-ink-800">Allow marketplace visitors to contact me on WhatsApp</span>
+                <span class="font-semibold text-ink-800">{{ t('profile.edit.whatsappOptIn') }}</span>
                 <span class="mt-0.5 block text-xs text-ink-500">
-                  When enabled, a WhatsApp button will appear on your public item listings. Your business phone number will be used for the conversation.
+                  {{ t('profile.edit.whatsappOptInHint') }}
                 </span>
               </span>
             </label>
@@ -95,27 +95,27 @@
             </p>
 
             <div>
-              <label class="ml-label">Business category</label>
+              <label class="ml-label">{{ t('profile.edit.businessCategory') }}</label>
               <select v-model="form.business_category" class="ml-input">
-                <option value="">Select category</option>
+                <option value="">{{ t('profile.edit.selectCategory') }}</option>
                 <option v-for="category in PRODUCT_CATEGORIES" :key="category" :value="category">{{ category }}</option>
               </select>
             </div>
 
             <div>
-              <label class="ml-label">Business description</label>
-              <textarea v-model="form.description" rows="4" class="ml-input" placeholder="Tell customers about your booth…"></textarea>
+              <label class="ml-label">{{ t('profile.edit.businessDescription') }}</label>
+              <textarea v-model="form.description" rows="4" class="ml-input" :placeholder="t('profile.edit.descriptionPlaceholder')"></textarea>
               <p v-if="errors.description" class="mt-1 text-xs text-rose-600">{{ errors.description }}</p>
             </div>
 
             <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-3 text-sm text-ink-600">
-              <p>Email: <span class="font-semibold text-ink-900">{{ profile?.email || '—' }}</span> <span class="text-ink-400">(read-only)</span></p>
-              <p class="mt-1">Vendor status: <span class="font-semibold text-ink-900">{{ vendorStatusLabel }}</span> <span class="text-ink-400">(read-only)</span></p>
+              <p>Email: <span class="font-semibold text-ink-900">{{ profile?.email || '—' }}</span> <span class="text-ink-400">{{ t('profile.edit.emailReadOnly') }}</span></p>
+              <p class="mt-1">{{ t('profile.edit.vendorStatusPrefix') }} <span class="font-semibold text-ink-900">{{ vendorStatusLabel }}</span> <span class="text-ink-400">{{ t('profile.edit.emailReadOnly') }}</span></p>
             </div>
 
             <div class="flex flex-wrap gap-2 pt-1">
-              <button type="submit" class="ml-btn-primary" :disabled="saving">{{ saving ? 'Saving…' : 'Save Changes' }}</button>
-              <button type="button" class="ml-btn-ghost" :disabled="saving" @click="close">Cancel</button>
+              <button type="submit" class="ml-btn-primary" :disabled="saving">{{ saving ? t('profile.edit.saving') : t('profile.edit.saveChanges') }}</button>
+              <button type="button" class="ml-btn-ghost" :disabled="saving" @click="close">{{ t('profile.edit.cancel') }}</button>
             </div>
           </form>
         </div>
@@ -126,6 +126,7 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'vue-toastification';
 import api from '../services/api';
 import { extractApiError } from '../utils/apiErrors';
@@ -143,6 +144,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'saved']);
 
+const { t } = useI18n();
 const toast = useToast();
 const saving = ref(false);
 const errors = reactive({});
@@ -167,7 +169,7 @@ const vendorStatusLabel = computed(() => {
   if (status === 'approved') return 'Approved Vendor';
   if (status === 'pending') return 'Pending Approval';
   if (status === 'rejected') return 'Not Approved';
-  return 'Community Member';
+  return t('profile.statusCommunity');
 });
 
 const revokeObjectPreview = () => {
@@ -252,7 +254,7 @@ const save = async () => {
     fd.append('_method', 'PATCH');
 
     const { data } = await api.post('/vendor/profile', fd);
-    toast.success('Profile updated successfully.');
+    toast.success(t('profile.edit.toastUpdated'));
     emit('saved', data);
     close();
   } catch (error) {

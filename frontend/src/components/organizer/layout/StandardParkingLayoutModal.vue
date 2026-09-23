@@ -104,7 +104,8 @@
 
 <script setup>
 import { computed, reactive, watch } from 'vue';
-import { LAYOUT_COPY } from '../../../utils/organizerEventLayoutMessages';
+import { useI18n } from 'vue-i18n';
+import { getLayoutCopy } from '../../../utils/organizerEventLayoutMessages';
 import { CMART_CARBOOT_ROW_LABELS } from '../../../config/cmartCarbootPhysicalLayout';
 import { previewStandardParkingLabels } from '../../../utils/visualParkingLayout';
 
@@ -117,7 +118,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'submit']);
 
-const copy = LAYOUT_COPY;
+const { t } = useI18n();
+const copy = computed(() => getLayoutCopy(t));
 const rowLabels = CMART_CARBOOT_ROW_LABELS;
 const previewLabels = previewStandardParkingLabels();
 
@@ -145,10 +147,10 @@ watch(
 
 function categoryLabel(rowLabel) {
   return ({
-    A: copy.rowCategoryA,
-    B: copy.rowCategoryB,
-    C: copy.rowCategoryC,
-    D: copy.rowCategoryD,
+    A: copy.value.rowCategoryA,
+    B: copy.value.rowCategoryB,
+    C: copy.value.rowCategoryC,
+    D: copy.value.rowCategoryD,
   })[rowLabel];
 }
 

@@ -32,11 +32,11 @@
 
             <dl class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Condition</dt>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('items.form.condition') }}</dt>
                 <dd class="mt-1 font-semibold text-ink-900">{{ item.condition }}</dd>
               </div>
               <div class="rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Price</dt>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('items.form.priceRm') }}</dt>
                 <dd class="mt-1 font-semibold text-ink-900">{{ formatItemPrice(item) }}</dd>
               </div>
               <div class="sm:col-span-2 rounded-xl border border-ink-100 bg-ink-50/50 p-4">
@@ -44,14 +44,14 @@
                 <dd class="mt-1 font-semibold text-ink-900">{{ listedDate }}</dd>
               </div>
               <div v-if="item.description" class="sm:col-span-2 rounded-xl border border-ink-100 bg-ink-50/50 p-4">
-                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">Description</dt>
+                <dt class="text-xs font-bold uppercase tracking-wider text-ink-400">{{ t('items.form.description') }}</dt>
                 <dd class="mt-1 text-ink-700 whitespace-pre-line">{{ item.description }}</dd>
               </div>
             </dl>
 
             <div class="mt-6 flex flex-wrap gap-2">
-              <button type="button" class="ml-btn-primary" @click="$emit('edit', item)">Edit Item</button>
-              <button type="button" class="ml-btn-ghost" @click="close">Close</button>
+              <button type="button" class="ml-btn-primary" @click="$emit('edit', item)">{{ t('items.form.editTitle') }}</button>
+              <button type="button" class="ml-btn-ghost" @click="close">{{ t('common.close') }}</button>
             </div>
           </div>
         </div>
@@ -62,6 +62,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import ReuseItemImageGallery from './ReuseItemImageGallery.vue';
 import { formatItemPrice } from '../utils/vendorCatalog';
 
@@ -71,6 +72,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue', 'edit']);
+
+const { t } = useI18n();
 
 const close = () => emit('update:modelValue', false);
 

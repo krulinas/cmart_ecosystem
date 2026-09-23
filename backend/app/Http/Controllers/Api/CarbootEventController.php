@@ -53,7 +53,7 @@ class CarbootEventController extends Controller
 
         if ($carboot_event->status === 'Closed' || $carboot_event->ends_at < now()) {
             return response()->json([
-                'message' => 'This event is no longer available for booking. Please choose another event.',
+                'message' => __('api.this_event_is_no_longer_available_for_booking_plea_390c2a53'),
                 'available' => false,
             ], 404);
         }
@@ -104,7 +104,7 @@ class CarbootEventController extends Controller
         $this->attachUploadedImages($request, $event);
 
         return response()->json([
-            'message' => '201 Created: Carboot event created successfully.',
+            'message' => __('api.carboot_event_created_successfully'),
             'event' => EventPresenter::fromModel($event->fresh('images'), true),
         ], 201);
     }
@@ -167,7 +167,7 @@ class CarbootEventController extends Controller
         $this->attachUploadedImages($request, $carboot_event);
 
         return response()->json([
-            'message' => '200 OK: Carboot event updated successfully.',
+            'message' => __('api.carboot_event_updated_successfully'),
             'event' => EventPresenter::fromModel($carboot_event->fresh('images'), true),
         ]);
     }
@@ -220,7 +220,7 @@ class CarbootEventController extends Controller
             report($e);
 
             return response()->json([
-                'message' => 'Unable to permanently delete this event. Please try again later.',
+                'message' => __('api.unable_to_permanently_delete_this_event_please_try_4f0dcf8c'),
                 'code' => 'event_delete_failed',
                 'error' => 'event_delete_failed',
             ], 500);
@@ -228,7 +228,7 @@ class CarbootEventController extends Controller
             report($e);
 
             return response()->json([
-                'message' => 'Unable to permanently delete this event. Please try again later.',
+                'message' => __('api.unable_to_permanently_delete_this_event_please_try_4f0dcf8c'),
                 'code' => 'event_delete_failed',
                 'error' => 'event_delete_failed',
             ], 500);
@@ -237,7 +237,7 @@ class CarbootEventController extends Controller
         $this->deleteCollectedStorageObjects($surveyStorageCleanup);
 
         return response()->json([
-            'message' => '200 OK: Carboot event deleted successfully.',
+            'message' => __('api.carboot_event_deleted_successfully'),
         ]);
     }
 
@@ -253,7 +253,7 @@ class CarbootEventController extends Controller
     private function eventHasBookingsConflictResponse(): JsonResponse
     {
         return response()->json([
-            'message' => 'This event cannot be permanently deleted because booking history already exists. Set the event status to Closed if it should no longer be available.',
+            'message' => __('api.this_event_cannot_be_permanently_deleted_because_b_bef5ecc7'),
             'code' => 'event_has_bookings',
             'error' => 'event_has_bookings',
         ], 409);
@@ -468,7 +468,7 @@ class CarbootEventController extends Controller
     private function conflictResponse(DomainConflictException $exception): JsonResponse
     {
         return response()->json([
-            'message' => '409 Conflict: '.$exception->getMessage(),
+            'message' => __('api.msg').$exception->getMessage(),
             'error' => $exception->error,
         ], 409);
     }
@@ -476,7 +476,7 @@ class CarbootEventController extends Controller
     private function unprocessableResponse(InvalidArgumentException|Throwable $exception): JsonResponse
     {
         return response()->json([
-            'message' => '422 Unprocessable Entity: '.$exception->getMessage(),
+            'message' => __('api.msg').$exception->getMessage(),
         ], 422);
     }
 

@@ -193,7 +193,7 @@ class BookingController extends Controller
         }
 
         return response()->json([
-            'message' => '201 Created: Booking submitted successfully. Awaiting Organizer review.',
+            'message' => __('api.booking_submitted_successfully_awaiting_organizer_review'),
             'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
             'invoice' => $invoice,
         ], 201);
@@ -206,7 +206,7 @@ class BookingController extends Controller
     ) {
         if (! ManagementRole::isOrganizerEquivalent($request->user()->role)) {
             return response()->json([
-                'message' => '403 Forbidden: Organizer access required for attendance exceptions.',
+                'message' => __('api.organizer_access_required_for_attendance_exceptions'),
             ], 403);
         }
 
@@ -447,7 +447,7 @@ class BookingController extends Controller
     ) {
         if (!ManagementRole::isOrganizerEquivalent($request->user()->role)) {
             return response()->json([
-                'message' => '403 Forbidden: Organizer access required for booking review.',
+                'message' => __('api.organizer_access_required_for_booking_review'),
             ], 403);
         }
 
@@ -462,7 +462,7 @@ class BookingController extends Controller
 
         if (in_array($current, ['Withdrawn', 'Cancelled', 'Rejected'], true)) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: This booking is no longer active in the approval pipeline.',
+                'message' => __('api.this_booking_is_no_longer_active_in_the_approval_pipeline'),
                 'current_status' => $current,
             ], 422);
         }
@@ -534,7 +534,7 @@ class BookingController extends Controller
         $booking->load(['user', 'space', 'invoice', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
         return response()->json([
-            'message' => '200 OK: Booking status updated to ' . $target . '.',
+            'message' => __('api.booking_status_updated_to') . $target . '.',
             'booking' => VendorBookingPresenter::presentForOrganizer($booking),
         ]);
     }
@@ -588,7 +588,7 @@ class BookingController extends Controller
 
         if (!$isOwner && !$isCmartWorker) {
             return response()->json([
-                'message' => '403 Forbidden: The authenticated user does not have permission to access this booking document.',
+                'message' => __('api.the_authenticated_user_does_not_have_permission_to_efa76b2e'),
             ], 403);
         }
 
@@ -615,14 +615,14 @@ class BookingController extends Controller
 
         if ($booking->approval_status !== 'Needs_Revision') {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Only bookings with Needs_Revision status can be resubmitted.',
+                'message' => __('api.only_bookings_with_needs_revision_status_can_be_resubmitted'),
                 'current_status' => $booking->approval_status,
             ], 422);
         }
 
         if ($request->has('event_site_ids')) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Event site selection cannot be changed during revision resubmission.',
+                'message' => __('api.event_site_selection_cannot_be_changed_during_revi_0afe0e6e'),
                 'error' => 'event_site_ids_not_allowed_on_resubmit',
             ], 422);
         }
@@ -640,7 +640,7 @@ class BookingController extends Controller
         $booking->load(['space', 'invoice', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
         return response()->json([
-            'message' => '200 OK: Booking resubmitted successfully. Awaiting Organizer review.',
+            'message' => __('api.booking_resubmitted_successfully_awaiting_organizer_review'),
             'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
         ]);
     }
@@ -657,7 +657,7 @@ class BookingController extends Controller
     {
         if (!ManagementRole::isOrganizerEquivalent($request->user()->role)) {
             return response()->json([
-                'message' => '403 Forbidden: Organizer access required.',
+                'message' => __('api.organizer_access_required'),
             ], 403);
         }
 
@@ -931,7 +931,7 @@ class BookingController extends Controller
         }
 
         if (!$this->hasValidBookingDate($booking)) {
-            return response()->json(['message' => '404 Not Found: Booking record is unavailable.'], 404);
+            return response()->json(['message' => __('api.booking_record_is_unavailable')], 404);
         }
 
         $booking->load([
@@ -976,7 +976,7 @@ class BookingController extends Controller
 
         if (!in_array($booking->approval_status, [self::PENDING_ORGANIZER, 'Needs_Revision'], true)) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Only pending bookings can be edited by vendors.',
+                'message' => __('api.only_pending_bookings_can_be_edited_by_vendors'),
                 'current_status' => $booking->approval_status,
             ], 422);
         }
@@ -1066,7 +1066,7 @@ class BookingController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Booking updated successfully.',
+            'message' => __('api.booking_updated_successfully'),
             'booking' => VendorBookingPresenter::presentForVendor(
                 $booking->fresh(['space', 'invoice', 'carbootEvent', 'vendorCategory', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']),
                 $request->user()->id,
@@ -1086,7 +1086,7 @@ class BookingController extends Controller
         $cancellable = [self::PENDING_ORGANIZER, 'Needs_Revision'];
         if (!in_array($booking->approval_status, $cancellable, true)) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Only pending bookings can be withdrawn by vendors.',
+                'message' => __('api.only_pending_bookings_can_be_withdrawn_by_vendors'),
                 'current_status' => $booking->approval_status,
             ], 422);
         }
@@ -1126,7 +1126,7 @@ class BookingController extends Controller
         $booking->load(['space', 'invoice', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
         return response()->json([
-            'message' => '200 OK: Booking withdrawn successfully.',
+            'message' => __('api.booking_withdrawn_successfully'),
             'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
         ]);
     }
@@ -1142,7 +1142,7 @@ class BookingController extends Controller
 
         if (in_array($booking->approval_status, ['Rejected', 'Cancelled'], true)) {
             return response()->json([
-                'message' => 'This booking can no longer be withdrawn.',
+                'message' => __('api.this_booking_can_no_longer_be_withdrawn'),
                 'current_status' => $booking->approval_status,
             ], 409);
         }
@@ -1151,14 +1151,14 @@ class BookingController extends Controller
             $booking->load(['space', 'invoice', 'auditLogs.actor', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
             return response()->json([
-                'message' => 'Booking withdrawn successfully.',
+                'message' => __('api.booking_withdrawn_successfully'),
                 'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
             ]);
         }
 
         if (!VendorBookingPresenter::canVendorWithdraw($booking, $request->user()->id)) {
             return response()->json([
-                'message' => 'This booking can no longer be withdrawn.',
+                'message' => __('api.this_booking_can_no_longer_be_withdrawn'),
                 'current_status' => $booking->approval_status,
             ], 409);
         }
@@ -1238,7 +1238,7 @@ class BookingController extends Controller
         $booking->refresh()->load(['space', 'invoice', 'auditLogs.actor', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
         return response()->json([
-            'message' => 'Booking withdrawn successfully.',
+            'message' => __('api.booking_withdrawn_successfully'),
             'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
         ]);
     }
@@ -1251,7 +1251,7 @@ class BookingController extends Controller
 
         if ($booking->approval_status !== 'Approved') {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Change requests are only available for approved bookings.',
+                'message' => __('api.change_requests_are_only_available_for_approved_bookings'),
             ], 422);
         }
 
@@ -1275,7 +1275,7 @@ class BookingController extends Controller
         );
 
         return response()->json([
-            'message' => '200 OK: Change request submitted. The Carboot Organizer will review your request.',
+            'message' => __('api.change_request_submitted_the_carboot_organizer_wil_8a67b954'),
             'booking' => $booking->fresh(['space', 'invoice']),
         ]);
     }
@@ -1288,7 +1288,7 @@ class BookingController extends Controller
 
         if ($booking->approval_status !== 'Approved') {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Cancellation requests are only available for approved bookings.',
+                'message' => __('api.cancellation_requests_are_only_available_for_appro_f730a3b9'),
             ], 422);
         }
 
@@ -1312,7 +1312,7 @@ class BookingController extends Controller
         );
 
         return response()->json([
-            'message' => '200 OK: Cancellation request submitted. The Carboot Organizer will review your request.',
+            'message' => __('api.cancellation_request_submitted_the_carboot_organiz_c95c248c'),
             'booking' => $booking->fresh(['space', 'invoice']),
         ]);
     }
@@ -1325,14 +1325,14 @@ class BookingController extends Controller
 
         if (in_array($booking->approval_status, ['Withdrawn', 'Rejected', 'Cancelled'], true)) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Payment cannot be submitted for withdrawn, rejected, or cancelled bookings.',
+                'message' => __('api.payment_cannot_be_submitted_for_withdrawn_rejected_cfc82350'),
                 'current_status' => $booking->approval_status,
             ], 422);
         }
 
         if ($booking->approval_status !== 'Approved') {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Payment can only be submitted for approved bookings.',
+                'message' => __('api.payment_can_only_be_submitted_for_approved_bookings'),
                 'current_status' => $booking->approval_status,
             ], 422);
         }
@@ -1340,13 +1340,13 @@ class BookingController extends Controller
         $invoice = $booking->invoice;
         if (!$invoice) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: No invoice is available for this booking yet.',
+                'message' => __('api.no_invoice_is_available_for_this_booking_yet'),
             ], 422);
         }
 
         if ($invoice->payment_status !== 'Unpaid') {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Payment has already been submitted or completed for this invoice.',
+                'message' => __('api.payment_has_already_been_submitted_or_completed_fo_89eede25'),
                 'current_payment_status' => $invoice->payment_status,
             ], 422);
         }
@@ -1366,7 +1366,7 @@ class BookingController extends Controller
         $booking->load(['space', 'invoice']);
 
         return response()->json([
-            'message' => 'Payment proof submitted successfully. Awaiting CMart verification.',
+            'message' => __('api.payment_proof_submitted_successfully_awaiting_cmar_e4f96795'),
             'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
             'invoice' => $invoice->fresh(),
         ]);
@@ -1379,7 +1379,7 @@ class BookingController extends Controller
     ) {
         if (! app()->environment(['local', 'testing', 'e2e'])) {
             return response()->json([
-                'message' => 'Demo payment is not available in this environment.',
+                'message' => __('api.demo_payment_is_not_available_in_this_environment'),
                 'code' => 'demo_payment_disabled',
             ], 403);
         }
@@ -1390,14 +1390,14 @@ class BookingController extends Controller
 
         if (in_array($booking->approval_status, ['Withdrawn', 'Rejected', 'Cancelled'], true)) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Payment cannot be completed for withdrawn, rejected, or cancelled bookings.',
+                'message' => __('api.payment_cannot_be_completed_for_withdrawn_rejected_4f83a35e'),
                 'current_status' => $booking->approval_status,
             ], 422);
         }
 
         if ($booking->approval_status !== 'Approved') {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Payment can only be completed for approved bookings.',
+                'message' => __('api.payment_can_only_be_completed_for_approved_bookings'),
                 'current_status' => $booking->approval_status,
             ], 422);
         }
@@ -1405,20 +1405,20 @@ class BookingController extends Controller
         $invoice = $booking->invoice;
         if (!$invoice) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: No invoice is available for this booking yet.',
+                'message' => __('api.no_invoice_is_available_for_this_booking_yet'),
             ], 422);
         }
 
         if ($invoice->payment_status === 'Paid') {
             return response()->json([
-                'message' => '422 Unprocessable Entity: This booking has already been paid.',
+                'message' => __('api.this_booking_has_already_been_paid'),
                 'current_payment_status' => $invoice->payment_status,
             ], 422);
         }
 
         if ($invoice->payment_status !== 'Unpaid') {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Demo payment is only available for unpaid invoices awaiting payment.',
+                'message' => __('api.demo_payment_is_only_available_for_unpaid_invoices_7bd4e28f'),
                 'current_payment_status' => $invoice->payment_status,
             ], 422);
         }
@@ -1447,7 +1447,7 @@ class BookingController extends Controller
         $booking->load(['space', 'invoice', 'carbootEvent', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
         return response()->json([
-            'message' => 'Payment successful. Your vendor pass is now unlocked.',
+            'message' => __('api.payment_successful_your_vendor_pass_is_now_unlocked'),
             'booking' => VendorBookingPresenter::presentForVendor($booking, $request->user()->id),
             'invoice' => $invoice->fresh(),
         ]);
@@ -1460,34 +1460,34 @@ class BookingController extends Controller
     ) {
         if (!ManagementRole::isOrganizerEquivalent($request->user()->role)) {
             return response()->json([
-                'message' => '403 Forbidden: Organizer access required for payment verification.',
+                'message' => __('api.organizer_access_required_for_payment_verification'),
             ], 403);
         }
 
         $invoice = $booking->invoice;
         if (!$invoice) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: No invoice is available for this booking.',
+                'message' => __('api.no_invoice_is_available_for_this_booking'),
             ], 422);
         }
 
         if ($booking->approval_status !== 'Approved') {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Payment can only be verified for approved bookings.',
+                'message' => __('api.payment_can_only_be_verified_for_approved_bookings'),
                 'current_status' => $booking->approval_status,
             ], 422);
         }
 
         if ($invoice->payment_status === 'Paid') {
             return response()->json([
-                'message' => '422 Unprocessable Entity: This payment has already been verified as paid.',
+                'message' => __('api.this_payment_has_already_been_verified_as_paid'),
                 'current_payment_status' => $invoice->payment_status,
             ], 422);
         }
 
         if ($invoice->payment_status !== 'Pending Verification') {
             return response()->json([
-                'message' => '422 Unprocessable Entity: Only submitted payments awaiting verification can be marked as paid.',
+                'message' => __('api.only_submitted_payments_awaiting_verification_can__9f78bd22'),
                 'current_payment_status' => $invoice->payment_status,
             ], 422);
         }
@@ -1520,7 +1520,7 @@ class BookingController extends Controller
         $booking->load(['space', 'invoice', 'user.businessProfile', 'bookingDayAllocations.eventSite.space', 'bookingDayAllocations.eventDay']);
 
         return response()->json([
-            'message' => 'Payment verified successfully. Vendor receipt and event pass are now available.',
+            'message' => __('api.payment_verified_successfully_vendor_receipt_and_e_6df290f7'),
             'booking' => VendorBookingPresenter::presentForOrganizer($booking),
             'invoice' => $invoice->fresh(),
         ]);
@@ -1536,7 +1536,7 @@ class BookingController extends Controller
     {
         if (! ManagementRole::isOrganizerEquivalent($request->user()->role)) {
             return response()->json([
-                'message' => '403 Forbidden: Organizer access required to view payment proofs.',
+                'message' => __('api.organizer_access_required_to_view_payment_proofs'),
             ], 403);
         }
 
@@ -1544,14 +1544,14 @@ class BookingController extends Controller
         $invoice = $booking->invoice;
         if (! $invoice) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: No invoice is available for this booking.',
+                'message' => __('api.no_invoice_is_available_for_this_booking'),
             ], 422);
         }
 
         $rawPath = $invoice->payment_proof_path;
         if (! filled($rawPath)) {
             return response()->json([
-                'message' => '404 Not Found: No payment proof has been submitted for this booking.',
+                'message' => __('api.no_payment_proof_has_been_submitted_for_this_booking'),
             ], 404);
         }
 
@@ -1559,13 +1559,13 @@ class BookingController extends Controller
 
         if (str_starts_with($path, 'demo-gateway/')) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: This booking uses a demo payment marker and has no uploaded proof image.',
+                'message' => __('api.this_booking_uses_a_demo_payment_marker_and_has_no_71a88544'),
             ], 422);
         }
 
         if (! str_starts_with($path, 'payment-proofs/') || str_contains($path, '..')) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: The stored payment proof path is not valid.',
+                'message' => __('api.the_stored_payment_proof_path_is_not_valid'),
             ], 422);
         }
 
@@ -1573,14 +1573,14 @@ class BookingController extends Controller
         $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
         if (! in_array($extension, $allowedExtensions, true)) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: The payment proof file type is not supported.',
+                'message' => __('api.the_payment_proof_file_type_is_not_supported'),
             ], 422);
         }
 
         $disk = Storage::disk('public');
         if (! $disk->exists($path)) {
             return response()->json([
-                'message' => '404 Not Found: The payment proof file could not be found.',
+                'message' => __('api.the_payment_proof_file_could_not_be_found'),
             ], 404);
         }
 
@@ -1601,7 +1601,7 @@ class BookingController extends Controller
         }
         if ($mime === null || ! isset($allowedMimes[$mime])) {
             return response()->json([
-                'message' => '422 Unprocessable Entity: The payment proof file type is not supported.',
+                'message' => __('api.the_payment_proof_file_type_is_not_supported'),
             ], 422);
         }
 
@@ -1618,7 +1618,7 @@ class BookingController extends Controller
     {
         if ($booking->user_id !== $request->user()->id) {
             return response()->json([
-                'message' => '403 Forbidden: The authenticated user does not have permission to access this booking.',
+                'message' => __('api.the_authenticated_user_does_not_have_permission_to_a2df1e26'),
             ], 403);
         }
 
@@ -1663,13 +1663,13 @@ class BookingController extends Controller
 
         if (!$user || !ManagementRole::canAccessOrganizerRoutes($user->role)) {
             return response()->json([
-                'message' => '403 Forbidden: Organizer access required.',
+                'message' => __('api.organizer_access_required'),
             ], 403);
         }
 
         if ($booking->bookingDayAllocations()->exists()) {
             return response()->json([
-                'message' => '409 Conflict: This booking has allocation history and cannot be hard-deleted.',
+                'message' => __('api.this_booking_has_allocation_history_and_cannot_be__7e2ec422'),
                 'error' => 'booking_has_allocation_history',
             ], 409);
         }
@@ -1677,7 +1677,7 @@ class BookingController extends Controller
         $booking->delete();
 
         return response()->json([
-            'message' => '200 OK: Booking deleted successfully.',
+            'message' => __('api.booking_deleted_successfully'),
         ]);
     }
 

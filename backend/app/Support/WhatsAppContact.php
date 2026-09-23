@@ -84,7 +84,10 @@ class WhatsAppContact
         string $vendorName,
         string $itemName,
         string $reference,
+        ?string $eventName = null,
     ): string {
-        return 'Hi '.$vendorName.', I’m contacting you about my CMart reservation '.$reference.' for “'.$itemName.'”.';
+        $eventBit = $eventName ? ' ('.$eventName.')' : '';
+
+        return 'Hi '.$vendorName.', I’m contacting you about my CMart reservation '.$reference.' for “'.$itemName.'”'.$eventBit.'.';
     }
 }

@@ -65,7 +65,7 @@ class OrganizerSurveyImportController extends Controller
             $existing = $e->existingBatch->loadMissing('uploader:id,name');
 
             return response()->json([
-                'message' => 'This file has already been imported for the selected event.',
+                'message' => __('api.this_file_has_already_been_imported_for_the_selected_event'),
                 'code' => 'survey_import_duplicate',
                 'existing_batch' => (new RawSurveyUploadResource($existing))->toArray($request),
             ], 409);
@@ -73,7 +73,7 @@ class OrganizerSurveyImportController extends Controller
             $active = $e->activeBatch->loadMissing('uploader:id,name');
 
             return response()->json([
-                'message' => 'A survey dataset already exists for this event. Replace it with the newly validated file?',
+                'message' => __('api.a_survey_dataset_already_exists_for_this_event_rep_f4e54779'),
                 'code' => 'survey_import_replace_required',
                 'active_batch' => (new RawSurveyUploadResource($active))->toArray($request),
             ], 409);
@@ -86,7 +86,7 @@ class OrganizerSurveyImportController extends Controller
             report($e);
 
             return response()->json([
-                'message' => 'Survey import failed. Check the analytics service and try again.',
+                'message' => __('api.survey_import_failed_check_the_analytics_service_a_af860336'),
             ], 502);
         }
 

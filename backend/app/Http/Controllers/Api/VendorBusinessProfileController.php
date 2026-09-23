@@ -119,7 +119,7 @@ class VendorBusinessProfileController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Business profile updated successfully.',
+            'message' => __('api.business_profile_updated_successfully'),
             'profile' => $profile->fresh('vendorCategory'),
             'account' => [
                 'email' => $user->fresh()->email,
@@ -149,7 +149,7 @@ class VendorBusinessProfileController extends Controller
             $profile->update(['logo_path' => null]);
 
             return response()->json([
-                'message' => '200 OK: Business logo removed successfully.',
+                'message' => __('api.business_logo_removed_successfully'),
                 'profile' => $profile->fresh(),
             ]);
         }
@@ -161,7 +161,7 @@ class VendorBusinessProfileController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Business logo updated successfully.',
+            'message' => __('api.business_logo_updated_successfully'),
             'profile' => $profile->fresh(),
         ]);
     }

@@ -59,7 +59,7 @@ const props = defineProps({
   chartType: { type: String, required: true },
   includeZeros: { type: Boolean, default: false },
   sortByCount: { type: Boolean, default: false },
-  emptyText: { type: String, default: 'No responses for this question yet.' },
+  emptyText: { type: String, default: '' },
   testId: { type: String, default: 'survey-distribution-chart' },
   unansweredCount: { type: Number, default: 0 },
   answeredCount: { type: Number, default: null },

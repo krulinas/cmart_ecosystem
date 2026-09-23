@@ -44,14 +44,14 @@ class EventRegistrationController extends Controller
                 if ($event->status === 'Closed') {
                     return [
                         'status' => 422,
-                        'body' => ['message' => '422 Unprocessable Entity: This event is closed for registration.'],
+                        'body' => ['message' => __('api.this_event_is_closed_for_registration')],
                     ];
                 }
 
                 if ($event->ends_at->isPast()) {
                     return [
                         'status' => 422,
-                        'body' => ['message' => '422 Unprocessable Entity: This event has already ended.'],
+                        'body' => ['message' => __('api.this_event_has_already_ended')],
                     ];
                 }
 
@@ -63,7 +63,7 @@ class EventRegistrationController extends Controller
                 if ($alreadyRegistered) {
                     return [
                         'status' => 422,
-                        'body' => ['message' => '422 Unprocessable Entity: You are already registered for this event.'],
+                        'body' => ['message' => __('api.you_are_already_registered_for_this_event')],
                     ];
                 }
 
@@ -73,7 +73,7 @@ class EventRegistrationController extends Controller
                 if ($event->max_slots !== null && $currentCount >= $event->max_slots) {
                     return [
                         'status' => 422,
-                        'body' => ['message' => '422 Unprocessable Entity: This event is full. No slots remaining.'],
+                        'body' => ['message' => __('api.this_event_is_full_no_slots_remaining')],
                     ];
                 }
 
@@ -88,7 +88,7 @@ class EventRegistrationController extends Controller
                 return [
                     'status' => 201,
                     'body' => [
-                        'message' => '201 Created: You have successfully registered for this event.',
+                        'message' => __('api.you_have_successfully_registered_for_this_event'),
                         'event' => $event->fresh(),
                     ],
                 ];
@@ -100,7 +100,7 @@ class EventRegistrationController extends Controller
              */
             if ($exception->errorInfo[1] === 1062) {
                 return response()->json([
-                    'message' => '422 Unprocessable Entity: You are already registered for this event.',
+                    'message' => __('api.you_are_already_registered_for_this_event'),
                 ], 422);
             }
 

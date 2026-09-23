@@ -6,12 +6,12 @@
   >
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <p class="text-xs font-bold uppercase tracking-wider text-brand-700">Step 1</p>
+        <p class="text-xs font-bold uppercase tracking-wider text-brand-700">{{ t('booking.category.step') }}</p>
         <h2 id="vendor-category-heading" tabindex="-1" class="mt-1 text-base font-extrabold text-ink-900 focus:outline-none">
-          Select Selling Category
+          {{ t('booking.category.title') }}
         </h2>
         <p class="mt-1 text-sm text-ink-600">
-          Compatible sites appear after you choose a category.
+          {{ t('booking.category.lead') }}
         </p>
       </div>
       <button
@@ -21,7 +21,7 @@
         data-testid="vendor-category-retry"
         @click="$emit('retry')"
       >
-        Try Again
+        {{ t('booking.category.tryAgain') }}
       </button>
     </div>
 
@@ -31,7 +31,7 @@
       data-testid="vendor-category-loading"
       role="status"
     >
-      Loading categories…
+      {{ t('booking.category.loading') }}
     </p>
 
     <p
@@ -43,7 +43,7 @@
       {{ loadError }}
     </p>
 
-    <div v-else class="mt-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Selling category">
+    <div v-else class="mt-4 grid gap-3 sm:grid-cols-2" role="radiogroup" :aria-label="t('booking.category.ariaGroup')">
       <button
         v-for="category in categories"
         :key="category.id"
@@ -66,7 +66,7 @@
           class="mt-2 inline-flex rounded-full bg-cyan-100 px-2 py-1 text-[11px] font-bold text-cyan-800"
           data-testid="vendor-category-profile-suggestion"
         >
-          Suggested from your profile
+          {{ t('booking.category.suggested') }}
         </span>
       </button>
     </div>
@@ -76,12 +76,14 @@
       class="mt-4 text-sm font-semibold text-amber-800"
       data-testid="vendor-category-required"
     >
-      Select a selling category first to view compatible sites.
+      {{ t('booking.category.required') }}
     </p>
   </section>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n';
+
 const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
   categories: { type: Array, default: () => [] },
@@ -92,6 +94,8 @@ const props = defineProps({
 
 defineEmits(['update:modelValue', 'retry']);
 
+const { t } = useI18n();
+
 function categoryClass(category) {
   return String(props.modelValue) === String(category.id)
     ? 'border-brand-500 bg-brand-50 shadow-sm'
@@ -100,7 +104,7 @@ function categoryClass(category) {
 
 function categoryAriaLabel(category) {
   const suggestion = String(props.profileSuggestedCategoryId) === String(category.id)
-    ? ', suggested from your profile'
+    ? `, ${t('booking.category.suggested')}`
     : '';
   return `${category.label}${suggestion}`;
 }

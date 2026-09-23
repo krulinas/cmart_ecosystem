@@ -15,6 +15,7 @@ class TestingDatabaseGuardTest extends TestCase
     /** @var list<string> */
     private array $blocked = [
         'cmart_db',
+        'cmart_db_rebuild',
         'cmart',
         'production',
         'prod',
@@ -48,6 +49,22 @@ class TestingDatabaseGuardTest extends TestCase
             appEnv: 'testing',
             connection: 'mysql',
             database: 'cmart_db',
+            approvedDatabase: self::APPROVED,
+            developmentDatabase: self::DEVELOPMENT,
+            blockedDatabases: $this->blocked,
+        );
+    }
+
+    public function test_cmart_db_rebuild_is_rejected(): void
+    {
+        $this->expectException(UnsafeTestDatabaseException::class);
+        $this->expectExceptionMessage('cmart_db_rebuild');
+        $this->expectExceptionMessage('No database operation was performed');
+
+        TestingDatabaseGuard::assertSafe(
+            appEnv: 'testing',
+            connection: 'mysql',
+            database: 'cmart_db_rebuild',
             approvedDatabase: self::APPROVED,
             developmentDatabase: self::DEVELOPMENT,
             blockedDatabases: $this->blocked,

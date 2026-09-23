@@ -21,6 +21,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import VendorPageShell from '../../components/vendor/VendorPageShell.vue';
@@ -33,6 +34,7 @@ import {
 } from '../../utils/bookingDisplay';
 
 const router = useRouter();
+const { t } = useI18n();
 const toast = useToast();
 
 const paymentRecords = ref([]);
@@ -59,7 +61,7 @@ const fetchPaymentHistory = async () => {
 
 const openBookingDocument = async (bookingId) => {
   if (!bookingId) {
-    toast.error('No document is available yet.');
+    toast.error(t('payment.history.toastNoDocument'));
     return;
   }
   try {
@@ -68,10 +70,10 @@ const openBookingDocument = async (bookingId) => {
     const fileUrl = URL.createObjectURL(file);
     window.open(fileUrl, '_blank', 'noopener,noreferrer');
     setTimeout(() => URL.revokeObjectURL(fileUrl), 60000);
-    toast.success('Booking document opened.');
+    toast.success(t('payment.history.toastDocumentOpened'));
   } catch (error) {
     console.error('Unable to download booking document PDF:', error);
-    toast.error('Unable to open booking document.');
+    toast.error(t('payment.history.toastUnableOpen'));
   }
 };
 

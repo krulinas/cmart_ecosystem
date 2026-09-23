@@ -26,6 +26,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\CleansUpTestFixtures;
 use Tests\Concerns\EnsuresCanonicalLayoutForSites;
 use Tests\TestCase;
@@ -151,7 +152,7 @@ class EventReportV1PdfVerificationTest extends TestCase
         ]);
         $v1 = $v1->fresh();
 
-        $this->assertSame(2, $v1->snapshot['schema_version']);
+        $this->assertSame(3, $v1->snapshot['schema_version']);
         $this->assertTrue($v1->snapshot['sections']['payments']['potentially_incomplete']);
         $this->assertNotNull($v1->snapshot['sections']['payments']['paid_withdrawals']['disclosure']);
         $this->assertArrayNotHasKey('qualitative_comments', $v1->snapshot['sections']['vendor_survey']);
@@ -276,6 +277,196 @@ class EventReportV1PdfVerificationTest extends TestCase
         $this->assertStringNotContainsString('legacy@example.com', $legacyText);
         $this->assertStringContainsString('RM 70.50', $legacyText);
         $this->assertSame($originalLegacy, json_encode(GeneratedReport::findOrFail($legacy->id)->snapshot));
+    }
+
+    public function test_pdf_layout_does_not_fragment_large_survey_sections_into_empty_pages(): void
+    {
+        if (! class_exists(Pdf::class)) {
+            $this->markTestSkipped('DomPDF is not available.');
+        }
+
+        $this->app->setLocale('en');
+
+        $organizer = $this->user('organizer', 'pagelayout');
+        $starts = now()->subDays(3)->setTime(9, 0, 0);
+        $event = $this->trackEvent(CarbootEvent::create([
+            'title' => 'Pagination Layout Carboot ' . uniqid(),
+            'starts_at' => $starts,
+            'ends_at' => $starts->copy()->addHours(8),
+            'status' => 'Closed',
+            'description' => 'PDF pagination regression fixture',
+            'max_slots' => 20,
+            'day_generation_mode' => 'calendar_days',
+        ]));
+
+        $distributions = [];
+        foreach ([
+            'gross_sales_band',
+            'experience_rating',
+            'item_conditions',
+            'items_sold_band',
+            'unsold_item_actions',
+            'product_categories',
+            'would_participate_again',
+            'booth_setup_difficulty',
+            'visitor_traffic_rating',
+            'pricing_satisfaction',
+            'event_promotion_reach',
+            'supporting_activity_attracted_visitors',
+            'overall_recommendation',
+        ] as $index => $name) {
+            $rows = [];
+            for ($i = 1; $i <= 5; $i++) {
+                $rows[] = [
+                    'key' => "option_{$i}",
+                    'label' => "Option {$i} for {$name}",
+                    'count' => 6 - $i,
+                    'percent' => (6 - $i) * 10,
+                ];
+            }
+            $distributions[$name] = [
+                'rows' => $rows,
+                'base_display' => 'n = 15 responses',
+                'multi_select' => $index % 3 === 0,
+            ];
+        }
+
+        $report = $this->trackReport(GeneratedReport::create([
+            'carboot_event_id' => $event->id,
+            'report_type' => ReportType::POST_EVENT_SUMMARY,
+            'version' => 1,
+            'status' => GeneratedReportStatus::PUBLISHED,
+            'snapshot' => [
+                'schema_version' => 3,
+                'provisional' => false,
+                'event' => [
+                    'title' => $event->title,
+                    'starts_at' => $event->starts_at->toIso8601String(),
+                    'ends_at' => $event->ends_at->toIso8601String(),
+                    'date_range_display' => 'Test window',
+                    'venue' => 'CMart',
+                ],
+                'sections' => [
+                    'booking_pipeline' => [
+                        'total_bookings' => 12,
+                        'unique_applicants' => 10,
+                        'approved_count' => 8,
+                        'approved_unique_vendors' => 7,
+                        'status_counts' => [
+                            'Approved' => 8,
+                            'Pending_Organizer' => 2,
+                            'Rejected' => 1,
+                            'Withdrawn' => 1,
+                        ],
+                    ],
+                    'attendance' => [
+                        'recorded' => true,
+                        'verified_check_in_count' => 6,
+                    ],
+                    'payments' => [
+                        'expected_booth_fees' => 400.0,
+                        'expected_booking_revenue' => 400.0,
+                        'collected_booth_fees' => 320.0,
+                        'collected_revenue' => 320.0,
+                        'outstanding' => 80.0,
+                        'outstanding_invoice_balance' => 80.0,
+                        'invoice_count_approved' => 8,
+                        'collection_rate_percent' => 80.0,
+                        'potentially_incomplete' => false,
+                    ],
+                    'site_day_utilisation' => [
+                        'available' => true,
+                        'available_active_site_days' => 20,
+                        'occupied_site_days' => 14,
+                        'utilisation_percent' => 70.0,
+                    ],
+            'vendor_categories' => [
+                'distribution' => [
+                    ['label' => 'Pre-loved / Thrift', 'count' => 4, 'unique_vendors' => 4],
+                    ['label' => 'Food & Beverages', 'count' => 3, 'unique_vendors' => 3],
+                ],
+            ],
+            'vendor_survey' => [
+                'available' => true,
+                'respondent_count' => 15,
+                'base_display' => 'n = 15 responses',
+                'distributions' => $distributions,
+            ],
+            'environmental_social' => [
+                'available' => true,
+                'vendors_reporting_reused_goods' => 5,
+                'plans_to_donate' => 3,
+                'plans_to_recycle' => 2,
+                'plans_to_relist_or_store' => 4,
+                'plans_to_dispose' => 1,
+            ],
+                ],
+                'methodology' => [
+                    'data_cut_off' => 'Test cut-off',
+                ],
+            ],
+            'organizer_observations' => 'Pagination regression observations stay short.',
+            'organizer_recommendations' => 'Keep survey charts readable across pages.',
+            'prepared_by' => $organizer->id,
+            'published_by' => $organizer->id,
+            'published_at' => now(),
+            'event_title_snapshot' => $event->title,
+            'event_starts_at_snapshot' => $event->starts_at,
+            'event_ends_at_snapshot' => $event->ends_at,
+        ]));
+
+        $viewData = PostEventReportPdfViewData::forAudience($report, 'cmart');
+        $html = view('reports.post_event_summary', $viewData)->render();
+
+        $this->assertStringNotContainsString(
+            '.section { page-break-inside: avoid',
+            $html,
+            'Whole sections must be allowed to split across DomPDF pages.',
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.bar-label[^{]*\{[^}]*float\s*:/s',
+            $html,
+            'Bar labels must not use CSS floats (DomPDF fragmentation risk).',
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/class="bar-label"[^>]*>[\s\S]*?float:\s*(left|right)/',
+            $html,
+            'Bar label markup must not rely on floated name/value spans.',
+        );
+        $this->assertStringContainsString('table class="bar-unit"', $html);
+        $this->assertStringNotContainsString(
+            'bottom: -14mm',
+            $html,
+            'Fixed footer must not use a negative bottom offset (DomPDF blank-page bug).',
+        );
+
+        $pdf = Pdf::loadHTML($html)->setPaper('a4');
+        $binary = $pdf->output();
+        $this->assertGreaterThan(2000, strlen($binary));
+
+        $pageCount = (int) $pdf->getDomPDF()->getCanvas()->get_page_count();
+        $this->assertGreaterThanOrEqual(3, $pageCount, 'Cover + body should span multiple pages.');
+        $this->assertLessThanOrEqual(
+            12,
+            $pageCount,
+            "Expected a compact readable PDF (<=12 pages) but DomPDF produced {$pageCount} pages.",
+        );
+
+        // Pathological fragmentation leaves many near-empty content streams.
+        preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $binary, $streams);
+        $sparseStreams = 0;
+        foreach ($streams[1] as $stream) {
+            $decoded = @gzuncompress($stream);
+            $payload = is_string($decoded) ? $decoded : $stream;
+            if (strlen(preg_replace('/\s+/', '', $payload) ?? '') < 180) {
+                $sparseStreams++;
+            }
+        }
+        $this->assertLessThanOrEqual(
+            2,
+            $sparseStreams,
+            "Too many sparse PDF streams ({$sparseStreams}) for {$pageCount} pages — layout still fragmenting.",
+        );
     }
 
     /**
@@ -437,5 +628,38 @@ class EventReportV1PdfVerificationTest extends TestCase
             ], $row));
             $this->createdSurveyResponseIds[] = $response->id;
         }
+    }
+
+    public function test_organizer_pdf_download_returns_attachment_headers_and_pdf_bytes(): void
+    {
+        if (! class_exists(Pdf::class)) {
+            $this->markTestSkipped('DomPDF is not available.');
+        }
+
+        $organizer = $this->user('organizer', 'pdfdl');
+        $starts = now()->subDays(3)->setTime(10, 0, 0);
+        $event = $this->trackEvent(CarbootEvent::create([
+            'title' => 'Download Headers Event ' . uniqid(),
+            'starts_at' => $starts,
+            'ends_at' => $starts->copy()->addHours(8),
+            'status' => 'Closed',
+            'description' => 'PDF download header fixture',
+            'max_slots' => 20,
+            'day_generation_mode' => 'calendar_days',
+            'analytics_source_mode' => 'system_only',
+        ]));
+
+        $draft = $this->trackReport(app(ReportDraftService::class)->generate($event, $organizer));
+
+        Sanctum::actingAs($organizer);
+        $response = $this->get('/api/organizer/generated-reports/'.$draft->id.'/pdf');
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
+        $disposition = (string) $response->headers->get('content-disposition');
+        $this->assertStringContainsString('attachment', $disposition);
+        $this->assertMatchesRegularExpression('/filename=.+\\.pdf/i', $disposition);
+        $this->assertStringContainsString('organizer-post-event-report-', $disposition);
+        $this->assertStringStartsWith('%PDF', $response->getContent());
     }
 }

@@ -54,6 +54,6 @@ class SpaceController extends Controller
     {
         Space::destroy($id);
 
-        return response()->json(['message' => '200 OK: Space deleted successfully.']);
+        return response()->json(['message' => __('api.space_deleted_successfully')]);
     }
 }

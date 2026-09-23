@@ -32,7 +32,7 @@
           >
             <div class="border-b border-ink-100 px-5 py-4">
               <h3 id="withdraw-modal-title" class="text-lg font-extrabold text-ink-900">
-                Withdraw booking?
+                {{ t('booking.withdraw.title') }}
               </h3>
             </div>
 
@@ -46,7 +46,7 @@
               </p>
 
               <p v-if="!requiresAcknowledgement" class="text-sm font-semibold text-rose-700">
-                This action cannot be undone from your dashboard.
+                {{ t('booking.withdraw.cannotUndo') }}
               </p>
 
               <label
@@ -62,19 +62,19 @@
                   :disabled="submitting"
                 />
                 <span class="text-sm text-rose-900">
-                  I understand that no refund will be issued and my sites will be released for other vendors.
+                  {{ t('booking.withdraw.ack') }}
                 </span>
               </label>
 
               <div>
-                <label for="withdrawal-reason" class="ml-label">Reason for withdrawal (optional)</label>
+                <label for="withdrawal-reason" class="ml-label">{{ t('booking.withdraw.reasonLabel') }}</label>
                 <textarea
                   id="withdrawal-reason"
                   v-model="reason"
                   data-testid="withdrawal-reason"
                   rows="3"
                   class="ml-input"
-                  placeholder="Example: Schedule conflict, wrong event date, changed product plan..."
+                  :placeholder="t('booking.withdraw.reasonPlaceholder')"
                   :disabled="submitting"
                 />
               </div>
@@ -92,7 +92,7 @@
                 :disabled="submitting"
                 @click="close"
               >
-                Keep booking
+                {{ t('booking.withdraw.keep') }}
               </button>
               <button
                 type="button"
@@ -101,7 +101,7 @@
                 :disabled="submitting || !canConfirm"
                 @click="confirmWithdraw"
               >
-                {{ submitting ? 'Withdrawing…' : 'Yes, withdraw booking' }}
+                {{ submitting ? t('booking.withdraw.withdrawing') : t('booking.withdraw.confirm') }}
               </button>
             </div>
           </div>
@@ -113,6 +113,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
   requiresNoRefundAcknowledgement,
   withdrawalWarningMessage,
@@ -124,6 +125,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue', 'confirm']);
+
+const { t } = useI18n();
 
 const reason = ref('');
 const acknowledged = ref(false);

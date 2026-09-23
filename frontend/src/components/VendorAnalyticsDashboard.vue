@@ -6,21 +6,21 @@
     <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
       <div class="min-w-0">
         <div class="flex flex-wrap items-center gap-2">
-          <h2 class="text-xl sm:text-2xl font-extrabold text-ink-900 tracking-tight">Analytics &amp; Reports</h2>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-ink-900 tracking-tight">{{ t('insights.title') }}</h2>
           <span
             class="ml-badge bg-sky-100 text-sky-800 inline-flex items-center gap-1"
-            title="These insights only use your own vendor records, not overall CMart performance."
+            :title="t('insights.vendorOnlyTip')"
           >
-            Vendor-only data
+            {{ t('insights.vendorOnlyBadge') }}
             <InfoHelpTip
-              aria-label="About vendor-only data"
-              text-en="These insights only use your own vendor records, not overall CMart performance."
+              :aria-label="t('insights.aboutVendorOnly')"
+              :text="t('insights.vendorOnlyTip')"
               placement="bottom-right"
             />
           </span>
         </div>
         <p class="mt-1 text-sm text-ink-500">
-          Your bookings, payments, and reuse listings at a glance.
+          {{ t('insights.subtitle') }}
         </p>
       </div>
       <div class="shrink-0">
@@ -31,14 +31,14 @@
           data-testid="vendor-insights-refresh"
           @click="$emit('retry')"
         >
-          {{ loading ? 'Refreshing…' : 'Refresh' }}
+          {{ loading ? t('insights.refreshing') : t('insights.refresh') }}
         </button>
       </div>
     </div>
 
     <details class="rounded-xl border border-ink-100 bg-ink-50/50 px-4 py-3">
       <summary class="cursor-pointer text-sm font-bold text-ink-700 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded-lg">
-        How to read these insights
+        {{ t('insights.howToRead') }}
       </summary>
       <ul class="mt-3 space-y-2 list-disc pl-5">
         <li v-for="item in dashboardGuideItems" :key="item">
@@ -56,8 +56,8 @@
     </div>
 
     <div v-else-if="loadError" class="rounded-2xl border border-amber-200 bg-amber-50/70 p-6 text-center">
-      <p class="text-sm text-amber-900 font-semibold">Unable to load your analytics right now.</p>
-      <button type="button" class="mt-4 ml-btn-ghost text-sm" @click="$emit('retry')">Try Again</button>
+      <p class="text-sm text-amber-900 font-semibold">{{ t('insights.unableLoad') }}</p>
+      <button type="button" class="mt-4 ml-btn-ghost text-sm" @click="$emit('retry')">{{ t('insights.tryAgain') }}</button>
     </div>
 
     <template v-else>
@@ -74,37 +74,122 @@
           <div class="mt-3 flex items-center gap-1.5">
             <p class="text-base font-bold text-ink-500 uppercase tracking-wide">{{ card.label }}</p>
             <InfoHelpTip
-              :aria-label="`About ${card.label}`"
-              :text-en="card.helpEn"
+              :aria-label="t('insights.aboutCard', { label: card.label })"
+              :text="card.help"
             />
           </div>
           <p v-if="card.subtext" class="mt-2 text-sm text-ink-400">{{ card.subtext }}</p>
         </div>
       </div>
 
+      <section
+        class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7 space-y-5"
+        data-testid="vendor-item-sales-insights"
+      >
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h3 class="text-xl font-bold text-ink-900">{{ t('insights.itemSales.title') }}</h3>
+            <InfoHelpTip
+              :aria-label="t('insights.itemSales.title')"
+              :text="itemSalesClarification"
+            />
+          </div>
+          <p class="mt-1 text-[15px] leading-7 text-ink-600">{{ t('insights.itemSales.lead') }}</p>
+          <p
+            class="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900"
+            data-testid="vendor-item-sales-clarification"
+          >
+            {{ itemSalesClarification }}
+          </p>
+        </div>
+
+        <p
+          v-if="!itemSales.available"
+          class="rounded-xl border border-dashed border-ink-300 bg-ink-50/50 p-6 text-center text-sm text-ink-500"
+          data-testid="vendor-item-sales-unavailable"
+        >
+          {{ t('insights.itemSales.unavailable') }}
+        </p>
+
+        <template v-else>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div
+              v-for="card in itemSalesCards"
+              :key="card.key"
+              class="rounded-2xl border border-ink-100 bg-white p-5 shadow-sm"
+              :data-testid="`vendor-item-sales-card-${card.key}`"
+            >
+              <p class="text-2xl font-black text-ink-900 tabular-nums leading-none">{{ card.displayValue }}</p>
+              <div class="mt-3 flex items-center gap-1.5">
+                <p class="text-sm font-bold text-ink-500 uppercase tracking-wide">{{ card.label }}</p>
+                <InfoHelpTip :aria-label="t('insights.aboutCard', { label: card.label })" :text="card.help" />
+              </div>
+              <p v-if="card.subtext" class="mt-2 text-sm text-ink-400">{{ card.subtext }}</p>
+            </div>
+          </div>
+
+          <div>
+            <h4 class="text-base font-bold text-ink-900">{{ t('insights.itemSales.byEventTitle') }}</h4>
+            <p
+              v-if="!itemSalesByEvent.length"
+              class="mt-2 rounded-xl border border-dashed border-ink-300 bg-ink-50/50 p-6 text-center text-sm text-ink-500"
+            >
+              {{ t('insights.itemSales.byEventEmpty') }}
+            </p>
+            <div v-else class="mt-2 overflow-x-auto rounded-xl border border-ink-100">
+              <table class="min-w-full divide-y divide-ink-100 text-sm">
+                <thead class="bg-ink-50/80">
+                  <tr>
+                    <th class="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('insights.itemSales.colEvent') }}</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('insights.itemSales.colItemsSold') }}</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('insights.itemSales.colRecordedTotal') }}</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('insights.itemSales.colReserved') }}</th>
+                    <th class="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-ink-500">{{ t('insights.itemSales.colWalkIn') }}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-ink-100 bg-white">
+                  <tr v-for="row in itemSalesByEvent" :key="row.carboot_event_id" data-testid="vendor-item-sales-event-row">
+                    <td class="px-4 py-3 text-ink-800">
+                      <span class="font-semibold">{{ row.event_title || t('insights.itemSales.untitledEvent') }}</span>
+                      <span v-if="eventDateLabel(row.event_starts_at)" class="block text-xs text-ink-500">
+                        {{ eventDateLabel(row.event_starts_at) }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(row.items_sold) }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums">{{ formatCurrency(row.recorded_sales_total) }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(row.reserved_count) }}</td>
+                    <td class="px-4 py-3 text-right tabular-nums">{{ formatCount(row.walk_in_count) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+      </section>
+
       <div class="rounded-2xl border border-ink-100 bg-white/70 p-6 sm:p-7">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <div class="flex items-center gap-1.5">
-              <h3 class="text-xl font-bold text-slate-900">Profile Completion</h3>
+              <h3 class="text-xl font-bold text-slate-900">{{ t('insights.profileCompletion') }}</h3>
               <InfoHelpTip
-                aria-label="About Profile Completion"
-                text-en="How complete your business profile is. A complete profile improves vendor trust and booth visibility."
+                :aria-label="t('insights.profileCompletion')"
+                :text="t('insights.cards.profileCompletionHelp')"
               />
             </div>
-            <p class="text-[15px] leading-7 text-slate-700">Complete your business profile to improve booth visibility.</p>
+            <p class="text-[15px] leading-7 text-slate-700">{{ t('insights.profileCompletionLead') }}</p>
           </div>
           <button type="button" class="ml-btn-ghost shrink-0" @click="$emit('edit-profile')">
-            Edit Profile
+            {{ t('insights.editProfile') }}
           </button>
         </div>
         <div class="mt-4">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-base font-semibold text-ink-700 mb-3">
-            <span>{{ summary.profile_completion_percent ?? 0 }}% complete</span>
+            <span>{{ summary.profile_completion_percent ?? 0 }}{{ t('insights.percentCompleteSuffix') }}</span>
             <span v-if="missingProfileFields.length" class="text-ink-500 font-normal">
-              Missing: {{ missingProfileFields.join(', ') }}
+              {{ t('insights.missingPrefix') }} {{ missingProfileFields.join(', ') }}
             </span>
-            <span v-else class="text-emerald-700">All set</span>
+            <span v-else class="text-emerald-700">{{ t('insights.allSet') }}</span>
           </div>
           <div class="h-3 rounded-full bg-ink-100 overflow-hidden">
             <div
@@ -118,63 +203,63 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="rounded-xl border border-ink-100 bg-ink-50/40 p-5">
           <div class="flex items-center gap-1.5 mb-1">
-            <h3 class="text-base font-bold text-ink-900">Monthly Bookings</h3>
+            <h3 class="text-base font-bold text-ink-900">{{ t('insights.monthlyBookings') }}</h3>
             <InfoHelpTip
-              aria-label="About Monthly Bookings"
-              text-en="Shows how many booth bookings are linked to event dates each month."
+              :aria-label="t('insights.monthlyBookings')"
+              :text="t('insights.tipMonthlyBookings')"
             />
           </div>
-          <p class="text-xs text-ink-500 mb-4">Last 6 months by event date</p>
+          <p class="text-xs text-ink-500 mb-4">{{ t('insights.monthlyBookingsHint') }}</p>
           <div v-if="hasBookingTrend" class="relative h-56">
             <canvas ref="bookingTrendCanvas"></canvas>
           </div>
-          <p v-else class="text-sm text-ink-500 py-8 text-center">No booking trend data yet.</p>
+          <p v-else class="text-sm text-ink-500 py-8 text-center">{{ t('insights.noBookingTrend') }}</p>
         </div>
 
         <div class="rounded-xl border border-ink-100 bg-ink-50/40 p-5">
           <div class="flex items-center gap-1.5 mb-1">
-            <h3 class="text-base font-bold text-ink-900">Monthly Payments</h3>
+            <h3 class="text-base font-bold text-ink-900">{{ t('insights.monthlyPayments') }}</h3>
             <InfoHelpTip
-              aria-label="About Monthly Payments"
-              text-en="Shows the total verified booth payments received each month."
+              :aria-label="t('insights.monthlyPayments')"
+              :text="t('insights.tipMonthlyPayments')"
             />
           </div>
-          <p class="text-xs text-ink-500 mb-4">Paid booth invoices over the last 6 months</p>
+          <p class="text-xs text-ink-500 mb-4">{{ t('insights.monthlyPaymentsHint') }}</p>
           <div v-if="hasPaymentTrend" class="relative h-56">
             <canvas ref="paymentTrendCanvas"></canvas>
           </div>
-          <p v-else class="text-sm text-ink-500 py-8 text-center">No payment trend data yet.</p>
+          <p v-else class="text-sm text-ink-500 py-8 text-center">{{ t('insights.noPaymentTrend') }}</p>
         </div>
 
         <div class="rounded-xl border border-ink-100 bg-ink-50/40 p-5">
           <div class="flex items-center gap-1.5 mb-3">
-            <h3 class="text-base font-bold text-ink-900">Booking Status</h3>
+            <h3 class="text-base font-bold text-ink-900">{{ t('insights.bookingStatus') }}</h3>
             <InfoHelpTip
-              aria-label="About Booking Status"
-              text-en="Shows how your bookings are distributed by status."
+              :aria-label="t('insights.bookingStatus')"
+              :text="t('insights.tipBookingStatus')"
             />
           </div>
           <div v-if="hasBookingStatusChart" class="relative h-56">
             <canvas ref="bookingStatusCanvas"></canvas>
           </div>
-          <p v-else class="text-sm text-ink-500 py-8 text-center">No booking status data yet.</p>
+          <p v-else class="text-sm text-ink-500 py-8 text-center">{{ t('insights.noBookingStatus') }}</p>
         </div>
 
         <div class="rounded-xl border border-ink-100 bg-ink-50/40 p-5">
           <div class="flex items-center gap-1.5 mb-3">
-            <h3 class="text-base font-bold text-ink-900">Reuse Listing Status</h3>
+            <h3 class="text-base font-bold text-ink-900">{{ t('insights.reuseListingStatus') }}</h3>
             <InfoHelpTip
-              aria-label="About Reuse Listing Status"
-              text-en="Shows the status of your reuse item listings once items are added."
+              :aria-label="t('insights.reuseListingStatus')"
+              :text="t('insights.tipReuseListingStatus')"
             />
           </div>
           <div v-if="hasReuseStatusChart" class="relative h-56">
             <canvas ref="reuseStatusCanvas"></canvas>
           </div>
           <div v-else class="py-6 text-center">
-            <p class="text-sm text-ink-500">No reuse listing data yet.</p>
+            <p class="text-sm text-ink-500">{{ t('insights.noReuseListing') }}</p>
             <button type="button" class="mt-4 ml-btn-ghost font-semibold min-h-[44px]" @click="$emit('manage-reuse')">
-              Manage Reuse Listings
+              {{ t('items.title') }}
             </button>
           </div>
         </div>
@@ -185,6 +270,8 @@
 
 <script setup>
 import { computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { formatLocaleDate, formatLocaleNumber, formatLocaleCurrencyMyr } from '../utils/localeFormat';
 import Chart from 'chart.js/auto';
 import InfoHelpTip from './InfoHelpTip.vue';
 
@@ -196,6 +283,8 @@ const props = defineProps({
 
 defineEmits(['retry', 'edit-profile', 'manage-reuse']);
 
+const { t } = useI18n();
+
 const bookingTrendCanvas = ref(null);
 const paymentTrendCanvas = ref(null);
 const bookingStatusCanvas = ref(null);
@@ -206,20 +295,20 @@ let paymentTrendChart = null;
 let bookingStatusChart = null;
 let reuseStatusChart = null;
 
-const PROFILE_FIELD_LABELS = {
-  business_name: 'business name',
-  business_phone: 'business phone',
-  business_category: 'business category',
-  description: 'description',
-  logo_path: 'business logo',
-};
+const PROFILE_FIELD_LABELS = computed(() => ({
+  business_name: t('insights.fieldBusinessName'),
+  business_phone: t('insights.fieldBusinessPhone'),
+  business_category: t('insights.fieldBusinessCategory'),
+  description: t('insights.fieldDescription'),
+  logo_path: t('insights.fieldBusinessLogo'),
+}));
 
-const dashboardGuideItems = [
-  'Cards show quick totals.',
-  'Line chart shows booking trend over time.',
-  'Bar chart compares monthly payment totals.',
-  'Donut chart shows booking status distribution.',
-];
+const dashboardGuideItems = computed(() => [
+  t('insights.guideCards'),
+  t('insights.guideLine'),
+  t('insights.guideBar'),
+  t('insights.guideDonut'),
+]);
 
 const summary = computed(() => props.analytics?.summary || {});
 const trends = computed(() => props.analytics?.trends || { monthly_bookings: [], monthly_payments: [] });
@@ -227,13 +316,12 @@ const distributions = computed(() => props.analytics?.distributions || { booking
 
 const missingProfileFields = computed(() =>
   (summary.value.profile_missing_fields || []).map(
-    (field) => PROFILE_FIELD_LABELS[field] || field.replace(/_/g, ' '),
+    (field) => PROFILE_FIELD_LABELS.value[field] || field.replace(/_/g, ' '),
   ),
 );
 
-const formatCount = (value) => new Intl.NumberFormat('en-MY').format(value ?? 0);
-const formatCurrency = (value) =>
-  new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value ?? 0);
+const formatCount = (value) => formatLocaleNumber(value ?? 0);
+const formatCurrency = (value) => formatLocaleCurrencyMyr(value ?? 0);
 
 const icon = (path) => () =>
   h('svg', { class: 'w-5 h-5', fill: 'none', stroke: 'currentColor', viewBox: '0 0 24 24' }, [
@@ -243,57 +331,111 @@ const icon = (path) => () =>
 const insightCards = computed(() => [
   {
     key: 'bookings',
-    label: 'Total Bookings',
+    label: t('insights.cards.totalBookings'),
     displayValue: formatCount(summary.value.total_bookings),
-    subtext: `${summary.value.upcoming_bookings ?? 0} upcoming`,
-    helpEn: 'All booth booking requests created by this vendor.',
+    subtext: t('insights.cards.totalBookingsSubtext', { count: summary.value.upcoming_bookings ?? 0 }),
+    help: t('insights.cards.totalBookingsHelp'),
     icon: icon('M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'),
     iconClass: 'bg-brand-50 text-brand-600 border-brand-100',
   },
   {
     key: 'upcoming',
-    label: 'Upcoming Bookings',
+    label: t('insights.cards.upcomingBookings'),
     displayValue: formatCount(summary.value.upcoming_bookings),
-    subtext: `${summary.value.completed_bookings ?? 0} completed`,
-    helpEn: 'Bookings for upcoming events that have not happened yet.',
+    subtext: t('insights.cards.upcomingBookingsSubtext', { count: summary.value.completed_bookings ?? 0 }),
+    help: t('insights.cards.upcomingBookingsHelp'),
     icon: icon('M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'),
     iconClass: 'bg-sky-50 text-sky-700 border-sky-100',
   },
   {
     key: 'receipts',
-    label: 'Booking Receipts',
+    label: t('insights.cards.bookingReceipts'),
     displayValue: formatCount(summary.value.total_receipts),
-    subtext: 'Issued payment records',
-    helpEn: 'Payment receipt records issued for this vendor\'s booth bookings.',
+    subtext: t('insights.cards.bookingReceiptsSubtext'),
+    help: t('insights.cards.bookingReceiptsHelp'),
     icon: icon('M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'),
     iconClass: 'bg-violet-50 text-violet-700 border-violet-100',
   },
   {
     key: 'paid',
-    label: 'Total Paid',
+    label: t('insights.cards.totalPaid'),
     displayValue: formatCurrency(summary.value.total_paid_amount),
-    subtext: 'Booth payment total',
-    helpEn: 'Total verified booth payments.',
+    subtext: t('insights.cards.totalPaidSubtext'),
+    help: t('insights.cards.totalPaidHelp'),
     icon: icon('M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'),
     iconClass: 'bg-emerald-50 text-emerald-700 border-emerald-100',
   },
   {
     key: 'reuse',
-    label: 'Active Reuse Listings',
+    label: t('insights.cards.activeReuseListings'),
     displayValue: formatCount(summary.value.active_reuse_listings),
-    subtext: `${summary.value.total_reuse_listings ?? 0} total listings`,
-    helpEn: 'Reuse items currently active or visible in the vendor preview.',
+    subtext: t('insights.cards.activeReuseListingsSubtext', { count: summary.value.total_reuse_listings ?? 0 }),
+    help: t('insights.cards.activeReuseListingsHelp'),
     icon: icon('M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z'),
     iconClass: 'bg-amber-50 text-amber-700 border-amber-100',
   },
   {
     key: 'profile',
-    label: 'Profile Completion',
+    label: t('insights.cards.profileCompletion'),
     displayValue: `${summary.value.profile_completion_percent ?? 0}%`,
-    subtext: missingProfileFields.value.length ? 'Fields still missing' : 'Profile complete',
-    helpEn: 'How complete your business profile is. A complete profile improves vendor trust and booth visibility.',
+    subtext: missingProfileFields.value.length
+      ? t('insights.cards.profileCompletionSubtextMissing')
+      : t('insights.cards.profileCompletionSubtextComplete'),
+    help: t('insights.cards.profileCompletionHelp'),
     icon: icon('M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'),
     iconClass: 'bg-ink-50 text-ink-700 border-ink-100',
+  },
+]);
+
+const itemSales = computed(() => props.analytics?.item_sales || { available: false });
+
+const itemSalesByEvent = computed(() =>
+  Array.isArray(itemSales.value.sales_by_event) ? itemSales.value.sales_by_event : [],
+);
+
+const itemSalesClarification = computed(() => {
+  const key = `insights.itemSales.clarification.${itemSales.value.clarification_key || 'vendor_item_sales_cmart_only'}`;
+  const translated = t(key);
+  return translated === key
+    ? t('insights.itemSales.clarification.vendor_item_sales_cmart_only')
+    : translated;
+});
+
+const eventDateLabel = (value) =>
+  formatLocaleDate(value, { day: 'numeric', month: 'short', year: 'numeric' });
+
+const itemSalesCards = computed(() => [
+  {
+    key: 'items-sold',
+    label: t('insights.itemSales.cards.itemsSold'),
+    displayValue: formatCount(itemSales.value.items_sold),
+    subtext: t('insights.itemSales.cards.itemsSoldSubtext'),
+    help: t('insights.itemSales.cards.itemsSoldHelp'),
+  },
+  {
+    key: 'recorded-total',
+    label: t('insights.itemSales.cards.recordedTotal'),
+    displayValue: formatCurrency(itemSales.value.recorded_sales_total),
+    subtext: t('insights.itemSales.cards.recordedTotalSubtext'),
+    help: t('insights.itemSales.cards.recordedTotalHelp'),
+  },
+  {
+    key: 'reserved-sales',
+    label: t('insights.itemSales.cards.reservedSales'),
+    displayValue: formatCount(itemSales.value.reserved_sales_count),
+    subtext: t('insights.itemSales.cards.reservedSalesSubtext', {
+      amount: formatCurrency(itemSales.value.reserved_sales_total),
+    }),
+    help: t('insights.itemSales.cards.reservedSalesHelp'),
+  },
+  {
+    key: 'walk-in-sales',
+    label: t('insights.itemSales.cards.walkInSales'),
+    displayValue: formatCount(itemSales.value.walk_in_sales_count),
+    subtext: t('insights.itemSales.cards.walkInSalesSubtext', {
+      amount: formatCurrency(itemSales.value.walk_in_sales_total),
+    }),
+    help: t('insights.itemSales.cards.walkInSalesHelp'),
   },
 ]);
 
@@ -341,7 +483,7 @@ const renderCharts = () => {
       type: 'line',
       data: {
         labels: bookingMonths.map((row) => row.label),
-        datasets: [{ label: 'Bookings', data: bookingMonths.map((row) => row.count), borderColor: '#0277BD', backgroundColor: 'rgba(41,182,246,0.18)', tension: 0.3, fill: true }],
+        datasets: [{ label: t('insights.chartBookings'), data: bookingMonths.map((row) => row.count), borderColor: '#0277BD', backgroundColor: 'rgba(41,182,246,0.18)', tension: 0.3, fill: true }],
       },
       options: axisChartOptions,
     });
@@ -353,7 +495,7 @@ const renderCharts = () => {
       type: 'bar',
       data: {
         labels: paymentMonths.map((row) => row.label),
-        datasets: [{ label: 'Paid (RM)', data: paymentMonths.map((row) => row.amount), backgroundColor: '#10b981' }],
+        datasets: [{ label: t('insights.chartPaidRm'), data: paymentMonths.map((row) => row.amount), backgroundColor: '#10b981' }],
       },
       options: axisChartOptions,
     });
@@ -377,7 +519,7 @@ const renderCharts = () => {
     reuseStatusChart = new Chart(reuseStatusCanvas.value, {
       type: 'doughnut',
       data: {
-        labels: ['Active', 'Inactive'],
+        labels: [t('status.active'), t('status.inactive')],
         datasets: [{ data: [reuseStatus.active || 0, reuseStatus.inactive || 0], backgroundColor: ['#10b981', '#94a3b8'], borderWidth: 0 }],
       },
       options: donutChartOptions,

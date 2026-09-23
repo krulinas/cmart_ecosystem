@@ -20,26 +20,29 @@
       :class="placementClass"
       @keydown.escape.stop="close"
     >
-      <p class="text-[15px] leading-7 text-slate-700">{{ textEn }}</p>
-      <p v-if="textMs && SHOW_BM_COPY" class="mt-2 text-[13px] leading-6 text-slate-500 font-normal">{{ textMs }}</p>
+      <p class="text-[15px] leading-7 text-slate-700">{{ text }}</p>
     </div>
   </span>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { SHOW_BM_COPY } from '../config/locale';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
-  textEn: { type: String, required: true },
-  textMs: { type: String, default: '' },
-  ariaLabel: { type: String, default: 'What is this?' },
+  /** Localized tip string (pass through t()). */
+  text: { type: String, required: true },
+  ariaLabel: { type: String, default: '' },
   placement: { type: String, default: 'bottom-left' },
 });
+
+const { t } = useI18n();
 
 const open = ref(false);
 const rootRef = ref(null);
 const tooltipId = `info-tip-${Math.random().toString(36).slice(2, 9)}`;
+
+const ariaLabel = computed(() => props.ariaLabel || t('insights.howToRead'));
 
 const placementClass = computed(() => {
   if (props.placement === 'bottom-right') {

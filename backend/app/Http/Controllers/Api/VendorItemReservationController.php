@@ -6,8 +6,8 @@ use App\Exceptions\DomainConflictException;
 use App\Http\Controllers\Controller;
 use App\Models\ItemReservation;
 use App\Services\ItemReservationCancellationService;
-use App\Services\ItemReservationLifecycleService;
 use App\Services\ItemReservationPresenter;
+use App\Services\VendorItemSaleService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -72,7 +72,7 @@ class VendorItemReservationController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Item reservation cancelled successfully.',
+            'message' => __('api.item_reservation_cancelled_successfully'),
             'reservation' => ItemReservationPresenter::forVendor($reservation),
         ]);
     }
@@ -80,12 +80,25 @@ class VendorItemReservationController extends Controller
     public function complete(
         Request $request,
         ItemReservation $item_reservation,
-        ItemReservationLifecycleService $service,
+        VendorItemSaleService $saleService,
     ): JsonResponse {
         $this->authorizeVendor($request, $item_reservation);
 
+        $validated = $request->validate([
+            'final_sale_price' => 'required|numeric|min:0',
+        ]);
+
         try {
-            $reservation = $service->complete($item_reservation, $request->user());
+            $sale = $saleService->completeReservedSale(
+                $item_reservation,
+                $request->user(),
+                $validated['final_sale_price'],
+            );
+            $reservation = $item_reservation->fresh([
+                'carbootEvent',
+                'reservingUser',
+                'vendorItem',
+            ]);
         } catch (DomainConflictException $exception) {
             return response()->json([
                 'message' => $exception->getMessage(),
@@ -94,8 +107,14 @@ class VendorItemReservationController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Reservation marked completed and the item is now inactive.',
+            'message' => __('api.collection_confirmed_and_item_marked_sold'),
             'reservation' => ItemReservationPresenter::forVendor($reservation),
+            'sale' => [
+                'id' => $sale->id,
+                'final_sale_price' => round((float) $sale->final_sale_price, 2),
+                'currency' => $sale->currency,
+                'sale_source' => $sale->sale_source,
+            ],
         ]);
     }
 

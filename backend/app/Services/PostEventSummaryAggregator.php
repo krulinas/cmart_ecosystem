@@ -68,6 +68,7 @@ class PostEventSummaryAggregator
         }
 
         $reservationCounts = $this->itemReservationCounts($event->id, $dataAvailability);
+        $vendorReportedItemSales = $this->vendorReportedItemSales($event->id, $dataAvailability);
         $feedbackSummary = $this->feedbackSummary(
             $event->id,
             $dataAvailability,
@@ -113,6 +114,7 @@ class PostEventSummaryAggregator
                 'event_sites' => $includeSystem ? $siteSummary : ['excluded' => true],
                 'site_day_utilisation' => $includeSystem ? $siteDayUtilisation : ['excluded' => true],
                 'item_reservations' => $includeSystem ? $reservationCounts : ['excluded' => true],
+                'vendor_reported_item_sales' => $includeSystem ? $vendorReportedItemSales : ['excluded' => true],
                 'vendor_categories' => $includeSystem ? [
                     'available' => true,
                     'primary_metric' => 'unique_vendors',
@@ -253,7 +255,7 @@ class PostEventSummaryAggregator
             return [
                 'available' => false,
                 'recorded' => false,
-                'message' => 'Attendance verification was not recorded for this event.',
+                'message' => __('api.attendance_verification_was_not_recorded_for_this_event'),
             ];
         }
 
@@ -270,7 +272,7 @@ class PostEventSummaryAggregator
                 'recorded' => false,
                 'verified_check_in_count' => null,
                 'label' => 'Verified vendor check-ins',
-                'message' => 'Attendance verification was not recorded for this event.',
+                'message' => __('api.attendance_verification_was_not_recorded_for_this_event'),
                 'note' => 'A single check-in timestamp does not prove complete multi-day attendance.',
             ];
         }
@@ -643,7 +645,7 @@ class PostEventSummaryAggregator
 
             return [
                 'available' => false,
-                'message' => 'Not available for this event',
+                'message' => __('api.not_available_for_this_event'),
             ];
         }
 
@@ -666,7 +668,7 @@ class PostEventSummaryAggregator
                 'available_active_site_days' => null,
                 'occupied_site_days' => null,
                 'utilisation_percent' => null,
-                'message' => 'Not available for this event',
+                'message' => __('api.not_available_for_this_event'),
                 'formula' => 'occupied active site-days ÷ available active site-days × 100',
                 'note' => 'Site-day utilisation requires at least one active site and one event day. max_slots is not used as booth capacity.',
             ];
@@ -720,6 +722,74 @@ class PostEventSummaryAggregator
             'total' => array_sum($counts),
             'by_reservation_status' => $counts,
             'note' => 'Marketplace holds for this event only; not vendor lifetime listings.',
+        ];
+    }
+
+    /**
+     * Privacy-safe vendor-reported CMart item sales for this event only.
+     *
+     * @param  array<string, mixed>  $dataAvailability
+     * @return array<string, mixed>
+     */
+    private function vendorReportedItemSales(int $eventId, array &$dataAvailability): array
+    {
+        if (! Schema::hasTable('vendor_item_sales')) {
+            $dataAvailability['vendor_reported_item_sales'] = 'omitted';
+
+            return [
+                'available' => false,
+                'message' => 'Vendor-reported item sales data is not available for this database.',
+            ];
+        }
+
+        if (! Schema::hasTable('vendor_item_event_selections')) {
+            $dataAvailability['vendor_reported_item_sales'] = 'partial';
+        }
+
+        $sales = DB::table('vendor_item_sales')
+            ->where('carboot_event_id', $eventId)
+            ->selectRaw('sale_source, COUNT(*) as items_sold, COALESCE(SUM(final_sale_price), 0) as recorded_sales_total')
+            ->groupBy('sale_source')
+            ->get();
+
+        $listedItems = null;
+        if (Schema::hasTable('vendor_item_event_selections')) {
+            $listedItems = (int) DB::table('vendor_item_event_selections')
+                ->where('carboot_event_id', $eventId)
+                ->distinct()
+                ->count('vendor_item_id');
+        } else {
+            $dataAvailability['vendor_reported_item_sales_listed_items'] = 'unavailable';
+        }
+
+        $bySource = [];
+        $itemsSold = 0;
+        $recordedTotal = 0.0;
+        foreach ($sales as $row) {
+            $count = (int) $row->items_sold;
+            $total = round((float) $row->recorded_sales_total, 2);
+            $bySource[(string) $row->sale_source] = [
+                'items_sold' => $count,
+                'recorded_sales_total' => $total,
+            ];
+            $itemsSold += $count;
+            $recordedTotal += $total;
+        }
+
+        $dataAvailability['vendor_reported_item_sales'] = 'available';
+
+        return [
+            'available' => true,
+            'label' => 'Vendor-reported / system-recorded CMart item sales',
+            'listed_items' => $listedItems,
+            'completed_item_sales' => $itemsSold,
+            'recorded_sales_total' => round($recordedTotal, 2),
+            'currency' => 'MYR',
+            'by_source' => [
+                'reserved' => $bySource['reserved'] ?? ['items_sold' => 0, 'recorded_sales_total' => 0.0],
+                'walk_in' => $bySource['walk_in'] ?? ['items_sold' => 0, 'recorded_sales_total' => 0.0],
+            ],
+            'note' => 'Aggregates vendor-confirmed CMart item sales only. Not audited net income or profit. No customer contact or vendor-level private income is included.',
         ];
     }
 
@@ -795,7 +865,7 @@ class PostEventSummaryAggregator
                 'source_label' => 'In-app Feedback',
                 'average_rating' => null,
                 'response_count' => null,
-                'message' => 'Not available for this event',
+                'message' => __('api.not_available_for_this_event'),
             ];
         }
 
@@ -829,7 +899,7 @@ class PostEventSummaryAggregator
                 'vendor_response_rate_percent' => $approvedUniqueVendors > 0 ? 0.0 : null,
                 'vendor_respondents' => 0,
                 'approved_unique_vendors' => $approvedUniqueVendors,
-                'message' => 'No feedback has been submitted for this event yet.',
+                'message' => __('api.no_feedback_has_been_submitted_for_this_event_yet'),
             ];
         }
 
@@ -914,7 +984,7 @@ class PostEventSummaryAggregator
                 'available' => false,
                 'schema_name' => SurveySchema::NAME,
                 'analytics_source_mode' => $mode,
-                'message' => 'Not available for this event',
+                'message' => __('api.not_available_for_this_event'),
             ];
         }
 
@@ -944,7 +1014,7 @@ class PostEventSummaryAggregator
                 'schema_name' => SurveySchema::NAME,
                 'analytics_source_mode' => $mode,
                 'state' => 'missing_source',
-                'message' => 'No survey responses were collected for this event.',
+                'message' => __('api.no_survey_responses_were_collected_for_this_event'),
                 'note' => 'Survey respondents do not represent all vendors unless response rate is known.',
             ];
         }
@@ -1114,7 +1184,7 @@ class PostEventSummaryAggregator
                 'denominator' => $denominator,
                 'base_display' => sprintf('n = %d responses', $denominator),
                 'rows' => [],
-                'message' => 'No registration difficulty answers were recorded.',
+                'message' => __('api.no_registration_difficulty_answers_were_recorded'),
             ];
         }
 
@@ -1151,7 +1221,7 @@ class PostEventSummaryAggregator
         if (! ($vendorSurveySummary['available'] ?? false)) {
             return [
                 'available' => false,
-                'message' => 'No survey insight is available for environmental and social indicators.',
+                'message' => __('api.no_survey_insight_is_available_for_environmental_a_67d71308'),
             ];
         }
 

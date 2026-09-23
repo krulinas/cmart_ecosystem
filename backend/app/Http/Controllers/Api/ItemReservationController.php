@@ -18,21 +18,26 @@ class ItemReservationController extends Controller
     {
         $validated = $request->validate([
             'vendor_item_id' => 'required|integer',
+            'carboot_event_id' => 'required|integer',
         ]);
 
         try {
             $reservation = $service->create(
                 $request->user(),
                 (int) $validated['vendor_item_id'],
+                (int) $validated['carboot_event_id'],
             );
         } catch (DomainConflictException $exception) {
-            $status = $exception->error === 'item_reservation_fee_not_configured' ? 422 : 409;
+            $status = in_array($exception->error, [
+                'item_reservation_fee_not_configured',
+                'item_not_listed_for_event',
+            ], true) ? 422 : 409;
 
             return $this->conflictResponse($exception, $status);
         }
 
         return response()->json([
-            'message' => '201 Created: Item reservation created successfully.',
+            'message' => __('api.item_reservation_created_successfully'),
             'reservation' => ItemReservationPresenter::forReservingUser($reservation),
         ], 201);
     }
@@ -40,7 +45,12 @@ class ItemReservationController extends Controller
     public function mine(Request $request): JsonResponse
     {
         $paginator = ItemReservation::query()
-            ->with(['carbootEvent', 'vendorUser.businessProfile'])
+            ->with([
+                'carbootEvent',
+                'vendorItem',
+                'vendorUser.businessProfile',
+                'vendorBooking.bookingDayAllocations.eventSite',
+            ])
             ->where('reserving_user_id', $request->user()->id)
             ->latest()
             ->paginate(20);
@@ -88,7 +98,7 @@ class ItemReservationController extends Controller
         }
 
         return response()->json([
-            'message' => '200 OK: Item reservation cancelled successfully.',
+            'message' => __('api.item_reservation_cancelled_successfully'),
             'reservation' => ItemReservationPresenter::forReservingUser($reservation),
         ]);
     }

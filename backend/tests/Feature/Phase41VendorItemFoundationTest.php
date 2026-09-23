@@ -8,6 +8,7 @@ use App\Models\Space;
 use App\Models\User;
 use App\Models\VendorCategory;
 use App\Models\VendorItem;
+use App\Models\VendorItemEventListing;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -32,6 +33,11 @@ class Phase41VendorItemFoundationTest extends TestCase
 
     protected function tearDown(): void
     {
+        if (Schema::hasTable('vendor_item_event_selections')) {
+            \Illuminate\Support\Facades\DB::table('vendor_item_event_selections')
+                ->whereIn('vendor_item_id', $this->createdItemIds)
+                ->delete();
+        }
         VendorItem::query()->whereIn('id', $this->createdItemIds)->get()->each->delete();
         Booking::query()->whereIn('id', $this->createdBookingIds)->delete();
         CarbootEvent::query()->whereIn('id', $this->createdEventIds)->get()->each->delete();
@@ -152,7 +158,15 @@ class Phase41VendorItemFoundationTest extends TestCase
         $vendor = $this->createCommunityUser();
         $category = $this->createCategory('Public');
         $item = $this->createItem($vendor, $category);
-        $this->createApprovedBooking($vendor);
+        $booking = $this->createApprovedBooking($vendor);
+        VendorItemEventListing::query()->create([
+            'vendor_item_id' => $item->id,
+            'carboot_event_id' => $booking->carboot_event_id,
+            'vendor_booking_id' => $booking->id,
+            'vendor_user_id' => $vendor->id,
+            'selected_by' => $vendor->id,
+            'selected_at' => now(),
+        ]);
 
         $response = $this->getJson("/api/marketplace/items/{$item->id}");
 

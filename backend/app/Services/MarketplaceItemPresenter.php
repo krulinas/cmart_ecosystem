@@ -6,6 +6,7 @@ use App\Models\CarbootEvent;
 use App\Models\VendorBusinessProfile;
 use App\Models\VendorItem;
 use App\Support\WhatsAppContact;
+use App\Services\VendorBookingPresenter;
 
 class MarketplaceItemPresenter
 {
@@ -13,17 +14,17 @@ class MarketplaceItemPresenter
         VendorItem $item,
         bool $detailed = false,
         ?int $viewerUserId = null,
+        ?int $eventId = null,
     ): array {
         $item->loadMissing(['user.businessProfile', 'images']);
         $profile = $item->user?->businessProfile;
         $vendor = self::publicVendorSummary($profile, $item);
         $images = $item->galleryImagesForApi();
         $primaryPath = $item->primaryImagePath();
-        $booking = MarketplaceEligibility::upcomingApprovedBookingForItem($item);
+        $booking = MarketplaceEligibility::resolvePreviewBooking($item, $eventId);
         $event = $booking?->carbootEvent;
-        $hasActiveReservation = array_key_exists('has_active_reservation', $item->getAttributes())
-            ? (bool) $item->getAttribute('has_active_reservation')
-            : $item->reservations()->active()->exists();
+        $hasActiveReservation = $item->hasActiveReservationFlag();
+        $resolvedEventId = $event?->id ? (int) $event->id : $eventId;
 
         $feeConfigured = $event?->item_reservation_service_fee !== null;
         $isOwnItem = $viewerUserId !== null && (int) $viewerUserId === (int) $item->user_id;
@@ -44,7 +45,9 @@ class MarketplaceItemPresenter
             'listed_at' => $item->created_at?->toIso8601String(),
             'vendor' => $vendor,
             'purchase_mode' => 'in-person only',
-            'is_reservable' => $feeConfigured && ! $hasActiveReservation,
+            'display_status' => $item->displayStatus(),
+            'carboot_event_id' => $resolvedEventId,
+            'is_reservable' => $feeConfigured && ! $hasActiveReservation && $resolvedEventId,
             'has_active_reservation' => $hasActiveReservation,
             'is_own_item' => $isOwnItem,
             'reservation_service_fee' => $feeConfigured
@@ -57,9 +60,18 @@ class MarketplaceItemPresenter
                 $isOwnItem,
             ),
             'event' => $event ? [
+                'id' => $event->id,
                 'title' => $event->title,
                 'starts_at' => $event->starts_at?->toIso8601String(),
+                'ends_at' => $event->ends_at?->toIso8601String(),
                 'date_label' => $event->starts_at?->format('j M Y'),
+                'venue' => 'CMart Kompleks Changlun',
+            ] : null,
+            'collection' => $booking ? [
+                'site_labels' => VendorBookingPresenter::boothNumber($booking)
+                    ? [VendorBookingPresenter::boothNumber($booking)]
+                    : [],
+                'booth_number' => VendorBookingPresenter::boothNumber($booking),
             ] : null,
         ];
 
@@ -87,7 +99,7 @@ class MarketplaceItemPresenter
             return [
                 'available' => false,
                 'code' => 'own_item',
-                'message' => 'This is your listing.',
+                'message' => __('api.this_is_your_listing'),
             ];
         }
 
@@ -95,7 +107,7 @@ class MarketplaceItemPresenter
             return [
                 'available' => false,
                 'code' => 'no_eligible_upcoming_event',
-                'message' => 'Reservations are not available because this vendor has no upcoming approved event.',
+                'message' => __('api.reservations_are_not_available_because_this_vendor_750ef807'),
             ];
         }
 
@@ -103,7 +115,7 @@ class MarketplaceItemPresenter
             return [
                 'available' => false,
                 'code' => 'event_reservations_not_configured',
-                'message' => 'Reservations are not available for this event.',
+                'message' => __('api.reservations_are_not_available_for_this_event'),
             ];
         }
 
@@ -111,14 +123,14 @@ class MarketplaceItemPresenter
             return [
                 'available' => false,
                 'code' => 'already_reserved',
-                'message' => 'This item already has an active reservation.',
+                'message' => __('api.this_item_already_has_an_active_reservation'),
             ];
         }
 
         return [
             'available' => true,
             'code' => 'available',
-            'message' => 'This item can be reserved as a temporary hold.',
+            'message' => __('api.this_item_can_be_reserved_as_a_temporary_hold'),
         ];
     }
 
@@ -128,7 +140,7 @@ class MarketplaceItemPresenter
         ?CarbootEvent $event,
     ): ?array {
         $vendorName = $profile?->business_name ?: ($item->user?->name ?? 'CMart Vendor');
-        $eventLabel = $event?->starts_at?->format('j M Y') ?: $event?->title;
+        $eventLabel = $event?->title ?: $event?->starts_at?->format('j M Y');
 
         return WhatsAppContact::publicContact(
             $profile,

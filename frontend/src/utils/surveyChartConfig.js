@@ -1,4 +1,5 @@
 /** Codebook order + display helpers for Vendors & Sales charts (mirrors Python schema). */
+import { tt } from '../i18n';
 
 export const PRODUCT_CATEGORY_ORDER = [
   'makanan_minuman',
@@ -47,12 +48,12 @@ export const SHORT_LABELS = {
 };
 
 export const CHART_COLORS = {
-  brand: '#0277BD',
-  brandSoft: 'rgba(2, 119, 189, 0.55)',
-  brandMuted: 'rgba(2, 119, 189, 0.18)',
-  selected: '#0F766E',
-  selectedSoft: 'rgba(15, 118, 110, 0.75)',
-  stack: ['#0277BD', '#0D9488', '#F59E0B', '#64748B'],
+  brand: '#3970E4',
+  brandSoft: 'rgba(57, 112, 228, 0.55)',
+  brandMuted: 'rgba(57, 112, 228, 0.18)',
+  selected: '#2E9D78',
+  selectedSoft: 'rgba(46, 157, 120, 0.75)',
+  stack: ['#3970E4', '#2E9D78', '#D5A800', '#925FD1', '#2D439C'],
   zero: 'rgba(148, 163, 184, 0.45)',
 };
 
@@ -116,5 +117,5 @@ export function formatTooltip(row, mode) {
   const n = row.denominator || 0;
   const count = row.count || 0;
   const pct = row.percent != null ? row.percent : (n ? Math.round((count / n) * 1000) / 10 : 0);
-  return `${count} of ${n} respondents (${pct}%)`;
+  return tt('organizer.analytics.chart.tooltipRespondents', { count, n, pct });
 }
