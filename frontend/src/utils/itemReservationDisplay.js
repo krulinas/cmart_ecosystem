@@ -1,25 +1,33 @@
 import { tt } from '../i18n';
 import { formatLocaleDateTime } from './localeFormat';
+import {
+  CHARGE_STATUS_KEYS,
+  CHARGE_STATUS_VALUES,
+  RESERVATION_STATUS_KEYS,
+  RESERVATION_STATUS_VALUES,
+  buildReservationLifecycle as buildLifecycleCore,
+  canCompleteReservation as canCompleteCore,
+  canOrganizerConfirmCharge as canConfirmCore,
+  chargeStatusLabel as chargeLabelCore,
+  chargeStatusOptions as chargeOptionsCore,
+  humanizeStatusKey,
+  normalizeStatusKey,
+  reservationStatusLabel as reservationLabelCore,
+  reservationStatusOptions as reservationOptionsCore,
+} from './itemReservationStatusCore';
 
 /**
- * Phase 4.4 — centralized reservation status / charge / action helpers.
- * Keep exact backend values in API payloads; use these labels in templates.
+ * Phase 4.4 / Part 04 — centralized reservation status / charge / action helpers.
+ * Keep exact backend values in API payloads; translate only at the display boundary.
  */
 
-export const RESERVATION_STATUS_KEYS = {
-  pending_charge: 'status.pending_charge',
-  confirmed: 'status.confirmed',
-  cancelled: 'status.Cancelled',
-  expired: 'status.expired',
-  completed: 'status.completed',
-};
-
-export const CHARGE_STATUS_KEYS = {
-  required: 'status.required',
-  confirmed: 'status.charge_confirmed',
-  waived: 'status.waived',
-  not_required: 'status.not_required',
-  cancelled: 'status.charge_cancelled',
+export {
+  CHARGE_STATUS_KEYS,
+  CHARGE_STATUS_VALUES,
+  RESERVATION_STATUS_KEYS,
+  RESERVATION_STATUS_VALUES,
+  humanizeStatusKey,
+  normalizeStatusKey,
 };
 
 export const AUDIT_ACTION_KEYS = {
@@ -32,30 +40,36 @@ export const AUDIT_ACTION_KEYS = {
   reservation_completed: 'reservation.auditCompleted',
 };
 
-/** @deprecated Prefer reservationStatusLabel(); kept for callers reading maps. */
+/** @deprecated Prefer reservationStatusOptions(t); kept for callers reading maps. */
 export const RESERVATION_STATUS_LABELS = RESERVATION_STATUS_KEYS;
 export const CHARGE_STATUS_LABELS = CHARGE_STATUS_KEYS;
 export const AUDIT_ACTION_LABELS = AUDIT_ACTION_KEYS;
 
 export function reservationStatusLabel(status, t = tt) {
-  const key = RESERVATION_STATUS_KEYS[status];
-  if (!key) return status || t('common.unknown');
-  const translated = t(key);
-  return translated === key ? status : translated;
+  return reservationLabelCore(status, t);
 }
 
 export function chargeStatusLabel(status, t = tt) {
-  const key = CHARGE_STATUS_KEYS[status];
-  if (!key) return status || t('common.unknown');
-  const translated = t(key);
-  return translated === key ? status : translated;
+  return chargeLabelCore(status, t);
 }
 
 export function auditActionLabel(action, t = tt) {
   const key = AUDIT_ACTION_KEYS[action];
   if (!key) return action || t('reservation.activity');
   const translated = t(key);
-  return translated === key ? action : translated;
+  return translated === key ? humanizeStatusKey(action) : translated;
+}
+
+export function reservationStatusOptions(t = tt) {
+  return reservationOptionsCore(t);
+}
+
+export function chargeStatusOptions(t = tt) {
+  return chargeOptionsCore(t);
+}
+
+export function buildReservationLifecycle(reservation, t = tt) {
+  return buildLifecycleCore(reservation, t);
 }
 
 export function formatReservationFee(amount, currency = 'MYR') {
@@ -78,26 +92,23 @@ export function feeExplanation(amount) {
 }
 
 export function requiresNoRefundAcknowledgement(reservation) {
-  return reservation?.charge_status === 'confirmed';
+  return normalizeStatusKey(reservation?.charge_status) === 'confirmed';
 }
 
 export function canCommunityCancel(reservation) {
-  return reservation?.reservation_status === 'pending_charge';
+  return normalizeStatusKey(reservation?.reservation_status) === 'pending_charge';
 }
 
 export function canVendorCancel(reservation) {
-  return ['pending_charge', 'confirmed'].includes(reservation?.reservation_status);
+  return ['pending_charge', 'confirmed'].includes(normalizeStatusKey(reservation?.reservation_status));
 }
 
 export function canCompleteReservation(reservation) {
-  return reservation?.reservation_status === 'confirmed';
+  return canCompleteCore(reservation);
 }
 
 export function canOrganizerConfirmCharge(reservation) {
-  return (
-    reservation?.reservation_status === 'pending_charge'
-    && reservation?.charge_status === 'required'
-  );
+  return canConfirmCore(reservation);
 }
 
 export function canOrganizerWaiveCharge(reservation) {
@@ -105,7 +116,7 @@ export function canOrganizerWaiveCharge(reservation) {
 }
 
 export function canOrganizerCancelOrExpire(reservation) {
-  return ['pending_charge', 'confirmed'].includes(reservation?.reservation_status);
+  return ['pending_charge', 'confirmed'].includes(normalizeStatusKey(reservation?.reservation_status));
 }
 
 export function canShowReserveCta(args = {}) {
@@ -166,7 +177,7 @@ export function reservationConflictCode(error) {
 }
 
 export function reservationStatusBadgeClass(status) {
-  switch (status) {
+  switch (normalizeStatusKey(status)) {
     case 'pending_charge':
       return 'bg-amber-100 text-amber-800 ring-amber-200';
     case 'confirmed':
@@ -183,7 +194,7 @@ export function reservationStatusBadgeClass(status) {
 }
 
 export function chargeStatusBadgeClass(status) {
-  switch (status) {
+  switch (normalizeStatusKey(status)) {
     case 'required':
       return 'bg-amber-50 text-amber-800 ring-amber-200';
     case 'confirmed':

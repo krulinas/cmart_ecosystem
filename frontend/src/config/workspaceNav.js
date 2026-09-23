@@ -109,7 +109,7 @@ export const WORKSPACE_NAV_ITEMS = [
 /** Legacy hashes that redirect into the Analytics Hub (not shown in sidebar). */
 export const LEGACY_ANALYTICS_HASH_REDIRECTS = {
   revenue: { section: 'event-analytics', tab: 'overview' },
-  analytics: { section: 'event-analytics', tab: 'comments' },
+  analytics: { section: 'event-analytics', tab: 'vendor-insights' },
 };
 
 export const ANALYTICS_HUB_TAB_STORAGE_KEY = 'cmart.eventAnalytics.activeTab';

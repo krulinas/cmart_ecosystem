@@ -100,8 +100,6 @@
 
         <!-- Overview -->
         <section v-if="activeTab === 'overview'" class="space-y-3" data-testid="analytics-overview">
-          <AnalyticsDataSourceBadge :sources="dataSources" compact />
-
           <div
             v-if="showAddSurveyCta"
             class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-brand-200 bg-brand-50/40 px-4 py-3"
@@ -120,6 +118,25 @@
           </div>
 
           <template v-else>
+            <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <button
+                v-for="card in overviewKpis"
+                :key="card.id"
+                type="button"
+                class="rounded-xl border border-sky-100 bg-white px-3 py-3 text-left shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                :class="card.clickable
+                  ? 'cursor-pointer hover:border-brand-300 hover:bg-sky-50/60'
+                  : 'cursor-default'"
+                :disabled="!card.clickable"
+                :title="card.title"
+                @click="card.clickable && card.onClick()"
+              >
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-500">{{ card.label }}</p>
+                <p class="mt-1 text-xl font-extrabold text-ink-900">{{ card.value }}</p>
+                <p v-if="card.note" class="mt-0.5 text-xs text-ink-500">{{ card.note }}</p>
+              </button>
+            </div>
+
             <div class="grid gap-3 lg:grid-cols-2" data-testid="overview-visuals">
               <AnalyticsDoughnutChart
                 v-if="siteUtilisationSegments.length"
@@ -141,8 +158,8 @@
 
               <AnalyticsDoughnutChart
                 v-if="useCategoryDoughnut"
-                :title="t('organizer.analytics.vendorCategoryDistribution')"
-                :subtitle="t('organizer.analytics.vendorCategoryHint')"
+                :title="t('organizer.analytics.vendorCategorySystemTitle')"
+                :subtitle="t('organizer.analytics.vendorCategorySystemHint')"
                 :rows="vendorCategoryChartRows"
                 :colors="compositionColors"
                 :empty-text="t('organizer.analytics.categoryChartEmpty')"
@@ -150,8 +167,8 @@
               />
               <AnalyticsRankedBarChart
                 v-else
-                :title="t('organizer.analytics.vendorCategoryDistribution')"
-                :subtitle="t('organizer.analytics.vendorCategoryHint')"
+                :title="t('organizer.analytics.vendorCategorySystemTitle')"
+                :subtitle="t('organizer.analytics.vendorCategorySystemHint')"
                 :rows="vendorCategoryChartRows"
                 :color="palette.survey"
                 :empty-text="t('organizer.analytics.noCategoryRecorded')"
@@ -177,67 +194,6 @@
                 :empty-text="t('organizer.analytics.statusChartEmpty')"
                 test-id="overview-booking-status-doughnut"
               />
-            </div>
-
-            <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="event-performance">
-              <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.eventPerformance') }}</h3>
-              <p class="mt-0.5 text-xs text-ink-500">{{ t('organizer.analytics.eventPerformanceHint') }}</p>
-              <dl class="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 lg:grid-cols-4">
-                <div>
-                  <dt class="text-ink-500">{{ t('organizer.analytics.approvedBookings') }}</dt>
-                  <dd class="font-bold text-ink-900">{{ eventPerformance?.approved_bookings ?? approvedCount ?? '—' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-ink-500">{{ t('organizer.analytics.uniqueApprovedVendors') }}</dt>
-                  <dd class="font-bold text-ink-900">{{ eventPerformance?.unique_approved_vendors ?? '—' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-ink-500">{{ t('organizer.analytics.openBookingSites') }}</dt>
-                  <dd class="font-bold text-ink-900">{{ eventPerformance?.open_booking_sites ?? sites?.open_booking_sites ?? sites?.active_count ?? '—' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-ink-500">{{ t('organizer.analytics.sitesSold') }}</dt>
-                  <dd class="font-bold text-ink-900">{{ eventPerformance?.sites_sold ?? '—' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-ink-500">{{ t('organizer.analytics.availableSites') }}</dt>
-                  <dd class="font-bold text-ink-900">{{ eventPerformance?.available_sites ?? '—' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-ink-500">{{ t('organizer.analytics.feedbackResponses') }}</dt>
-                  <dd class="font-bold text-ink-900">{{ eventPerformance?.feedback_response_count ?? inAppFeedback?.response_count ?? '—' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-ink-500">{{ t('organizer.analytics.averageRating') }}</dt>
-                  <dd class="font-bold text-ink-900">{{ eventPerformance?.average_overall_rating ?? inAppFeedback?.average_rating ?? '—' }}</dd>
-                </div>
-                <div v-if="eventPerformance?.item_reservations_total != null">
-                  <dt class="text-ink-500">{{ t('organizer.analytics.itemReservations') }}</dt>
-                  <dd class="font-bold text-ink-900">{{ eventPerformance.item_reservations_total }}</dd>
-                </div>
-              </dl>
-              <p class="mt-2 text-[11px] text-ink-500">
-                {{ t('organizer.analytics.physicalSitesNote', { count: eventPerformance?.physical_sites ?? sites?.total ?? '—' }) }}
-              </p>
-            </div>
-
-            <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              <button
-                v-for="card in overviewKpis"
-                :key="card.id"
-                type="button"
-                class="rounded-xl border border-sky-100 bg-white px-3 py-3 text-left shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-                :class="card.clickable
-                  ? 'cursor-pointer hover:border-brand-300 hover:bg-sky-50/60'
-                  : 'cursor-default'"
-                :disabled="!card.clickable"
-                :title="card.title"
-                @click="card.clickable && card.onClick()"
-              >
-                <p class="text-[11px] font-semibold uppercase tracking-wide text-ink-500">{{ card.label }}</p>
-                <p class="mt-1 text-xl font-extrabold text-ink-900">{{ card.value }}</p>
-                <p v-if="card.note" class="mt-0.5 text-xs text-ink-500">{{ card.note }}</p>
-              </button>
             </div>
 
             <div class="grid gap-3 lg:grid-cols-2">
@@ -298,16 +254,25 @@
           </template>
         </section>
 
-        <!-- {{ t('organizer.analytics.feedbackSummary') }} (reuses survey-results tab id) -->
-        <section v-else-if="activeTab === 'survey-results'" class="space-y-3">
-          <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="feedback-summary">
-            <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.feedbackSummary') }}</h3>
-            <p class="mt-0.5 text-xs text-ink-500">{{ t('organizer.analytics.feedbackSummaryHint', { source: inAppFeedback?.source_label || t('organizer.analytics.inAppFeedback') }) }}</p>
+        <!-- Vendor Insights: community feedback + survey CSV + themes (separate denominators) -->
+        <section v-else-if="activeTab === 'vendor-insights'" class="space-y-6" data-testid="analytics-vendor-insights">
+          <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="community-feedback-section">
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.communityFeedbackTitle') }}</h3>
+              <span class="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-900">
+                {{ t('organizer.analytics.sourceBadgeCommunity') }}
+              </span>
+            </div>
+            <p class="mt-0.5 text-xs text-ink-500">{{ t('organizer.analytics.communityFeedbackHint') }}</p>
             <template v-if="inAppFeedback?.available && Number(inAppFeedback.response_count) > 0">
               <dl class="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
                 <div>
                   <dt class="text-ink-500">{{ t('organizer.analytics.totalResponses') }}</dt>
                   <dd class="font-bold text-ink-900">{{ inAppFeedback.response_count }}</dd>
+                </div>
+                <div>
+                  <dt class="text-ink-500">{{ t('organizer.analytics.communityRatingLabel') }}</dt>
+                  <dd class="font-bold text-ink-900">{{ inAppFeedback.average_rating ?? '—' }}</dd>
                 </div>
                 <div>
                   <dt class="text-ink-500">{{ t('organizer.analytics.vendor') }}</dt>
@@ -316,16 +281,6 @@
                 <div>
                   <dt class="text-ink-500">{{ t('organizer.analytics.nonVendor') }}</dt>
                   <dd class="font-bold text-ink-900">{{ inAppFeedback.non_vendor_response_count }}</dd>
-                </div>
-                <div>
-                  <dt class="text-ink-500">{{ t('organizer.analytics.averageRating') }}</dt>
-                  <dd class="font-bold text-ink-900">{{ inAppFeedback.average_rating ?? '—' }}</dd>
-                </div>
-                <div>
-                  <dt class="text-ink-500">{{ t('organizer.analytics.vendorResponseRate') }}</dt>
-                  <dd class="font-bold text-ink-900">
-                    {{ inAppFeedback.vendor_response_rate_percent != null ? `${inAppFeedback.vendor_response_rate_percent}%` : '—' }}
-                  </dd>
                 </div>
               </dl>
               <div class="mt-3">
@@ -340,27 +295,38 @@
                   </li>
                 </ul>
               </div>
-              <div v-if="(inAppFeedback.participation_distribution || []).length" class="mt-3">
-                <p class="text-[11px] font-semibold uppercase text-ink-500">{{ t('organizer.analytics.participantTypes') }}</p>
-                <ul class="mt-1 space-y-1 text-sm text-ink-700">
-                  <li v-for="row in inAppFeedback.participation_distribution" :key="row.type">
-                    {{ row.label || row.type }} · {{ row.count }}
-                  </li>
-                </ul>
-              </div>
-              <div class="mt-4 border-t border-ink-100 pt-3">
-                <p class="text-[11px] font-semibold uppercase text-ink-500">{{ t('organizer.analytics.nonVendorComments') }}</p>
-                <ul v-if="(inAppFeedback.anonymous_non_vendor_comments || []).length" class="mt-2 space-y-2">
-                  <li
-                    v-for="(item, idx) in inAppFeedback.anonymous_non_vendor_comments"
-                    :key="`nv-${idx}`"
-                    class="rounded-lg border border-ink-100 bg-ink-50/40 px-3 py-2 text-sm"
-                  >
-                    <p class="text-xs font-semibold text-ink-500">{{ item.author_label }} · {{ item.rating }}★</p>
-                    <p class="mt-1 text-ink-800 whitespace-pre-line">{{ item.comments }}</p>
-                  </li>
-                </ul>
-                <p v-else class="mt-2 text-sm text-ink-600">{{ t('organizer.analytics.noNonVendorComments') }}</p>
+              <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                <div>
+                  <p class="text-[11px] font-semibold uppercase text-ink-500">{{ t('organizer.analytics.vendorComments') }}</p>
+                  <ul v-if="(inAppFeedback.anonymous_vendor_comments || []).length" class="mt-2 space-y-2">
+                    <li
+                      v-for="(item, idx) in inAppFeedback.anonymous_vendor_comments"
+                      :key="`v-${idx}`"
+                      class="rounded-lg border border-ink-100 bg-ink-50/40 px-3 py-2 text-sm"
+                    >
+                      <p class="text-xs font-semibold text-ink-500">
+                        {{ t('organizer.analytics.vendorRespondent') }} · {{ item.rating }}★
+                        <span v-if="item.submitted_at" class="font-normal"> · {{ formatDate(item.submitted_at) }}</span>
+                      </p>
+                      <p class="mt-1 whitespace-pre-line text-ink-800">{{ item.comments }}</p>
+                    </li>
+                  </ul>
+                  <p v-else class="mt-2 text-sm text-ink-600">{{ t('organizer.analytics.noVendorFeedback') }}</p>
+                </div>
+                <div>
+                  <p class="text-[11px] font-semibold uppercase text-ink-500">{{ t('organizer.analytics.nonVendorComments') }}</p>
+                  <ul v-if="(inAppFeedback.anonymous_non_vendor_comments || []).length" class="mt-2 space-y-2">
+                    <li
+                      v-for="(item, idx) in inAppFeedback.anonymous_non_vendor_comments"
+                      :key="`nv-${idx}`"
+                      class="rounded-lg border border-ink-100 bg-ink-50/40 px-3 py-2 text-sm"
+                    >
+                      <p class="text-xs font-semibold text-ink-500">{{ item.author_label }} · {{ item.rating }}★</p>
+                      <p class="mt-1 whitespace-pre-line text-ink-800">{{ item.comments }}</p>
+                    </li>
+                  </ul>
+                  <p v-else class="mt-2 text-sm text-ink-600">{{ t('organizer.analytics.noNonVendorComments') }}</p>
+                </div>
               </div>
             </template>
             <p v-else class="mt-3 text-sm text-ink-600">
@@ -368,51 +334,50 @@
             </p>
           </div>
 
-          <SurveyResultsPanel
-            :overview="overview"
-            :sources="dataSources"
-            :respondent-count="respondentCount"
-            :survey-empty="surveyEmpty"
-            :show-add-csv-cta="showAddSurveyCta || csvOnlyOnboarding"
-            @open-data-sources="setActiveTab('data-sources')"
-          />
-        </section>
-
-        <!-- {{ t('organizer.analytics.vendorFeedback') }} -->
-        <section v-else-if="activeTab === 'comments'" class="space-y-3">
-          <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="vendor-feedback-list">
-            <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.vendorFeedback') }}</h3>
-            <p class="mt-0.5 text-xs text-ink-500">{{ t('organizer.analytics.vendorFeedbackHint') }}</p>
-            <ul v-if="(inAppFeedback?.anonymous_vendor_comments || []).length" class="mt-3 space-y-2">
-              <li
-                v-for="(item, idx) in inAppFeedback.anonymous_vendor_comments"
-                :key="`v-${idx}`"
-                class="rounded-lg border border-ink-100 bg-ink-50/40 px-3 py-2 text-sm"
-              >
-                <p class="text-xs font-semibold text-ink-500">
-                  {{ t('organizer.analytics.vendorRespondent') }} · {{ item.rating }}★
-                  <span v-if="item.submitted_at" class="font-normal"> · {{ formatDate(item.submitted_at) }}</span>
-                </p>
-                <p class="mt-1 text-ink-800 whitespace-pre-line">{{ item.comments }}</p>
-              </li>
-            </ul>
-            <p v-else class="mt-3 text-sm text-ink-600">
-              {{ t('organizer.analytics.noVendorFeedback') }}
-            </p>
+          <div data-testid="vendor-survey-results-section">
+            <div class="mb-2 flex flex-wrap items-center gap-2">
+              <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.vendorSurveyResultsTitle') }}</h3>
+              <span class="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-900">
+                {{ t('organizer.analytics.sourceBadgeSurveyCsv') }}
+              </span>
+            </div>
+            <p class="mb-3 text-xs text-ink-500">{{ t('organizer.analytics.vendorSurveyResultsHint') }}</p>
+            <SurveyResultsPanel
+              :overview="overview"
+              :sources="dataSources"
+              :respondent-count="respondentCount"
+              :survey-empty="surveyEmpty"
+              :show-add-csv-cta="showAddSurveyCta || csvOnlyOnboarding"
+              @open-data-sources="setActiveTab('data-sources')"
+            />
           </div>
-          <AnalyticsDataSourceBadge :sources="dataSources" filter="csv" />
-          <EventCommentsWordCloud
-            :event-id="selectedEventId"
-            :qualitative="qualitativeComments"
-            :respondent-count="respondentCount"
-            :feedback-link-ready="feedbackLinkReady"
-            :survey-status="overview?.survey?.status || ''"
-          />
+
+          <div data-testid="vendor-comments-themes-section">
+            <div class="mb-2 flex flex-wrap items-center gap-2">
+              <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.vendorCommentsThemesTitle') }}</h3>
+              <span class="inline-flex rounded-full border border-ink-200 bg-ink-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink-700">
+                {{ t('organizer.analytics.sourceBadgeMixedThemes') }}
+              </span>
+            </div>
+            <p class="mb-3 text-xs text-ink-500">{{ t('organizer.analytics.vendorCommentsThemesHint') }}</p>
+            <EventCommentsWordCloud
+              :event-id="selectedEventId"
+              :qualitative="qualitativeComments"
+              :respondent-count="respondentCount"
+              :feedback-link-ready="feedbackLinkReady"
+              :survey-status="overview?.survey?.status || ''"
+            />
+          </div>
         </section>
 
-        <!-- Operations -->
-        <section v-else-if="activeTab === 'operations'" class="space-y-3">
-          <AnalyticsDataSourceBadge :sources="dataSources" filter="system" />
+        <!-- Operations: detailed operational breakdown (not identical Overview charts) -->
+        <section v-else-if="activeTab === 'operations'" class="space-y-3" data-testid="analytics-operations">
+          <p class="text-xs text-ink-500">
+            <span class="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-900">
+              {{ t('organizer.analytics.sourceBadgeSystem') }}
+            </span>
+            <span class="ml-2">{{ t('organizer.analytics.operationsDetailHint') }}</span>
+          </p>
           <div
             v-if="!systemIncluded"
             class="rounded-xl border border-dashed border-ink-200 bg-white px-3 py-6 text-center text-sm text-ink-600"
@@ -435,37 +400,68 @@
             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
                 <p class="text-[11px] font-semibold uppercase text-ink-500">{{ t('organizer.analytics.totalBookings') }}</p>
-                <p class="mt-1 text-xl font-extrabold">{{ pipeline?.total_bookings ?? 0 }}</p>
+                <p class="mt-1 text-xl font-extrabold">{{ pipeline?.total_bookings != null ? pipeline.total_bookings : '—' }}</p>
               </article>
               <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
-                <p class="text-[11px] font-semibold uppercase text-ink-500">{{ t('organizer.analytics.approved') }}</p>
-                <p class="mt-1 text-xl font-extrabold">{{ approvedCount ?? 0 }}</p>
+                <p class="text-[11px] font-semibold uppercase text-ink-500">{{ t('organizer.analytics.participatingVendorsSystem') }}</p>
+                <p class="mt-1 text-xl font-extrabold">{{ eventPerformance?.unique_approved_vendors ?? approvedCount ?? '—' }}</p>
               </article>
               <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
                 <p class="text-[11px] font-semibold uppercase text-ink-500">{{ t('organizer.analytics.sitesSlots') }}</p>
-                <p class="mt-1 text-xl font-extrabold">{{ sites?.total ?? 0 }}</p>
+                <p class="mt-1 text-xl font-extrabold">{{ sites?.total != null ? sites.total : '—' }}</p>
               </article>
               <article class="rounded-xl border border-sky-100 bg-white px-3 py-3">
                 <p class="text-[11px] font-semibold uppercase text-ink-500">{{ t('organizer.analytics.itemReservations') }}</p>
                 <p class="mt-1 text-xl font-extrabold">
-                  {{ reservations?.available === false ? t('organizer.analytics.unavailable') : (reservations?.total ?? 0) }}
+                  {{ reservations?.available === false ? t('organizer.analytics.unavailable') : (reservations?.total != null ? reservations.total : '—') }}
                 </p>
               </article>
             </div>
-            <div class="grid gap-3 lg:grid-cols-2">
-              <AnalyticsBarList
-                :title="t('organizer.analytics.bookingsByApproval')"
-                :rows="bookingStatusRows"
-                :denominator="pipeline?.total_bookings || null"
-                :empty-text="t('organizer.analytics.zeroBookings')"
-              />
-              <AnalyticsBarList
-                :title="t('organizer.analytics.sitesByOperational')"
-                :rows="siteStatusRows"
-                :denominator="sites?.total || null"
-                :empty-text="t('organizer.analytics.noSiteLayout')"
-              />
+
+            <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="operations-booking-detail">
+              <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.bookingsByApproval') }}</h3>
+              <p class="mt-0.5 text-xs text-ink-500">{{ t('organizer.analytics.operationsBookingDetailHint') }}</p>
+              <table v-if="bookingStatusRows.length" class="mt-3 w-full text-left text-sm">
+                <thead>
+                  <tr class="text-[11px] uppercase tracking-wide text-ink-500">
+                    <th class="py-1 font-semibold">{{ t('organizer.analytics.statusCol') }}</th>
+                    <th class="py-1 font-semibold">{{ t('organizer.analytics.countCol') }}</th>
+                    <th class="py-1 font-semibold">%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in bookingStatusRows" :key="row.key" class="border-t border-ink-100">
+                    <td class="py-1.5 font-semibold text-ink-800">{{ row.label }}</td>
+                    <td class="py-1.5 tabular-nums text-ink-700">{{ row.count }}</td>
+                    <td class="py-1.5 tabular-nums text-ink-500">{{ row.percent }}%</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p v-else class="mt-3 text-sm text-ink-600">{{ t('organizer.analytics.zeroBookings') }}</p>
             </div>
+
+            <div class="rounded-xl border border-sky-100 bg-white p-3" data-testid="operations-site-detail">
+              <h3 class="text-sm font-extrabold text-ink-900">{{ t('organizer.analytics.sitesByOperational') }}</h3>
+              <p class="mt-0.5 text-xs text-ink-500">{{ t('organizer.analytics.operationsSiteDetailHint') }}</p>
+              <table v-if="siteStatusRows.length" class="mt-3 w-full text-left text-sm">
+                <thead>
+                  <tr class="text-[11px] uppercase tracking-wide text-ink-500">
+                    <th class="py-1 font-semibold">{{ t('organizer.analytics.statusCol') }}</th>
+                    <th class="py-1 font-semibold">{{ t('organizer.analytics.countCol') }}</th>
+                    <th class="py-1 font-semibold">%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in siteStatusRows" :key="row.key" class="border-t border-ink-100">
+                    <td class="py-1.5 font-semibold text-ink-800">{{ row.label }}</td>
+                    <td class="py-1.5 tabular-nums text-ink-700">{{ row.count }}</td>
+                    <td class="py-1.5 tabular-nums text-ink-500">{{ row.percent }}%</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p v-else class="mt-3 text-sm text-ink-600">{{ t('organizer.analytics.noSiteLayout') }}</p>
+            </div>
+
             <div class="rounded-xl border border-dashed border-ink-200 bg-white px-3 py-3 text-sm text-ink-600">
               {{ t('organizer.analytics.attendanceCheckIn') }}
               {{ t('organizer.analytics.attendanceUnavailable') }}
@@ -474,14 +470,13 @@
         </section>
 
         <!-- Data Sources -->
-        <section v-else-if="activeTab === 'data-sources'" class="space-y-3">
-          <AnalyticsDataSourceBadge :sources="dataSources" />
+        <section v-else-if="activeTab === 'data-sources'" class="space-y-3" data-testid="analytics-data-sources-tab">
           <AnalyticsDataSourceManager
             :event-id="selectedEventId"
             :event-title="currentEvent?.title || ''"
             :overview="overview"
             @updated="onDataSourceUpdated"
-            @view-survey-results="setActiveTab('survey-results')"
+            @view-survey-results="setActiveTab('vendor-insights')"
           />
         </section>
       </template>
@@ -494,8 +489,6 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
-import AnalyticsBarList from '../../../components/analytics/AnalyticsBarList.vue';
-import AnalyticsDataSourceBadge from '../../../components/analytics/AnalyticsDataSourceBadge.vue';
 import AnalyticsDataSourceManager from '../../../components/analytics/AnalyticsDataSourceManager.vue';
 import AnalyticsDoughnutChart from '../../../components/analytics/AnalyticsDoughnutChart.vue';
 import AnalyticsRankedBarChart from '../../../components/analytics/AnalyticsRankedBarChart.vue';
@@ -526,25 +519,27 @@ const compositionColors = COMPOSITION_COLORS;
 
 const tabs = computed(() => [
   { id: 'overview', label: t('organizer.analytics.tabOverview') },
-  { id: 'survey-results', label: t('organizer.analytics.tabFeedbackSummary') },
-  { id: 'comments', label: t('organizer.analytics.tabVendorFeedback') },
+  { id: 'vendor-insights', label: t('organizer.analytics.tabVendorInsights') },
   { id: 'operations', label: t('organizer.analytics.tabOperations') },
   { id: 'data-sources', label: t('organizer.analytics.tabDataSources') },
 ]);
 
-const TAB_IDS = new Set(['overview', 'survey-results', 'comments', 'operations', 'data-sources']);
+const TAB_IDS = new Set(['overview', 'vendor-insights', 'operations', 'data-sources']);
 
 const LEGACY_TAB_MAP = {
   revenue: 'overview',
-  vendors: 'survey-results',
-  items: 'survey-results',
-  experience: 'survey-results',
+  overview: 'overview',
+  operations: 'operations',
   'data-quality': 'data-sources',
   'data-sources': 'data-sources',
-  comments: 'comments',
-  'survey-results': 'survey-results',
-  operations: 'operations',
-  overview: 'overview',
+  'vendor-insights': 'vendor-insights',
+  // Former Feedback Summary / Vendor Feedback tabs
+  'survey-results': 'vendor-insights',
+  comments: 'vendor-insights',
+  vendors: 'vendor-insights',
+  items: 'vendor-insights',
+  experience: 'vendor-insights',
+  'feedback-summary': 'vendor-insights',
 };
 
 const events = ref([]);
@@ -726,18 +721,18 @@ const kpiBookingsValue = computed(() => {
 const overviewKpis = computed(() => [
   {
     id: 'survey_respondents',
-    label: t('organizer.analytics.kpiSurveyRespondents'),
+    label: t('organizer.analytics.surveyRespondentsCsv'),
     value: kpiSurveyValue.value,
     note: surveyReady.value
       ? t('organizer.analytics.kpiViewSurveyResults')
       : (surveyIncluded.value ? (overview.value?.survey?.message || t('organizer.analytics.kpiNoSurveyCsv')) : t('organizer.analytics.kpiHiddenByMode')),
     title: t('organizer.analytics.kpiOpenSurveyResults'),
     clickable: true,
-    onClick: () => setActiveTab(surveyReady.value ? 'survey-results' : 'data-sources'),
+    onClick: () => setActiveTab(surveyReady.value ? 'vendor-insights' : 'data-sources'),
   },
   {
     id: 'approved_bookings',
-    label: t('organizer.analytics.approvedBookings'),
+    label: t('organizer.analytics.participatingVendorsSystem'),
     value: kpiBookingsValue.value,
     note: !systemIncluded.value
       ? t('organizer.analytics.kpiExcludedByMode')

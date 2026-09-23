@@ -85,8 +85,7 @@ try {
 
   const tabLabels = [
     'Overview',
-    'Survey Results',
-    'Vendor Comments',
+    'Vendor Insights',
     'Operations',
     'Data Sources',
   ];
@@ -104,11 +103,13 @@ try {
   await page.waitForTimeout(400);
   note('CSV source under Data Sources', await page.locator('[data-testid="current-csv-source"]').isVisible());
 
-  await page.getByRole('button', { name: 'Survey Results' }).click();
+  await page.getByRole('button', { name: 'Vendor Insights' }).click();
   await page.waitForTimeout(500);
   const itemsText = await page.locator('[data-testid="organizer-event-analytics-hub"]').innerText();
   note('No raw snake_case tidak_berkenaan', !itemsText.includes('tidak_berkenaan'));
   note('Humanized Tidak berkenaan or empty survey state', itemsText.includes('Tidak berkenaan') || /No CSV data|No vendor survey/i.test(itemsText));
+  note('Community Feedback subsection', await page.locator('[data-testid="community-feedback-section"]').isVisible());
+  note('Vendor Survey Results subsection', await page.locator('[data-testid="vendor-survey-results-section"]').isVisible());
 
   await page.getByRole('button', { name: 'Overview' }).click();
   await page.waitForTimeout(400);

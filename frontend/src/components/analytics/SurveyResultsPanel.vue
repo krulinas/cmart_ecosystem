@@ -188,7 +188,7 @@
         <div class="grid gap-3 lg:grid-cols-2">
           <SurveyDistributionChart
             :title="t('organizer.analytics.survey.experienceRating')"
-            :subtitle="t('organizer.analytics.survey.experienceRatingSub')"
+            :subtitle="t('organizer.analytics.survey.experienceRatingSourceSub')"
             chart-type="column-v"
             test-id="chart-experience-rating"
             :rows="experienceRating"

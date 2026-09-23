@@ -47,8 +47,8 @@
             @change="loadQueue"
           >
             <option value="">{{ t('organizer.itemReservations.all') }}</option>
-            <option v-for="(label, value) in RESERVATION_STATUS_LABELS" :key="value" :value="value">
-              {{ label }}
+            <option v-for="opt in reservationStatusFilterOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
             </option>
           </select>
         </div>
@@ -62,8 +62,8 @@
             @change="loadQueue"
           >
             <option value="">{{ t('organizer.itemReservations.all') }}</option>
-            <option v-for="(label, value) in CHARGE_STATUS_LABELS" :key="value" :value="value">
-              {{ label }}
+            <option v-for="opt in chargeStatusFilterOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
             </option>
           </select>
         </div>
@@ -223,6 +223,8 @@
               </div>
             </dl>
 
+            <ReservationLifecycleStrip :reservation="detail" />
+
             <div class="rounded-xl border border-ink-100 p-4 text-sm space-y-2">
               <h4 class="font-bold text-ink-900">{{ t('organizer.itemReservations.chargeEvidence') }}</h4>
               <p>{{ t('organizer.itemReservations.confirmationNote', { value: detail.charge_confirmation?.note || '—' }) }}</p>
@@ -379,6 +381,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'vue-toastification';
+import ReservationLifecycleStrip from '../../../components/reservations/ReservationLifecycleStrip.vue';
 import { getCarbootEvents } from '../../../services/organizerEventLayoutApi';
 import {
   cancelOrganizerItemReservation,
@@ -391,26 +394,29 @@ import {
   waiveOrganizerItemReservationCharge,
 } from '../../../services/itemReservationsApi';
 import {
-  CHARGE_STATUS_LABELS,
-  RESERVATION_STATUS_LABELS,
   auditActionLabel,
   canCompleteReservation,
   canOrganizerCancelOrExpire,
   canOrganizerConfirmCharge,
   canOrganizerWaiveCharge,
   chargeStatusLabel,
+  chargeStatusOptions,
   formatReservationFee,
   formatReservationTimestamp,
   requiresNoRefundAcknowledgement,
   reservationErrorMessage,
   reservationStatusBadgeClass,
   reservationStatusLabel,
+  reservationStatusOptions,
 } from '../../../utils/itemReservationDisplay';
 
 const { t } = useI18n();
 const toast = useToast();
 const route = useRoute();
 const router = useRouter();
+
+const reservationStatusFilterOptions = computed(() => reservationStatusOptions(t));
+const chargeStatusFilterOptions = computed(() => chargeStatusOptions(t));
 
 const events = ref([]);
 const loadingEvents = ref(false);
